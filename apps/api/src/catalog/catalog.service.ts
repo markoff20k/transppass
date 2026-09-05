@@ -179,6 +179,10 @@ export class CatalogService {
     return paginate(rows.map(toCatalogItem), total, { page: query.page, perPage: query.perPage });
   }
 
+  async listSpecialties() {
+    return this.prisma.specialty.findMany({ orderBy: { name: 'asc' } });
+  }
+
   // --- Códigos de motivo (RF-33) -------------------------------------------
 
   async listReasonCodes(list?: ReasonCodeList, onlyActive = true): Promise<ReasonCode[]> {

@@ -501,3 +501,364 @@ small.muted {
   color: var(--danger);
   font-size: 13px;
 }
+
+/* ===== R1 — corretivo e execução ===================================== */
+
+.row-selected td {
+  background: var(--accent-soft);
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+td.actions {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.required {
+  color: var(--danger);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Inteligência do catálogo na triagem e no registro (RF-02) */
+.intel {
+  padding: 12px 14px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.intel dl {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.intel dl div {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 8px;
+}
+
+.intel dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.intel dd {
+  margin: 0;
+  font-size: 13px;
+}
+
+.destinations {
+  display: grid;
+  gap: 8px;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.destinations legend {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 0 0 6px;
+}
+
+.radio-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.radio-card:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.radio-card.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Histórico append-only da fila (RF-08) */
+.timeline {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.timeline li {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.timeline em {
+  color: var(--muted);
+}
+
+/* Relógio de indisponibilidade e decomposição (RF-39) */
+.kpi-value.small {
+  font-size: 16px;
+}
+
+.breakdown {
+  display: grid;
+  gap: 8px;
+}
+
+.bar {
+  display: flex;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--surface-alt);
+}
+
+.bar-seg {
+  height: 100%;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+
+.cause-queue { background: #8b6cc4; }
+.cause-material { background: #d08b2c; }
+.cause-execution { background: #2f7fd1; }
+.cause-inspection { background: #3aa17e; }
+.cause-cleaning { background: #5aa9c9; }
+.cause-release_wait { background: #9aa1ac; }
+
+/* Sub-OS */
+.task-list {
+  display: grid;
+  gap: 12px;
+}
+
+.task-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-alt);
+}
+
+.task-card.status-blocked_by_material { border-left-color: var(--danger); }
+.task-card.status-in_progress { border-left-color: var(--accent); }
+.task-card.status-approved { border-left-color: var(--good); }
+.task-card.status-rejected { border-left-color: var(--danger); }
+
+.task-card header,
+.task-card footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.task-card p {
+  margin: 0;
+}
+
+.checklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+}
+
+.inspection-form,
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.add-task {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.add-task input {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Portões (RF-19/RF-22) */
+.gates {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.gates li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.gate-ok { color: var(--good); }
+.gate-blocked { color: var(--muted); }
+
+.notice-warn {
+  background: var(--warn-soft);
+}
+
+/* Socorro — mobile-first, alvos grandes para uso com luva (seção 8) */
+.field-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.field-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-alt);
+}
+
+.field-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.field-card header div {
+  display: grid;
+}
+
+.big {
+  font-size: 18px;
+}
+
+.field-failure {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.field-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.field-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.field-steps li.done .touch {
+  background: var(--good);
+  color: #fff;
+  opacity: 1;
+}
+
+.touch {
+  min-height: 48px;
+  min-width: 140px;
+  padding: 12px 20px;
+  font-size: 16px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.touch:disabled {
+  opacity: 0.5;
+}
+
+.touch-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+  width: 100%;
+}
+
+.outcome-form {
+  display: grid;
+  gap: 10px;
+}
+
+.outcome-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .shell-main {
+    padding: 12px;
+  }
+
+  .field-list {
+    grid-template-columns: 1fr;
+  }
+
+  .touch {
+    width: 100%;
+  }
+}

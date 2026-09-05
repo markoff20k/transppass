@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -17,7 +17,8 @@ async function bootstrap() {
     origin: config.get<string>('CORS_ORIGIN', 'http://localhost:5173').split(','),
     credentials: true,
   });
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  // A validacao de entrada e toda feita por ZodValidationPipe com os schemas de
+  // @app/shared — nao ha DTO de class-validator, entao nao ha pipe global.
   app.useGlobalFilters(new HttpExceptionFilter());
   app.enableShutdownHooks();
 

@@ -79,6 +79,12 @@ export class CatalogController {
     return this.catalog.publishVersion(id, actorId);
   }
 
+  /** Especialidades de manutenção, usadas ao abrir sub-OS (RF-18). */
+  @Get('specialties')
+  listSpecialties() {
+    return this.catalog.listSpecialties();
+  }
+
   // --- Códigos de motivo (RF-33) -------------------------------------------
 
   @Get('reason-codes')

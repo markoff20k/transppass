@@ -9,6 +9,11 @@ import { UsersModule } from './users/users.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { OdometerModule } from './odometer/odometer.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { EventsModule } from './events/events.module';
+import { QueueModule } from './queue/queue.module';
+import { WorkOrdersModule } from './work-orders/work-orders.module';
+import { MaterialsModule } from './materials/materials.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { envSchema } from './config/env.validation';
 
@@ -28,6 +33,12 @@ import { envSchema } from './config/env.validation';
     VehiclesModule,
     OdometerModule,
     CatalogModule,
+    // R1 — Corretivo e execucao: evento -> triagem -> fila -> OS -> portoes -> liberacao
+    EventsModule,
+    QueueModule,
+    WorkOrdersModule,
+    MaterialsModule,
+    MetricsModule,
   ],
   providers: [
     // Tudo é protegido por padrão; rotas abertas usam @Public().

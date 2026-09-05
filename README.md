@@ -9,11 +9,13 @@ Monorepo React + TypeScript / NestJS, estruturado para que front e back possam s
 | Release | Escopo do PRD | Situação |
 | --- | --- | --- |
 | **R0 — Fundações** | Cadastros (E7), frota, permissões, entrada de km (RF-14/15), painel da frota | **Implementado** |
-| R1 — Corretivo e execução | E1, E2, E4, E5 | Modelado no banco, sem API/telas |
+| **R1 — Corretivo e execução** | E1, E2, E4, E5 — evento → triagem → fila → OS → portões → liberação | **Implementado, não validado contra banco** |
 | R2 — Preventiva e Plantão | E3, E6 | Modelado no banco, sem API/telas |
 | Fase 2 | RF-16, RF-40, RF-41 | Fora do MVP |
 
-O schema Prisma já cobre **os oito épicos** — o R1 e o R2 acrescentam serviços e telas sobre um modelo de dados que não vai precisar mudar.
+O schema Prisma já cobre **os oito épicos** — o R2 acrescenta serviços e telas sobre um modelo de dados que não vai precisar mudar.
+
+> **O R1 ainda não rodou contra um banco.** Compila, o lint passa e as 65 rotas sobem com o grafo de dependências resolvido, mas a máquina de estados (portões, relógio, fila) não foi exercitada. O teste que faz isso está pronto em `apps/api/test/r1-flow.e2e.ts` — rode `npm run test:e2e` com a API no ar assim que o Postgres existir.
 
 ## Estrutura
 

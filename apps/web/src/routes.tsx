@@ -6,6 +6,14 @@ import { FleetPanelPage } from '@/pages/fleet-panel-page';
 import { OdometerEntryPage } from '@/pages/odometer-entry-page';
 import { VehiclesPage } from '@/pages/vehicles-page';
 import { CatalogPage } from '@/pages/catalog-page';
+import { EventsPage } from '@/pages/events-page';
+import { TriagePage } from '@/pages/triage-page';
+import { QueuePage } from '@/pages/queue-page';
+import { FieldServicePage } from '@/pages/field-service-page';
+import { WorkOrdersPage } from '@/pages/work-orders-page';
+import { WorkOrderPage } from '@/pages/work-order-page';
+import { StockPage } from '@/pages/stock-page';
+import { MetricsPage } from '@/pages/metrics-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 
 export const router = createBrowserRouter([
@@ -16,12 +24,21 @@ export const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
-          // R0 — Fundacoes (secao 11 do PRD)
+          // R0 — Fundacoes
           { path: '/', element: <FleetPanelPage /> },
           { path: '/km', element: <OdometerEntryPage /> },
           { path: '/cadastros/frota', element: <VehiclesPage /> },
           { path: '/cadastros/catalogo', element: <CatalogPage /> },
-          // R1 (evento, triagem, fila, OS) e R2 (preventiva, plantao) entram aqui.
+          // R1 — Corretivo e execucao
+          { path: '/eventos', element: <EventsPage /> },
+          { path: '/triagem', element: <TriagePage /> },
+          { path: '/fila', element: <QueuePage /> },
+          { path: '/socorro', element: <FieldServicePage /> },
+          { path: '/os', element: <WorkOrdersPage /> },
+          { path: '/os/:id', element: <WorkOrderPage /> },
+          { path: '/estoque', element: <StockPage /> },
+          { path: '/indicadores', element: <MetricsPage /> },
+          // R2 (preventiva, plantao) entra aqui.
         ],
       },
     ],

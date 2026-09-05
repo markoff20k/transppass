@@ -25,7 +25,8 @@
     "setup": "npm install && npm run build -w @app/shared && npm run db:generate -w @app/api",
     "db:seed": "npm run db:seed -w @app/api",
     "db:generate": "npm run db:generate -w @app/api",
-    "dev:mock": "npm run build -w @app/shared && npm run dev:mock -w @app/web"
+    "dev:mock": "npm run build -w @app/shared && npm run dev:mock -w @app/web",
+    "test:e2e": "npm run test:e2e -w @app/api"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
