@@ -32,10 +32,10 @@ const baseUser = {
 
 export const users: MockUser[] = [
   { ...baseUser, id: uuid(1), name: 'Administrador', email: 'admin@transppass.local', role: UserRole.ADMIN, password: 'admin123' },
-  { ...baseUser, id: uuid(2), name: 'Rosângela (PCM)', email: 'pcm@transppass.local', role: UserRole.PCM, password: 'transppass123' },
+  { ...baseUser, id: uuid(2), name: 'Analista PCM', email: 'pcm@transppass.local', role: UserRole.PCM, password: 'transppass123' },
   { ...baseUser, id: uuid(3), name: 'CCO', email: 'cco@transppass.local', role: UserRole.CCO, password: 'transppass123' },
   { ...baseUser, id: uuid(4), name: 'Plantão', email: 'plantao@transppass.local', role: UserRole.PLANTAO, password: 'transppass123' },
-  { ...baseUser, id: uuid(5), name: 'Ivan (Manutenção)', email: 'manutencao@transppass.local', role: UserRole.MANUTENCAO, password: 'transppass123' },
+  { ...baseUser, id: uuid(5), name: 'Encarregado de Manutenção', email: 'manutencao@transppass.local', role: UserRole.MANUTENCAO, password: 'transppass123' },
   { ...baseUser, id: uuid(6), name: 'Estoque', email: 'estoque@transppass.local', role: UserRole.ESTOQUE, password: 'transppass123' },
 ];
 
