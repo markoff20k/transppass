@@ -1,0 +1,1215 @@
+// Transppass — Modulo PCM
+// Modelo de dados do MVP, cobrindo os oito epicos do PRD v1.0.
+// As referencias (RF-xx) apontam para a secao 7 do PRD.
+//
+// Principio estrutural: a OS-mae e o unico relogio de indisponibilidade (RN-02).
+// Tudo que prende o carro vira um DowntimeSegment com causa, e o MKBF sai
+// dos proprios estados do processo, sem apuracao manual.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================================================
+// E7 — Cadastros, usuarios e permissoes
+// ===========================================================================
+
+/// Perfis por area, espelhando o organograma validado no PRD (secao 5).
+enum UserRole {
+  ADMIN
+  PCM
+  CCO
+  PLANTAO
+  SOCORRO
+  MANUTENCAO
+  MECANICO
+  INSPETOR
+  ESTOQUE
+  LIMPEZA
+  GESTAO
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  registration String?  @unique @db.VarChar(32)
+  name         String   @db.VarChar(120)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String
+  role         UserRole
+  garageId     String?  @db.Uuid
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  garage        Garage?        @relation(fields: [garageId], references: [id])
+  refreshTokens RefreshToken[]
+
+  @@index([role])
+  @@map("users")
+}
+
+/// Refresh tokens ficam hasheados: vazamento do banco nao permite renovar sessao.
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?   @db.VarChar(255)
+  ip        String?   @db.VarChar(64)
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+/// RF-36 — permissoes por area. Toda alteracao gera AuditLog.
+model RolePermission {
+  id         String   @id @default(uuid()) @db.Uuid
+  role       UserRole
+  permission String   @db.VarChar(80)
+  createdAt  DateTime @default(now())
+
+  @@unique([role, permission])
+  @@map("role_permissions")
+}
+
+/// Trilha append-only exigida na secao 8 do PRD (retencao minima de 5 anos).
+/// Nao existe endpoint de update nem de delete sobre esta tabela.
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  actorId   String?  @db.Uuid
+  action    String   @db.VarChar(80)
+  entity    String   @db.VarChar(80)
+  entityId  String?  @db.VarChar(64)
+  before    Json?
+  after     Json?
+  reason    String?  @db.VarChar(255)
+  ip        String?  @db.VarChar(64)
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Garage {
+  id       String  @id @default(uuid()) @db.Uuid
+  code     String  @unique @db.VarChar(16)
+  name     String  @db.VarChar(120)
+  isActive Boolean @default(true)
+
+  users    User[]
+  vehicles Vehicle[]
+
+  @@map("garages")
+}
+
+enum VehicleTechnology {
+  DIESEL
+  EBUS
+}
+
+/// RF-14/15/16 — de onde vem o odometro de cada carro.
+enum KmSource {
+  MANUAL
+  TELEMETRY
+  JB_API
+}
+
+/// Estados ao vivo do painel da frota (RF-37 / RN-01).
+enum VehicleStatus {
+  AVAILABLE
+  IN_LINE
+  AWAITING_TRIAGE
+  FIELD_SERVICE
+  AWAITING_MAINTENANCE
+  IN_MAINTENANCE
+  AWAITING_PART
+  IN_INSPECTION
+  IN_CLEANING
+  OUT_OF_SERVICE
+}
+
+/// RF-35 — cadastro da frota com tecnologia, fonte de km e offset de hodometro.
+model Vehicle {
+  id             String            @id @default(uuid()) @db.Uuid
+  code           String            @unique @db.VarChar(16)
+  plate          String            @unique @db.VarChar(8)
+  technology     VehicleTechnology
+  kmSource       KmSource
+  /// Diferenca entre o hodometro fisico e a quilometragem real acumulada.
+  odometerOffset Int               @default(0)
+  manufacturer   String?           @db.VarChar(60)
+  model          String?           @db.VarChar(60)
+  modelYear      Int?
+  garageId       String?           @db.Uuid
+  status         VehicleStatus     @default(AVAILABLE)
+  currentKm      Int               @default(0)
+  lastReadingAt  DateTime?
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  garage                Garage?                @relation(fields: [garageId], references: [id])
+  odometerReadings      OdometerReading[]
+  kmProjection          KmProjection?
+  failureEvents         FailureEvent[]
+  workOrders            WorkOrder[]
+  queueEntries          QueueEntry[]
+  scheduledMaintenances ScheduledMaintenance[]
+  backlogItems          VehicleBacklogItem[]
+  reserveAssignments    ReserveAssignment[]
+  replacementDemands    ReplacementDemand[]
+  poolComponents        PoolComponent[]
+
+  @@index([status])
+  @@index([technology])
+  @@map("vehicles")
+}
+
+/// Matriz de habilitacoes: consumida, nao administrada (secao 4 do PRD).
+model Operator {
+  id           String  @id @default(uuid()) @db.Uuid
+  registration String  @unique @db.VarChar(32)
+  name         String  @db.VarChar(120)
+  isActive     Boolean @default(true)
+
+  qualifications     OperatorQualification[]
+  reserveAssignments ReserveAssignment[]
+  failureEvents      FailureEvent[]
+
+  @@map("operators")
+}
+
+/// RF-30 — designacao de reserva filtrada pela habilitacao na tecnologia do carro.
+model OperatorQualification {
+  id         String            @id @default(uuid()) @db.Uuid
+  operatorId String            @db.Uuid
+  technology VehicleTechnology
+  validUntil DateTime?
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@unique([operatorId, technology])
+  @@map("operator_qualifications")
+}
+
+model Specialty {
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(16)
+  name String @db.VarChar(80)
+
+  tasks            MaintenanceTask[]
+  workOrderTasks   WorkOrderTask[]
+  teamReservations TeamReservation[]
+
+  @@map("specialties")
+}
+
+// --- Catalogo de falhas (RF-32 / RN-15) ---------------------------------
+
+/// O catalogo e versionado: uma constatacao de campo nunca reescreve a versao
+/// sob a qual um evento passado foi registrado.
+model FailureCatalogVersion {
+  id            String    @id @default(uuid()) @db.Uuid
+  version       Int       @unique
+  notes         String?   @db.VarChar(255)
+  publishedAt   DateTime?
+  publishedById String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+
+  items FailureCatalogItem[]
+
+  @@map("failure_catalog_versions")
+}
+
+model FailureCatalogItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  versionId   String  @db.Uuid
+  code        String  @db.VarChar(24)
+  description String  @db.VarChar(255)
+  system      String? @db.VarChar(80)
+  subsystem   String? @db.VarChar(80)
+
+  /// Flags que dirigem o processo (RF-06 / RF-05 / RN-06).
+  /// O conteudo de quais falhas recebem cada flag e questao aberta do PRD (secao 12).
+  isFastTrack  Boolean @default(false)
+  isSafety     Boolean @default(false)
+  isDeferrable Boolean @default(true)
+
+  probableCause          String? @db.VarChar(255)
+  estimatedRepairMinutes Int?
+  /// Taxa de resolucao em campo, realimentada pelas constatacoes do socorro.
+  fieldResolutionRate    Decimal? @db.Decimal(5, 4)
+  fieldResolutionSamples Int      @default(0)
+  isActive               Boolean  @default(true)
+
+  version                FailureCatalogVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  reportedEvents         FailureEvent[]        @relation("EventReportedFailure")
+  confirmedFieldServices FieldService[]        @relation("FieldConfirmedFailure")
+  confirmedTasks         WorkOrderTask[]       @relation("TaskConfirmedFailure")
+  backlogItems           VehicleBacklogItem[]
+
+  @@unique([versionId, code])
+  @@index([isFastTrack])
+  @@index([isSafety])
+  @@map("failure_catalog_items")
+}
+
+// --- Codigos de motivo (RF-33 / RN-13) ----------------------------------
+
+/// As cinco listas do RF-33. O conteudo de cada uma e questao aberta do PRD
+/// (secao 12) e bloqueia as telas 6.3 e 6.4 — a estrutura ja aceita a carga.
+enum ReasonCodeList {
+  QUEUE_PRIORITY
+  SCHEDULE_RESCHEDULE
+  INSPECTION_REJECTION
+  PART_WAITING
+  EVENT_DEFERRAL
+}
+
+/// Codigos sao desativados, nunca excluidos: registros antigos precisam
+/// continuar legiveis (RF-33).
+model ReasonCode {
+  id          String         @id @default(uuid()) @db.Uuid
+  list        ReasonCodeList
+  code        String         @db.VarChar(24)
+  description String         @db.VarChar(255)
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+
+  triages       Triage[]
+  queueChanges  QueueChangeLog[]
+  reschedules   ScheduleReschedule[]
+  inspections   Inspection[]
+  partWaitings  PartWaiting[]
+
+  @@unique([list, code])
+  @@index([list, isActive])
+  @@map("reason_codes")
+}
+
+// --- Planos, pacotes e kits (RF-34) -------------------------------------
+
+model MaintenancePlan {
+  id                  String            @id @default(uuid()) @db.Uuid
+  code                String            @db.VarChar(24)
+  name                String            @db.VarChar(120)
+  technology          VehicleTechnology
+  version             Int               @default(1)
+  effectiveFrom       DateTime
+  effectiveTo         DateTime?
+  /// Vinculo ao documento controlado do processo FR.116.
+  controlledDocument  String?           @db.VarChar(60)
+  isActive            Boolean           @default(true)
+
+  packages MaintenancePackage[]
+
+  @@unique([code, version])
+  @@map("maintenance_plans")
+}
+
+model MaintenancePackage {
+  id          String @id @default(uuid()) @db.Uuid
+  planId      String @db.Uuid
+  code        String @db.VarChar(24)
+  name        String @db.VarChar(120)
+  /// Janelas de 7.500 / 15.000 km citadas na secao 2 do PRD.
+  intervalKm  Int
+  toleranceKm Int    @default(500)
+
+  plan                  MaintenancePlan        @relation(fields: [planId], references: [id], onDelete: Cascade)
+  tasks                 MaintenanceTask[]
+  kits                  Kit[]
+  scheduledMaintenances ScheduledMaintenance[]
+
+  @@unique([planId, code])
+  @@map("maintenance_packages")
+}
+
+model MaintenanceTask {
+  id               String  @id @default(uuid()) @db.Uuid
+  packageId        String  @db.Uuid
+  code             String  @db.VarChar(24)
+  description      String  @db.VarChar(255)
+  specialtyId      String? @db.Uuid
+  estimatedMinutes Int?
+
+  package    MaintenancePackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  specialty  Specialty?          @relation(fields: [specialtyId], references: [id])
+  scopeItems ScheduleScopeItem[]
+
+  @@unique([packageId, code])
+  @@map("maintenance_tasks")
+}
+
+model Material {
+  id           String  @id @default(uuid()) @db.Uuid
+  code         String  @unique @db.VarChar(32)
+  description  String  @db.VarChar(255)
+  unit         String  @db.VarChar(8)
+  /// Itens do pool rotativo sao controlados por numero de serie (RF-26).
+  isSerialized Boolean @default(false)
+  isActive     Boolean @default(true)
+
+  kitItems             KitItem[]
+  materialRequests     MaterialRequest[]
+  poolComponents       PoolComponent[]
+  fieldServiceMaterial FieldServiceMaterial[]
+
+  @@map("materials")
+}
+
+model Kit {
+  id            String    @id @default(uuid()) @db.Uuid
+  code          String    @db.VarChar(24)
+  name          String    @db.VarChar(120)
+  packageId     String?   @db.Uuid
+  version       Int       @default(1)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  isActive      Boolean   @default(true)
+
+  package     MaintenancePackage? @relation(fields: [packageId], references: [id])
+  items       KitItem[]
+  separations KitSeparation[]
+
+  @@unique([code, version])
+  @@map("kits")
+}
+
+model KitItem {
+  id         String  @id @default(uuid()) @db.Uuid
+  kitId      String  @db.Uuid
+  materialId String  @db.Uuid
+  quantity   Decimal @db.Decimal(12, 3)
+
+  kit      Kit      @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id])
+
+  @@unique([kitId, materialId])
+  @@map("kit_items")
+}
+
+// ===========================================================================
+// E3 — Quilometragem e preventiva
+// ===========================================================================
+
+enum OdometerStatus {
+  VALID
+  SUSPECT
+  REJECTED
+}
+
+/// RF-14/15 — leitura bruta preservada; adjustedKm aplica o offset do carro,
+/// para que a troca de hodometro nao contamine a serie historica.
+model OdometerReading {
+  id          String         @id @default(uuid()) @db.Uuid
+  vehicleId   String         @db.Uuid
+  rawKm       Int
+  adjustedKm  Int
+  deltaKm     Int?
+  readAt      DateTime
+  source      KmSource
+  status      OdometerStatus @default(VALID)
+  enteredById String?        @db.Uuid
+  note        String?        @db.VarChar(255)
+  createdAt   DateTime       @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, readAt])
+  @@index([vehicleId, readAt(sort: Desc)])
+  @@index([status])
+  @@map("odometer_readings")
+}
+
+/// RF-10 — projecao diaria de km. Sem leitura por mais de 2 dias a projecao
+/// entra em modo degradado e alerta o PCM (mitigacao da secao 10 do PRD).
+model KmProjection {
+  id             String   @id @default(uuid()) @db.Uuid
+  vehicleId      String   @unique @db.Uuid
+  avgDailyKm     Decimal  @db.Decimal(10, 2)
+  projectedKm    Int
+  projectedAt    DateTime
+  lastReadingAt  DateTime?
+  isDegraded     Boolean  @default(false)
+  degradedSince  DateTime?
+  sampleDays     Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([isDegraded])
+  @@map("km_projections")
+}
+
+enum ScheduleStatus {
+  PLANNED
+  CONFIRMED
+  IN_EXECUTION
+  DONE
+  RESCHEDULED
+  CANCELLED
+}
+
+/// RF-11/12 — a janela so libera a saida da escala com kit separado e equipe
+/// reservada confirmados (RN-10).
+model ScheduledMaintenance {
+  id           String         @id @default(uuid()) @db.Uuid
+  vehicleId    String         @db.Uuid
+  packageId    String         @db.Uuid
+  targetKm     Int
+  projectedDate DateTime
+  plannedDate  DateTime?
+  status       ScheduleStatus @default(PLANNED)
+  kitReady     Boolean        @default(false)
+  teamReserved Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  vehicle       Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  package       MaintenancePackage   @relation(fields: [packageId], references: [id])
+  scopeItems    ScheduleScopeItem[]
+  reschedules   ScheduleReschedule[]
+  reservations  TeamReservation[]
+  kitSeparation KitSeparation?
+  workOrder     WorkOrder?
+
+  @@index([vehicleId, status])
+  @@index([projectedDate])
+  @@map("scheduled_maintenances")
+}
+
+/// Escopo da parada = pacote vigente + backlog do carro (RF-11 / RN-15).
+model ScheduleScopeItem {
+  id                     String  @id @default(uuid()) @db.Uuid
+  scheduledMaintenanceId String  @db.Uuid
+  maintenanceTaskId      String? @db.Uuid
+  backlogItemId          String? @db.Uuid
+
+  scheduledMaintenance ScheduledMaintenance @relation(fields: [scheduledMaintenanceId], references: [id], onDelete: Cascade)
+  maintenanceTask      MaintenanceTask?     @relation(fields: [maintenanceTaskId], references: [id])
+  backlogItem          VehicleBacklogItem?  @relation(fields: [backlogItemId], references: [id])
+
+  @@map("schedule_scope_items")
+}
+
+/// RF-13 — reprogramacao sempre com codigo de motivo e registro.
+model ScheduleReschedule {
+  id                     String   @id @default(uuid()) @db.Uuid
+  scheduledMaintenanceId String   @db.Uuid
+  fromDate               DateTime?
+  toDate                 DateTime
+  reasonCodeId           String   @db.Uuid
+  actorId                String   @db.Uuid
+  note                   String?  @db.VarChar(255)
+  createdAt              DateTime @default(now())
+
+  scheduledMaintenance ScheduledMaintenance @relation(fields: [scheduledMaintenanceId], references: [id], onDelete: Cascade)
+  reasonCode           ReasonCode           @relation(fields: [reasonCodeId], references: [id])
+
+  @@map("schedule_reschedules")
+}
+
+model TeamReservation {
+  id                     String   @id @default(uuid()) @db.Uuid
+  scheduledMaintenanceId String   @db.Uuid
+  specialtyId            String   @db.Uuid
+  headcount              Int      @default(1)
+  reservedById           String   @db.Uuid
+  reservedAt             DateTime @default(now())
+
+  scheduledMaintenance ScheduledMaintenance @relation(fields: [scheduledMaintenanceId], references: [id], onDelete: Cascade)
+  specialty            Specialty            @relation(fields: [specialtyId], references: [id])
+
+  @@map("team_reservations")
+}
+
+// ===========================================================================
+// E1 — Eventos corretivos
+// ===========================================================================
+
+enum EventOrigin {
+  CCO
+  OPERATOR
+  GARAGE
+  INSPECTION
+  CLEANING
+}
+
+enum EventStatus {
+  REGISTERED
+  IN_TRIAGE
+  FIELD_SERVICE
+  RECALLED
+  DEFERRED
+  IN_MAINTENANCE
+  CLOSED
+  CANCELLED
+}
+
+/// RF-01 — hora automatica, falha do catalogo e local.
+/// isUnscheduledReturn e o que alimenta o denominador do MKBF (RN-14).
+model FailureEvent {
+  id                  String      @id @default(uuid()) @db.Uuid
+  code                String      @unique @db.VarChar(24)
+  vehicleId           String      @db.Uuid
+  catalogItemId       String?     @db.Uuid
+  reportedDescription String?     @db.VarChar(500)
+  origin              EventOrigin
+  status              EventStatus @default(REGISTERED)
+  reportedById        String      @db.Uuid
+  reportedAt          DateTime    @default(now())
+  operatorId          String?     @db.Uuid
+  lineCode            String?     @db.VarChar(16)
+  locationDescription String?     @db.VarChar(255)
+  latitude            Decimal?    @db.Decimal(9, 6)
+  longitude           Decimal?    @db.Decimal(9, 6)
+  isUnscheduledReturn Boolean     @default(false)
+  closedAt            DateTime?
+
+  vehicle      Vehicle             @relation(fields: [vehicleId], references: [id])
+  catalogItem  FailureCatalogItem? @relation("EventReportedFailure", fields: [catalogItemId], references: [id])
+  operator     Operator?           @relation(fields: [operatorId], references: [id])
+  triage       Triage?
+  fieldService FieldService?
+  workOrder    WorkOrder?
+  queueEntry   QueueEntry?
+
+  @@index([vehicleId, reportedAt])
+  @@index([status])
+  @@index([reportedAt])
+  @@map("failure_events")
+}
+
+/// RF-03 — tres destinos e SLA medido entre registro e decisao.
+enum TriageDestination {
+  FIELD
+  RECALL
+  DEFER
+}
+
+model Triage {
+  id            String            @id @default(uuid()) @db.Uuid
+  eventId       String            @unique @db.Uuid
+  destination   TriageDestination
+  reasonCodeId  String?           @db.Uuid
+  decidedById   String            @db.Uuid
+  decidedAt     DateTime          @default(now())
+  /// Segundos entre o registro do evento e a decisao — base do SLA de triagem.
+  slaSeconds    Int
+  note          String?           @db.VarChar(255)
+
+  event      FailureEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  reasonCode ReasonCode?  @relation(fields: [reasonCodeId], references: [id])
+
+  @@map("triages")
+}
+
+enum FieldOutcome {
+  RESOLVED_IN_FIELD
+  TOWED
+  RETURNED_UNDER_OWN_POWER
+  NOT_FOUND
+  CANCELLED
+}
+
+/// RF-04 — status por toque, constatacao de catalogo e desfecho em um botao.
+model FieldService {
+  id                     String        @id @default(uuid()) @db.Uuid
+  eventId                String        @unique @db.Uuid
+  dispatchedAt           DateTime      @default(now())
+  arrivedAt              DateTime?
+  startedAt              DateTime?
+  finishedAt             DateTime?
+  technicianId           String?       @db.Uuid
+  supportVehicleCode     String?       @db.VarChar(16)
+  confirmedCatalogItemId String?       @db.Uuid
+  outcome                FieldOutcome?
+  note                   String?       @db.VarChar(500)
+
+  event                FailureEvent           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  confirmedCatalogItem FailureCatalogItem?    @relation("FieldConfirmedFailure", fields: [confirmedCatalogItemId], references: [id])
+  materials            FieldServiceMaterial[]
+
+  @@map("field_services")
+}
+
+/// RF-27 — material embarcado do veiculo de apoio: baixa por consumo.
+model FieldServiceMaterial {
+  id             String  @id @default(uuid()) @db.Uuid
+  fieldServiceId String  @db.Uuid
+  materialId     String  @db.Uuid
+  quantity       Decimal @db.Decimal(12, 3)
+  serialNumber   String? @db.VarChar(64)
+
+  fieldService FieldService @relation(fields: [fieldServiceId], references: [id], onDelete: Cascade)
+  material     Material     @relation(fields: [materialId], references: [id])
+
+  @@map("field_service_materials")
+}
+
+// ===========================================================================
+// E2 — Priorizacao e fila
+// ===========================================================================
+
+enum QueueStatus {
+  WAITING
+  IN_SERVICE
+  DONE
+  CANCELLED
+}
+
+/// RF-07 — a ordem padrao vem da criticidade; qualquer desvio manual exige
+/// motivo e vira registro imutavel em QueueChangeLog (RF-08).
+model QueueEntry {
+  id                    String      @id @default(uuid()) @db.Uuid
+  vehicleId             String      @db.Uuid
+  eventId               String?     @unique @db.Uuid
+  workOrderId           String?     @unique @db.Uuid
+  position              Int
+  criticality           Int         @default(0)
+  isFastTrack           Boolean     @default(false)
+  status                QueueStatus @default(WAITING)
+  enteredAt             DateTime    @default(now())
+  startedAt             DateTime?
+  finishedAt            DateTime?
+  estimatedCompletionAt DateTime?
+
+  vehicle   Vehicle          @relation(fields: [vehicleId], references: [id])
+  event     FailureEvent?    @relation(fields: [eventId], references: [id])
+  workOrder WorkOrder?       @relation(fields: [workOrderId], references: [id])
+  changes   QueueChangeLog[]
+
+  @@index([status, position])
+  @@map("queue_entries")
+}
+
+/// Append-only por contrato: sem update e sem delete em nenhum caminho da API.
+/// isSystemGenerated marca as entradas escritas pelo proprio fast-track (RF-06).
+model QueueChangeLog {
+  id                String   @id @default(uuid()) @db.Uuid
+  queueEntryId      String   @db.Uuid
+  fromPosition      Int?
+  toPosition        Int?
+  reasonCodeId      String   @db.Uuid
+  actorId           String?  @db.Uuid
+  isSystemGenerated Boolean  @default(false)
+  note              String?  @db.VarChar(255)
+  createdAt         DateTime @default(now())
+
+  queueEntry QueueEntry @relation(fields: [queueEntryId], references: [id], onDelete: Cascade)
+  reasonCode ReasonCode @relation(fields: [reasonCodeId], references: [id])
+
+  @@index([queueEntryId, createdAt])
+  @@map("queue_change_logs")
+}
+
+// ===========================================================================
+// E4 — Execucao da manutencao
+// ===========================================================================
+
+enum WorkOrderType {
+  CORRECTIVE
+  PREVENTIVE
+}
+
+enum WorkOrderStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_PART
+  TECH_CLOSED
+  IN_INSPECTION
+  IN_CLEANING
+  RELEASED
+  CANCELLED
+}
+
+/// RF-17 — OS-mae: relogio unico de indisponibilidade (RN-02) e previsao de
+/// conclusao obrigatoria (RN-03). A liberacao (RF-22) para o relogio.
+model WorkOrder {
+  id                    String          @id @default(uuid()) @db.Uuid
+  code                  String          @unique @db.VarChar(24)
+  vehicleId             String          @db.Uuid
+  type                  WorkOrderType
+  status                WorkOrderStatus @default(OPEN)
+  eventId               String?         @unique @db.Uuid
+  scheduledMaintenanceId String?        @unique @db.Uuid
+  openedAt              DateTime        @default(now())
+  estimatedCompletionAt DateTime
+  techClosedAt          DateTime?
+  releasedAt            DateTime?
+  releasedById          String?         @db.Uuid
+  downtimeMinutes       Int?
+  /// Espelhamento minimo com o JB, que segue mestre de custos e OS oficiais.
+  jbWorkOrderNumber     String?         @db.VarChar(32)
+  createdById           String          @db.Uuid
+
+  vehicle              Vehicle               @relation(fields: [vehicleId], references: [id])
+  event                FailureEvent?         @relation(fields: [eventId], references: [id])
+  scheduledMaintenance ScheduledMaintenance? @relation(fields: [scheduledMaintenanceId], references: [id])
+  tasks                WorkOrderTask[]
+  cleaning             Cleaning?
+  downtimeSegments     DowntimeSegment[]
+  materialRequests     MaterialRequest[]
+  queueEntry           QueueEntry?
+
+  @@index([vehicleId, openedAt])
+  @@index([status])
+  @@map("work_orders")
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  BLOCKED_BY_MATERIAL
+  DONE
+  IN_INSPECTION
+  REJECTED
+  APPROVED
+  CANCELLED
+}
+
+/// RF-18 — sub-OS por especialidade, com checklist, bloqueio por material e
+/// causa constatada escolhida de lista (RN-13).
+model WorkOrderTask {
+  id                     String     @id @default(uuid()) @db.Uuid
+  workOrderId            String     @db.Uuid
+  code                   String     @db.VarChar(24)
+  specialtyId            String     @db.Uuid
+  description            String     @db.VarChar(500)
+  status                 TaskStatus @default(PENDING)
+  assignedToId           String?    @db.Uuid
+  startedAt              DateTime?
+  finishedAt             DateTime?
+  confirmedCatalogItemId String?    @db.Uuid
+  reopenedCount          Int        @default(0)
+
+  workOrder            WorkOrder            @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  specialty            Specialty            @relation(fields: [specialtyId], references: [id])
+  confirmedCatalogItem FailureCatalogItem?  @relation("TaskConfirmedFailure", fields: [confirmedCatalogItemId], references: [id])
+  checklistItems       TaskChecklistItem[]
+  inspections          Inspection[]
+  materialRequests     MaterialRequest[]
+  toolLoans            ToolLoan[]
+  poolMovements        PoolMovement[]
+
+  @@unique([workOrderId, code])
+  @@index([status])
+  @@map("work_order_tasks")
+}
+
+model TaskChecklistItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  taskId      String    @db.Uuid
+  sequence    Int
+  description String    @db.VarChar(255)
+  isChecked   Boolean   @default(false)
+  checkedAt   DateTime?
+  checkedById String?   @db.Uuid
+  measurement Decimal?  @db.Decimal(12, 3)
+  unit        String?   @db.VarChar(16)
+
+  task WorkOrderTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("task_checklist_items")
+}
+
+enum InspectionResult {
+  APPROVED
+  REJECTED
+}
+
+/// RF-20 — inspecao por sub-OS. Reprovacao com motivo reabre a sub-OS (RN-05).
+model Inspection {
+  id           String           @id @default(uuid()) @db.Uuid
+  taskId       String           @db.Uuid
+  inspectorId  String           @db.Uuid
+  inspectedAt  DateTime         @default(now())
+  result       InspectionResult
+  reasonCodeId String?          @db.Uuid
+  note         String?          @db.VarChar(500)
+
+  task         WorkOrderTask           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reasonCode   ReasonCode?             @relation(fields: [reasonCodeId], references: [id])
+  measurements InspectionMeasurement[]
+
+  @@index([taskId, inspectedAt])
+  @@map("inspections")
+}
+
+model InspectionMeasurement {
+  id           String  @id @default(uuid()) @db.Uuid
+  inspectionId String  @db.Uuid
+  description  String  @db.VarChar(255)
+  value        Decimal @db.Decimal(12, 3)
+  unit         String  @db.VarChar(16)
+  minValue     Decimal? @db.Decimal(12, 3)
+  maxValue     Decimal? @db.Decimal(12, 3)
+  isWithinSpec Boolean
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@map("inspection_measurements")
+}
+
+enum CleaningStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+}
+
+/// RF-21 — checklist do contrato; avarias viram backlog do carro (RN-07).
+model Cleaning {
+  id            String         @id @default(uuid()) @db.Uuid
+  workOrderId   String         @unique @db.Uuid
+  status        CleaningStatus @default(PENDING)
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  performedById String?        @db.Uuid
+
+  workOrder      WorkOrder                @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  checklistItems CleaningChecklistItem[]
+  damageReports  CleaningDamageReport[]
+
+  @@map("cleanings")
+}
+
+model CleaningChecklistItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  cleaningId  String   @db.Uuid
+  sequence    Int
+  description String   @db.VarChar(255)
+  isChecked   Boolean  @default(false)
+  checkedAt   DateTime?
+
+  cleaning Cleaning @relation(fields: [cleaningId], references: [id], onDelete: Cascade)
+
+  @@map("cleaning_checklist_items")
+}
+
+model CleaningDamageReport {
+  id          String   @id @default(uuid()) @db.Uuid
+  cleaningId  String   @db.Uuid
+  description String   @db.VarChar(500)
+  photoUrl    String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+
+  cleaning    Cleaning            @relation(fields: [cleaningId], references: [id], onDelete: Cascade)
+  backlogItem VehicleBacklogItem?
+
+  @@map("cleaning_damage_reports")
+}
+
+enum BacklogSource {
+  DEFERRED_EVENT
+  INSPECTION
+  CLEANING
+  FIELD_SERVICE
+  MANUAL
+}
+
+/// Backlog do carro: alimenta o escopo da proxima parada preventiva (RF-11).
+model VehicleBacklogItem {
+  id                     String        @id @default(uuid()) @db.Uuid
+  vehicleId              String        @db.Uuid
+  description            String        @db.VarChar(500)
+  source                 BacklogSource
+  catalogItemId          String?       @db.Uuid
+  cleaningDamageReportId String?       @unique @db.Uuid
+  createdAt              DateTime      @default(now())
+  resolvedAt             DateTime?
+
+  vehicle              Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  catalogItem          FailureCatalogItem?   @relation(fields: [catalogItemId], references: [id])
+  cleaningDamageReport CleaningDamageReport? @relation(fields: [cleaningDamageReportId], references: [id])
+  scopeItems           ScheduleScopeItem[]
+
+  @@index([vehicleId, resolvedAt])
+  @@map("vehicle_backlog_items")
+}
+
+/// RF-39 — decomposicao da indisponibilidade. A soma dos segmentos fechados
+/// reconstroi o relogio da OS-mae por causa.
+enum DowntimeCause {
+  QUEUE
+  MATERIAL
+  EXECUTION
+  INSPECTION
+  CLEANING
+  RELEASE_WAIT
+}
+
+model DowntimeSegment {
+  id          String        @id @default(uuid()) @db.Uuid
+  workOrderId String        @db.Uuid
+  cause       DowntimeCause
+  startedAt   DateTime
+  endedAt     DateTime?
+  minutes     Int?
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId, startedAt])
+  @@index([cause])
+  @@map("downtime_segments")
+}
+
+// ===========================================================================
+// E5 — Materiais, pool e ferramentas
+// ===========================================================================
+
+enum MaterialRequestStatus {
+  REQUESTED
+  SEPARATED
+  DELIVERED
+  WAITING_PART
+  CANCELLED
+}
+
+/// RF-23 — solicitado -> separado -> entregue, com registro de quem recebeu
+/// na valeta.
+model MaterialRequest {
+  id              String                @id @default(uuid()) @db.Uuid
+  workOrderId     String?               @db.Uuid
+  workOrderTaskId String?               @db.Uuid
+  materialId      String                @db.Uuid
+  quantity        Decimal               @db.Decimal(12, 3)
+  status          MaterialRequestStatus @default(REQUESTED)
+  requestedById   String                @db.Uuid
+  requestedAt     DateTime              @default(now())
+  separatedById   String?               @db.Uuid
+  separatedAt     DateTime?
+  deliveredById   String?               @db.Uuid
+  deliveredAt     DateTime?
+  receivedByName  String?               @db.VarChar(120)
+  serialNumber    String?               @db.VarChar(64)
+
+  workOrder     WorkOrder?     @relation(fields: [workOrderId], references: [id])
+  workOrderTask WorkOrderTask? @relation(fields: [workOrderTaskId], references: [id])
+  material      Material       @relation(fields: [materialId], references: [id])
+  partWaiting   PartWaiting?
+
+  @@index([status, requestedAt])
+  @@map("material_requests")
+}
+
+/// RF-24 — aguardando peca com motivo, prazo, notificacao e escalonamento.
+model PartWaiting {
+  id                String    @id @default(uuid()) @db.Uuid
+  materialRequestId String    @unique @db.Uuid
+  reasonCodeId      String    @db.Uuid
+  expectedAt        DateTime
+  arrivalNotifiedAt DateTime?
+  escalatedAt       DateTime?
+  resolvedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  materialRequest MaterialRequest @relation(fields: [materialRequestId], references: [id], onDelete: Cascade)
+  reasonCode      ReasonCode      @relation(fields: [reasonCodeId], references: [id])
+
+  @@index([expectedAt, resolvedAt])
+  @@map("part_waitings")
+}
+
+enum KitSeparationStatus {
+  PENDING
+  SEPARATED
+  CONFIRMED
+  CANCELLED
+}
+
+/// RF-25 — kits de preventiva separados em D-1, com confirmacao visivel ao PCM.
+model KitSeparation {
+  id                     String              @id @default(uuid()) @db.Uuid
+  scheduledMaintenanceId String              @unique @db.Uuid
+  kitId                  String              @db.Uuid
+  status                 KitSeparationStatus @default(PENDING)
+  separatedById          String?             @db.Uuid
+  separatedAt            DateTime?
+  confirmedAt            DateTime?
+
+  scheduledMaintenance ScheduledMaintenance @relation(fields: [scheduledMaintenanceId], references: [id], onDelete: Cascade)
+  kit                  Kit                  @relation(fields: [kitId], references: [id])
+
+  @@map("kit_separations")
+}
+
+enum PoolComponentStatus {
+  IN_STOCK
+  IN_USE
+  IN_WORKSHOP
+  SCRAPPED
+}
+
+/// RF-26 — pool rotativo por numero de serie (alternadores, valvulas APU,
+/// cuicas — campeoes do ranking IIO citados na secao 2 do PRD).
+model PoolComponent {
+  id               String              @id @default(uuid()) @db.Uuid
+  materialId       String              @db.Uuid
+  serialNumber     String              @unique @db.VarChar(64)
+  status           PoolComponentStatus @default(IN_STOCK)
+  currentVehicleId String?             @db.Uuid
+  createdAt        DateTime            @default(now())
+
+  material       Material       @relation(fields: [materialId], references: [id])
+  currentVehicle Vehicle?       @relation(fields: [currentVehicleId], references: [id])
+  movements      PoolMovement[]
+
+  @@index([materialId, status])
+  @@map("pool_components")
+}
+
+model PoolMovement {
+  id              String              @id @default(uuid()) @db.Uuid
+  componentId     String              @db.Uuid
+  fromStatus      PoolComponentStatus
+  toStatus        PoolComponentStatus
+  workOrderTaskId String?             @db.Uuid
+  actorId         String              @db.Uuid
+  occurredAt      DateTime            @default(now())
+  note            String?             @db.VarChar(255)
+
+  component     PoolComponent  @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  workOrderTask WorkOrderTask? @relation(fields: [workOrderTaskId], references: [id])
+
+  @@index([componentId, occurredAt])
+  @@map("pool_movements")
+}
+
+/// RF-28 — emprestimo de ferramentas com bloqueio por calibracao vencida.
+model Tool {
+  id                String    @id @default(uuid()) @db.Uuid
+  code              String    @unique @db.VarChar(32)
+  description       String    @db.VarChar(255)
+  calibrationDueAt  DateTime?
+  isActive          Boolean   @default(true)
+
+  loans ToolLoan[]
+
+  @@map("tools")
+}
+
+model ToolLoan {
+  id              String    @id @default(uuid()) @db.Uuid
+  toolId          String    @db.Uuid
+  borrowerId      String    @db.Uuid
+  workOrderTaskId String?   @db.Uuid
+  loanedAt        DateTime  @default(now())
+  returnedAt      DateTime?
+
+  tool          Tool           @relation(fields: [toolId], references: [id])
+  workOrderTask WorkOrderTask? @relation(fields: [workOrderTaskId], references: [id])
+
+  @@index([toolId, returnedAt])
+  @@map("tool_loans")
+}
+
+// ===========================================================================
+// E6 — Operacao e Plantao
+// ===========================================================================
+
+enum ReplacementDemandStatus {
+  OPEN
+  ASSIGNED
+  MET
+  MISSED
+  CANCELLED
+}
+
+/// RF-29 — janela em contagem, com registro de atendida ou estourada.
+model ReplacementDemand {
+  id              String                  @id @default(uuid()) @db.Uuid
+  lineCode        String                  @db.VarChar(16)
+  originVehicleId String?                 @db.Uuid
+  status          ReplacementDemandStatus @default(OPEN)
+  requestedById   String                  @db.Uuid
+  requestedAt     DateTime                @default(now())
+  windowEndsAt    DateTime
+  metAt           DateTime?
+
+  originVehicle Vehicle?            @relation(fields: [originVehicleId], references: [id])
+  assignments   ReserveAssignment[]
+
+  @@index([status, windowEndsAt])
+  @@map("replacement_demands")
+}
+
+/// RF-30/31 — reserva designada a operador habilitado; devolucao do titular
+/// recolhe a reserva (RN-16).
+model ReserveAssignment {
+  id           String    @id @default(uuid()) @db.Uuid
+  demandId     String    @db.Uuid
+  vehicleId    String    @db.Uuid
+  operatorId   String    @db.Uuid
+  assignedById String    @db.Uuid
+  assignedAt   DateTime  @default(now())
+  returnedAt   DateTime?
+
+  demand   ReplacementDemand @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  vehicle  Vehicle           @relation(fields: [vehicleId], references: [id])
+  operator Operator          @relation(fields: [operatorId], references: [id])
+
+  @@index([demandId])
+  @@map("reserve_assignments")
+}
+
+// ===========================================================================
+// E8 — Indicadores, notificacoes
+// ===========================================================================
+
+enum MetricKey {
+  MKBF
+  FLEET_AVAILABILITY
+  DOWNTIME_BY_CAUSE
+  FIELD_RESOLUTION
+  PREVENTIVE_ADHERENCE
+  INTERNAL_REWORK
+  ADOPTION
+  TRIAGE_SLA
+}
+
+/// Snapshots mensais servem o historico; o valor ao vivo e sempre calculado
+/// dos estados do processo, nunca digitado.
+model MetricSnapshot {
+  id          String    @id @default(uuid()) @db.Uuid
+  metric      MetricKey
+  scope       String    @default("FLEET") @db.VarChar(40)
+  periodStart DateTime
+  periodEnd   DateTime
+  value       Decimal   @db.Decimal(14, 4)
+  detail      Json?
+  computedAt  DateTime  @default(now())
+
+  @@unique([metric, scope, periodStart, periodEnd])
+  @@index([metric, periodStart])
+  @@map("metric_snapshots")
+}
+
+/// RF-09 / RN-16 — notificacao automatica dos interessados quando previsoes mudam.
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String?   @db.Uuid
+  role      UserRole?
+  title     String    @db.VarChar(160)
+  body      String    @db.VarChar(800)
+  entity    String?   @db.VarChar(80)
+  entityId  String?   @db.VarChar(64)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([role, readAt])
+  @@map("notifications")
+}

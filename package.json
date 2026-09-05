@@ -1,0 +1,40 @@
+{
+  "name": "transppass-pcm",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm run build -w @app/shared && concurrently -n shared,api,web -c gray,cyan,magenta \"npm:dev:shared\" \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run dev -w @app/api",
+    "dev:web": "npm run dev -w @app/web",
+    "build": "npm run build -w @app/shared && npm run build -w @app/api && npm run build -w @app/web",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run db:migrate -w @app/api",
+    "db:studio": "npm run db:studio -w @app/api",
+    "dev:shared": "npm run dev -w @app/shared",
+    "setup": "npm install && npm run build -w @app/shared && npm run db:generate -w @app/api",
+    "db:seed": "npm run db:seed -w @app/api",
+    "db:generate": "npm run db:generate -w @app/api",
+    "dev:mock": "npm run build -w @app/shared && npm run dev:mock -w @app/web"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "concurrently": "^10.0.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.5.6",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.69.0"
+  }
+}

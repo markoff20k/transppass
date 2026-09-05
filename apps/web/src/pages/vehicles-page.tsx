@@ -1,0 +1,159 @@
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  createVehicleSchema,
+  KM_SOURCE_LABELS,
+  KmSource,
+  VEHICLE_STATUS_LABELS,
+  VEHICLE_TECHNOLOGY_LABELS,
+  VehicleTechnology,
+  type CreateVehicleInput,
+  type Paginated,
+  type Vehicle,
+} from '@app/shared';
+import { ApiError, api } from '@/lib/api-client';
+
+/** RF-35 — cadastro da frota com tecnologia, fonte de km e offset de hodômetro. */
+export function VehiclesPage() {
+  const queryClient = useQueryClient();
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const { data, isPending } = useQuery({
+    queryKey: ['vehicles', 'all'],
+    queryFn: () => api.get<Paginated<Vehicle>>('/vehicles?perPage=100&onlyActive=false'),
+  });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateVehicleInput>({
+    resolver: zodResolver(createVehicleSchema),
+    defaultValues: {
+      technology: VehicleTechnology.DIESEL,
+      kmSource: KmSource.MANUAL,
+      odometerOffset: 0,
+    },
+  });
+
+  const create = useMutation({
+    mutationFn: (input: CreateVehicleInput) => api.post<Vehicle>('/vehicles', input),
+    onSuccess: () => {
+      reset();
+      setFormError(null);
+      void queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      void queryClient.invalidateQueries({ queryKey: ['fleet-panel'] });
+    },
+    onError: (err) =>
+      setFormError(err instanceof ApiError ? err.message : 'Falha ao cadastrar o carro'),
+  });
+
+  return (
+    <div className="split">
+      <section className="panel">
+        <h2>Frota</h2>
+        {isPending ? (
+          <p className="muted">Carregando…</p>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Prefixo</th>
+                  <th>Placa</th>
+                  <th>Tecnologia</th>
+                  <th>Fonte de km</th>
+                  <th className="num">Offset</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.data ?? []).map((v) => (
+                  <tr key={v.id} className={v.isActive ? undefined : 'row-muted'}>
+                    <td className="strong">{v.code}</td>
+                    <td>{v.plate}</td>
+                    <td>{VEHICLE_TECHNOLOGY_LABELS[v.technology]}</td>
+                    <td>{KM_SOURCE_LABELS[v.kmSource]}</td>
+                    <td className="num">{v.odometerOffset.toLocaleString('pt-BR')}</td>
+                    <td>{VEHICLE_STATUS_LABELS[v.status]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="panel">
+        <h2>Novo carro</h2>
+        <form
+          className="stacked-form"
+          onSubmit={handleSubmit((values) => create.mutate(values))}
+          noValidate
+        >
+          <label>
+            Prefixo
+            <input type="text" {...register('code')} />
+            {errors.code && <span className="field-error">{errors.code.message}</span>}
+          </label>
+
+          <label>
+            Placa
+            <input type="text" placeholder="ABC1D23" {...register('plate')} />
+            {errors.plate && <span className="field-error">{errors.plate.message}</span>}
+          </label>
+
+          <label>
+            Tecnologia
+            <select {...register('technology')}>
+              {Object.entries(VEHICLE_TECHNOLOGY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Fonte de km
+            <select {...register('kmSource')}>
+              {Object.entries(KM_SOURCE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Offset de hodômetro (km)
+            <input type="number" {...register('odometerOffset')} />
+            <small className="muted">
+              Diferença entre o hodômetro físico e a quilometragem real acumulada. Use ao trocar
+              o hodômetro, para não quebrar a série histórica.
+            </small>
+          </label>
+
+          <label>
+            Fabricante
+            <input type="text" {...register('manufacturer')} />
+          </label>
+
+          <label>
+            Modelo
+            <input type="text" {...register('model')} />
+          </label>
+
+          {formError && <p className="form-error">{formError}</p>}
+
+          <button type="submit" disabled={isSubmitting || create.isPending}>
+            {create.isPending ? 'Salvando…' : 'Cadastrar'}
+          </button>
+        </form>
+      </section>
+    </div>
+  );
+}
