@@ -77,7 +77,7 @@
 /* Ação destrutiva ou irreversível: liberar carro, cancelar OS. */
 .tp-btn--danger {
   background: var(--color-danger);
-  color: #fff;
+  color: var(--color-on-danger);
 }
 
 .tp-btn--danger:hover:not(:disabled) {

@@ -85,21 +85,26 @@
   /* ---- Estados semânticos ------------------------------------------------ */
   --color-success: var(--tp-green-600);
   --color-success-text: var(--tp-green-700);
+  --color-on-success: #ffffff;
   --color-success-soft: var(--tp-green-50);
   --color-success-border: var(--tp-green-200);
 
   --color-warning: var(--tp-amber-600);
   --color-warning-text: var(--tp-amber-700);
+  /* Ambar e claro demais para branco: 4,89:1 com grafite contra 2,9:1 com branco. */
+  --color-on-warning: var(--tp-graphite-950);
   --color-warning-soft: var(--tp-amber-50);
   --color-warning-border: var(--tp-amber-200);
 
   --color-danger: var(--tp-red-600);
   --color-danger-text: var(--tp-red-700);
+  --color-on-danger: #ffffff;
   --color-danger-soft: var(--tp-red-50);
   --color-danger-border: var(--tp-red-200);
 
   --color-info: var(--tp-blue-600);
   --color-info-text: var(--tp-blue-700);
+  --color-on-info: #ffffff;
   --color-info-soft: var(--tp-blue-50);
   --color-info-border: var(--tp-blue-200);
 
@@ -195,21 +200,25 @@
 
     --color-success: var(--tp-green-400);
     --color-success-text: var(--tp-green-300);
+    --color-on-success: var(--tp-graphite-950);
     --color-success-soft: rgb(28 158 96 / 0.16);
     --color-success-border: rgb(28 158 96 / 0.4);
 
     --color-warning: var(--tp-amber-400);
     --color-warning-text: var(--tp-amber-300);
+    --color-on-warning: var(--tp-graphite-950);
     --color-warning-soft: rgb(227 149 16 / 0.16);
     --color-warning-border: rgb(227 149 16 / 0.4);
 
     --color-danger: var(--tp-red-400);
     --color-danger-text: var(--tp-red-300);
+    --color-on-danger: var(--tp-graphite-950);
     --color-danger-soft: rgb(227 68 68 / 0.16);
     --color-danger-border: rgb(227 68 68 / 0.4);
 
     --color-info: var(--tp-blue-400);
     --color-info-text: var(--tp-blue-300);
+    --color-on-info: var(--tp-graphite-950);
     --color-info-soft: rgb(59 130 246 / 0.16);
     --color-info-border: rgb(59 130 246 / 0.4);
 
@@ -281,21 +290,25 @@
 
   --color-success: var(--tp-green-400);
   --color-success-text: var(--tp-green-300);
+  --color-on-success: var(--tp-graphite-950);
   --color-success-soft: rgb(28 158 96 / 0.16);
   --color-success-border: rgb(28 158 96 / 0.4);
 
   --color-warning: var(--tp-amber-400);
   --color-warning-text: var(--tp-amber-300);
+  --color-on-warning: var(--tp-graphite-950);
   --color-warning-soft: rgb(227 149 16 / 0.16);
   --color-warning-border: rgb(227 149 16 / 0.4);
 
   --color-danger: var(--tp-red-400);
   --color-danger-text: var(--tp-red-300);
+  --color-on-danger: var(--tp-graphite-950);
   --color-danger-soft: rgb(227 68 68 / 0.16);
   --color-danger-border: rgb(227 68 68 / 0.4);
 
   --color-info: var(--tp-blue-400);
   --color-info-text: var(--tp-blue-300);
+  --color-on-info: var(--tp-graphite-950);
   --color-info-soft: rgb(59 130 246 / 0.16);
   --color-info-border: rgb(59 130 246 / 0.4);
 

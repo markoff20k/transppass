@@ -902,7 +902,7 @@ small.muted {
 
 .field-steps li.done .touch {
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-on-success);
   border-color: transparent;
   opacity: 1;
 }
