@@ -20,7 +20,12 @@
     "@hookform/resolvers": "^3.9.1",
     "react-router-dom": "^7.1.0",
     "zod": "^3.24.0",
-    "@app/design-kit": "*"
+    "@app/design-kit": "*",
+    "recharts": "^3.2.0",
+    "lucide-react": "^0.468.0",
+    "@fontsource/barlow": "^5.1.0",
+    "@fontsource/barlow-condensed": "^5.1.0",
+    "@fontsource/ibm-plex-mono": "^5.1.0"
   },
   "devDependencies": {
     "@app/config": "*",

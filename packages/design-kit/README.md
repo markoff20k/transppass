@@ -37,16 +37,45 @@ Daí a separação de tokens que parecem o mesmo e não são:
 
 Trocar um pelo outro é o erro mais fácil de cometer aqui.
 
-## As quatro camadas
+## As sete camadas
 
-Cada uma só consome a anterior. Trocar a marca é reescrever a camada 2 — nenhum componente muda.
+Cada uma só consome as anteriores. Trocar a marca é reescrever a camada 2 — nenhum componente muda.
 
 | | Arquivo | O que faz |
 | --- | --- | --- |
-| 01 | `primitives.css` | Escalas cruas derivadas das duas cores. Ninguém consome direto. |
-| 02 | `semantic.css` | Significado de interface e os três estados de tema. |
+| 01 | `primitives.css` | Escalas cruas derivadas das duas cores, tipografia, espaçamento, movimento. |
+| 02 | `semantic.css` | Significado de interface, os três estados de tema, sidebar, gráficos, ônibus. |
 | 03 | `base.css` | Reset enxuto, tipografia, anel de foco. Só elementos nativos. |
 | 04 | `components.css` | Classes `tp-*`. Nenhuma cor literal. |
+| 05 | `shell.css` | Sidebar, header, subheader, conteúdo — e o comportamento responsivo. |
+| 06 | `charts.css` | Tokens e tooltip dos gráficos (Recharts). |
+| 07 | `bus.css` | A ilustração animada do estado do carro. |
+
+## Tipografia
+
+**Barlow**, auto-hospedada via `@fontsource` — sem CDN, funciona com a garagem offline. A linhagem da Barlow é a sinalização rodoviária, o que cabe numa operadora de ônibus. A **Barlow Condensed** fica para títulos, KPIs e o wordmark; a **IBM Plex Mono** para prefixo, código, hex e medição. Escala de razão 1,2 a partir de 14px.
+
+## O ônibus
+
+`BusIllustration` (em `apps/web/src/components/bus`) desenha o estado operacional no próprio veículo:
+
+| Estado | O que o carro faz |
+| --- | --- |
+| Em linha | verde, rodas girando, pista passando |
+| Disponível | verde, parado, farol pulsando devagar |
+| Aguardando triagem / fila | âmbar, pisca-alerta, relógio |
+| Socorro em campo | âmbar, pisca-alerta, chave girando |
+| Em manutenção | **âmbar, levantado no macaco, chave girando** |
+| Aguardando peça | **vermelho, levantado no macaco, pisca-alerta, caixa** |
+| Em inspeção | azul, lupa varrendo |
+| Em limpeza | ciano, bolhas subindo |
+| Fora de operação | apagado, X |
+
+Com `prefers-reduced-motion` todo movimento desliga; cor e distintivo continuam.
+
+## Shell
+
+`--shell-sidebar-w` (264px) / `--shell-sidebar-w-collapsed` (72px) / `--shell-header-h` (60px). A transição da grade é o que faz o conteúdo acompanhar a sidebar em vez de saltar. Abaixo de 1024px a sidebar vira gaveta com véu; abaixo de 640px o header compacta e as ações do subheader viram largura cheia.
 
 ## Uso
 
@@ -101,6 +130,3 @@ Os dez estados do painel (RF-37) se agrupam em quatro leituras operacionais — 
 
 O mapa vive em `VEHICLE_STATE_FAMILY`, exportado do pacote.
 
-## Tipografia
-
-Fonte do sistema, sem webfont: a garagem tem conexão instável e a fonte local aparece sem salto de layout. Escala de razão 1,2 a partir de 14px — densidade alta é intencional, o PCM lê a garagem inteira numa tela só.

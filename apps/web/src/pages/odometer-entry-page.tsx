@@ -1,3 +1,4 @@
+import { usePageHeader } from '@/components/shell/page-header.context';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -18,6 +19,8 @@ import { ApiError, api } from '@/lib/api-client';
  * critério que a API vai aplicar — o erro aparece antes do envio, não depois.
  */
 export function OdometerEntryPage() {
+  usePageHeader({ eyebrow: 'Gestão', title: 'Lançamento de km', description: 'Leitura diária da frota diesel, validada na origem.' });
+
   const queryClient = useQueryClient();
   const [readAt, setReadAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [values, setValues] = useState<Record<string, string>>({});
@@ -74,11 +77,11 @@ export function OdometerEntryPage() {
     });
   };
 
-  if (isPending) return <p className="muted">Carregando frota…</p>;
+  if (isPending) return <p className="tp-muted">Carregando frota…</p>;
 
   return (
     <form onSubmit={submit}>
-      <div className="toolbar">
+      <div className="tp-row">
         <label className="inline">
           Data da leitura
           <input
@@ -89,26 +92,26 @@ export function OdometerEntryPage() {
             required
           />
         </label>
-        <span className="muted">
+        <span className="tp-muted">
           {entries.length} de {vehicles.length} carros preenchidos
         </span>
       </div>
 
       {vehicles.length === 0 && (
-        <p className="muted">
+        <p className="tp-muted">
           Nenhum carro com fonte de km manual. A frota eBUS é lida por telemetria.
         </p>
       )}
 
-      <div className="table-wrap">
-        <table>
+      <div className="tp-table-wrap">
+        <table className="tp-table">
           <thead>
             <tr>
               <th>Prefixo</th>
               <th>Placa</th>
-              <th className="num">Km anterior</th>
-              <th className="num">Leitura do hodômetro</th>
-              <th className="num">Delta</th>
+              <th className="is-num">Km anterior</th>
+              <th className="is-num">Leitura do hodômetro</th>
+              <th className="is-num">Delta</th>
               <th>Validação</th>
             </tr>
           </thead>
@@ -120,18 +123,18 @@ export function OdometerEntryPage() {
                   key={vehicle.id}
                   className={
                     entry?.status === OdometerStatus.REJECTED
-                      ? 'row-error'
+                      ? 'is-danger'
                       : entry?.status === OdometerStatus.SUSPECT
-                        ? 'row-warn'
+                        ? 'is-warning'
                         : undefined
                   }
                 >
-                  <td className="strong">{vehicle.code}</td>
+                  <td className="is-strong">{vehicle.code}</td>
                   <td>{vehicle.plate}</td>
-                  <td className="num">
+                  <td className="is-num">
                     {vehicle.currentKm > 0 ? vehicle.currentKm.toLocaleString('pt-BR') : '—'}
                   </td>
-                  <td className="num">
+                  <td className="is-num">
                     <input
                       type="number"
                       inputMode="numeric"
@@ -144,7 +147,7 @@ export function OdometerEntryPage() {
                       placeholder="—"
                     />
                   </td>
-                  <td className="num">
+                  <td className="is-num">
                     {entry?.deltaKm === null || entry?.deltaKm === undefined
                       ? '—'
                       : entry.deltaKm.toLocaleString('pt-BR')}
@@ -158,7 +161,7 @@ export function OdometerEntryPage() {
       </div>
 
       {mutation.isError && (
-        <p className="form-error">
+        <p className="tp-error">
           {mutation.error instanceof ApiError
             ? mutation.error.message
             : 'Falha ao enviar os lançamentos'}
@@ -166,7 +169,7 @@ export function OdometerEntryPage() {
       )}
 
       {result && (
-        <div className="notice">
+        <div className="tp-alert tp-alert--info">
           <strong>
             {result.accepted} aceito(s), {result.suspect} com suspeita, {result.rejected} recusado(s).
           </strong>
@@ -182,13 +185,13 @@ export function OdometerEntryPage() {
         </div>
       )}
 
-      <div className="form-actions">
+      <div className="tp-row tp-row--end">
         {blocking.length > 0 && (
-          <span className="form-error">
+          <span className="tp-error">
             {blocking.length} leitura(s) serão recusadas — corrija antes de enviar.
           </span>
         )}
-        <button type="submit" disabled={entries.length === 0 || mutation.isPending}>
+        <button type="submit" className="tp-btn tp-btn--primary" disabled={entries.length === 0 || mutation.isPending}>
           {mutation.isPending ? 'Enviando…' : `Lançar ${entries.length} leitura(s)`}
         </button>
       </div>

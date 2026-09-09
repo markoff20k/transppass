@@ -6,7 +6,17 @@ import { AuthProvider } from '@/features/auth/auth-provider';
 import { ThemeProvider } from '@/features/theme/theme-provider';
 import { queryClient } from '@/lib/query-client';
 import { router } from '@/routes';
+// Fontes empacotadas com o app: sem CDN, funcionam com a garagem offline.
+import '@fontsource/barlow/400.css';
+import '@fontsource/barlow/500.css';
+import '@fontsource/barlow/600.css';
+import '@fontsource/barlow/700.css';
+import '@fontsource/barlow-condensed/600.css';
+import '@fontsource/barlow-condensed/700.css';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
 import './styles.css';
+import { I18nProvider } from '@/i18n/i18n-provider';
 
 /**
  * No modo mock o MSW precisa estar interceptando ANTES do primeiro render:
@@ -26,11 +36,13 @@ async function bootstrap() {
   createRoot(container).render(
     <StrictMode>
       <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <RouterProvider router={router} />
-          </AuthProvider>
-        </QueryClientProvider>
+        <I18nProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <RouterProvider router={router} />
+            </AuthProvider>
+          </QueryClientProvider>
+        </I18nProvider>
       </ThemeProvider>
     </StrictMode>,
   );

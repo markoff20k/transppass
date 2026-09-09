@@ -7,5 +7,6 @@ export * from './queue/queue.schemas.js';
 export * from './work-orders/work-order.schemas.js';
 export * from './materials/material.schemas.js';
 export * from './metrics/metrics.schemas.js';
+export * from './dashboard/dashboard.schemas.js';
 export * from './common/pagination.js';
 export * from './common/api-error.js';

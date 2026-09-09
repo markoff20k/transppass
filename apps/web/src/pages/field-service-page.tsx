@@ -1,3 +1,4 @@
+import { usePageHeader } from '@/components/shell/page-header.context';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -20,6 +21,8 @@ import { formatDateTime } from '@/lib/format';
  * parado na rua — cada passo é um alvo grande e um POST.
  */
 export function FieldServicePage() {
+  usePageHeader({ eyebrow: 'Operação', title: 'Socorro em campo', description: 'Apontamento por toque, desfecho em um botão.' });
+
   const queryClient = useQueryClient();
 
   const events = useQuery({
@@ -34,16 +37,16 @@ export function FieldServicePage() {
   const rows = events.data?.data ?? [];
 
   return (
-    <section className="panel">
-      <div className="panel-head">
+    <section className="tp-card">
+      <div className="tp-card__head">
         <h2>Socorro em campo</h2>
-        <span className="muted">{rows.length} atendimento(s)</span>
+        <span className="tp-muted">{rows.length} atendimento(s)</span>
       </div>
 
       {events.isPending ? (
-        <p className="muted">Carregando…</p>
+        <p className="tp-muted">Carregando…</p>
       ) : rows.length === 0 ? (
-        <p className="muted">Nenhum socorro em andamento.</p>
+        <p className="tp-muted">Nenhum socorro em andamento.</p>
       ) : (
         <div className="field-list">
           {rows.map((event) => (
@@ -88,9 +91,9 @@ function FieldCard({
       <header>
         <div>
           <strong className="big">Carro {event.vehicleCode}</strong>
-          <span className="muted">{event.vehiclePlate}</span>
+          <span className="tp-muted">{event.vehiclePlate}</span>
         </div>
-        {event.catalog?.isSafety && <span className="badge badge-danger">segurança</span>}
+        {event.catalog?.isSafety && <span className="tp-badge tp-badge--danger">segurança</span>}
       </header>
 
       <p className="field-failure">
@@ -98,10 +101,10 @@ function FieldCard({
       </p>
 
       {event.catalog?.probableCause && (
-        <p className="muted">Causa provável: {event.catalog.probableCause}</p>
+        <p className="tp-muted">Causa provável: {event.catalog.probableCause}</p>
       )}
 
-      <p className="muted">
+      <p className="tp-muted">
         {event.lineCode && `Linha ${event.lineCode} · `}
         {event.locationDescription ?? 'local não informado'}
       </p>
@@ -110,42 +113,42 @@ function FieldCard({
         <li className={field?.arrivedAt ? 'done' : ''}>
           <button
             type="button"
-            className="touch"
+            className="tp-btn tp-btn--touch tp-btn--secondary"
             disabled={Boolean(field?.arrivedAt) || step.isPending}
             onClick={() => step.mutate(FieldStep.ARRIVED)}
           >
             Cheguei
           </button>
-          {field?.arrivedAt && <span className="muted">{formatDateTime(field.arrivedAt)}</span>}
+          {field?.arrivedAt && <span className="tp-muted">{formatDateTime(field.arrivedAt)}</span>}
         </li>
         <li className={field?.startedAt ? 'done' : ''}>
           <button
             type="button"
-            className="touch"
+            className="tp-btn tp-btn--touch tp-btn--secondary"
             disabled={!field?.arrivedAt || Boolean(field?.startedAt) || step.isPending}
             onClick={() => step.mutate(FieldStep.STARTED)}
           >
             Comecei o reparo
           </button>
-          {field?.startedAt && <span className="muted">{formatDateTime(field.startedAt)}</span>}
+          {field?.startedAt && <span className="tp-muted">{formatDateTime(field.startedAt)}</span>}
         </li>
         <li className={field?.finishedAt ? 'done' : ''}>
           <button
             type="button"
-            className="touch"
+            className="tp-btn tp-btn--touch tp-btn--secondary"
             disabled={!field?.startedAt || Boolean(field?.finishedAt) || step.isPending}
             onClick={() => step.mutate(FieldStep.FINISHED)}
           >
             Terminei
           </button>
-          {field?.finishedAt && <span className="muted">{formatDateTime(field.finishedAt)}</span>}
+          {field?.finishedAt && <span className="tp-muted">{formatDateTime(field.finishedAt)}</span>}
         </li>
       </ol>
 
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="tp-error">{error}</p>}
 
       {!showOutcome ? (
-        <button type="button" className="touch touch-primary" onClick={() => setShowOutcome(true)}>
+        <button type="button" className="tp-btn tp-btn--touch tp-btn--touch-lg tp-btn--primary" onClick={() => setShowOutcome(true)}>
           Registrar desfecho
         </button>
       ) : (
@@ -197,7 +200,7 @@ function OutcomeForm({
     <div className="outcome-form">
       <label>
         Constatação
-        <select
+        <select className="tp-select"
           value={confirmedCatalogItemId}
           onChange={(e) => setConfirmedCatalogItemId(e.target.value)}
         >
@@ -217,14 +220,14 @@ function OutcomeForm({
         onChange={(e) => setNote(e.target.value)}
       />
 
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="tp-error">{error}</p>}
 
       <div className="outcome-buttons">
         {Object.values(FieldOutcome).map((outcome) => (
           <button
             key={outcome}
             type="button"
-            className="touch"
+            className="tp-btn tp-btn--touch tp-btn--secondary"
             disabled={mutation.isPending}
             onClick={() => {
               setError(null);
@@ -236,7 +239,7 @@ function OutcomeForm({
         ))}
       </div>
 
-      <button type="button" className="btn-ghost" onClick={onCancel}>
+      <button type="button" className="tp-btn tp-btn--secondary" onClick={onCancel}>
         Cancelar
       </button>
     </div>

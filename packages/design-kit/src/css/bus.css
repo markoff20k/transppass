@@ -1,0 +1,329 @@
+/**
+ * Ilustração do ônibus — estado operacional desenhado no veículo.
+ *
+ * O componente React monta as classes `bus--<visual>` e os modificadores
+ * `bus--lifted / --moving / --hazard`. Aqui só há cor e movimento.
+ * Com `prefers-reduced-motion`, todo movimento é desligado; a cor e o
+ * distintivo de estado continuam informando.
+ */
+
+.bus {
+  display: block;
+  overflow: visible;
+  --bus-body: var(--color-neutral);
+  --bus-body-dark: color-mix(in srgb, var(--bus-body) 78%, black);
+  --bus-badge: var(--bus-body);
+}
+
+/* ---- Cor por estado ----------------------------------------------------- */
+
+.bus--running,
+.bus--parked {
+  --bus-body: var(--color-state-running);
+}
+
+.bus--waiting,
+.bus--field {
+  --bus-body: var(--color-state-waiting);
+}
+
+/* Em manutenção: âmbar, como a garagem pinta. */
+.bus--maintenance {
+  --bus-body: var(--tp-amber-500);
+}
+
+.bus--part,
+.bus--off {
+  --bus-body: var(--color-state-stopped);
+}
+
+.bus--inspection {
+  --bus-body: var(--color-state-working);
+}
+
+.bus--cleaning {
+  --bus-body: var(--tp-cyan-600);
+}
+
+/* ---- Partes ------------------------------------------------------------- */
+
+.bus__road {
+  stroke: var(--color-border-strong);
+  stroke-width: 2;
+}
+
+.bus__road-dash {
+  stroke: var(--color-border);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0;
+}
+
+.bus__shadow {
+  fill: var(--color-text);
+  opacity: 0.08;
+  transition: transform var(--tp-duration-slow) var(--tp-ease), opacity var(--tp-duration-slow);
+}
+
+.bus__body {
+  fill: var(--bus-body);
+  transition: fill var(--tp-duration-normal) var(--tp-ease);
+}
+
+.bus__roof {
+  fill: var(--bus-body-dark);
+}
+
+.bus__ac {
+  fill: var(--tp-graphite-600);
+}
+
+.bus__window {
+  fill: var(--bus-window);
+  stroke: var(--bus-body-dark);
+  stroke-width: 1;
+}
+
+.bus__door {
+  fill: none;
+  stroke: var(--bus-body-dark);
+  stroke-width: 1.5;
+}
+
+.bus__door-split {
+  stroke: var(--bus-body-dark);
+  stroke-width: 1;
+}
+
+.bus__stripe {
+  fill: rgb(255 255 255 / 0.82);
+}
+
+.bus__code {
+  font-family: var(--tp-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--tp-graphite-800);
+  letter-spacing: 0.06em;
+}
+
+.bus__headlight {
+  fill: #fff3c4;
+  stroke: var(--bus-body-dark);
+  stroke-width: 1;
+}
+
+.bus__taillight {
+  fill: var(--tp-red-500);
+}
+
+.bus__hazard {
+  fill: var(--tp-amber-300);
+  opacity: 0;
+}
+
+.bus__tire {
+  fill: var(--tp-graphite-900);
+}
+
+.bus__hub {
+  fill: var(--tp-graphite-300);
+}
+
+.bus__spoke {
+  stroke: var(--tp-graphite-500);
+  stroke-width: 1.5;
+}
+
+.bus__wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.bus__jack {
+  fill: var(--tp-graphite-500);
+  opacity: 0;
+  transition: opacity var(--tp-duration-slow);
+}
+
+.bus__bubble {
+  fill: var(--tp-cyan-400);
+  opacity: 0;
+}
+
+.bus__badge-bg {
+  fill: var(--bus-badge);
+  stroke: var(--color-surface);
+  stroke-width: 3;
+}
+
+.bus__badge-icon {
+  stroke: #ffffff;
+  fill: #ffffff;
+}
+
+.bus__badge-icon[fill='none'] {
+  fill: none;
+}
+
+.bus__body-group {
+  transition: transform var(--tp-duration-slow) var(--tp-ease);
+}
+
+/* ---- Estados ------------------------------------------------------------ */
+
+/* Levantado no macaco: carroceria sobe, rodas ficam no chão, macacos aparecem. */
+.bus--lifted .bus__body-group {
+  transform: translateY(-12px);
+}
+
+.bus--lifted .bus__jack {
+  opacity: 1;
+}
+
+.bus--lifted .bus__shadow {
+  transform: scaleX(0.9);
+  opacity: 0.05;
+}
+
+.bus--off {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+.bus--off .bus__headlight {
+  fill: var(--tp-graphite-300);
+}
+
+.bus--cleaning .bus__bubble {
+  opacity: 0.85;
+}
+
+.bus--hazard .bus__hazard {
+  opacity: 1;
+}
+
+/* ---- Movimento ---------------------------------------------------------- */
+
+.bus--moving .bus__wheel {
+  animation: bus-spin 1.1s linear infinite;
+}
+
+.bus--moving .bus__road-dash {
+  opacity: 1;
+  animation: bus-road 0.9s linear infinite;
+}
+
+.bus--hazard .bus__hazard {
+  animation: bus-blink 1s steps(2, start) infinite;
+}
+
+.bus__badge-icon--wrench {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bus-wrench 1.8s ease-in-out infinite;
+}
+
+.bus__badge-icon--magnifier {
+  animation: bus-scan 2.2s ease-in-out infinite;
+}
+
+.bus--cleaning .bus__bubble {
+  animation: bus-bubble 2.4s ease-in infinite;
+}
+
+.bus--cleaning .bus__bubble:nth-child(2) {
+  animation-delay: 0.6s;
+}
+.bus--cleaning .bus__bubble:nth-child(3) {
+  animation-delay: 1.2s;
+}
+.bus--cleaning .bus__bubble:nth-child(4) {
+  animation-delay: 1.8s;
+}
+
+.bus--parked .bus__headlight {
+  animation: bus-idle 3s ease-in-out infinite;
+}
+
+@keyframes bus-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bus-road {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-48px);
+  }
+}
+
+@keyframes bus-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.15;
+  }
+}
+
+@keyframes bus-wrench {
+  0%,
+  100% {
+    transform: rotate(-22deg);
+  }
+  50% {
+    transform: rotate(22deg);
+  }
+}
+
+@keyframes bus-scan {
+  0%,
+  100% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes bus-bubble {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-22px);
+    opacity: 0;
+  }
+}
+
+@keyframes bus-idle {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bus *,
+  .bus {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .bus--moving .bus__road-dash {
+    opacity: 0.6;
+  }
+}

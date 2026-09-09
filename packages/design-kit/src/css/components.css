@@ -824,3 +824,11 @@
     padding: var(--tp-space-2) var(--tp-space-3);
   }
 }
+
+.tp-row--end {
+  justify-content: flex-end;
+}
+
+.tp-stack--tight {
+  gap: var(--tp-space-1);
+}

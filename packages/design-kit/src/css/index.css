@@ -6,6 +6,9 @@
  *   2 semantica   significado de interface + tema claro/escuro
  *   3 base        reset e tipografia
  *   4 componentes classes tp-*
+ *   5 shell       sidebar, header, subheader, conteudo
+ *   6 graficos    tokens e tooltip dos graficos
+ *   7 onibus      ilustracao animada do estado do carro
  *
  * Uso:  import '@app/design-kit/css';
  */
@@ -13,3 +16,6 @@
 @import './semantic.css';
 @import './base.css';
 @import './components.css';
+@import './shell.css';
+@import './charts.css';
+@import './bus.css';

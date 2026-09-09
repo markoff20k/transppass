@@ -134,6 +134,33 @@
   --color-cause-cleaning: var(--tp-cyan-600);
   --color-cause-release-wait: var(--tp-graphite-400);
 
+
+  /* ---- Sidebar -----------------------------------------------------------
+     No claro a sidebar é grafite: é onde o logo fica no seu chão natural e o
+     conteúdo ao lado ganha contraste. No escuro ela afunda um tom abaixo da
+     superfície, para manter a hierarquia. */
+  --color-sidebar-bg: var(--tp-graphite-800);
+  --color-sidebar-border: var(--tp-graphite-700);
+  --color-sidebar-text: var(--tp-graphite-200);
+  --color-sidebar-text-strong: #ffffff;
+  --color-sidebar-muted: var(--tp-graphite-400);
+  --color-sidebar-hover: rgb(255 255 255 / 0.06);
+  --color-sidebar-active-bg: rgb(255 255 255 / 0.1);
+  --color-sidebar-logo: #ffffff;
+
+  /* ---- Gráficos ---------------------------------------------------------- */
+  --chart-1: var(--tp-orange-500);
+  --chart-2: var(--tp-graphite-600);
+  --chart-3: var(--tp-blue-600);
+  --chart-4: var(--tp-green-600);
+  --chart-5: var(--tp-amber-500);
+  --chart-6: var(--tp-violet-600);
+  --chart-grid: var(--tp-graphite-100);
+  --chart-axis: var(--tp-graphite-400);
+
+  /* ---- Ilustração do ônibus ---------------------------------------------- */
+  --bus-window: #dfe9f0;
+
   /* ---- Elevação ---------------------------------------------------------- */
   --shadow-card: var(--tp-shadow-sm);
   --shadow-raised: var(--tp-shadow-md);
@@ -239,6 +266,27 @@
     --color-cause-cleaning: var(--tp-cyan-400);
     --color-cause-release-wait: var(--tp-graphite-500);
 
+
+    --color-sidebar-bg: var(--tp-graphite-950);
+    --color-sidebar-border: var(--tp-graphite-800);
+    --color-sidebar-text: var(--tp-graphite-300);
+    --color-sidebar-text-strong: #ffffff;
+    --color-sidebar-muted: var(--tp-graphite-500);
+    --color-sidebar-hover: rgb(255 255 255 / 0.05);
+    --color-sidebar-active-bg: rgb(255 255 255 / 0.08);
+    --color-sidebar-logo: #ffffff;
+
+    --chart-1: var(--tp-orange-400);
+    --chart-2: var(--tp-graphite-300);
+    --chart-3: var(--tp-blue-400);
+    --chart-4: var(--tp-green-400);
+    --chart-5: var(--tp-amber-400);
+    --chart-6: var(--tp-violet-400);
+    --chart-grid: var(--tp-graphite-800);
+    --chart-axis: var(--tp-graphite-500);
+
+    --bus-window: #2f3a44;
+
     /* Sombra some no escuro: sem luz, ela vira borrão. A hierarquia passa a
        ser dada pela superfície mais clara. */
     --shadow-card: none;
@@ -328,6 +376,26 @@
   --color-cause-inspection: var(--tp-green-400);
   --color-cause-cleaning: var(--tp-cyan-400);
   --color-cause-release-wait: var(--tp-graphite-500);
+
+  --color-sidebar-bg: var(--tp-graphite-950);
+  --color-sidebar-border: var(--tp-graphite-800);
+  --color-sidebar-text: var(--tp-graphite-300);
+  --color-sidebar-text-strong: #ffffff;
+  --color-sidebar-muted: var(--tp-graphite-500);
+  --color-sidebar-hover: rgb(255 255 255 / 0.05);
+  --color-sidebar-active-bg: rgb(255 255 255 / 0.08);
+  --color-sidebar-logo: #ffffff;
+
+  --chart-1: var(--tp-orange-400);
+  --chart-2: var(--tp-graphite-300);
+  --chart-3: var(--tp-blue-400);
+  --chart-4: var(--tp-green-400);
+  --chart-5: var(--tp-amber-400);
+  --chart-6: var(--tp-violet-400);
+  --chart-grid: var(--tp-graphite-800);
+  --chart-axis: var(--tp-graphite-500);
+
+  --bus-window: #2f3a44;
 
   --shadow-card: none;
   --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.4);

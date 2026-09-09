@@ -1095,3 +1095,497 @@ td.actions {
   gap: var(--tp-space-2);
   font-size: var(--tp-text-sm);
 }
+
+/* =========================================================================
+   Dashboard
+   ========================================================================= */
+
+.dash-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--tp-space-3);
+}
+
+.dash-kpi {
+  display: grid;
+  gap: var(--tp-space-2);
+  padding: var(--tp-space-4);
+  background: var(--color-surface);
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-lg);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* A faixa fica no topo, não na lateral: lê como semáforo, não como cartão genérico. */
+.dash-kpi::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--color-border-strong);
+}
+
+.dash-kpi--good::before { background: var(--color-success); }
+.dash-kpi--warn::before { background: var(--color-warning); }
+.dash-kpi--danger::before { background: var(--color-danger); }
+.dash-kpi--brand::before { background: var(--color-brand); }
+
+.dash-kpi__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--tp-space-2);
+}
+
+.dash-kpi__hint {
+  font-size: var(--tp-text-2xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-kpi__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  align-items: end;
+  gap: var(--tp-space-3);
+}
+
+.dash-kpi__value {
+  font-family: var(--tp-font-display);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.005em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-kpi__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--tp-text-xs);
+  font-weight: var(--tp-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-kpi__delta em {
+  font-style: normal;
+  font-weight: var(--tp-weight-normal);
+  color: var(--color-text-muted);
+}
+
+.dash-kpi__delta--good { color: var(--color-success-text); }
+.dash-kpi__delta--danger { color: var(--color-danger-text); }
+.dash-kpi__delta--neutral { color: var(--color-text-muted); }
+
+.dash-row {
+  display: grid;
+  gap: var(--tp-space-3);
+  min-width: 0;
+}
+
+.dash-row--fleet { grid-template-columns: minmax(280px, 1fr) minmax(0, 2.4fr); }
+.dash-row--charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dash-row--bottom { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.1fr); }
+
+.dash-row > .tp-card { min-width: 0; }
+
+.dash-updated {
+  text-align: right;
+  font-size: var(--tp-text-2xs);
+}
+
+/* Atenção */
+.attention-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--tp-space-2);
+}
+
+.attention-item {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  padding: var(--tp-space-2) var(--tp-space-3);
+  border-radius: var(--tp-radius-md);
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: var(--tp-text-sm);
+}
+
+.attention-item--danger {
+  border-left-color: var(--color-danger);
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+.attention-item a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.attention-item a:hover { text-decoration: underline; }
+.attention-item b { font-variant-numeric: tabular-nums; }
+
+/* Resumo de estado */
+.status-summary { display: grid; gap: var(--tp-space-2); }
+
+.status-summary__bar {
+  display: flex;
+  height: 10px;
+  border-radius: var(--tp-radius-full);
+  overflow: hidden;
+  background: var(--color-surface-sunken);
+}
+
+.status-summary__seg { height: 100%; }
+.status-summary__seg--running { background: var(--color-state-running); }
+.status-summary__seg--waiting { background: var(--color-state-waiting); }
+.status-summary__seg--working { background: var(--color-state-working); }
+.status-summary__seg--stopped { background: var(--color-state-stopped); }
+
+.status-summary__legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--tp-space-1) var(--tp-space-3);
+  font-size: var(--tp-text-sm);
+}
+
+.status-summary__legend li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-summary__legend b { font-variant-numeric: tabular-nums; }
+
+/* Grade de ônibus */
+.bus-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
+  gap: var(--tp-space-3);
+}
+
+.bus-card {
+  display: grid;
+  gap: var(--tp-space-2);
+  padding: var(--tp-space-3);
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-lg);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  text-decoration: none;
+  min-width: 0;
+  transition: border-color var(--tp-duration-fast), transform var(--tp-duration-fast) var(--tp-ease);
+}
+
+.bus-card:hover {
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+
+.bus-card .bus { width: 100%; height: auto; }
+
+.bus-card__text {
+  display: grid;
+  gap: 2px;
+  font-size: var(--tp-text-sm);
+  min-width: 0;
+}
+
+.bus-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--tp-space-2);
+}
+
+.bus-card__row b {
+  font-family: var(--tp-font-mono);
+  font-size: var(--tp-text-md);
+}
+
+.bus-card__reason {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Últimos eventos */
+.recent-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+}
+
+.recent-list li {
+  display: grid;
+  gap: 4px;
+  padding: var(--tp-space-2) 0;
+  border-bottom: var(--tp-border-thin) solid var(--color-border-subtle);
+  font-size: var(--tp-text-sm);
+}
+
+.recent-list li:last-child { border-bottom: none; }
+
+.recent-list__main {
+  display: flex;
+  gap: var(--tp-space-2);
+  align-items: baseline;
+  min-width: 0;
+}
+
+.recent-list__main b { font-family: var(--tp-font-mono); flex: none; }
+
+.recent-list__main span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-list__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--tp-space-2);
+}
+
+/* Esqueleto de carregamento */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface-sunken);
+  border-color: var(--color-border-subtle);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--color-surface-hover), transparent);
+  transform: translateX(-100%);
+  animation: skeleton 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton {
+  to { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
+}
+
+/* ---- Responsivo ---- */
+
+@media (max-width: 1280px) {
+  .dash-row--bottom { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dash-row--bottom > .tp-card:last-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 1023px) {
+  .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dash-row--fleet { grid-template-columns: 1fr; }
+  .dash-row--charts { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 639px) {
+  .dash-kpis { grid-template-columns: 1fr; }
+  .dash-row--bottom { grid-template-columns: 1fr; }
+  .dash-kpi__body { grid-template-columns: 1fr; }
+  .dash-kpi__body .spark { display: none; }
+  .dash-kpi__value { font-size: 30px; }
+  .bus-grid { grid-template-columns: 1fr; }
+  .status-summary__legend { grid-template-columns: 1fr; }
+}
+
+/* =========================================================================
+   Login
+   ========================================================================= */
+
+.login {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  background: var(--color-bg);
+}
+
+.login__form-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--tp-space-8);
+  padding: var(--tp-space-8) clamp(var(--tp-space-6), 6vw, var(--tp-space-16));
+}
+
+/* Sobre fundo claro o logo é grafite — a cor do arquivo original. */
+.login__brand .tp-logo {
+  color: var(--tp-graphite-700);
+}
+
+.login__brand .tp-logo__tag {
+  color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .login__brand .tp-logo,
+:root:not([data-theme='light']) .login__brand .tp-logo {
+  color: var(--color-text);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .login__brand .tp-logo {
+    color: var(--tp-graphite-700);
+  }
+}
+
+.login__form {
+  display: grid;
+  gap: var(--tp-space-5);
+  width: 100%;
+  max-width: 400px;
+}
+
+.login__title {
+  font-family: var(--tp-font-display);
+  font-size: clamp(28px, 3.4vw, 36px);
+  font-weight: 600;
+  line-height: 1.08;
+  margin: var(--tp-space-1) 0 var(--tp-space-2);
+  text-wrap: balance;
+}
+
+.login__foot {
+  font-size: var(--tp-text-xs);
+}
+
+.login__art {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--tp-space-8);
+  padding: var(--tp-space-12);
+  background: var(--tp-graphite-800);
+  color: var(--tp-graphite-100);
+  overflow: hidden;
+  --color-surface: var(--tp-graphite-800);
+  --color-border-strong: var(--tp-graphite-600);
+  --color-border: var(--tp-graphite-700);
+  --color-text: var(--tp-graphite-100);
+  --bus-window: #2f3a44;
+}
+
+/* Trilho sutil do pátio, atrás dos ônibus */
+.login__art::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 42%;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 44px,
+      rgb(255 255 255 / 0.035) 44px 46px
+    ),
+    linear-gradient(180deg, transparent, rgb(0 0 0 / 0.18));
+  pointer-events: none;
+}
+
+.login__art-buses {
+  position: relative;
+  display: grid;
+  gap: var(--tp-space-4);
+  justify-items: center;
+}
+
+.login__art-buses .bus:nth-child(2) { transform: translateX(-9%); }
+.login__art-buses .bus:nth-child(3) { transform: translateX(7%); }
+
+.login__art-text {
+  position: relative;
+  max-width: 42ch;
+}
+
+.login__art-kicker {
+  display: block;
+  font-family: var(--tp-font-display);
+  font-size: var(--tp-text-xl);
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: var(--tp-space-2);
+}
+
+.login__art-text p {
+  color: var(--tp-graphite-300);
+  font-size: var(--tp-text-md);
+  line-height: var(--tp-leading-relaxed);
+}
+
+@media (max-width: 900px) {
+  .login { grid-template-columns: 1fr; }
+  .login__art { display: none; }
+  .login__form-col { padding: var(--tp-space-6) var(--tp-space-5); min-height: 100dvh; }
+}
+
+/* Logo compacto na sidebar recolhida */
+.tp-logo--compact { justify-content: center; }
+
+/* Espécimes do logo e galeria de ônibus na referência do kit */
+.logo-specimens {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--tp-space-3);
+}
+
+.logo-specimen {
+  display: grid;
+  place-items: center;
+  padding: var(--tp-space-6);
+  border-radius: var(--tp-radius-lg);
+  border: var(--tp-border-thin) solid var(--color-border);
+}
+
+.logo-specimen--light { background: #ffffff; color: var(--tp-graphite-700); }
+.logo-specimen--light .tp-logo__tag { color: var(--tp-graphite-500); }
+.logo-specimen--dark { background: var(--tp-graphite-800); color: #ffffff; }
+.logo-specimen--dark .tp-logo__tag { color: var(--tp-graphite-400); }
+.logo-specimen--brand { background: var(--tp-orange-500); color: var(--tp-graphite-950); }
+
+.bus-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--tp-space-4);
+}
+
+.bus-gallery__item {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: var(--tp-space-3);
+  border-radius: var(--tp-radius-lg);
+  background: var(--color-surface-sunken);
+  border: var(--tp-border-thin) solid var(--color-border-subtle);
+}
+
+.bus-gallery__item code { font-size: var(--tp-text-2xs); color: var(--color-text-muted); }
+
+.ramp__step.is-anchor div {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.ramp__step.is-anchor code { color: var(--color-text); font-weight: 600; }

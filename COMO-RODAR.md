@@ -15,7 +15,7 @@ Abra http://localhost:5173 e entre com `admin@transppass.local` / `admin123`. As
 
 ### O que o mock faz
 
-Um service worker ([MSW](https://mswjs.io)) intercepta as chamadas HTTP dentro do navegador e responde com dados em memória. O front roda inteiro: login, painel da frota, lançamento de km, cadastro de carro e catálogo de falhas.
+Um service worker ([MSW](https://mswjs.io)) intercepta as chamadas HTTP dentro do navegador e responde com dados em memória. O front roda inteiro: **dashboard**, painel da frota com os ônibus animados, lançamento de km, eventos, triagem, fila, socorro, ordens de serviço, estoque e indicadores.
 
 A carga inicial espelha o seed, com uma diferença proposital: os carros já têm histórico de quilometragem, e o carro **10003 está sem leitura há 5 dias** — é o caso de projeção degradada do RF-14, para a tela ter o que destacar.
 
@@ -176,7 +176,8 @@ Acesse http://localhost:5173 e entre com `admin@transppass.local` / `admin123`.
 
 ## Roteiro para conferir que está funcionando
 
-1. **Painel da frota** (tela inicial) — 5 carros do seed, todos sem leitura de km ainda. Os KPIs do topo mostram frota total, disponíveis e disponibilidade.
+1. **Dashboard** (tela inicial) — disponibilidade, MKBF, fila e OS abertas; o que precisa de atenção; a frota carro a carro com o estado desenhado no ônibus; e as tendências em gráfico. Experimente recolher a sidebar (ícone no topo dela) e trocar o tema no header.
+1. **Painel da frota** — 5 carros do seed em grade de ônibus ou tabela. Os KPIs do topo mostram frota total, disponíveis e disponibilidade.
 2. **Lançamento de km** — só os 3 carros diesel aparecem; os eBUS são lidos por telemetria (RF-15), não por digitação. Preencha e envie.
 3. **Volte ao painel** — o km atual aparece preenchido nos carros lançados.
 4. **Teste a validação** — volte ao lançamento, escolha a data de amanhã e digite um valor absurdo (uns 5.000 km acima do anterior). A linha fica vermelha e o botão avisa antes do envio: é o `classifyOdometerDelta` rodando no navegador com exatamente o mesmo critério que o servidor aplicaria.

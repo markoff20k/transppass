@@ -1,3 +1,4 @@
+import { usePageHeader } from '@/components/shell/page-header.context';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +18,8 @@ import { ApiError, api } from '@/lib/api-client';
 
 /** RF-35 — cadastro da frota com tecnologia, fonte de km e offset de hodômetro. */
 export function VehiclesPage() {
+  usePageHeader({ eyebrow: 'Cadastros', title: 'Frota', description: 'Tecnologia, fonte de km e offset de hodômetro por carro.' });
+
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -52,32 +55,32 @@ export function VehiclesPage() {
   });
 
   return (
-    <div className="split">
-      <section className="panel">
+    <div className="tp-split">
+      <section className="tp-card">
         <h2>Frota</h2>
         {isPending ? (
-          <p className="muted">Carregando…</p>
+          <p className="tp-muted">Carregando…</p>
         ) : (
-          <div className="table-wrap">
-            <table>
+          <div className="tp-table-wrap">
+            <table className="tp-table">
               <thead>
                 <tr>
                   <th>Prefixo</th>
                   <th>Placa</th>
                   <th>Tecnologia</th>
                   <th>Fonte de km</th>
-                  <th className="num">Offset</th>
+                  <th className="is-num">Offset</th>
                   <th>Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {(data?.data ?? []).map((v) => (
-                  <tr key={v.id} className={v.isActive ? undefined : 'row-muted'}>
-                    <td className="strong">{v.code}</td>
+                  <tr key={v.id} className={v.isActive ? undefined : 'is-inactive'}>
+                    <td className="is-strong">{v.code}</td>
                     <td>{v.plate}</td>
                     <td>{VEHICLE_TECHNOLOGY_LABELS[v.technology]}</td>
                     <td>{KM_SOURCE_LABELS[v.kmSource]}</td>
-                    <td className="num">{v.odometerOffset.toLocaleString('pt-BR')}</td>
+                    <td className="is-num">{v.odometerOffset.toLocaleString('pt-BR')}</td>
                     <td>{VEHICLE_STATUS_LABELS[v.status]}</td>
                   </tr>
                 ))}
@@ -87,28 +90,28 @@ export function VehiclesPage() {
         )}
       </section>
 
-      <section className="panel">
+      <section className="tp-card">
         <h2>Novo carro</h2>
         <form
-          className="stacked-form"
+          className="tp-stack"
           onSubmit={handleSubmit((values) => create.mutate(values))}
           noValidate
         >
           <label>
             Prefixo
-            <input type="text" {...register('code')} />
-            {errors.code && <span className="field-error">{errors.code.message}</span>}
+            <input className="tp-input" type="text" {...register('code')} />
+            {errors.code && <span className="tp-error">{errors.code.message}</span>}
           </label>
 
           <label>
             Placa
-            <input type="text" placeholder="ABC1D23" {...register('plate')} />
-            {errors.plate && <span className="field-error">{errors.plate.message}</span>}
+            <input className="tp-input" type="text" placeholder="ABC1D23" {...register('plate')} />
+            {errors.plate && <span className="tp-error">{errors.plate.message}</span>}
           </label>
 
           <label>
             Tecnologia
-            <select {...register('technology')}>
+            <select className="tp-select" {...register('technology')}>
               {Object.entries(VEHICLE_TECHNOLOGY_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -119,7 +122,7 @@ export function VehiclesPage() {
 
           <label>
             Fonte de km
-            <select {...register('kmSource')}>
+            <select className="tp-select" {...register('kmSource')}>
               {Object.entries(KM_SOURCE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -130,8 +133,8 @@ export function VehiclesPage() {
 
           <label>
             Offset de hodômetro (km)
-            <input type="number" {...register('odometerOffset')} />
-            <small className="muted">
+            <input className="tp-input" type="number" {...register('odometerOffset')} />
+            <small className="tp-muted">
               Diferença entre o hodômetro físico e a quilometragem real acumulada. Use ao trocar
               o hodômetro, para não quebrar a série histórica.
             </small>
@@ -139,17 +142,17 @@ export function VehiclesPage() {
 
           <label>
             Fabricante
-            <input type="text" {...register('manufacturer')} />
+            <input className="tp-input" type="text" {...register('manufacturer')} />
           </label>
 
           <label>
             Modelo
-            <input type="text" {...register('model')} />
+            <input className="tp-input" type="text" {...register('model')} />
           </label>
 
-          {formError && <p className="form-error">{formError}</p>}
+          {formError && <p className="tp-error">{formError}</p>}
 
-          <button type="submit" disabled={isSubmitting || create.isPending}>
+          <button type="submit" className="tp-btn tp-btn--primary" disabled={isSubmitting || create.isPending}>
             {create.isPending ? 'Salvando…' : 'Cadastrar'}
           </button>
         </form>

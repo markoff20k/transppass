@@ -1,0 +1,187 @@
+/**
+ * Gráficos.
+ *
+ * Os componentes de gráfico (Recharts) leem cor por variável CSS, então o
+ * tema troca sem re-render. A grade é tênue, o eixo é texto apagado, e o
+ * ponto final de cada série é enfatizado — é o número que o gestor quer.
+ */
+
+.chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.chart--h240 {
+  height: 240px;
+}
+
+.chart--h280 {
+  height: 280px;
+}
+
+.chart--h200 {
+  height: 200px;
+}
+
+.chart__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--tp-space-3);
+  margin-bottom: var(--tp-space-2);
+}
+
+.chart__title h3 {
+  margin: 0;
+}
+
+.chart__hint {
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-muted);
+}
+
+/* Recharts pinta texto com cor própria; sobrescrevemos para seguir o tema. */
+.recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text,
+.recharts-label {
+  fill: var(--color-text-muted) !important;
+  font-family: var(--tp-font-sans);
+  font-size: var(--tp-text-xs);
+}
+
+.recharts-cartesian-grid line {
+  stroke: var(--color-border-subtle);
+}
+
+.recharts-cartesian-axis-line,
+.recharts-cartesian-axis-tick-line {
+  stroke: var(--color-border);
+}
+
+.recharts-reference-line line {
+  stroke: var(--color-border-strong);
+  stroke-dasharray: 4 4;
+}
+
+.recharts-tooltip-cursor {
+  fill: var(--color-surface-hover);
+  stroke: none;
+}
+
+/* Tooltip próprio — o padrão do Recharts é branco fixo e quebra no escuro. */
+.chart-tip {
+  background: var(--color-surface-raised);
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-md);
+  box-shadow: var(--shadow-raised);
+  padding: var(--tp-space-2) var(--tp-space-3);
+  font-size: var(--tp-text-xs);
+  display: grid;
+  gap: 2px;
+  min-width: 140px;
+}
+
+.chart-tip__label {
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.chart-tip__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tp-space-3);
+}
+
+.chart-tip__row b {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--tp-weight-semibold);
+}
+
+.chart-tip__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+/* Sparkline dentro de KPI */
+.spark {
+  width: 100%;
+  height: 36px;
+  display: block;
+}
+
+.spark__line {
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.spark__area {
+  opacity: 0.14;
+}
+
+.spark__dot {
+  stroke: var(--color-surface);
+  stroke-width: 2;
+}
+
+/* Donut de estados */
+.donut {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: var(--tp-space-4);
+  align-items: center;
+}
+
+.donut__center {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  line-height: 1.05;
+}
+
+.donut__big {
+  font-family: var(--tp-font-display);
+  font-size: 32px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.donut__small {
+  font-size: var(--tp-text-2xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.donut__legend {
+  display: grid;
+  gap: var(--tp-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--tp-text-sm);
+}
+
+.donut__legend li {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: var(--tp-space-2);
+}
+
+.donut__legend b {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--tp-weight-semibold);
+}
+
+@media (max-width: 480px) {
+  .donut {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}

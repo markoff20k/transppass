@@ -14,6 +14,8 @@ import { QueueModule } from './queue/queue.module';
 import { WorkOrdersModule } from './work-orders/work-orders.module';
 import { MaterialsModule } from './materials/materials.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { envSchema } from './config/env.validation';
 
@@ -39,6 +41,8 @@ import { envSchema } from './config/env.validation';
     WorkOrdersModule,
     MaterialsModule,
     MetricsModule,
+    DashboardModule,
+    NotificationsModule,
   ],
   providers: [
     // Tudo é protegido por padrão; rotas abertas usam @Public().

@@ -110,11 +110,13 @@
   --tp-cyan-700: #0e7490;
 
   /* ---- Tipografia ------------------------------------------------------
-     Sem webfont: a garagem tem conexão instável (seção 8 do PRD) e a fonte do
-     sistema aparece instantaneamente, sem salto de layout. */
-  --tp-font-sans:
-    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --tp-font-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Consolas, monospace;
+     Barlow, auto-hospedada no pacote (sem CDN): a garagem tem conexão
+     instável (seção 8 do PRD), e a fonte empacotada carrega com o app, sem
+     salto de layout. A linhagem da Barlow é a sinalização rodoviária — cabe
+     numa operadora de ônibus. A condensada fica para títulos e o wordmark. */
+  --tp-font-sans: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --tp-font-display: 'Barlow Condensed', 'Barlow', 'Arial Narrow', system-ui, sans-serif;
+  --tp-font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
   /* Escala tipográfica de razão 1,2 a partir de 14px, que é o corpo de texto.
      Densidade alta é intencional: o PCM lê a garagem inteira numa tela só. */
@@ -174,6 +176,7 @@
   /* ---- Movimento --------------------------------------------------------- */
   --tp-duration-fast: 120ms;
   --tp-duration-normal: 200ms;
+  --tp-duration-slow: 280ms;
   --tp-ease: cubic-bezier(0.2, 0, 0.2, 1);
 
   /* ---- Camadas ----------------------------------------------------------- */
@@ -188,5 +191,6 @@
   :root {
     --tp-duration-fast: 0ms;
     --tp-duration-normal: 0ms;
+    --tp-duration-slow: 0ms;
   }
 }

@@ -46,6 +46,14 @@ npm run dev          # API :3000 e web :5173
 
 Login inicial: `admin@transppass.local` / `admin123`. Swagger em `http://localhost:3000/api/docs`.
 
+## Interface
+
+Shell com **sidebar recolhível** (trilho de 72px no desktop, gaveta abaixo de 1024px), **header** com atalhos de idioma, tema, contraste, notificações e perfil, e **subheader** controlado por cada tela. A tela inicial é o **dashboard**: quatro números que resumem a garagem, o que precisa de atenção, a frota carro a carro e as tendências em gráfico.
+
+O elemento de assinatura é a **ilustração do ônibus**: o estado operacional é desenhado no próprio veículo — âmbar levantado no macaco com a chave girando quando está em manutenção, vermelho com pisca-alerta quando aguarda peça, bolhas quando está na lavagem, rodas girando quando está em linha. A cor e o distintivo continuam informando com `prefers-reduced-motion`.
+
+Responsivo em três faixas: ≥ 1024px sidebar fixa; < 1024px gaveta sobre o conteúdo; < 640px header compacto, subheader empilha e toda ação vira alvo de largura cheia.
+
 ## Design kit
 
 O sistema visual vive em [`packages/design-kit`](packages/design-kit/README.md). As duas cores saíram do logo institucional da Transppass — grafite `#444544` e laranja `#f87509` — e viram quatro camadas de tokens com tema claro e escuro.

@@ -1,3 +1,4 @@
+import { usePageHeader } from '@/components/shell/page-header.context';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -18,6 +19,8 @@ import { formatDateTime } from '@/lib/format';
  * ficou registrada — é o que o PRD chama de "autoridade que vira registro".
  */
 export function QueuePage() {
+  usePageHeader({ eyebrow: 'Operação', title: 'Fila de manutenção', description: 'Ordem automática por criticidade. Mover exige motivo e vira registro.' });
+
   const queryClient = useQueryClient();
   const [moving, setMoving] = useState<QueueEntryRow | null>(null);
   const [historyOf, setHistoryOf] = useState<QueueEntryRow | null>(null);
@@ -31,55 +34,55 @@ export function QueuePage() {
   const rows = queue.data ?? [];
 
   return (
-    <div className="split">
-      <section className="panel">
-        <div className="panel-head">
+    <div className="tp-split">
+      <section className="tp-card">
+        <div className="tp-card__head">
           <h2>Fila de manutenção</h2>
-          <span className="muted">{rows.length} carro(s)</span>
+          <span className="tp-muted">{rows.length} carro(s)</span>
         </div>
 
         {queue.isPending ? (
-          <p className="muted">Carregando…</p>
+          <p className="tp-muted">Carregando…</p>
         ) : rows.length === 0 ? (
-          <p className="muted">Fila vazia.</p>
+          <p className="tp-muted">Fila vazia.</p>
         ) : (
-          <div className="table-wrap">
-            <table>
+          <div className="tp-table-wrap">
+            <table className="tp-table">
               <thead>
                 <tr>
-                  <th className="num">#</th>
+                  <th className="is-num">#</th>
                   <th>Carro</th>
                   <th>Falha</th>
                   <th>OS</th>
-                  <th className="num">Espera</th>
+                  <th className="is-num">Espera</th>
                   <th>Previsão</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} className={row.isSafety ? 'row-error' : undefined}>
-                    <td className="num strong">{row.position}</td>
+                  <tr key={row.id} className={row.isSafety ? 'is-danger' : undefined}>
+                    <td className="is-num is-strong">{row.position}</td>
                     <td>
                       {row.vehicleCode}
-                      {row.isSafety && <span className="badge badge-danger">segurança</span>}
-                      {row.isFastTrack && <span className="badge badge-accent">fast-track</span>}
+                      {row.isSafety && <span className="tp-badge tp-badge--danger">segurança</span>}
+                      {row.isFastTrack && <span className="tp-badge tp-badge--brand">fast-track</span>}
                     </td>
                     <td>{row.failureDescription ?? '—'}</td>
-                    <td className="muted">{row.workOrderCode ?? '—'}</td>
-                    <td className="num">{row.waitingHours}h</td>
-                    <td className="muted">
+                    <td className="tp-muted">{row.workOrderCode ?? '—'}</td>
+                    <td className="is-num">{row.waitingHours}h</td>
+                    <td className="tp-muted">
                       {row.estimatedCompletionAt
                         ? formatDateTime(row.estimatedCompletionAt)
                         : '—'}
                     </td>
                     <td className="actions">
-                      <button type="button" className="btn-sm" onClick={() => setMoving(row)}>
+                      <button type="button" className="tp-btn tp-btn--sm" onClick={() => setMoving(row)}>
                         Mover
                       </button>
                       <button
                         type="button"
-                        className="btn-sm btn-ghost"
+                        className="tp-btn tp-btn--sm tp-btn--secondary"
                         onClick={() => setHistoryOf(row)}
                       >
                         Histórico
@@ -93,7 +96,7 @@ export function QueuePage() {
         )}
       </section>
 
-      <section className="panel">
+      <section className="tp-card">
         {moving ? (
           <ReorderForm
             entry={moving}
@@ -109,7 +112,7 @@ export function QueuePage() {
         ) : (
           <>
             <h2>Priorização</h2>
-            <p className="muted">
+            <p className="tp-muted">
               A ordem padrão é automática, por criticidade. Mover um carro exige código de motivo,
               e o registro é imutável.
             </p>
@@ -153,12 +156,12 @@ function ReorderForm({
       <h2>
         Mover carro {entry.vehicleCode}
       </h2>
-      <p className="muted">
+      <p className="tp-muted">
         Da posição {entry.position} para onde? Todos os carros atrás terão a previsão recalculada
         e os interessados serão notificados.
       </p>
 
-      <div className="stacked-form">
+      <div className="tp-stack">
         <label>
           Nova posição
           <input
@@ -171,8 +174,8 @@ function ReorderForm({
         </label>
 
         <label>
-          Motivo <span className="required">obrigatório</span>
-          <select value={reasonCodeId} onChange={(e) => setReasonCodeId(e.target.value)}>
+          Motivo <span className="tp-label__required">obrigatório</span>
+          <select className="tp-select" value={reasonCodeId} onChange={(e) => setReasonCodeId(e.target.value)}>
             <option value="">Selecione…</option>
             {(reasons.data ?? []).map((r) => (
               <option key={r.id} value={r.id}>
@@ -187,10 +190,10 @@ function ReorderForm({
           <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="tp-error">{error}</p>}
 
-        <div className="form-actions">
-          <button type="button" className="btn-ghost" onClick={onCancel}>
+        <div className="tp-row tp-row--end">
+          <button type="button" className="tp-btn tp-btn--secondary" onClick={onCancel}>
             Cancelar
           </button>
           <button
@@ -224,19 +227,19 @@ function History({ entry, onClose }: { entry: QueueEntryRow; onClose: () => void
 
   return (
     <>
-      <div className="panel-head">
+      <div className="tp-card__head">
         <h2>Histórico — carro {entry.vehicleCode}</h2>
-        <button type="button" className="btn-sm btn-ghost" onClick={onClose}>
+        <button type="button" className="tp-btn tp-btn--sm tp-btn--secondary" onClick={onClose}>
           Fechar
         </button>
       </div>
 
       {history.isPending ? (
-        <p className="muted">Carregando…</p>
+        <p className="tp-muted">Carregando…</p>
       ) : rows.length === 0 ? (
-        <p className="muted">Nenhuma mudança de posição registrada.</p>
+        <p className="tp-muted">Nenhuma mudança de posição registrada.</p>
       ) : (
-        <ol className="timeline">
+        <ol className="tp-timeline">
           {rows.map((change) => (
             <li key={change.id}>
               <strong>
@@ -247,7 +250,7 @@ function History({ entry, onClose }: { entry: QueueEntryRow; onClose: () => void
               <span>
                 {change.reasonCode} — {change.reasonDescription}
               </span>
-              <span className="muted">
+              <span className="tp-muted">
                 {change.isSystemGenerated ? 'pelo sistema' : (change.actorName ?? 'usuário')} ·{' '}
                 {formatDateTime(change.createdAt)}
               </span>

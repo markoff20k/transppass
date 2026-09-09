@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/features/auth/protected-route';
-import { AppShell } from '@/components/app-shell';
+import { AppShell } from '@/components/shell/app-shell';
+import { DashboardPage } from '@/pages/dashboard-page';
 import { LoginPage } from '@/pages/login-page';
 import { FleetPanelPage } from '@/pages/fleet-panel-page';
 import { OdometerEntryPage } from '@/pages/odometer-entry-page';
@@ -26,7 +27,8 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           // R0 — Fundacoes
-          { path: '/', element: <FleetPanelPage /> },
+          { path: '/', element: <DashboardPage /> },
+          { path: '/frota', element: <FleetPanelPage /> },
           { path: '/km', element: <OdometerEntryPage /> },
           { path: '/cadastros/frota', element: <VehiclesPage /> },
           { path: '/cadastros/catalogo', element: <CatalogPage /> },

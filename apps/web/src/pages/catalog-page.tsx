@@ -1,3 +1,4 @@
+import { usePageHeader } from '@/components/shell/page-header.context';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -18,6 +19,8 @@ import { api } from '@/lib/api-client';
  * da carga para essa conversa acontecer sobre dados, não sobre memória.
  */
 export function CatalogPage() {
+  usePageHeader({ eyebrow: 'Cadastros', title: 'Catálogo de falhas', description: 'Flags que dirigem o processo e as cinco listas de códigos de motivo.' });
+
   const [search, setSearch] = useState('');
 
   const items = useQuery({
@@ -38,8 +41,8 @@ export function CatalogPage() {
 
   return (
     <>
-      <section className="panel">
-        <div className="panel-head">
+      <section className="tp-card">
+        <div className="tp-card__head">
           <h2>Catálogo de falhas</h2>
           <input
             type="search"
@@ -50,33 +53,33 @@ export function CatalogPage() {
         </div>
 
         {items.isPending ? (
-          <p className="muted">Carregando…</p>
+          <p className="tp-muted">Carregando…</p>
         ) : (
-          <div className="table-wrap">
-            <table>
+          <div className="tp-table-wrap">
+            <table className="tp-table">
               <thead>
                 <tr>
                   <th>Código</th>
                   <th>Descrição</th>
                   <th>Sistema</th>
                   <th>Flags</th>
-                  <th className="num">Reparo (min)</th>
-                  <th className="num">Taxa de campo</th>
+                  <th className="is-num">Reparo (min)</th>
+                  <th className="is-num">Taxa de campo</th>
                 </tr>
               </thead>
               <tbody>
                 {(items.data?.data ?? []).map((item) => (
-                  <tr key={item.id} className={item.isActive ? undefined : 'row-muted'}>
-                    <td className="strong">{item.code}</td>
+                  <tr key={item.id} className={item.isActive ? undefined : 'is-inactive'}>
+                    <td className="is-strong">{item.code}</td>
                     <td>{item.description}</td>
-                    <td className="muted">{item.system ?? '—'}</td>
+                    <td className="tp-muted">{item.system ?? '—'}</td>
                     <td className="flags">
-                      {item.isSafety && <span className="badge badge-danger">segurança</span>}
-                      {item.isFastTrack && <span className="badge badge-accent">fast-track</span>}
-                      {item.isDeferrable && <span className="badge">deferível</span>}
+                      {item.isSafety && <span className="tp-badge tp-badge--danger">segurança</span>}
+                      {item.isFastTrack && <span className="tp-badge tp-badge--brand">fast-track</span>}
+                      {item.isDeferrable && <span className="tp-badge">deferível</span>}
                     </td>
-                    <td className="num">{item.estimatedRepairMinutes ?? '—'}</td>
-                    <td className="num">
+                    <td className="is-num">{item.estimatedRepairMinutes ?? '—'}</td>
+                    <td className="is-num">
                       {item.fieldResolutionRate === null
                         ? '—'
                         : `${(item.fieldResolutionRate * 100).toFixed(0)}% (${item.fieldResolutionSamples})`}
@@ -89,9 +92,9 @@ export function CatalogPage() {
         )}
       </section>
 
-      <section className="panel">
+      <section className="tp-card">
         <h2>Códigos de motivo</h2>
-        <p className="muted">
+        <p className="tp-muted">
           Cinco listas. O conteúdo definitivo é dependência declarada do PRD e precisa ser
           fechado por PCM, Estoque, Manutenção e Operação antes do R1 — o que está aqui é carga
           inicial de exemplo.
@@ -108,7 +111,7 @@ export function CatalogPage() {
                     {!rc.isActive && ' (inativo)'}
                   </li>
                 ))}
-                {byList(list).length === 0 && <li className="muted">Lista vazia</li>}
+                {byList(list).length === 0 && <li className="tp-muted">Lista vazia</li>}
               </ul>
             </div>
           ))}

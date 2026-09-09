@@ -17,6 +17,8 @@ import {
   type Vehicle,
 } from '@app/shared';
 import { avgDailyKm, catalogItems, newId, reasonCodes, users, vehicles } from './fixtures';
+import { dashboardHandlers } from './dashboard.mock';
+import { r1Handlers } from './r1.mock';
 
 /**
  * Handlers do modo mock.
@@ -57,6 +59,8 @@ function requireAuth(request: Request, path: string) {
 const delay = () => new Promise((r) => setTimeout(r, 120 + Math.random() * 180));
 
 export const handlers = [
+  ...dashboardHandlers,
+  ...r1Handlers,
   // --- Autenticação --------------------------------------------------------
 
   http.post('*/api/auth/login', async ({ request }) => {

@@ -1,3 +1,4 @@
+import { usePageHeader } from '@/components/shell/page-header.context';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
@@ -53,41 +54,48 @@ export function WorkOrderPage() {
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha na operação'),
   });
 
-  if (isPending) return <p className="muted">Carregando OS…</p>;
-  if (!data) return <p className="form-error">OS não encontrada.</p>;
+  usePageHeader({
+    eyebrow: 'Execução',
+    title: data ? `${data.code} · carro ${data.vehicleCode}` : 'Ordem de serviço',
+    description: data ? `${data.vehiclePlate} · relógio único de indisponibilidade` : undefined,
+    crumbs: [{ label: 'Ordens de serviço', to: '/os' }],
+  });
+
+  if (isPending) return <p className="tp-muted">Carregando OS…</p>;
+  if (!data) return <p className="tp-error">OS não encontrada.</p>;
 
   const canRelease = user?.role === 'MANUTENCAO' || user?.role === 'ADMIN';
 
   return (
     <>
-      <section className="panel">
-        <div className="panel-head">
+      <section className="tp-card">
+        <div className="tp-card__head">
           <h2>
             {data.code} · carro {data.vehicleCode} ({data.vehiclePlate})
           </h2>
-          <span className={`badge ${data.isOverdue ? 'badge-danger' : ''}`}>
+          <span className={`tp-badge ${data.isOverdue ? 'badge-danger' : ''}`}>
             {WORK_ORDER_STATUS_LABELS[data.status]}
           </span>
         </div>
 
-        <div className="kpi-row">
-          <div className={`kpi ${data.isOverdue ? 'kpi-warn' : ''}`}>
-            <span className="kpi-label">Relógio de indisponibilidade</span>
-            <strong className="kpi-value">{formatMinutes(data.downtimeMinutes)}</strong>
+        <div className="tp-kpi-row">
+          <div className={`tp-kpi ${data.isOverdue ? 'tp-kpi--warn' : ''}`}>
+            <span className="tp-kpi__label">Relógio de indisponibilidade</span>
+            <strong className="tp-kpi__value">{formatMinutes(data.downtimeMinutes)}</strong>
           </div>
           <div className="kpi">
-            <span className="kpi-label">Aberta em</span>
-            <strong className="kpi-value small">{formatDateTime(data.openedAt)}</strong>
+            <span className="tp-kpi__label">Aberta em</span>
+            <strong className="tp-kpi__value tp-kpi__value--sm">{formatDateTime(data.openedAt)}</strong>
           </div>
-          <div className={`kpi ${data.isOverdue ? 'kpi-warn' : ''}`}>
-            <span className="kpi-label">Previsão de conclusão</span>
-            <strong className="kpi-value small">
+          <div className={`tp-kpi ${data.isOverdue ? 'tp-kpi--warn' : ''}`}>
+            <span className="tp-kpi__label">Previsão de conclusão</span>
+            <strong className="tp-kpi__value tp-kpi__value--sm">
               {formatDateTime(data.estimatedCompletionAt)}
             </strong>
           </div>
           <div className="kpi">
-            <span className="kpi-label">Sub-OS concluídas</span>
-            <strong className="kpi-value">
+            <span className="tp-kpi__label">Sub-OS concluídas</span>
+            <strong className="tp-kpi__value">
               {data.tasks.filter((t) => t.status !== TaskStatus.PENDING).length}/
               {data.tasks.length}
             </strong>
@@ -97,20 +105,20 @@ export function WorkOrderPage() {
         {data.breakdown.length > 0 && (
           <div className="breakdown">
             <h3>Onde o tempo foi (RF-39)</h3>
-            <div className="bar">
+            <div className="tp-bar">
               {data.breakdown.map((b) => (
                 <div
                   key={b.cause}
-                  className={`bar-seg cause-${b.cause.toLowerCase()}`}
+                  className={`tp-bar__seg cause-${b.cause.toLowerCase()}`}
                   style={{ width: `${b.share * 100}%` }}
                   title={`${DOWNTIME_CAUSE_LABELS[b.cause]}: ${formatMinutes(b.minutes)}`}
                 />
               ))}
             </div>
-            <ul className="legend">
+            <ul className="tp-legend">
               {data.breakdown.map((b) => (
                 <li key={b.cause}>
-                  <i className={`dot cause-${b.cause.toLowerCase()}`} />
+                  <i className={`tp-swatch cause-${b.cause.toLowerCase()}`} />
                   {DOWNTIME_CAUSE_LABELS[b.cause]} — {formatMinutes(b.minutes)} (
                   {(b.share * 100).toFixed(0)}%)
                 </li>
@@ -120,10 +128,10 @@ export function WorkOrderPage() {
         )}
       </section>
 
-      <section className="panel">
+      <section className="tp-card">
         <h2>Sub-OS</h2>
         {data.tasks.length === 0 ? (
-          <p className="muted">Nenhuma sub-OS. Acrescente o serviço a executar.</p>
+          <p className="tp-muted">Nenhuma sub-OS. Acrescente o serviço a executar.</p>
         ) : (
           <div className="task-list">
             {data.tasks.map((task) => (
@@ -135,12 +143,12 @@ export function WorkOrderPage() {
       </section>
 
       {data.cleaning && (
-        <section className="panel">
+        <section className="tp-card">
           <h2>Limpeza</h2>
-          <ul className="checklist">
+          <ul className="tp-stack tp-stack--tight">
             {data.cleaning.checklist.map((item) => (
               <li key={item.id}>
-                <label className="check">
+                <label className="tp-check">
                   <input
                     type="checkbox"
                     checked={item.isChecked}
@@ -161,38 +169,38 @@ export function WorkOrderPage() {
           {data.cleaning.damageReports.length > 0 && (
             <>
               <h3>Avarias reportadas (viraram backlog do carro)</h3>
-              <ul className="muted">
+              <ul className="tp-muted">
                 {data.cleaning.damageReports.map((d) => (
                   <li key={d.id}>{d.description}</li>
                 ))}
               </ul>
             </>
           )}
-          <div className="form-actions">
+          <div className="tp-row tp-row--end">
             <button
               type="button"
-              className="btn-ghost"
+              className="tp-btn tp-btn--secondary"
               onClick={() => action.mutate(`${id}/cleaning/start`)}
             >
               Iniciar limpeza
             </button>
-            <button type="button" onClick={() => action.mutate(`${id}/cleaning/finish`)}>
+            <button type="button" className="tp-btn" onClick={() => action.mutate(`${id}/cleaning/finish`)}>
               Concluir limpeza
             </button>
           </div>
         </section>
       )}
 
-      <section className="panel">
+      <section className="tp-card">
         <h2>Portões</h2>
-        <ul className="gates">
+        <ul className="tp-gates">
           <Gate ok={data.gates.allTasksSettled} label="Todas as sub-OS concluídas (RF-19)" />
           <Gate ok={data.gates.allInspectionsApproved} label="Todas as inspeções aprovadas (RF-20)" />
           <Gate ok={data.gates.cleaningDone} label="Limpeza concluída (RF-21)" />
         </ul>
 
         {data.gates.blockingReasons.length > 0 && (
-          <div className="notice notice-warn">
+          <div className="tp-alert tp-alert--warning">
             <strong>Falta para liberar:</strong>
             <ul>
               {data.gates.blockingReasons.map((reason) => (
@@ -202,12 +210,12 @@ export function WorkOrderPage() {
           </div>
         )}
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="tp-error">{error}</p>}
 
-        <div className="form-actions">
+        <div className="tp-row tp-row--end">
           <button
             type="button"
-            className="btn-ghost"
+            className="tp-btn tp-btn--secondary"
             disabled={!data.gates.canTechClose || action.isPending}
             onClick={() => action.mutate(`${id}/tech-close`)}
           >
@@ -228,13 +236,13 @@ export function WorkOrderPage() {
         </div>
 
         {!canRelease && (
-          <p className="muted">
+          <p className="tp-muted">
             Só a Manutenção libera o carro (RN-04). Seu perfil pode acompanhar, mas não liberar.
           </p>
         )}
 
         {data.releasedAt && (
-          <p className="muted">
+          <p className="tp-muted">
             Liberado em {formatDateTime(data.releasedAt)} por {data.releasedByName ?? '—'} ·
             indisponibilidade total de {formatMinutes(data.downtimeMinutes)}.
           </p>
@@ -246,7 +254,7 @@ export function WorkOrderPage() {
 
 function Gate({ ok, label }: { ok: boolean; label: string }) {
   return (
-    <li className={ok ? 'gate-ok' : 'gate-blocked'}>
+    <li className={ok ? 'tp-gate tp-gate--open' : 'tp-gate'}>
       <span aria-hidden>{ok ? '✓' : '×'}</span> {label}
     </li>
   );
@@ -281,26 +289,26 @@ function TaskCard({ task, onChanged }: { task: TaskRow; onChanged: () => void })
         <strong>
           {task.code} · {task.specialtyName}
         </strong>
-        <span className="badge">{TASK_STATUS_LABELS[task.status]}</span>
+        <span className="tp-badge">{TASK_STATUS_LABELS[task.status]}</span>
         {task.reopenedCount > 0 && (
-          <span className="badge badge-danger">reaberta {task.reopenedCount}×</span>
+          <span className="tp-badge tp-badge--danger">reaberta {task.reopenedCount}×</span>
         )}
       </header>
 
       <p>{task.description}</p>
 
       {task.openMaterialRequests > 0 && (
-        <p className="form-error">
+        <p className="tp-error">
           {task.openMaterialRequests} solicitação(ões) de material em aberto — a sub-OS está
           bloqueada.
         </p>
       )}
 
       {task.checklist.length > 0 && (
-        <ul className="checklist">
+        <ul className="tp-stack tp-stack--tight">
           {task.checklist.map((item) => (
             <li key={item.id}>
-              <label className="check">
+              <label className="tp-check">
                 <input
                   type="checkbox"
                   checked={item.isChecked}
@@ -319,7 +327,7 @@ function TaskCard({ task, onChanged }: { task: TaskRow; onChanged: () => void })
       )}
 
       {task.confirmedCause && (
-        <p className="muted">Causa constatada: {task.confirmedCause}</p>
+        <p className="tp-muted">Causa constatada: {task.confirmedCause}</p>
       )}
 
       {task.lastInspection && (
@@ -330,13 +338,13 @@ function TaskCard({ task, onChanged }: { task: TaskRow; onChanged: () => void })
         </p>
       )}
 
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="tp-error">{error}</p>}
 
       <footer>
         {task.status === TaskStatus.PENDING && (
           <button
             type="button"
-            className="btn-sm"
+            className="tp-btn tp-btn--sm"
             onClick={() => call.mutate({ path: `tasks/${task.id}/start` })}
           >
             Iniciar
@@ -345,7 +353,7 @@ function TaskCard({ task, onChanged }: { task: TaskRow; onChanged: () => void })
 
         {task.status === TaskStatus.IN_PROGRESS && (
           <>
-            <select value={causeId} onChange={(e) => setCauseId(e.target.value)}>
+            <select className="tp-select" value={causeId} onChange={(e) => setCauseId(e.target.value)}>
               <option value="">Causa constatada…</option>
               {(catalog.data?.data ?? []).map((item) => (
                 <option key={item.id} value={item.id}>
@@ -355,7 +363,7 @@ function TaskCard({ task, onChanged }: { task: TaskRow; onChanged: () => void })
             </select>
             <button
               type="button"
-              className="btn-sm"
+              className="tp-btn tp-btn--sm"
               disabled={!causeId}
               onClick={() =>
                 call.mutate({
@@ -370,7 +378,7 @@ function TaskCard({ task, onChanged }: { task: TaskRow; onChanged: () => void })
         )}
 
         {task.status === TaskStatus.DONE && isInspector && (
-          <button type="button" className="btn-sm" onClick={() => setShowInspection((v) => !v)}>
+          <button type="button" className="tp-btn tp-btn--sm" onClick={() => setShowInspection((v) => !v)}>
             Inspecionar
           </button>
         )}
@@ -433,7 +441,7 @@ function InspectionForm({ taskId, onDone }: { taskId: string; onDone: () => void
       </label>
 
       {result === InspectionResult.REJECTED && (
-        <select value={reasonCodeId} onChange={(e) => setReasonCodeId(e.target.value)}>
+        <select className="tp-select" value={reasonCodeId} onChange={(e) => setReasonCodeId(e.target.value)}>
           <option value="">Motivo da reprovação…</option>
           {(reasons.data ?? []).map((r) => (
             <option key={r.id} value={r.id}>
@@ -450,11 +458,11 @@ function InspectionForm({ taskId, onDone }: { taskId: string; onDone: () => void
         onChange={(e) => setNote(e.target.value)}
       />
 
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="tp-error">{error}</p>}
 
       <button
         type="button"
-        className="btn-sm"
+        className="tp-btn tp-btn--sm"
         disabled={(result === InspectionResult.REJECTED && !reasonCodeId) || mutation.isPending}
         onClick={() => {
           setError(null);
@@ -494,7 +502,7 @@ function AddTaskForm({ workOrderId, onAdded }: { workOrderId: string; onAdded: (
 
   return (
     <div className="add-task">
-      <select value={specialtyId} onChange={(e) => setSpecialtyId(e.target.value)}>
+      <select className="tp-select" value={specialtyId} onChange={(e) => setSpecialtyId(e.target.value)}>
         <option value="">Especialidade…</option>
         {(specialties.data ?? []).map((s) => (
           <option key={s.id} value={s.id}>
@@ -515,7 +523,7 @@ function AddTaskForm({ workOrderId, onAdded }: { workOrderId: string; onAdded: (
       >
         Acrescentar sub-OS
       </button>
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="tp-error">{error}</p>}
     </div>
   );
 }

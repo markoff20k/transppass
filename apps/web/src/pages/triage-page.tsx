@@ -1,3 +1,4 @@
+import { usePageHeader } from '@/components/shell/page-header.context';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -21,6 +22,8 @@ import { formatDuration } from '@/lib/format';
  * vez de decidir de memória.
  */
 export function TriagePage() {
+  usePageHeader({ eyebrow: 'Operação', title: 'Triagem', description: 'Três destinos, SLA medido do registro à decisão.' });
+
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<FailureEventSummary | null>(null);
 
@@ -34,27 +37,27 @@ export function TriagePage() {
   const rows = events.data?.data ?? [];
 
   return (
-    <div className="split">
-      <section className="panel">
-        <div className="panel-head">
+    <div className="tp-split">
+      <section className="tp-card">
+        <div className="tp-card__head">
           <h2>Fila de triagem</h2>
-          <span className="muted">{rows.length} evento(s) aguardando decisão</span>
+          <span className="tp-muted">{rows.length} evento(s) aguardando decisão</span>
         </div>
 
         {events.isPending ? (
-          <p className="muted">Carregando…</p>
+          <p className="tp-muted">Carregando…</p>
         ) : rows.length === 0 ? (
-          <p className="muted">Nenhum evento aguardando triagem.</p>
+          <p className="tp-muted">Nenhum evento aguardando triagem.</p>
         ) : (
-          <div className="table-wrap">
-            <table>
+          <div className="tp-table-wrap">
+            <table className="tp-table">
               <thead>
                 <tr>
                   <th>Evento</th>
                   <th>Carro</th>
                   <th>Falha</th>
                   <th>Origem</th>
-                  <th className="num">Esperando</th>
+                  <th className="is-num">Esperando</th>
                   <th></th>
                 </tr>
               </thead>
@@ -62,23 +65,23 @@ export function TriagePage() {
                 {rows.map((event) => (
                   <tr
                     key={event.id}
-                    className={selected?.id === event.id ? 'row-selected' : undefined}
+                    className={selected?.id === event.id ? 'is-selected' : undefined}
                   >
-                    <td className="strong">{event.code}</td>
+                    <td className="is-strong">{event.code}</td>
                     <td>{event.vehicleCode}</td>
                     <td>
                       {event.catalog?.description ?? event.reportedDescription ?? '—'}
                       {event.catalog?.isSafety && (
-                        <span className="badge badge-danger">segurança</span>
+                        <span className="tp-badge tp-badge--danger">segurança</span>
                       )}
                       {event.catalog?.isFastTrack && (
-                        <span className="badge badge-accent">fast-track</span>
+                        <span className="tp-badge tp-badge--brand">fast-track</span>
                       )}
                     </td>
-                    <td className="muted">{EVENT_ORIGIN_LABELS[event.origin]}</td>
-                    <td className="num">{formatDuration(event.waitingSeconds)}</td>
+                    <td className="tp-muted">{EVENT_ORIGIN_LABELS[event.origin]}</td>
+                    <td className="is-num">{formatDuration(event.waitingSeconds)}</td>
                     <td>
-                      <button type="button" className="btn-sm" onClick={() => setSelected(event)}>
+                      <button type="button" className="tp-btn tp-btn--sm" onClick={() => setSelected(event)}>
                         Triar
                       </button>
                     </td>
@@ -90,7 +93,7 @@ export function TriagePage() {
         )}
       </section>
 
-      <section className="panel">
+      <section className="tp-card">
         {selected ? (
           <TriageForm
             event={selected}
@@ -104,7 +107,7 @@ export function TriagePage() {
         ) : (
           <>
             <h2>Decisão</h2>
-            <p className="muted">Selecione um evento da fila para decidir o destino.</p>
+            <p className="tp-muted">Selecione um evento da fila para decidir o destino.</p>
           </>
         )}
       </section>
@@ -176,20 +179,20 @@ function TriageForm({ event, onDone }: { event: FailureEventSummary; onDone: () 
             </div>
           </dl>
           {safetyBlocksDefer && (
-            <p className="form-error">
+            <p className="tp-error">
               Falha de segurança: não pode ser deferida nem voltar à linha (RF-05).
             </p>
           )}
         </div>
       ) : (
-        <p className="muted">
+        <p className="tp-muted">
           Evento registrado sem falha do catálogo — decida pela descrição do CCO.
         </p>
       )}
 
-      <p className="muted">{event.reportedDescription}</p>
+      <p className="tp-muted">{event.reportedDescription}</p>
 
-      <div className="stacked-form">
+      <div className="tp-stack">
         <fieldset className="destinations">
           <legend>Destino</legend>
           {Object.values(TriageDestination).map((dest) => {
@@ -213,7 +216,7 @@ function TriageForm({ event, onDone }: { event: FailureEventSummary; onDone: () 
         {destination === TriageDestination.DEFER && (
           <label>
             Motivo do deferimento
-            <select value={reasonCodeId} onChange={(e) => setReasonCodeId(e.target.value)}>
+            <select className="tp-select" value={reasonCodeId} onChange={(e) => setReasonCodeId(e.target.value)}>
               <option value="">Selecione…</option>
               {(reasons.data ?? []).map((r) => (
                 <option key={r.id} value={r.id}>
@@ -229,7 +232,7 @@ function TriageForm({ event, onDone }: { event: FailureEventSummary; onDone: () 
           <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="tp-error">{error}</p>}
 
         <button
           type="button"
