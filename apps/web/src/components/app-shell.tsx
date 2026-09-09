@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { USER_ROLE_LABELS, UserRole } from '@app/shared';
 import { useAuth } from '@/features/auth/use-auth';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 interface NavItem {
   to: string;
@@ -30,6 +31,7 @@ const NAV: NavItem[] = [
   { to: '/km', label: 'Km', roles: [ADMIN, PCM, CCO, MANUTENCAO] },
   { to: '/cadastros/frota', label: 'Frota', roles: [ADMIN, PCM] },
   { to: '/cadastros/catalogo', label: 'Catálogo', roles: [ADMIN, PCM, MANUTENCAO] },
+  { to: '/design', label: 'Design kit', roles: [ADMIN] },
 ];
 
 export function AppShell() {
@@ -58,6 +60,7 @@ export function AppShell() {
         </nav>
 
         <div className="topbar-right">
+          <ThemeToggle />
           <span className="user-chip">
             {user?.name}
             <em>{user ? USER_ROLE_LABELS[user.role] : ''}</em>

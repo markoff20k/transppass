@@ -1,0 +1,826 @@
+/**
+ * Camada 4 — componentes.
+ *
+ * Convenção de nome: `tp-<bloco>` e `tp-<bloco>--<variante>`. O prefixo evita
+ * colisão com classes de tela e deixa óbvio, na marcação, o que é do kit e o
+ * que é específico daquela página.
+ *
+ * Nenhuma cor literal aqui: tudo vem da camada semântica.
+ */
+
+/* =========================================================================
+   Botão
+   ========================================================================= */
+
+.tp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tp-space-2);
+  padding: var(--tp-space-2) var(--tp-space-4);
+  min-height: 36px;
+  font-family: inherit;
+  font-size: var(--tp-text-base);
+  font-weight: var(--tp-weight-semibold);
+  line-height: 1;
+  color: var(--color-action-text);
+  background: var(--color-action);
+  border: var(--tp-border-thin) solid transparent;
+  border-radius: var(--tp-radius-md);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--tp-duration-fast) var(--tp-ease),
+    border-color var(--tp-duration-fast) var(--tp-ease);
+}
+
+.tp-btn:hover:not(:disabled) {
+  background: var(--color-action-hover);
+}
+
+.tp-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Ação principal da tela — o laranja da marca. Uma por tela, no máximo. */
+.tp-btn--primary {
+  background: var(--color-brand);
+  color: var(--color-brand-contrast);
+}
+
+.tp-btn--primary:hover:not(:disabled) {
+  background: var(--color-brand-hover);
+}
+
+.tp-btn--secondary {
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.tp-btn--secondary:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.tp-btn--ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: transparent;
+}
+
+.tp-btn--ghost:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* Ação destrutiva ou irreversível: liberar carro, cancelar OS. */
+.tp-btn--danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.tp-btn--danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.tp-btn--sm {
+  min-height: 28px;
+  padding: var(--tp-space-1) var(--tp-space-3);
+  font-size: var(--tp-text-sm);
+}
+
+/**
+ * Alvo de chão — socorro, sub-OS, inspeção, limpeza.
+ * A seção 8 do PRD exige operação com uma mão e com luva: 48px de altura
+ * mínima, texto de 16px e largura cheia no celular.
+ */
+.tp-btn--touch {
+  min-height: var(--tp-touch-min);
+  padding: var(--tp-space-3) var(--tp-space-5);
+  font-size: var(--tp-text-md);
+  border-radius: var(--tp-radius-lg);
+}
+
+.tp-btn--touch-lg {
+  min-height: var(--tp-touch-comfortable);
+  font-size: var(--tp-text-lg);
+  width: 100%;
+}
+
+.tp-btn-group {
+  display: flex;
+  gap: var(--tp-space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* =========================================================================
+   Campos
+   ========================================================================= */
+
+.tp-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-space-1);
+}
+
+.tp-label {
+  font-size: var(--tp-text-sm);
+  font-weight: var(--tp-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.tp-label__hint {
+  font-weight: var(--tp-weight-normal);
+  color: var(--color-text-muted);
+}
+
+.tp-label__required {
+  color: var(--color-danger-text);
+  font-size: var(--tp-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-left: var(--tp-space-1);
+}
+
+.tp-input,
+.tp-select,
+.tp-textarea {
+  width: 100%;
+  padding: var(--tp-space-2) var(--tp-space-3);
+  min-height: 36px;
+  font-family: inherit;
+  font-size: var(--tp-text-base);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--tp-border-thin) solid var(--color-border-strong);
+  border-radius: var(--tp-radius-md);
+}
+
+.tp-input::placeholder,
+.tp-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.tp-input:disabled,
+.tp-select:disabled {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.tp-input[aria-invalid='true'],
+.tp-select[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+/* Campo numérico de leitura: km, medição, quantidade. */
+.tp-input--num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-input--touch {
+  min-height: var(--tp-touch-min);
+  font-size: var(--tp-text-md);
+}
+
+.tp-help {
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-muted);
+}
+
+.tp-error {
+  font-size: var(--tp-text-sm);
+  color: var(--color-danger-text);
+}
+
+/* Caixa e rádio com alvo grande o bastante para dedo com luva. */
+.tp-check {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  min-height: var(--tp-touch-min);
+  font-size: var(--tp-text-base);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.tp-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-brand);
+  flex-shrink: 0;
+}
+
+.tp-check--done {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+/* Cartão de escolha — os três destinos da triagem, o desfecho do socorro. */
+.tp-radio-card {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-3);
+  padding: var(--tp-space-3) var(--tp-space-4);
+  min-height: var(--tp-touch-min);
+  border: var(--tp-border-thin) solid var(--color-border-strong);
+  border-radius: var(--tp-radius-lg);
+  cursor: pointer;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.tp-radio-card:hover {
+  background: var(--color-surface-hover);
+}
+
+.tp-radio-card:has(input:checked) {
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  box-shadow: inset 0 0 0 1px var(--color-brand);
+}
+
+.tp-radio-card:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* =========================================================================
+   Superfícies
+   ========================================================================= */
+
+.tp-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-space-3);
+  padding: var(--tp-space-4);
+  background: var(--color-surface);
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.tp-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tp-space-3);
+  flex-wrap: wrap;
+}
+
+/* Faixa lateral que dá o estado do cartão sem depender só de cor de fundo. */
+.tp-card--accent {
+  border-left: var(--tp-border-thick) solid var(--color-brand);
+}
+.tp-card--success {
+  border-left: var(--tp-border-thick) solid var(--color-success);
+}
+.tp-card--warning {
+  border-left: var(--tp-border-thick) solid var(--color-warning);
+}
+.tp-card--danger {
+  border-left: var(--tp-border-thick) solid var(--color-danger);
+}
+
+/* =========================================================================
+   KPI
+   ========================================================================= */
+
+.tp-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--tp-space-3);
+}
+
+.tp-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-space-1);
+  padding: var(--tp-space-4);
+  background: var(--color-surface);
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-left: var(--tp-border-thick) solid var(--color-border-strong);
+  border-radius: var(--tp-radius-lg);
+}
+
+.tp-kpi--good {
+  border-left-color: var(--color-success);
+}
+.tp-kpi--warn {
+  border-left-color: var(--color-warning);
+}
+.tp-kpi--danger {
+  border-left-color: var(--color-danger);
+}
+.tp-kpi--brand {
+  border-left-color: var(--color-brand);
+}
+
+.tp-kpi__label {
+  font-size: var(--tp-text-xs);
+  font-weight: var(--tp-weight-medium);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tp-kpi__value {
+  font-size: var(--tp-text-2xl);
+  font-weight: var(--tp-weight-bold);
+  line-height: var(--tp-leading-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-kpi__value--sm {
+  font-size: var(--tp-text-md);
+}
+
+.tp-kpi__note {
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-muted);
+}
+
+/* =========================================================================
+   Etiqueta
+   ========================================================================= */
+
+.tp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tp-space-1);
+  padding: 2px var(--tp-space-2);
+  font-size: var(--tp-text-xs);
+  font-weight: var(--tp-weight-medium);
+  line-height: 1.5;
+  border-radius: var(--tp-radius-full);
+  background: var(--color-neutral-soft);
+  border: var(--tp-border-thin) solid var(--color-neutral-border);
+  color: var(--color-neutral-text);
+  white-space: nowrap;
+}
+
+.tp-badge--success {
+  background: var(--color-success-soft);
+  border-color: var(--color-success-border);
+  color: var(--color-success-text);
+}
+.tp-badge--warning {
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning-border);
+  color: var(--color-warning-text);
+}
+.tp-badge--danger {
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-text);
+}
+.tp-badge--info {
+  background: var(--color-info-soft);
+  border-color: var(--color-info-border);
+  color: var(--color-info-text);
+}
+.tp-badge--brand {
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand-soft-border);
+  color: var(--color-brand-text);
+}
+
+/* Ponto de estado — reforça a cor com forma, para quem não distingue matiz. */
+.tp-badge__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--tp-radius-full);
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Estados do carro, mapeados para as quatro famílias operacionais. */
+.tp-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  font-size: var(--tp-text-sm);
+  white-space: nowrap;
+}
+
+.tp-state::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: var(--tp-radius-full);
+  background: var(--color-neutral);
+  flex-shrink: 0;
+}
+
+.tp-state--running::before {
+  background: var(--color-state-running);
+}
+.tp-state--waiting::before {
+  background: var(--color-state-waiting);
+}
+.tp-state--working::before {
+  background: var(--color-state-working);
+}
+.tp-state--stopped::before {
+  background: var(--color-state-stopped);
+}
+
+/* =========================================================================
+   Tabela
+   ========================================================================= */
+
+.tp-table-wrap {
+  overflow-x: auto;
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-md);
+  background: var(--color-surface);
+}
+
+.tp-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tp-table th,
+.tp-table td {
+  padding: var(--tp-space-2) var(--tp-space-3);
+  text-align: left;
+  border-bottom: var(--tp-border-thin) solid var(--color-border-subtle);
+  white-space: nowrap;
+}
+
+.tp-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: var(--tp-text-2xs);
+  font-weight: var(--tp-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tp-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tp-table tbody tr:hover td {
+  background: var(--color-surface-hover);
+}
+
+.tp-table td.is-num,
+.tp-table th.is-num {
+  text-align: right;
+}
+
+.tp-table td.is-strong {
+  font-weight: var(--tp-weight-semibold);
+}
+
+.tp-table td.is-wrap {
+  white-space: normal;
+}
+
+/* Linha inteira marcada. O fundo é reforço; a informação sempre também está
+   escrita na célula, nunca só na cor. */
+.tp-table tr.is-warning td {
+  background: var(--color-warning-soft);
+}
+.tp-table tr.is-danger td {
+  background: var(--color-danger-soft);
+}
+.tp-table tr.is-selected td {
+  background: var(--color-brand-soft);
+}
+.tp-table tr.is-inactive td {
+  opacity: 0.55;
+}
+
+.tp-table__empty {
+  padding: var(--tp-space-8);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+/* =========================================================================
+   Aviso
+   ========================================================================= */
+
+.tp-alert {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-space-1);
+  padding: var(--tp-space-3) var(--tp-space-4);
+  border-radius: var(--tp-radius-md);
+  border-left: var(--tp-border-thick) solid var(--color-neutral);
+  background: var(--color-neutral-soft);
+  color: var(--color-text);
+  font-size: var(--tp-text-sm);
+}
+
+.tp-alert--info {
+  background: var(--color-info-soft);
+  border-left-color: var(--color-info);
+}
+.tp-alert--success {
+  background: var(--color-success-soft);
+  border-left-color: var(--color-success);
+}
+.tp-alert--warning {
+  background: var(--color-warning-soft);
+  border-left-color: var(--color-warning);
+}
+.tp-alert--danger {
+  background: var(--color-danger-soft);
+  border-left-color: var(--color-danger);
+}
+
+.tp-alert ul {
+  margin: 0;
+  padding-left: var(--tp-space-5);
+}
+
+/* =========================================================================
+   Portão — o que falta antes de liberar (RF-19/RF-22)
+   ========================================================================= */
+
+.tp-gates {
+  display: grid;
+  gap: var(--tp-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-gate {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  font-size: var(--tp-text-base);
+}
+
+.tp-gate::before {
+  content: '×';
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--tp-radius-full);
+  font-weight: var(--tp-weight-bold);
+  background: var(--color-neutral-soft);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.tp-gate--open {
+  color: var(--color-text);
+}
+
+.tp-gate--open::before {
+  content: '✓';
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+}
+
+/* =========================================================================
+   Barra de composição — decomposição da indisponibilidade (RF-39)
+   ========================================================================= */
+
+.tp-bar {
+  display: flex;
+  height: 16px;
+  border-radius: var(--tp-radius-full);
+  overflow: hidden;
+  background: var(--color-surface-sunken);
+}
+
+.tp-bar__seg {
+  height: 100%;
+  min-width: 2px;
+}
+
+.tp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tp-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--tp-text-sm);
+  color: var(--color-text-secondary);
+}
+
+.tp-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+}
+
+.tp-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--tp-radius-sm);
+  flex-shrink: 0;
+}
+
+.cause-queue {
+  background: var(--color-cause-queue);
+}
+.cause-material {
+  background: var(--color-cause-material);
+}
+.cause-execution {
+  background: var(--color-cause-execution);
+}
+.cause-inspection {
+  background: var(--color-cause-inspection);
+}
+.cause-cleaning {
+  background: var(--color-cause-cleaning);
+}
+.cause-release_wait {
+  background: var(--color-cause-release-wait);
+}
+
+/* =========================================================================
+   Linha do tempo — histórico append-only da fila (RF-08)
+   ========================================================================= */
+
+.tp-timeline {
+  display: grid;
+  gap: var(--tp-space-4);
+  margin: 0;
+  padding: 0 0 0 var(--tp-space-5);
+  list-style: none;
+  border-left: var(--tp-border-thin) solid var(--color-border);
+}
+
+.tp-timeline li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  font-size: var(--tp-text-sm);
+}
+
+.tp-timeline li::before {
+  content: '';
+  position: absolute;
+  left: calc(-1 * var(--tp-space-5) - 4px);
+  top: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--tp-radius-full);
+  background: var(--color-brand);
+}
+
+.tp-timeline__meta {
+  color: var(--color-text-muted);
+  font-size: var(--tp-text-xs);
+}
+
+/* =========================================================================
+   Navegação
+   ========================================================================= */
+
+.tp-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-6);
+  padding: var(--tp-space-2) var(--tp-space-5);
+  background: var(--color-surface);
+  border-bottom: var(--tp-border-thin) solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: var(--tp-z-sticky);
+}
+
+.tp-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  white-space: nowrap;
+  font-weight: var(--tp-weight-bold);
+  letter-spacing: -0.01em;
+}
+
+/* O ponto laranja do logo, reduzido a um elemento. */
+.tp-brand__mark {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--tp-radius-full);
+  background: var(--color-brand);
+  flex-shrink: 0;
+}
+
+.tp-brand__sub {
+  color: var(--color-text-muted);
+  font-weight: var(--tp-weight-medium);
+  font-size: var(--tp-text-sm);
+}
+
+.tp-nav {
+  display: flex;
+  gap: var(--tp-space-1);
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tp-nav__link {
+  padding: var(--tp-space-2) var(--tp-space-3);
+  border-radius: var(--tp-radius-md);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: var(--tp-text-sm);
+  font-weight: var(--tp-weight-medium);
+  border-bottom: var(--tp-border-thick) solid transparent;
+}
+
+.tp-nav__link:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* O item ativo usa o laranja da marca — é a única marcação permanente de
+   identidade dentro do sistema. */
+.tp-nav__link.is-active {
+  color: var(--color-brand-text);
+  background: var(--color-brand-soft);
+  border-bottom-color: var(--color-brand);
+}
+
+.tp-user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+  white-space: nowrap;
+  font-size: var(--tp-text-sm);
+}
+
+.tp-user__role {
+  color: var(--color-text-muted);
+  font-size: var(--tp-text-xs);
+}
+
+/* =========================================================================
+   Utilitários mínimos
+   ========================================================================= */
+
+.tp-muted {
+  color: var(--color-text-muted);
+  font-size: var(--tp-text-sm);
+}
+
+.tp-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-space-3);
+}
+
+.tp-row {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  flex-wrap: wrap;
+}
+
+.tp-split {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+  gap: var(--tp-space-4);
+  align-items: start;
+}
+
+.tp-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--tp-space-4);
+}
+
+@media (max-width: 900px) {
+  .tp-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* No celular, tudo que é ação vira alvo de largura cheia. */
+@media (max-width: 640px) {
+  .tp-grid-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .tp-btn--touch {
+    width: 100%;
+  }
+
+  .tp-topbar {
+    gap: var(--tp-space-3);
+    padding: var(--tp-space-2) var(--tp-space-3);
+  }
+}

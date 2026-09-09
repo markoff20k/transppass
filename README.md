@@ -21,11 +21,12 @@ O schema Prisma já cobre **os oito épicos** — o R2 acrescenta serviços e te
 
 ```
 apps/
-  api/        NestJS + Prisma + JWT       → deploy independente
-  web/        React 19 + Vite + TS        → deploy independente
+  api/          NestJS + Prisma + JWT       → deploy independente
+  web/          React 19 + Vite + TS        → deploy independente
 packages/
-  shared/     schemas Zod + tipos         → único ponto de acoplamento
-  config/     tsconfig base compartilhado
+  shared/       schemas Zod + tipos         → único ponto de acoplamento
+  design-kit/   tokens, temas, componentes  → sistema visual
+  config/       tsconfig base compartilhado
 ```
 
 **A regra que garante a separação futura:** `apps/web` e `apps/api` nunca se importam. Conversam por HTTP e compartilham apenas `@app/shared`. Para dividir, cada app vira um repo e `@app/shared` vira um pacote num registry privado.
@@ -44,6 +45,14 @@ npm run dev          # API :3000 e web :5173
 ```
 
 Login inicial: `admin@transppass.local` / `admin123`. Swagger em `http://localhost:3000/api/docs`.
+
+## Design kit
+
+O sistema visual vive em [`packages/design-kit`](packages/design-kit/README.md). As duas cores saíram do logo institucional da Transppass — grafite `#444544` e laranja `#f87509` — e viram quatro camadas de tokens com tema claro e escuro.
+
+Referência visual: **[artifact compartilhável](https://claude.ai/code/artifact/0beb3e1d-8f90-4dcb-ada4-f98154f6fcef)** · referência viva: rota `/design` no sistema.
+
+**Achado que mudou o desenho:** branco sobre o laranja da marca dá 2,79:1 e reprova em AA. Por isso o kit separa `--color-brand` (preenche) de `--color-brand-text` (escreve), e o texto sobre o laranja é grafite escuro (6,45:1), nunca branco.
 
 ## Decisões de arquitetura ligadas ao PRD
 

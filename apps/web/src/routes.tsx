@@ -14,6 +14,7 @@ import { WorkOrdersPage } from '@/pages/work-orders-page';
 import { WorkOrderPage } from '@/pages/work-order-page';
 import { StockPage } from '@/pages/stock-page';
 import { MetricsPage } from '@/pages/metrics-page';
+import { DesignKitPage } from '@/pages/design-kit-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 
 export const router = createBrowserRouter([
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
           { path: '/os/:id', element: <WorkOrderPage /> },
           { path: '/estoque', element: <StockPage /> },
           { path: '/indicadores', element: <MetricsPage /> },
+          { path: '/design', element: <DesignKitPage /> },
           // R2 (preventiva, plantao) entra aqui.
         ],
       },

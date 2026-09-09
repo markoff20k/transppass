@@ -1,0 +1,192 @@
+/**
+ * Camada 1 — primitivas.
+ *
+ * Valores crus, sem significado de interface. Nada na aplicação usa estes
+ * tokens diretamente: eles alimentam a camada semântica (semantic.css), que é
+ * o que os componentes consomem. Trocar um tom da marca aqui repercute em todo
+ * o sistema sem que nenhum componente precise mudar.
+ *
+ * As duas cores da marca vieram do logo da Transppass:
+ *   grafite  #444544  — monograma "TP" e wordmark
+ *   laranja  #f87509  — o ponto da figura
+ *
+ * As escalas foram construídas a partir delas mantendo o matiz e variando
+ * luminosidade e saturação, de forma que o tom 500 (laranja) e o 700 (grafite)
+ * sejam exatamente os do logo.
+ */
+
+:root {
+  /* ---- Laranja da marca ------------------------------------------------
+     500 é a cor do logo. Ela NÃO passa em contraste sobre branco (2,9:1),
+     então serve para preenchimentos grandes e identidade — nunca para texto
+     pequeno. Para isso existe o 700, que atinge 5,1:1 sobre branco. */
+  --tp-orange-50: #fff5eb;
+  --tp-orange-100: #ffe6cd;
+  --tp-orange-200: #fdc994;
+  --tp-orange-300: #fbaa5d;
+  --tp-orange-400: #fa8d2f;
+  --tp-orange-500: #f87509;
+  --tp-orange-600: #dc6206;
+  --tp-orange-700: #b44c05;
+  --tp-orange-800: #8c3b08;
+  --tp-orange-900: #6e2f0a;
+  --tp-orange-950: #3f1a06;
+
+  /* ---- Grafite da marca ------------------------------------------------
+     700 é a cor do logo. É a cor estrutural do sistema: cabeçalhos, textos,
+     superfícies escuras. */
+  --tp-graphite-50: #f6f7f6;
+  --tp-graphite-100: #ebecea;
+  --tp-graphite-200: #d6d8d5;
+  --tp-graphite-300: #b5b8b4;
+  --tp-graphite-400: #8c8f8b;
+  --tp-graphite-500: #6c6f6b;
+  --tp-graphite-600: #575957;
+  --tp-graphite-700: #444544;
+  --tp-graphite-800: #333433;
+  --tp-graphite-900: #232423;
+  --tp-graphite-950: #161716;
+
+  /* ---- Estados operacionais -------------------------------------------
+     Matizes escolhidos para serem distinguíveis entre si E do laranja da
+     marca. Num painel de frota a cor carrega significado operacional: se o
+     alerta parecesse com a cor de ação, o alerta sumiria. */
+
+  /* Verde — carro disponível, inspeção aprovada */
+  --tp-green-50: #eefbf3;
+  --tp-green-100: #d5f5e1;
+  --tp-green-200: #ade9c6;
+  --tp-green-300: #6fd6a1;
+  --tp-green-400: #3bbb7c;
+  --tp-green-500: #1c9e60;
+  --tp-green-600: #0f7f4c;
+  --tp-green-700: #0c653f;
+  --tp-green-800: #0b5034;
+  --tp-green-900: #09422c;
+
+  /* Âmbar — atenção. Deliberadamente mais amarelo que o laranja da marca,
+     para que "precisa de atenção" nunca se confunda com "clique aqui". */
+  --tp-amber-50: #fefaeb;
+  --tp-amber-100: #fdf0c8;
+  --tp-amber-200: #fbdf8c;
+  --tp-amber-300: #f8c94f;
+  --tp-amber-400: #f5b32a;
+  --tp-amber-500: #e39510;
+  --tp-amber-600: #c4710b;
+  --tp-amber-700: #a2500d;
+  --tp-amber-800: #853f12;
+  --tp-amber-900: #713413;
+
+  /* Vermelho — falha de segurança, prazo vencido, reprovação */
+  --tp-red-50: #fef2f2;
+  --tp-red-100: #fde3e3;
+  --tp-red-200: #fbcccc;
+  --tp-red-300: #f7a5a5;
+  --tp-red-400: #f07171;
+  --tp-red-500: #e34444;
+  --tp-red-600: #cf2727;
+  --tp-red-700: #ae1d1d;
+  --tp-red-800: #901c1c;
+  --tp-red-900: #781d1d;
+
+  /* Azul — informação neutra, execução em andamento */
+  --tp-blue-50: #eff6ff;
+  --tp-blue-100: #dbeafe;
+  --tp-blue-200: #bfdbfe;
+  --tp-blue-300: #93c5fd;
+  --tp-blue-400: #60a5fa;
+  --tp-blue-500: #3b82f6;
+  --tp-blue-600: #2563eb;
+  --tp-blue-700: #1d4ed8;
+  --tp-blue-800: #1e40af;
+  --tp-blue-900: #1e3a8a;
+
+  /* Roxo e ciano — só para a paleta categórica das causas de indisponibilidade */
+  --tp-violet-400: #a78bfa;
+  --tp-violet-600: #7c3aed;
+  --tp-violet-700: #6d28d9;
+  --tp-cyan-400: #22d3ee;
+  --tp-cyan-600: #0891b2;
+  --tp-cyan-700: #0e7490;
+
+  /* ---- Tipografia ------------------------------------------------------
+     Sem webfont: a garagem tem conexão instável (seção 8 do PRD) e a fonte do
+     sistema aparece instantaneamente, sem salto de layout. */
+  --tp-font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --tp-font-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Consolas, monospace;
+
+  /* Escala tipográfica de razão 1,2 a partir de 14px, que é o corpo de texto.
+     Densidade alta é intencional: o PCM lê a garagem inteira numa tela só. */
+  --tp-text-2xs: 0.6875rem; /* 11px — rótulo de tabela */
+  --tp-text-xs: 0.75rem; /* 12px — legenda, metadado */
+  --tp-text-sm: 0.8125rem; /* 13px — texto auxiliar */
+  --tp-text-base: 0.875rem; /* 14px — corpo */
+  --tp-text-md: 1rem; /* 16px — corpo em tela de chão */
+  --tp-text-lg: 1.125rem; /* 18px — título de seção */
+  --tp-text-xl: 1.375rem; /* 22px — título de página */
+  --tp-text-2xl: 1.75rem; /* 28px — número de KPI */
+  --tp-text-3xl: 2.25rem; /* 36px — número de destaque */
+
+  --tp-leading-tight: 1.2;
+  --tp-leading-normal: 1.5;
+  --tp-leading-relaxed: 1.7;
+
+  --tp-weight-normal: 400;
+  --tp-weight-medium: 500;
+  --tp-weight-semibold: 600;
+  --tp-weight-bold: 700;
+
+  /* ---- Espaçamento — escala de 4px -------------------------------------- */
+  --tp-space-0: 0;
+  --tp-space-1: 0.25rem; /* 4 */
+  --tp-space-2: 0.5rem; /* 8 */
+  --tp-space-3: 0.75rem; /* 12 */
+  --tp-space-4: 1rem; /* 16 */
+  --tp-space-5: 1.25rem; /* 20 */
+  --tp-space-6: 1.5rem; /* 24 */
+  --tp-space-8: 2rem; /* 32 */
+  --tp-space-10: 2.5rem; /* 40 */
+  --tp-space-12: 3rem; /* 48 */
+  --tp-space-16: 4rem; /* 64 */
+
+  /* ---- Raio, borda, elevação -------------------------------------------- */
+  --tp-radius-sm: 4px;
+  --tp-radius-md: 6px;
+  --tp-radius-lg: 10px;
+  --tp-radius-xl: 14px;
+  --tp-radius-full: 999px;
+
+  --tp-border-thin: 1px;
+  --tp-border-thick: 3px;
+
+  --tp-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
+  --tp-shadow-md: 0 2px 8px rgb(0 0 0 / 0.08);
+  --tp-shadow-lg: 0 8px 24px rgb(0 0 0 / 0.12);
+  --tp-shadow-overlay: 0 16px 48px rgb(0 0 0 / 0.2);
+
+  /* ---- Alvos de toque ---------------------------------------------------
+     A seção 8 do PRD exige telas de chão operáveis com uma mão e com luvas.
+     48px é o mínimo; 56px é o alvo confortável das telas de socorro e sub-OS. */
+  --tp-touch-min: 48px;
+  --tp-touch-comfortable: 56px;
+
+  /* ---- Movimento --------------------------------------------------------- */
+  --tp-duration-fast: 120ms;
+  --tp-duration-normal: 200ms;
+  --tp-ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* ---- Camadas ----------------------------------------------------------- */
+  --tp-z-sticky: 10;
+  --tp-z-dropdown: 100;
+  --tp-z-overlay: 500;
+  --tp-z-toast: 900;
+}
+
+/* Quem pediu menos movimento não recebe animação nenhuma. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tp-duration-fast: 0ms;
+    --tp-duration-normal: 0ms;
+  }
+}

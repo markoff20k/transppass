@@ -1,0 +1,15 @@
+/**
+ * Design kit do Transppass PCM.
+ *
+ * A ordem importa: cada camada so consome a anterior.
+ *   1 primitivas  valores crus derivados das duas cores do logo
+ *   2 semantica   significado de interface + tema claro/escuro
+ *   3 base        reset e tipografia
+ *   4 componentes classes tp-*
+ *
+ * Uso:  import '@app/design-kit/css';
+ */
+@import './primitives.css';
+@import './semantic.css';
+@import './base.css';
+@import './components.css';

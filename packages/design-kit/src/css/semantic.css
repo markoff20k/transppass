@@ -1,0 +1,341 @@
+/**
+ * Camada 2 — tokens semânticos.
+ *
+ * É o que os componentes consomem. Nenhum componente conhece "laranja 500";
+ * ele conhece "cor da ação primária". Trocar a marca é reescrever este arquivo,
+ * não caçar cor em componente.
+ *
+ * Os três estados de tema:
+ *   :root                       tema claro (padrão)
+ *   [data-theme="dark"]         escuro escolhido explicitamente
+ *   sem data-theme + prefers    segue o sistema
+ *
+ * Toda cor tem definição no bloco claro. Os blocos escuros só redefinem —
+ * assim nenhuma cor fica existindo apenas dentro de uma media query.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ---- Superfícies -------------------------------------------------------
+     Três níveis: o fundo da página, o cartão que se destaca dele, e o realce
+     dentro do cartão (cabeçalho de tabela, bloco de apoio). */
+  --color-bg: var(--tp-graphite-50);
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: var(--tp-graphite-100);
+  --color-surface-hover: var(--tp-graphite-100);
+  --color-overlay-scrim: rgb(35 36 35 / 0.45);
+
+  /* ---- Bordas ------------------------------------------------------------ */
+  --color-border: var(--tp-graphite-200);
+  --color-border-strong: var(--tp-graphite-300);
+  --color-border-subtle: var(--tp-graphite-100);
+
+  /* ---- Texto -------------------------------------------------------------
+     Quatro níveis. `muted` é o limite do que ainda passa em AA (4,6:1);
+     abaixo disso só decoração, nunca informação. */
+  --color-text: var(--tp-graphite-900);
+  --color-text-secondary: var(--tp-graphite-700);
+  --color-text-muted: var(--tp-graphite-500);
+  --color-text-inverse: #ffffff;
+  /* Grafite, nao branco: branco sobre o laranja da marca da 2,79:1 e reprova.
+     Grafite-950 sobre o mesmo laranja da 6,45:1. */
+  --color-text-on-brand: var(--tp-graphite-950);
+
+  /* ---- Marca -------------------------------------------------------------
+     `brand` é o laranja do logo: identidade, preenchimento, indicador.
+     `brand-text` é o tom escuro que passa em contraste sobre fundo claro —
+     é ele que vai em link e texto pequeno. Confundir os dois é o erro mais
+     fácil de cometer com uma marca laranja.
+
+     Contrastes medidos:
+       laranja 500 sobre branco    2,79:1  reprova em AA
+       laranja 700 sobre branco    5,28:1  passa
+       grafite 950 sobre laranja   6,45:1  passa  <- texto sobre a marca */
+  --color-brand: var(--tp-orange-500);
+  --color-brand-hover: var(--tp-orange-600);
+  --color-brand-active: var(--tp-orange-700);
+  --color-brand-text: var(--tp-orange-700);
+  --color-brand-soft: var(--tp-orange-50);
+  --color-brand-soft-border: var(--tp-orange-200);
+  --color-brand-contrast: var(--tp-graphite-950);
+
+  /* Cor estrutural: cabeçalho, navegação, botão secundário. É o grafite. */
+  --color-structure: var(--tp-graphite-700);
+  --color-structure-hover: var(--tp-graphite-800);
+  --color-structure-soft: var(--tp-graphite-100);
+
+  /* ---- Ação --------------------------------------------------------------
+     A ação primária do sistema é o grafite, não o laranja. Numa tela de
+     operação quase todo botão é uma ação; se todos fossem laranja, o laranja
+     deixaria de significar alguma coisa. O laranja fica para o que é
+     realmente a ação principal daquela tela. */
+  --color-action: var(--tp-graphite-700);
+  --color-action-hover: var(--tp-graphite-800);
+  --color-action-text: #ffffff;
+
+  /* ---- Foco --------------------------------------------------------------
+     Laranja da marca. É a única situação em que o laranja aparece sobre
+     qualquer fundo, então precisa de contorno duplo para funcionar nos dois
+     temas. */
+  --color-focus: var(--tp-orange-500);
+  --color-focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--tp-orange-500);
+
+  /* ---- Estados semânticos ------------------------------------------------ */
+  --color-success: var(--tp-green-600);
+  --color-success-text: var(--tp-green-700);
+  --color-success-soft: var(--tp-green-50);
+  --color-success-border: var(--tp-green-200);
+
+  --color-warning: var(--tp-amber-600);
+  --color-warning-text: var(--tp-amber-700);
+  --color-warning-soft: var(--tp-amber-50);
+  --color-warning-border: var(--tp-amber-200);
+
+  --color-danger: var(--tp-red-600);
+  --color-danger-text: var(--tp-red-700);
+  --color-danger-soft: var(--tp-red-50);
+  --color-danger-border: var(--tp-red-200);
+
+  --color-info: var(--tp-blue-600);
+  --color-info-text: var(--tp-blue-700);
+  --color-info-soft: var(--tp-blue-50);
+  --color-info-border: var(--tp-blue-200);
+
+  --color-neutral: var(--tp-graphite-500);
+  --color-neutral-text: var(--tp-graphite-600);
+  --color-neutral-soft: var(--tp-graphite-100);
+  --color-neutral-border: var(--tp-graphite-200);
+
+  /* ---- Estados do carro (RF-37) ------------------------------------------
+     O painel da frota mostra dez estados ao vivo. Eles se agrupam em quatro
+     famílias de significado operacional, e não em dez cores diferentes —
+     ninguém decora dez cores, mas todo mundo entende quatro. */
+  --color-state-running: var(--tp-green-600); /* disponível, em linha */
+  --color-state-waiting: var(--tp-amber-600); /* triagem, fila, socorro */
+  --color-state-working: var(--tp-blue-600); /* manutenção, inspeção, limpeza */
+  --color-state-stopped: var(--tp-red-600); /* aguardando peça, fora de operação */
+
+  /* ---- Causas de indisponibilidade (RF-39) -------------------------------
+     Paleta categórica: seis matizes que precisam se distinguir lado a lado
+     numa barra empilhada, inclusive para quem tem deficiência de cor. Por
+     isso a barra sempre vem acompanhada de legenda com texto — a cor é
+     reforço, nunca o único portador da informação. */
+  --color-cause-queue: var(--tp-violet-600);
+  --color-cause-material: var(--tp-amber-600);
+  --color-cause-execution: var(--tp-blue-600);
+  --color-cause-inspection: var(--tp-green-600);
+  --color-cause-cleaning: var(--tp-cyan-600);
+  --color-cause-release-wait: var(--tp-graphite-400);
+
+  /* ---- Elevação ---------------------------------------------------------- */
+  --shadow-card: var(--tp-shadow-sm);
+  --shadow-raised: var(--tp-shadow-md);
+  --shadow-overlay: var(--tp-shadow-lg);
+}
+
+/* =========================================================================
+   Tema escuro
+   =========================================================================
+   Turno da noite e garagem 24/7 (seção 8 do PRD) — o escuro não é enfeite.
+
+   Duas inversões importantes:
+
+   1. A superfície não é preto puro. Preto com texto branco vibra e cansa em
+      turno longo; o grafite 900 dá o mesmo descanso sem o efeito.
+
+   2. Os tons de cor invertem de direção. No claro, o texto colorido precisa
+      de tom ESCURO para contrastar com fundo branco; no escuro precisa de tom
+      CLARO. Por isso `--color-brand-text` vira o laranja 400 aqui.
+   ========================================================================= */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --color-bg: var(--tp-graphite-950);
+    --color-surface: var(--tp-graphite-900);
+    --color-surface-raised: var(--tp-graphite-800);
+    --color-surface-sunken: var(--tp-graphite-950);
+    --color-surface-hover: var(--tp-graphite-800);
+    --color-overlay-scrim: rgb(0 0 0 / 0.65);
+
+    --color-border: var(--tp-graphite-800);
+    --color-border-strong: var(--tp-graphite-600);
+    --color-border-subtle: var(--tp-graphite-900);
+
+    --color-text: var(--tp-graphite-50);
+    --color-text-secondary: var(--tp-graphite-300);
+    --color-text-muted: var(--tp-graphite-400);
+    --color-text-inverse: var(--tp-graphite-950);
+    --color-text-on-brand: var(--tp-graphite-950);
+
+    --color-brand: var(--tp-orange-500);
+    --color-brand-hover: var(--tp-orange-400);
+    --color-brand-active: var(--tp-orange-300);
+    --color-brand-text: var(--tp-orange-400);
+    --color-brand-soft: rgb(248 117 9 / 0.14);
+    --color-brand-soft-border: rgb(248 117 9 / 0.35);
+    --color-brand-contrast: var(--tp-graphite-950);
+
+    --color-structure: var(--tp-graphite-100);
+    --color-structure-hover: #ffffff;
+    --color-structure-soft: var(--tp-graphite-800);
+
+    /* No escuro a ação primária inverte: o grafite claro é o que se destaca
+       sobre a superfície escura, do mesmo jeito que o grafite escuro se
+       destacava sobre a branca. */
+    --color-action: var(--tp-graphite-100);
+    --color-action-hover: #ffffff;
+    --color-action-text: var(--tp-graphite-950);
+
+    --color-focus: var(--tp-orange-400);
+    --color-focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--tp-orange-400);
+
+    --color-success: var(--tp-green-400);
+    --color-success-text: var(--tp-green-300);
+    --color-success-soft: rgb(28 158 96 / 0.16);
+    --color-success-border: rgb(28 158 96 / 0.4);
+
+    --color-warning: var(--tp-amber-400);
+    --color-warning-text: var(--tp-amber-300);
+    --color-warning-soft: rgb(227 149 16 / 0.16);
+    --color-warning-border: rgb(227 149 16 / 0.4);
+
+    --color-danger: var(--tp-red-400);
+    --color-danger-text: var(--tp-red-300);
+    --color-danger-soft: rgb(227 68 68 / 0.16);
+    --color-danger-border: rgb(227 68 68 / 0.4);
+
+    --color-info: var(--tp-blue-400);
+    --color-info-text: var(--tp-blue-300);
+    --color-info-soft: rgb(59 130 246 / 0.16);
+    --color-info-border: rgb(59 130 246 / 0.4);
+
+    --color-neutral: var(--tp-graphite-400);
+    --color-neutral-text: var(--tp-graphite-300);
+    --color-neutral-soft: var(--tp-graphite-800);
+    --color-neutral-border: var(--tp-graphite-700);
+
+    --color-state-running: var(--tp-green-400);
+    --color-state-waiting: var(--tp-amber-400);
+    --color-state-working: var(--tp-blue-400);
+    --color-state-stopped: var(--tp-red-400);
+
+    --color-cause-queue: var(--tp-violet-400);
+    --color-cause-material: var(--tp-amber-400);
+    --color-cause-execution: var(--tp-blue-400);
+    --color-cause-inspection: var(--tp-green-400);
+    --color-cause-cleaning: var(--tp-cyan-400);
+    --color-cause-release-wait: var(--tp-graphite-500);
+
+    /* Sombra some no escuro: sem luz, ela vira borrão. A hierarquia passa a
+       ser dada pela superfície mais clara. */
+    --shadow-card: none;
+    --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.4);
+    --shadow-overlay: 0 16px 48px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* O escuro escolhido à mão repete o bloco acima, para vencer independente da
+   preferência do sistema. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-bg: var(--tp-graphite-950);
+  --color-surface: var(--tp-graphite-900);
+  --color-surface-raised: var(--tp-graphite-800);
+  --color-surface-sunken: var(--tp-graphite-950);
+  --color-surface-hover: var(--tp-graphite-800);
+  --color-overlay-scrim: rgb(0 0 0 / 0.65);
+
+  --color-border: var(--tp-graphite-800);
+  --color-border-strong: var(--tp-graphite-600);
+  --color-border-subtle: var(--tp-graphite-900);
+
+  --color-text: var(--tp-graphite-50);
+  --color-text-secondary: var(--tp-graphite-300);
+  --color-text-muted: var(--tp-graphite-400);
+  --color-text-inverse: var(--tp-graphite-950);
+  --color-text-on-brand: var(--tp-graphite-950);
+
+  --color-brand: var(--tp-orange-500);
+  --color-brand-hover: var(--tp-orange-400);
+  --color-brand-active: var(--tp-orange-300);
+  --color-brand-text: var(--tp-orange-400);
+  --color-brand-soft: rgb(248 117 9 / 0.14);
+  --color-brand-soft-border: rgb(248 117 9 / 0.35);
+  --color-brand-contrast: var(--tp-graphite-950);
+
+  --color-structure: var(--tp-graphite-100);
+  --color-structure-hover: #ffffff;
+  --color-structure-soft: var(--tp-graphite-800);
+
+  --color-action: var(--tp-graphite-100);
+  --color-action-hover: #ffffff;
+  --color-action-text: var(--tp-graphite-950);
+
+  --color-focus: var(--tp-orange-400);
+  --color-focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--tp-orange-400);
+
+  --color-success: var(--tp-green-400);
+  --color-success-text: var(--tp-green-300);
+  --color-success-soft: rgb(28 158 96 / 0.16);
+  --color-success-border: rgb(28 158 96 / 0.4);
+
+  --color-warning: var(--tp-amber-400);
+  --color-warning-text: var(--tp-amber-300);
+  --color-warning-soft: rgb(227 149 16 / 0.16);
+  --color-warning-border: rgb(227 149 16 / 0.4);
+
+  --color-danger: var(--tp-red-400);
+  --color-danger-text: var(--tp-red-300);
+  --color-danger-soft: rgb(227 68 68 / 0.16);
+  --color-danger-border: rgb(227 68 68 / 0.4);
+
+  --color-info: var(--tp-blue-400);
+  --color-info-text: var(--tp-blue-300);
+  --color-info-soft: rgb(59 130 246 / 0.16);
+  --color-info-border: rgb(59 130 246 / 0.4);
+
+  --color-neutral: var(--tp-graphite-400);
+  --color-neutral-text: var(--tp-graphite-300);
+  --color-neutral-soft: var(--tp-graphite-800);
+  --color-neutral-border: var(--tp-graphite-700);
+
+  --color-state-running: var(--tp-green-400);
+  --color-state-waiting: var(--tp-amber-400);
+  --color-state-working: var(--tp-blue-400);
+  --color-state-stopped: var(--tp-red-400);
+
+  --color-cause-queue: var(--tp-violet-400);
+  --color-cause-material: var(--tp-amber-400);
+  --color-cause-execution: var(--tp-blue-400);
+  --color-cause-inspection: var(--tp-green-400);
+  --color-cause-cleaning: var(--tp-cyan-400);
+  --color-cause-release-wait: var(--tp-graphite-500);
+
+  --shadow-card: none;
+  --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.4);
+  --shadow-overlay: 0 16px 48px rgb(0 0 0 / 0.6);
+}
+
+/**
+ * Modo de alto contraste.
+ *
+ * A garagem tem iluminação ruim e o pátio tem sol direto na tela do celular.
+ * Este modo engrossa bordas e leva o texto ao extremo da escala.
+ */
+:root[data-contrast='high'] {
+  --color-border: var(--tp-graphite-500);
+  --color-border-strong: var(--tp-graphite-700);
+  --color-text-muted: var(--tp-graphite-700);
+  --tp-border-thin: 2px;
+}
+
+:root[data-theme='dark'][data-contrast='high'] {
+  --color-border: var(--tp-graphite-500);
+  --color-border-strong: var(--tp-graphite-300);
+  --color-text-muted: var(--tp-graphite-200);
+}
