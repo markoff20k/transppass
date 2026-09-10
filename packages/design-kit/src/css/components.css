@@ -1026,3 +1026,16 @@
     animation: none;
   }
 }
+
+/* Linha que abre o painel lateral ao clicar. */
+.tp-table tr.is-clickable {
+  cursor: pointer;
+}
+
+.tp-table tr.is-clickable:focus-visible {
+  outline: none;
+}
+
+.tp-table tr.is-clickable:focus-visible td {
+  box-shadow: inset 0 0 0 2px var(--color-focus);
+}

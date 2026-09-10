@@ -1,4 +1,3 @@
-import { usePageHeader } from '@/components/shell/page-header.context';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -13,18 +12,48 @@ import {
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate, formatDateTime } from '@/lib/format';
+import { usePageHeader } from '@/components/shell/page-header.context';
+import { Drawer } from '@/components/ui/drawer';
 
 /**
  * E5 — a tela do Estoque.
  *
  * O PRD pede "fila única de solicitações e pendências com prazo". É isso: uma
  * lista só, mais antiga primeiro, porque é ela que segura carro na valeta.
+ * Agir sobre uma solicitação abre o painel lateral — a fila fica no lugar.
  */
 export function StockPage() {
-  usePageHeader({ eyebrow: 'Execução', title: 'Estoque', description: 'Fila única de solicitações, pool rotativo e ferramentas.' });
-
   const queryClient = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [selected, setSelected] = useState<MaterialRequestRow | null>(null);
+
+  const escalate = useMutation({
+    mutationFn: () => api.post<{ escalated: number }>('/materials/escalate-overdue'),
+    onSuccess: (r) => {
+      setNotice(
+        r.escalated > 0
+          ? `${r.escalated} pendência(s) com prazo vencido escalonada(s).`
+          : 'Nenhuma pendência com prazo vencido.',
+      );
+      invalidate();
+    },
+  });
+
+  usePageHeader({
+    eyebrow: 'Execução',
+    title: 'Estoque',
+    description: 'Fila única de solicitações, pool rotativo e ferramentas.',
+    actions: (
+      <button
+        type="button"
+        className="tp-btn tp-btn--secondary tp-btn--sm"
+        disabled={escalate.isPending}
+        onClick={() => escalate.mutate()}
+      >
+        Escalonar prazos vencidos
+      </button>
+    ),
+  });
 
   const requests = useQuery({
     queryKey: ['materials', 'pending'],
@@ -51,36 +80,18 @@ export function StockPage() {
 
   return (
     <>
+      {notice && <div className="tp-alert tp-alert--info">{notice}</div>}
+
       <section className="tp-card">
         <div className="tp-card__head">
-          <h2>Fila de solicitações</h2>
-          <button
-            type="button"
-            className="tp-btn tp-btn--sm tp-btn--secondary"
-            onClick={() =>
-              api
-                .post<{ escalated: number }>('/materials/escalate-overdue')
-                .then((r) => {
-                  setError(
-                    r.escalated > 0
-                      ? `${r.escalated} pendência(s) com prazo vencido escalonada(s).`
-                      : 'Nenhuma pendência com prazo vencido.',
-                  );
-                  invalidate();
-                })
-                .catch(() => setError('Falha ao escalonar'))
-            }
-          >
-            Escalonar prazos vencidos
-          </button>
+          <h3>Fila de solicitações</h3>
+          <span className="tp-muted">{rows.length} pendente(s) · mais antiga primeiro</span>
         </div>
-
-        {error && <p className="tp-muted">{error}</p>}
 
         {requests.isPending ? (
           <p className="tp-muted">Carregando…</p>
         ) : rows.length === 0 ? (
-          <p className="tp-muted">Nenhuma solicitação pendente.</p>
+          <div className="tp-table__empty">Nenhuma solicitação pendente.</div>
         ) : (
           <div className="tp-table-wrap">
             <table className="tp-table">
@@ -93,17 +104,22 @@ export function StockPage() {
                   <th>Estado</th>
                   <th>Pendência</th>
                   <th>Solicitado</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} className={row.partWaiting?.isOverdue ? 'is-danger' : undefined}>
+                  <tr
+                    key={row.id}
+                    className={`is-clickable${row.partWaiting?.isOverdue ? ' is-danger' : ''}${selected?.id === row.id ? ' is-selected' : ''}`}
+                    onClick={() => setSelected(row)}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setSelected(row)}
+                  >
                     <td className="is-strong">{row.vehicleCode ?? '—'}</td>
                     <td className="tp-muted">{row.workOrderCode ?? '—'}</td>
                     <td>
                       {row.materialCode} — {row.materialDescription}
-                      {row.isSerialized && <span className="tp-badge">série</span>}
+                      {row.isSerialized && <span className="tp-badge" style={{ marginLeft: 6 }}>série</span>}
                     </td>
                     <td className="is-num">{row.quantity}</td>
                     <td>
@@ -114,10 +130,9 @@ export function StockPage() {
                     <td className="tp-muted">
                       {row.partWaiting ? (
                         <>
-                          {row.partWaiting.reasonDescription} · prazo{' '}
-                          {formatDate(row.partWaiting.expectedAt)}
+                          {row.partWaiting.reasonDescription} · prazo {formatDate(row.partWaiting.expectedAt)}
                           {row.partWaiting.isOverdue && (
-                            <span className="tp-badge tp-badge--danger">vencido</span>
+                            <span className="tp-badge tp-badge--danger" style={{ marginLeft: 6 }}>vencido</span>
                           )}
                         </>
                       ) : (
@@ -125,9 +140,6 @@ export function StockPage() {
                       )}
                     </td>
                     <td className="tp-muted">{formatDateTime(row.requestedAt)}</td>
-                    <td className="actions">
-                      <RequestActions request={row} onChanged={invalidate} />
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -138,7 +150,9 @@ export function StockPage() {
 
       <div className="tp-split">
         <section className="tp-card">
-          <h2>Pool rotativo</h2>
+          <div className="tp-card__head">
+            <h3>Pool rotativo</h3>
+          </div>
           <p className="tp-muted">
             Componentes controlados por número de série — alternadores, válvulas APU e cuícas, os
             campeões do ranking IIO.
@@ -166,9 +180,7 @@ export function StockPage() {
                 ))}
                 {(pool.data ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={4} className="tp-table__empty">
-                      Nenhum componente no pool.
-                    </td>
+                    <td colSpan={4} className="tp-table__empty">Nenhum componente no pool.</td>
                   </tr>
                 )}
               </tbody>
@@ -177,7 +189,9 @@ export function StockPage() {
         </section>
 
         <section className="tp-card">
-          <h2>Ferramentas</h2>
+          <div className="tp-card__head">
+            <h3>Ferramentas</h3>
+          </div>
           <div className="tp-table-wrap">
             <table className="tp-table">
               <thead>
@@ -196,7 +210,7 @@ export function StockPage() {
                     <td className="tp-muted">
                       {t.calibrationDueAt ? formatDate(t.calibrationDueAt) : '—'}
                       {t.isCalibrationExpired && (
-                        <span className="tp-badge tp-badge--danger">vencida</span>
+                        <span className="tp-badge tp-badge--danger" style={{ marginLeft: 6 }}>vencida</span>
                       )}
                     </td>
                     <td className="tp-muted">{t.loanedToName ?? 'disponível'}</td>
@@ -204,9 +218,7 @@ export function StockPage() {
                 ))}
                 {(tools.data ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={4} className="tp-table__empty">
-                      Nenhuma ferramenta cadastrada.
-                    </td>
+                    <td colSpan={4} className="tp-table__empty">Nenhuma ferramenta cadastrada.</td>
                   </tr>
                 )}
               </tbody>
@@ -214,18 +226,31 @@ export function StockPage() {
           </div>
         </section>
       </div>
+
+      <RequestDrawer
+        request={selected}
+        onClose={() => setSelected(null)}
+        onChanged={() => {
+          setSelected(null);
+          invalidate();
+        }}
+      />
     </>
   );
 }
 
-function RequestActions({
+// ---------------------------------------------------------------------------
+
+function RequestDrawer({
   request,
+  onClose,
   onChanged,
 }: {
-  request: MaterialRequestRow;
+  request: MaterialRequestRow | null;
+  onClose: () => void;
   onChanged: () => void;
 }) {
-  const [mode, setMode] = useState<'none' | 'deliver' | 'wait'>('none');
+  const [mode, setMode] = useState<'view' | 'deliver' | 'wait'>('view');
   const [receivedByName, setReceivedByName] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [reasonCodeId, setReasonCodeId] = useState('');
@@ -234,119 +259,207 @@ function RequestActions({
 
   const reasons = useQuery({
     queryKey: ['reason-codes', ReasonCodeList.PART_WAITING],
-    queryFn: () =>
-      api.get<ReasonCode[]>(`/catalog/reason-codes?list=${ReasonCodeList.PART_WAITING}`),
+    queryFn: () => api.get<ReasonCode[]>(`/catalog/reason-codes?list=${ReasonCodeList.PART_WAITING}`),
     enabled: mode === 'wait',
   });
 
   const call = useMutation({
     mutationFn: ({ path, body }: { path: string; body?: unknown }) =>
-      api.post(`/materials/requests/${request.id}/${path}`, body),
+      api.post(`/materials/requests/${request?.id}/${path}`, body),
     onSuccess: () => {
-      setMode('none');
+      setMode('view');
       setError(null);
       onChanged();
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha na operação'),
   });
 
-  if (mode === 'deliver') {
-    return (
-      <div className="inline-form">
-        <input
-          type="text"
-          placeholder="Quem recebeu na valeta"
-          value={receivedByName}
-          onChange={(e) => setReceivedByName(e.target.value)}
-        />
-        {request.isSerialized && (
-          <input
-            type="text"
-            placeholder="Número de série"
-            value={serialNumber}
-            onChange={(e) => setSerialNumber(e.target.value)}
-          />
-        )}
-        {error && <span className="tp-error">{error}</span>}
-        <button
-          type="button"
-          className="tp-btn tp-btn--sm"
-          disabled={receivedByName.trim().length < 2}
-          onClick={() =>
-            call.mutate({
-              path: 'deliver',
-              body: { receivedByName, serialNumber: serialNumber || undefined },
-            })
-          }
-        >
-          Confirmar entrega
-        </button>
-        <button type="button" className="tp-btn tp-btn--sm tp-btn--secondary" onClick={() => setMode('none')}>
-          Cancelar
-        </button>
-      </div>
-    );
-  }
+  const close = () => {
+    setMode('view');
+    setError(null);
+    onClose();
+  };
 
-  if (mode === 'wait') {
-    return (
-      <div className="inline-form">
-        <select className="tp-select" value={reasonCodeId} onChange={(e) => setReasonCodeId(e.target.value)}>
-          <option value="">Motivo…</option>
-          {(reasons.data ?? []).map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.code} — {r.description}
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          value={expectedAt}
-          onChange={(e) => setExpectedAt(e.target.value)}
-        />
-        {error && <span className="tp-error">{error}</span>}
-        <button
-          type="button"
-          className="tp-btn tp-btn--sm"
-          disabled={!reasonCodeId || !expectedAt}
-          onClick={() =>
-            call.mutate({
-              path: 'wait-for-part',
-              body: { reasonCodeId, expectedAt: new Date(`${expectedAt}T12:00:00`).toISOString() },
-            })
-          }
-        >
-          Confirmar
-        </button>
-        <button type="button" className="tp-btn tp-btn--sm tp-btn--secondary" onClick={() => setMode('none')}>
-          Cancelar
-        </button>
-      </div>
-    );
-  }
+  if (!request) return null;
+
+  const canSeparate =
+    request.status === MaterialRequestStatus.REQUESTED ||
+    request.status === MaterialRequestStatus.WAITING_PART;
+  const canDeliver = request.status === MaterialRequestStatus.SEPARATED;
+  const canWait = request.status !== MaterialRequestStatus.WAITING_PART;
 
   return (
-    <>
-      {request.status !== MaterialRequestStatus.SEPARATED && (
-        <button
-          type="button"
-          className="tp-btn tp-btn--sm"
-          onClick={() => call.mutate({ path: 'separate', body: {} })}
-        >
-          Separar
-        </button>
+    <Drawer
+      open
+      onClose={close}
+      eyebrow="Solicitação de material"
+      title={`${request.materialCode} — ${request.materialDescription}`}
+      description={`Carro ${request.vehicleCode ?? '—'} · ${request.workOrderCode ?? 'sem OS'}${request.taskDescription ? ` · ${request.taskDescription}` : ''}`}
+      footer={
+        mode === 'view' ? (
+          <>
+            <button type="button" className="tp-btn tp-btn--ghost" onClick={close}>
+              Fechar
+            </button>
+            {canWait && (
+              <button type="button" className="tp-btn tp-btn--secondary" onClick={() => setMode('wait')}>
+                Aguardando peça
+              </button>
+            )}
+            {canSeparate && (
+              <button
+                type="button"
+                className="tp-btn"
+                disabled={call.isPending}
+                onClick={() => call.mutate({ path: 'separate', body: {} })}
+              >
+                Separar
+              </button>
+            )}
+            {canDeliver && (
+              <button type="button" className="tp-btn tp-btn--primary" onClick={() => setMode('deliver')}>
+                Entregar na valeta
+              </button>
+            )}
+          </>
+        ) : mode === 'deliver' ? (
+          <>
+            <button type="button" className="tp-btn tp-btn--ghost" onClick={() => setMode('view')}>
+              Voltar
+            </button>
+            <button
+              type="button"
+              className="tp-btn tp-btn--primary"
+              disabled={receivedByName.trim().length < 2 || call.isPending}
+              onClick={() =>
+                call.mutate({
+                  path: 'deliver',
+                  body: { receivedByName, serialNumber: serialNumber || undefined },
+                })
+              }
+            >
+              Confirmar entrega
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="tp-btn tp-btn--ghost" onClick={() => setMode('view')}>
+              Voltar
+            </button>
+            <button
+              type="button"
+              className="tp-btn tp-btn--primary"
+              disabled={!reasonCodeId || !expectedAt || call.isPending}
+              onClick={() =>
+                call.mutate({
+                  path: 'wait-for-part',
+                  body: { reasonCodeId, expectedAt: new Date(`${expectedAt}T12:00:00`).toISOString() },
+                })
+              }
+            >
+              Confirmar
+            </button>
+          </>
+        )
+      }
+    >
+      <dl className="tp-facts">
+        <div>
+          <dt>Estado</dt>
+          <dd>
+            <span className="tp-badge tp-badge--status">{MATERIAL_REQUEST_STATUS_LABELS[request.status]}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Quantidade</dt>
+          <dd>{request.quantity}</dd>
+        </div>
+        <div>
+          <dt>Solicitado</dt>
+          <dd>{formatDateTime(request.requestedAt)}</dd>
+        </div>
+        <div>
+          <dt>Separado</dt>
+          <dd>{request.separatedAt ? formatDateTime(request.separatedAt) : '—'}</dd>
+        </div>
+        {request.isSerialized && (
+          <div>
+            <dt>Número de série</dt>
+            <dd>{request.serialNumber ?? 'a informar na entrega'}</dd>
+          </div>
+        )}
+        {request.partWaiting && (
+          <div className="is-full">
+            <dt>Aguardando peça</dt>
+            <dd>
+              {request.partWaiting.reasonDescription} · prazo {formatDate(request.partWaiting.expectedAt)}
+              {request.partWaiting.isOverdue && (
+                <span className="tp-badge tp-badge--danger" style={{ marginLeft: 6 }}>vencido</span>
+              )}
+            </dd>
+          </div>
+        )}
+      </dl>
+
+      {mode === 'deliver' && (
+        <div className="tp-stack">
+          <h3>Entrega na valeta (RF-23)</h3>
+          <div className="tp-field">
+            <label className="tp-label" htmlFor="dl-name">
+              Quem recebeu <span className="tp-label__required">obrigatório</span>
+            </label>
+            <input
+              id="dl-name"
+              className="tp-input"
+              value={receivedByName}
+              onChange={(e) => setReceivedByName(e.target.value)}
+            />
+            <span className="tp-help">Fica registrado com a entrega.</span>
+          </div>
+          {request.isSerialized && (
+            <div className="tp-field">
+              <label className="tp-label" htmlFor="dl-serial">
+                Número de série entregue
+              </label>
+              <input
+                id="dl-serial"
+                className="tp-input"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                placeholder={request.serialNumber ?? ''}
+              />
+            </div>
+          )}
+        </div>
       )}
-      {request.status === MaterialRequestStatus.SEPARATED && (
-        <button type="button" className="tp-btn tp-btn--sm" onClick={() => setMode('deliver')}>
-          Entregar
-        </button>
+
+      {mode === 'wait' && (
+        <div className="tp-stack">
+          <h3>Aguardando peça (RF-24)</h3>
+          <div className="tp-field">
+            <label className="tp-label" htmlFor="wt-reason">
+              Motivo <span className="tp-label__required">obrigatório</span>
+            </label>
+            <select id="wt-reason" className="tp-select" value={reasonCodeId} onChange={(e) => setReasonCodeId(e.target.value)}>
+              <option value="">Selecione…</option>
+              {(reasons.data ?? []).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.code} — {r.description}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="tp-field">
+            <label className="tp-label" htmlFor="wt-date">
+              Prazo previsto <span className="tp-label__required">obrigatório</span>
+            </label>
+            <input id="wt-date" className="tp-input" type="date" value={expectedAt} onChange={(e) => setExpectedAt(e.target.value)} />
+            <span className="tp-help">Vencido o prazo, o PCM e o Estoque são escalonados automaticamente.</span>
+          </div>
+        </div>
       )}
-      {request.status !== MaterialRequestStatus.WAITING_PART && (
-        <button type="button" className="tp-btn tp-btn--sm tp-btn--secondary" onClick={() => setMode('wait')}>
-          Aguardando peça
-        </button>
-      )}
-      {error && <span className="tp-error">{error}</span>}
-    </>
+
+      {error && <div className="tp-alert tp-alert--danger">{error}</div>}
+    </Drawer>
   );
 }

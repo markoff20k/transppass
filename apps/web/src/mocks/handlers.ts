@@ -173,6 +173,40 @@ export const handlers = [
     return HttpResponse.json(vehicle, { status: 201 });
   }),
 
+  // PATCH vehicles — edicao pelo painel lateral
+  http.patch('*/api/vehicles/:id', async ({ request, params }) => {
+    await delay();
+    const auth = requireAuth(request, '/api/vehicles');
+    if ('error' in auth) return auth.error;
+    const vehicle = vehicles.find((v) => v.id === params.id);
+    if (!vehicle) return apiError(404, 'NOT_FOUND', 'Carro não encontrado', '/api/vehicles');
+    const body = (await request.json()) as Partial<Vehicle>;
+    Object.assign(vehicle, body);
+    return HttpResponse.json(vehicle);
+  }),
+
+  http.post('*/api/catalog/items', async ({ request }) => {
+    await delay();
+    const body = (await request.json()) as Record<string, unknown>;
+    const item = {
+      id: newId(), versionId: catalogItems[0]!.versionId, code: String(body.code ?? ''), description: String(body.description ?? ''),
+      system: (body.system as string) ?? null, subsystem: (body.subsystem as string) ?? null,
+      isFastTrack: Boolean(body.isFastTrack), isSafety: Boolean(body.isSafety), isDeferrable: Boolean(body.isDeferrable),
+      probableCause: (body.probableCause as string) ?? null, estimatedRepairMinutes: (body.estimatedRepairMinutes as number) ?? null,
+      fieldResolutionRate: null, fieldResolutionSamples: 0, isActive: true,
+    };
+    catalogItems.push(item);
+    return HttpResponse.json(item, { status: 201 });
+  }),
+
+  http.post('*/api/catalog/reason-codes', async ({ request }) => {
+    await delay();
+    const body = (await request.json()) as Record<string, string>;
+    const rc = { id: newId(), list: body.list as ReasonCodeList, code: body.code ?? '', description: body.description ?? '', isActive: true };
+    reasonCodes.push(rc);
+    return HttpResponse.json(rc, { status: 201 });
+  }),
+
   // --- Quilometragem -------------------------------------------------------
 
   http.post('*/api/odometer/batch', async ({ request }) => {
