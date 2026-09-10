@@ -2,13 +2,17 @@ import { useId } from 'react';
 import { type VehicleStatus } from '@app/shared';
 
 /**
- * Ônibus urbano em vista lateral, com o estado operacional desenhado no
- * próprio veículo.
+ * Ônibus urbano em desenho técnico — linha fina, monocromático, o mesmo
+ * veículo em todos os estados.
  *
- * O movimento é contido de propósito: a informação está na cor, no macaco
- * hidráulico e no distintivo — coisas que ficam paradas. A animação só dá
- * sinal de vida (roda girando devagar, pisca-alerta respirando, ferramenta
- * oscilando) e desliga inteira com `prefers-reduced-motion`.
+ * O estado não é pintado na carroceria: entra como instrumento. Um trilho de
+ * 2px sob o carro com um LED carrega a cor; a carroceria recebe só uma tinta
+ * de 8%. Cada estado tem no máximo um movimento, lento, que significa alguma
+ * coisa: a varredura do scanner na inspeção, o fluxo no trilho durante a
+ * execução, o pulso do LED em espera. Em manutenção o carro sobe num
+ * elevador de duas colunas, como num diagrama de oficina.
+ *
+ * Com `prefers-reduced-motion` nada se move; cor e posição continuam.
  */
 
 type Visual =
@@ -37,194 +41,114 @@ const VISUAL: Record<VehicleStatus, Visual> = {
 
 interface Props {
   status: VehicleStatus;
-  /** Largura em px; a altura segue a proporção 240:120. */
+  /** Largura em px; a altura segue a proporção 240:110. */
   width?: number;
-  /** Prefixo do carro, desenhado na lateral. */
+  /** Prefixo, só para o rótulo acessível — o texto fica no card, não no desenho. */
   code?: string;
   className?: string;
   title?: string;
 }
 
 export function BusIllustration({ status, width = 240, code, className, title }: Props) {
-  const clipId = useId();
+  const id = useId();
   const visual = VISUAL[status];
   const lifted = visual === 'maintenance' || visual === 'part';
-  const moving = visual === 'running';
-  const hazard = visual === 'waiting' || visual === 'field' || visual === 'part';
 
   const classes = ['bus', `bus--${visual}`];
   if (lifted) classes.push('bus--lifted');
-  if (moving) classes.push('bus--moving');
-  if (hazard) classes.push('bus--hazard');
   if (className) classes.push(className);
 
   return (
     <svg
-      viewBox="0 0 240 120"
+      viewBox="0 0 240 110"
       width={width}
-      height={(width * 120) / 240}
+      height={(width * 110) / 240}
       className={classes.join(' ')}
       role="img"
       aria-label={title ?? `Carro ${code ?? ''} — ${status}`}
     >
       <defs>
-        {/* Nada sai da moldura: pista e linhas de velocidade ficam dentro. */}
-        <clipPath id={clipId}>
-          <rect x="0" y="0" width="240" height="120" />
+        <clipPath id={`${id}-body`}>
+          <rect x="24" y="22" width="192" height="58" rx="7" />
         </clipPath>
+        <linearGradient id={`${id}-sheen`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#fff" stopOpacity="0.55" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
       </defs>
 
-      <g clipPath={`url(#${clipId})`}>
-        {/* Pista */}
-        <line x1="8" y1="108" x2="232" y2="108" className="bus__road" />
+      {/* Elevador de duas colunas — só aparece com o carro levantado */}
+      <g className="bus__lift">
+        <rect x="44" y="30" width="3" height="66" rx="1" className="bus__lift-post" />
+        <rect x="193" y="30" width="3" height="66" rx="1" className="bus__lift-post" />
+        <path d="M47 82 H62 M178 82 H193" className="bus__lift-arm" />
+        <rect x="38" y="96" width="15" height="2.5" rx="1" className="bus__lift-post" />
+        <rect x="187" y="96" width="15" height="2.5" rx="1" className="bus__lift-post" />
+      </g>
 
-        {/* Linhas de velocidade — só no carro em linha, e só um sopro */}
-        <g className="bus__speed">
-          <line x1="4" y1="58" x2="22" y2="58" className="bus__speed-line" />
-          <line x1="0" y1="72" x2="16" y2="72" className="bus__speed-line bus__speed-line--2" />
-        </g>
+      {/* Chão */}
+      <line x1="16" y1="98.5" x2="224" y2="98.5" className="bus__ground" />
 
-        {/* Macacos — só com o carro levantado */}
-        <g className="bus__jacks">
-          <path d="M54 106 L62 92 L70 106 Z" className="bus__jack" />
-          <path d="M170 106 L178 92 L186 106 Z" className="bus__jack" />
-        </g>
-
-        {/* Sombra */}
-        <ellipse cx="120" cy="107" rx="92" ry="3" className="bus__shadow" />
-
+      {/* Veículo inteiro — sobe junto no elevador */}
+      <g className="bus__vehicle">
         {/* Rodas */}
-        <Wheel cx={62} />
-        <Wheel cx={178} />
+        <g className="bus__wheel">
+          <circle cx="64" cy="86" r="11" className="bus__tire" />
+          <circle cx="64" cy="86" r="4.5" className="bus__hub" />
+        </g>
+        <g className="bus__wheel">
+          <circle cx="176" cy="86" r="11" className="bus__tire" />
+          <circle cx="176" cy="86" r="4.5" className="bus__hub" />
+        </g>
 
         {/* Carroceria */}
-        <g className="bus__body-group">
-          <rect x="20" y="26" width="200" height="62" rx="9" className="bus__body" />
-          <rect x="28" y="26" width="184" height="5" rx="2.5" className="bus__roof" />
-          <rect x="96" y="19" width="40" height="8" rx="2" className="bus__ac" />
+        <rect x="24" y="22" width="192" height="58" rx="7" className="bus__body" />
 
-          {/* Janelas */}
-          {[32, 66, 100, 134].map((x) => (
-            <rect key={x} x={x} y="36" width="26" height="20" rx="2.5" className="bus__window" />
-          ))}
-          <rect x="168" y="36" width="20" height="20" rx="2.5" className="bus__window" />
-          <path d="M194 36 H210 Q216 36 216 42 V56 H194 Z" className="bus__window" />
+        {/* Linha de cintura */}
+        <line x1="24" y1="58" x2="216" y2="58" className="bus__waist" />
 
-          {/* Porta */}
-          <rect x="138" y="60" width="22" height="28" rx="2" className="bus__door" />
-          <line x1="149" y1="60" x2="149" y2="88" className="bus__door-split" />
+        {/* Vidros */}
+        <g className="bus__glass">
+          <rect x="32" y="30" width="26" height="22" rx="2" />
+          <rect x="64" y="30" width="26" height="22" rx="2" />
+          <rect x="96" y="30" width="26" height="22" rx="2" />
+          <rect x="128" y="30" width="26" height="22" rx="2" />
+          <rect x="160" y="30" width="22" height="22" rx="2" />
+          <path d="M188 30 H206 Q210 30 210 34 V52 H188 Z" />
+        </g>
 
-          {/* Faixa com o prefixo */}
-          <rect x="30" y="63" width="100" height="12" rx="2" className="bus__stripe" />
-          {code && (
-            <text x="80" y="72.5" className="bus__code" textAnchor="middle">
-              {code}
-            </text>
-          )}
+        {/* Porta */}
+        <path d="M130 58 V80 M148 58 V80 M139 58 V80" className="bus__door" />
 
-          {/* Farol e lanterna */}
-          <circle cx="214" cy="78" r="3.5" className="bus__headlight" />
-          <rect x="21" y="74" width="5" height="7" rx="1.5" className="bus__taillight" />
+        {/* Farol e lanterna, como marcação técnica */}
+        <rect x="208" y="66" width="5" height="6" rx="1" className="bus__lamp" />
+        <rect x="27" y="66" width="4" height="6" rx="1" className="bus__lamp bus__lamp--rear" />
 
-          {/* Pisca-alerta */}
-          <rect x="23" y="34" width="7" height="4" rx="1" className="bus__hazard" />
-          <rect x="209" y="29" width="7" height="4" rx="1" className="bus__hazard" />
-
-          {/* Bolhas de lavagem */}
-          <g className="bus__bubbles">
-            <circle cx="70" cy="22" r="3" className="bus__bubble" />
-            <circle cx="118" cy="17" r="2.2" className="bus__bubble" />
-            <circle cx="166" cy="21" r="3.6" className="bus__bubble" />
+        {/* Scanner de inspeção — varre a carroceria */}
+        <g clipPath={`url(#${id}-body)`}>
+          <g className="bus__scan">
+            <rect x="-14" y="22" width="14" height="58" className="bus__scan-band" />
+            <line x1="0" y1="22" x2="0" y2="80" className="bus__scan-line" />
           </g>
+          {/* Brilho de lavagem — passa pelos vidros */}
+          <rect
+            x="-40"
+            y="22"
+            width="36"
+            height="58"
+            className="bus__sheen"
+            fill={`url(#${id}-sheen)`}
+          />
         </g>
       </g>
 
-      {/* Distintivo de estado — fora do clip, pode encostar na borda */}
-      <g className="bus__badge" transform="translate(214 20)">
-        <circle r="12" className="bus__badge-bg" />
-        <StateIcon visual={visual} />
+      {/* Trilho de status: a cor mora aqui */}
+      <g className="bus__rail">
+        <line x1="24" y1="105" x2="216" y2="105" className="bus__rail-track" />
+        <line x1="24" y1="105" x2="216" y2="105" className="bus__rail-flow" />
+        <circle cx="24" cy="105" r="2.6" className="bus__led" />
       </g>
     </svg>
   );
-}
-
-function Wheel({ cx }: { cx: number }) {
-  return (
-    <g className="bus__wheel">
-      <circle cx={cx} cy="92" r="13" className="bus__tire" />
-      <circle cx={cx} cy="92" r="6" className="bus__hub" />
-      {/* Um único entalhe: a rotação se percebe, sem virar brinquedo. */}
-      <line x1={cx} y1="86" x2={cx} y2="92" className="bus__notch" />
-    </g>
-  );
-}
-
-function StateIcon({ visual }: { visual: Visual }) {
-  switch (visual) {
-    case 'maintenance':
-    case 'field':
-      return (
-        <path
-          className="bus__badge-icon bus__badge-icon--wrench"
-          d="M-5.5 5.5 L1.2 -1.2 M1.2 -1.2 a3.4 3.4 0 1 0 2.2 -4.8 l-2.2 2.2 v2.2 h2.2 l2.2 -2.2 a3.4 3.4 0 0 0 -4.4 2.6"
-          fill="none"
-          strokeWidth="1.9"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      );
-    case 'waiting':
-      return (
-        <g className="bus__badge-icon" fill="none" strokeWidth="1.8" strokeLinecap="round">
-          <circle r="5.5" />
-          <path d="M0 -3 V0.4 L2.4 1.9" />
-        </g>
-      );
-    case 'part':
-      return (
-        <g className="bus__badge-icon" fill="none" strokeWidth="1.8" strokeLinejoin="round">
-          <path d="M-5.5 -2.6 L0 -5.5 L5.5 -2.6 V3.4 L0 6.3 L-5.5 3.4 Z" />
-          <path d="M-5.5 -2.6 L0 0.4 L5.5 -2.6 M0 0.4 V6.3" />
-        </g>
-      );
-    case 'inspection':
-      return (
-        <g className="bus__badge-icon bus__badge-icon--magnifier" fill="none" strokeWidth="1.9" strokeLinecap="round">
-          <circle cx="-1.2" cy="-1.2" r="4.2" />
-          <path d="M1.9 1.9 L5.5 5.5" />
-        </g>
-      );
-    case 'cleaning':
-      return (
-        <path
-          className="bus__badge-icon"
-          d="M0 -6 C-3.4 -1.7 -5.1 0.9 -5.1 3 a5.1 5.1 0 0 0 10.2 0 C5.1 0.9 3.4 -1.7 0 -6 Z"
-          strokeWidth="1.4"
-          strokeLinejoin="round"
-        />
-      );
-    case 'off':
-      return (
-        <path
-          className="bus__badge-icon"
-          d="M-4.2 -4.2 L4.2 4.2 M4.2 -4.2 L-4.2 4.2"
-          fill="none"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      );
-    case 'running':
-    case 'parked':
-    default:
-      return (
-        <path
-          className="bus__badge-icon"
-          d="M-5 0.4 L-1.3 4.2 L5.5 -3.8"
-          fill="none"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      );
-  }
 }

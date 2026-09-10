@@ -67,7 +67,7 @@ export function EventsPage() {
                       )}
                     </td>
                     <td>
-                      <span className="tp-badge">{EVENT_STATUS_LABELS[event.status]}</span>
+                      <span className="tp-badge tp-badge--status">{EVENT_STATUS_LABELS[event.status]}</span>
                     </td>
                     <td className="tp-muted">{formatDateTime(event.reportedAt)}</td>
                     <td>

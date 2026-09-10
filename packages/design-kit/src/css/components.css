@@ -390,6 +390,17 @@
   color: var(--color-brand-text);
 }
 
+/* Badge de estado: largura fixa e centralizado, para a coluna alinhar.
+   Um estado curto e um longo lado a lado com larguras diferentes deixam a
+   tabela parecendo bagunçada — a largura é a mesma, sempre. */
+.tp-badge--status {
+  min-width: 7.75rem;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Ponto de estado — reforça a cor com forma, para quem não distingue matiz. */
 .tp-badge__dot {
   width: 7px;
@@ -404,6 +415,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--tp-space-2);
+  min-width: 7.75rem;
   font-size: var(--tp-text-sm);
   white-space: nowrap;
 }
@@ -833,4 +845,184 @@
 
 .tp-stack--tight {
   gap: var(--tp-space-1);
+}
+
+/* =========================================================================
+   Painel lateral de edição (drawer)
+   =========================================================================
+   Editar registro de tabela abre um painel à direita, sobre a tela, sem
+   tirar a tabela do lugar. Fecha no Esc, no véu e no botão. No celular
+   ocupa a largura inteira.
+   ========================================================================= */
+
+.tp-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay-scrim);
+  z-index: var(--tp-z-overlay);
+  animation: tp-fade-in var(--tp-duration-normal) var(--tp-ease);
+}
+
+.tp-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(460px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface-raised);
+  border-left: var(--tp-border-thin) solid var(--color-border);
+  box-shadow: var(--shadow-overlay);
+  z-index: calc(var(--tp-z-overlay) + 1);
+  animation: tp-slide-in var(--tp-duration-slow) var(--tp-ease);
+}
+
+.tp-drawer--wide {
+  width: min(640px, 100vw);
+}
+
+.tp-drawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--tp-space-3);
+  padding: var(--tp-space-4) var(--tp-space-5);
+  border-bottom: var(--tp-border-thin) solid var(--color-border);
+  flex: none;
+}
+
+.tp-drawer__eyebrow {
+  display: block;
+  font-size: var(--tp-text-2xs);
+  font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-brand-text);
+  margin-bottom: 2px;
+}
+
+.tp-drawer__title {
+  font-family: var(--tp-font-display);
+  font-size: var(--tp-text-xl);
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.tp-drawer__desc {
+  font-size: var(--tp-text-sm);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.tp-drawer__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  padding: 0;
+  border-radius: var(--tp-radius-md);
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex: none;
+}
+
+.tp-drawer__close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.tp-drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--tp-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-space-4);
+}
+
+.tp-drawer__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--tp-space-2);
+  padding: var(--tp-space-3) var(--tp-space-5);
+  border-top: var(--tp-border-thin) solid var(--color-border);
+  background: var(--color-surface);
+  flex: none;
+}
+
+/* Bloco de leitura dentro do painel: rótulo em cima, valor embaixo. */
+.tp-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tp-space-3) var(--tp-space-4);
+  margin: 0;
+}
+
+.tp-facts div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tp-facts dt {
+  font-size: var(--tp-text-2xs);
+  font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.tp-facts dd {
+  margin: 0;
+  font-size: var(--tp-text-base);
+  overflow-wrap: anywhere;
+}
+
+.tp-facts--full dt,
+.tp-facts div.is-full {
+  grid-column: 1 / -1;
+}
+
+@keyframes tp-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes tp-slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .tp-drawer,
+  .tp-drawer--wide {
+    width: 100vw;
+    border-left: none;
+  }
+
+  .tp-drawer__foot {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .tp-facts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-drawer,
+  .tp-drawer-scrim {
+    animation: none;
+  }
 }

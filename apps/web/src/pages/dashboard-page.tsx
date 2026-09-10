@@ -201,7 +201,7 @@ export function DashboardPage() {
                   <span>{e.catalog?.description ?? e.reportedDescription ?? e.code}</span>
                 </div>
                 <div className="recent-list__meta">
-                  <span className={`tp-badge ${badgeFor(e.status)}`}>{EVENT_STATUS_LABELS[e.status]}</span>
+                  <span className={`tp-badge tp-badge--status ${badgeFor(e.status)}`}>{EVENT_STATUS_LABELS[e.status]}</span>
                   <span className="tp-muted">{formatDateTime(e.reportedAt)}</span>
                 </div>
               </li>

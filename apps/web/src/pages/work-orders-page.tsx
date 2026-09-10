@@ -56,7 +56,7 @@ export function WorkOrdersPage() {
                   <td>{row.vehicleCode}</td>
                   <td className="tp-muted">{WORK_ORDER_TYPE_LABELS[row.type]}</td>
                   <td>
-                    <span className="tp-badge">{WORK_ORDER_STATUS_LABELS[row.status]}</span>
+                    <span className="tp-badge tp-badge--status">{WORK_ORDER_STATUS_LABELS[row.status]}</span>
                   </td>
                   <td className="is-num">{formatMinutes(row.downtimeMinutes)}</td>
                   <td className="tp-muted">

@@ -107,7 +107,7 @@ export function StockPage() {
                     </td>
                     <td className="is-num">{row.quantity}</td>
                     <td>
-                      <span className="tp-badge">
+                      <span className="tp-badge tp-badge--status">
                         {MATERIAL_REQUEST_STATUS_LABELS[row.status]}
                       </span>
                     </td>
@@ -159,7 +159,7 @@ export function StockPage() {
                     <td className="is-strong">{c.serialNumber}</td>
                     <td>{c.materialDescription}</td>
                     <td>
-                      <span className="tp-badge">{POOL_STATUS_LABELS[c.status]}</span>
+                      <span className="tp-badge tp-badge--status">{POOL_STATUS_LABELS[c.status]}</span>
                     </td>
                     <td className="tp-muted">{c.currentVehicleCode ?? '—'}</td>
                   </tr>

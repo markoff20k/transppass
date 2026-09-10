@@ -289,7 +289,7 @@ function TaskCard({ task, onChanged }: { task: TaskRow; onChanged: () => void })
         <strong>
           {task.code} · {task.specialtyName}
         </strong>
-        <span className="tp-badge">{TASK_STATUS_LABELS[task.status]}</span>
+        <span className="tp-badge tp-badge--status">{TASK_STATUS_LABELS[task.status]}</span>
         {task.reopenedCount > 0 && (
           <span className="tp-badge tp-badge--danger">reaberta {task.reopenedCount}×</span>
         )}
