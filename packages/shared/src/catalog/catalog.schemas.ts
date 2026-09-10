@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { optionalNumber } from '../fleet/vehicle.schemas.js';
 
 /**
  * RF-32 — catálogo de falhas com flags, versões e realimentação pelas
@@ -37,7 +38,7 @@ export const createFailureCatalogItemSchema = z
     isSafety: z.boolean().default(false),
     isDeferrable: z.boolean().default(true),
     probableCause: z.string().trim().max(255).optional(),
-    estimatedRepairMinutes: z.coerce.number().int().min(1).max(10_000).optional(),
+    estimatedRepairMinutes: optionalNumber(z.coerce.number().int().min(1).max(10_000)),
   })
   .refine((v) => !(v.isSafety && v.isDeferrable), {
     // RF-05: falha de segurança não pode ser deferida para a parada programada.
@@ -53,7 +54,7 @@ export const updateFailureCatalogItemSchema = z.object({
   isSafety: z.boolean().optional(),
   isDeferrable: z.boolean().optional(),
   probableCause: z.string().trim().max(255).optional(),
-  estimatedRepairMinutes: z.coerce.number().int().min(1).max(10_000).optional(),
+  estimatedRepairMinutes: optionalNumber(z.coerce.number().int().min(1).max(10_000)),
   isActive: z.boolean().optional(),
 });
 

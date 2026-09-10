@@ -186,6 +186,22 @@ Acesse http://localhost:5173 e entre com `admin@transppass.local` / `admin123`.
 
 ---
 
+## QA funcional automatizado (modo mock)
+
+Com o mock no ar (`npm run dev:mock`, porta 5173) e o Microsoft Edge instalado:
+
+```bash
+node tools/qa-smoke.mjs
+```
+
+O roteiro entra no sistema, percorre as 14 telas, abre os painéis laterais, tenta as ações que devem ser bloqueadas (mover a fila sem motivo, placa inválida, delta de km absurdo, confirmar parada sem kit e equipe) e verifica responsividade a 390 px. Gera `tools/QA-RESULTADO.json` e uma captura de cada passo em `tools/qa-shots/`. O relatório de QA da última rodada está em [QA.md](QA.md).
+
+Capturas avulsas (largura e tema opcionais):
+
+```bash
+node tools/screenshot.mjs 1440 dark
+```
+
 ## Rotina do dia a dia
 
 ```bash

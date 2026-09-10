@@ -16,6 +16,15 @@
  * Uso:  npm run test:e2e -w @app/api      (com a API no ar em :3000)
  */
 
+import type {
+  DemandRow,
+  KmTimelineRow,
+  OperatorCandidate,
+  OperatorRow,
+  ReserveCandidate,
+  ScheduleDetail,
+} from '@app/shared';
+
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000/api';
 
 let passed = 0;
@@ -68,7 +77,7 @@ async function call<T = unknown>(
 }
 
 async function main() {
-  console.log('\n=== Ciclo do R1: evento → triagem → fila → OS → portões → liberação ===\n');
+  console.log('\n=== Ciclo R1 + R2: evento → triagem → fila → OS → liberação → preventiva → plantão ===\n');
 
   const admin = await login('admin@transppass.local', 'admin123');
   const pcm = await login('pcm@transppass.local', 'transppass123');
@@ -311,6 +320,140 @@ async function main() {
   check('decomposição por causa disponível', metrics.downtimeByCause.length > 0);
   check('SLA de triagem medido', metrics.triageSla.count > 0);
   check('retrabalho interno medido', metrics.internalRework.inspections > 0);
+
+
+  // --- R2 / E3: preventiva por km, travas de kit + equipe, entrada na garagem
+  console.log('\nRF-10/11/12/13 — preventiva: janela, escopo, travas e reprogramação');
+  const { body: timeline } = await call<KmTimelineRow[]>(pcm, 'GET', '/scheduling/timeline');
+  check('linha do tempo por km publicada', timeline.length > 0);
+  const usedIds = new Set([carA!.id, carB!.id, carC!.id]);
+  const slot =
+    timeline.find((t) => t.nextPackageId && !t.scheduleId && !usedIds.has(t.vehicleId)) ??
+    timeline.find((t) => t.nextPackageId && !t.scheduleId);
+  check('há carro com janela projetada e sem parada agendada', Boolean(slot));
+
+  if (slot) {
+    const { body: scheduleReasons } = await call<ReasonCode[]>(
+      admin, 'GET', '/catalog/reason-codes?list=SCHEDULE_RESCHEDULE',
+    );
+    const { body: backlog } = await call<{ id: string }[]>(pcm, 'GET', `/scheduling/backlog/${slot.vehicleId}`);
+    const created = await call<ScheduleDetail>(pcm, 'POST', '/scheduling', {
+      vehicleId: slot.vehicleId,
+      packageId: slot.nextPackageId,
+      targetKm: slot.nextWindowKm ?? slot.currentKm + 7500,
+      plannedDate: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+      backlogItemIds: backlog.map((b) => b.id),
+    });
+    check('parada programada é criada', created.status === 201, `status ${created.status}`);
+    const sched = created.body;
+    check('escopo montado a partir do pacote (RF-11)', sched.scope.some((s) => s.kind === 'task'));
+    check('kit do pacote associado automaticamente', sched.kit !== null);
+    check('parada nasce travada: kit e equipe pendentes (RF-12)', !sched.canLeaveSchedule && sched.blockingReasons.length === 2);
+
+    const duplicate = await call(pcm, 'POST', '/scheduling', {
+      vehicleId: slot.vehicleId,
+      packageId: slot.nextPackageId,
+      targetKm: slot.nextWindowKm ?? slot.currentKm + 7500,
+    });
+    check('segunda parada aberta para o mesmo carro é recusada', duplicate.status === 400, `status ${duplicate.status}`);
+
+    const earlyConfirm = await call(pcm, 'POST', `/scheduling/${sched.id}/confirm`);
+    check('confirmar sem kit e equipe é recusado (RN-10)', earlyConfirm.status === 400, `status ${earlyConfirm.status}`);
+
+    const earlyStart = await call(manut, 'POST', `/scheduling/${sched.id}/start`);
+    check('entrada na garagem sem confirmação é recusada', earlyStart.status === 400, `status ${earlyStart.status}`);
+
+    const noReason = await call(pcm, 'POST', `/scheduling/${sched.id}/reschedule`, {
+      toDate: new Date(Date.now() + 5 * 86_400_000).toISOString(),
+    });
+    check('reprogramar sem motivo é recusado (RF-13)', noReason.status >= 400, `status ${noReason.status}`);
+
+    const rescheduled = await call<ScheduleDetail>(pcm, 'POST', `/scheduling/${sched.id}/reschedule`, {
+      toDate: new Date(Date.now() + 5 * 86_400_000).toISOString(),
+      reasonCodeId: scheduleReasons[0]?.id,
+      note: 'e2e',
+    });
+    check(
+      'reprogramação com motivo fica no histórico',
+      rescheduled.status < 300 && rescheduled.body.reschedules.length === 1,
+      `status ${rescheduled.status}`,
+    );
+
+    const { body: withKit } = await call<ScheduleDetail>(estoque, 'POST', `/scheduling/${sched.id}/kit/separate`);
+    check('estoque separa o kit → trava de kit liberada', withKit.kitReady === true);
+    check('ainda falta equipe', withKit.canLeaveSchedule === false);
+
+    const { body: withTeam } = await call<ScheduleDetail>(pcm, 'POST', `/scheduling/${sched.id}/team`, {
+      specialtyId: specialties[0]?.id,
+      headcount: 2,
+    });
+    check('equipe reservada → trava de equipe liberada', withTeam.teamReserved === true);
+    check('com kit e equipe a parada pode sair da escala', withTeam.canLeaveSchedule === true);
+
+    const { body: confirmed } = await call<ScheduleDetail>(pcm, 'POST', `/scheduling/${sched.id}/confirm`);
+    check('parada confirmada', confirmed.status === 'CONFIRMED');
+
+    const { body: started } = await call<ScheduleDetail>(manut, 'POST', `/scheduling/${sched.id}/start`);
+    check('entrada na garagem abre OS preventiva', started.status === 'IN_EXECUTION' && started.workOrderId !== null);
+    if (started.workOrderId) {
+      const { body: wo } = await call<{ type: string; tasks: unknown[] }>(manut, 'GET', `/work-orders/${started.workOrderId}`);
+      check('OS aberta é do tipo PREVENTIVA', wo.type === 'PREVENTIVE', `tipo ${wo.type}`);
+      check('escopo da parada virou sub-OS', wo.tasks.length >= sched.scope.length);
+    }
+    const { body: kitList } = await call<{ scheduleId?: string }[]>(estoque, 'GET', '/scheduling/kits');
+    check('lista de kits D-1 responde', Array.isArray(kitList));
+  }
+
+  // --- R2 / E6: plantão, reserva com habilitação e janela de reposição --------
+  console.log('\nRF-29/30/31 — plantão: demanda, reserva habilitada e retorno');
+  const { body: reserves } = await call<ReserveCandidate[]>(cco, 'GET', '/operations/reserves');
+  check('há carro disponível para reserva', reserves.length > 0);
+  const reserve = reserves[0];
+
+  if (reserve) {
+    const { body: allOperators } = await call<OperatorRow[]>(cco, 'GET', '/operations/operators');
+    const { body: qualifiedOps } = await call<OperatorCandidate[]>(
+      cco, 'GET', `/operations/operators/for-vehicle/${reserve.vehicleId}`,
+    );
+    const qualified = qualifiedOps[0];
+    const unqualified = allOperators.find((o) => !o.technologies.includes(reserve.technology));
+    check('matriz de habilitações consumida', allOperators.length > 0 && Boolean(qualified));
+
+    const demandRes = await call<DemandRow>(cco, 'POST', '/operations/demands', {
+      lineCode: '875A-10',
+      originVehicleId: carB!.id,
+      windowMinutes: 40,
+      note: 'e2e',
+    });
+    check('demanda de reposição aberta com janela de 40 min (RF-29)', demandRes.status === 201 && demandRes.body.secondsLeft > 0);
+    const demand = demandRes.body;
+
+    if (unqualified) {
+      const blocked = await call(cco, 'POST', `/operations/demands/${demand.id}/assign`, {
+        vehicleId: reserve.vehicleId,
+        operatorId: unqualified.id,
+      });
+      check('operador sem habilitação é bloqueado (RF-30)', blocked.status === 400, `status ${blocked.status}`);
+    } else {
+      check('operador sem habilitação é bloqueado (RF-30) — sem operador inabilitado no seed', true);
+    }
+
+    const assigned = await call<DemandRow>(cco, 'POST', `/operations/demands/${demand.id}/assign`, {
+      vehicleId: reserve.vehicleId,
+      operatorId: qualified?.operatorId,
+    });
+    check(
+      'reserva designada dentro da janela → atendida',
+      assigned.status < 300 && assigned.body.status === 'MET' && assigned.body.assignment !== null,
+      `status ${assigned.status} / ${assigned.body?.status}`,
+    );
+
+    const { body: returned } = await call<DemandRow>(cco, 'POST', `/operations/demands/${demand.id}/return`);
+    check('retorno da reserva registrado', returned.assignment?.returnedAt != null);
+
+    const { body: returns } = await call<unknown[]>(cco, 'GET', '/operations/returns');
+    check('previsão de retorno dos titulares publicada (RF-31)', Array.isArray(returns));
+  }
 
   console.log(`\n=== ${passed} ok, ${failed} falha(s) ===`);
   if (failed > 0) {

@@ -59,6 +59,11 @@ export const AVAILABLE_STATUSES: readonly VehicleStatus[] = [
   VehicleStatus.IN_LINE,
 ];
 
+/** Campo numérico opcional: string vazia do formulário vira undefined, não 0. */
+export function optionalNumber<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : v), schema.optional());
+}
+
 export const plateSchema = z
   .string()
   .trim()
@@ -79,7 +84,7 @@ export const createVehicleSchema = z.object({
   odometerOffset: z.coerce.number().int().default(0),
   manufacturer: z.string().trim().max(60).optional(),
   model: z.string().trim().max(60).optional(),
-  modelYear: z.coerce.number().int().min(1980).max(2100).optional(),
+  modelYear: optionalNumber(z.coerce.number().int().min(1980).max(2100)),
   garageId: z.string().uuid().optional(),
 });
 

@@ -16,6 +16,8 @@ import { MaterialsModule } from './materials/materials.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { SchedulingModule } from './scheduling/scheduling.module';
+import { OperationsModule } from './operations/operations.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { envSchema } from './config/env.validation';
 
@@ -43,6 +45,9 @@ import { envSchema } from './config/env.validation';
     MetricsModule,
     DashboardModule,
     NotificationsModule,
+    // R2 — Preventiva e Plantao
+    SchedulingModule,
+    OperationsModule,
   ],
   providers: [
     // Tudo é protegido por padrão; rotas abertas usam @Public().

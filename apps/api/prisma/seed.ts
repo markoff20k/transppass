@@ -231,7 +231,139 @@ async function main() {
     });
   }
 
-  console.log('Seed do R0 concluído.');
+  // ---- R2: plano eBUS, kits, materiais, ferramentas, pool, operadores ----
+
+  const ebusPlan = await prisma.maintenancePlan.upsert({
+    where: { code_version: { code: 'PLAN-EBUS', version: 1 } },
+    update: {},
+    create: {
+      code: 'PLAN-EBUS',
+      name: 'Plano preventivo — eBUS',
+      technology: VehicleTechnology.EBUS,
+      version: 1,
+      effectiveFrom: new Date('2026-01-01'),
+      controlledDocument: 'IT.MAN-54',
+    },
+  });
+  const ebusPkg = await prisma.maintenancePackage.upsert({
+    where: { planId_code: { planId: ebusPlan.id, code: 'E1' } },
+    update: {},
+    create: { code: 'E1', name: 'Revisão de 10.000 km', intervalKm: 10000, toleranceKm: 500, planId: ebusPlan.id },
+  });
+
+  const specialtyByCode = Object.fromEntries(
+    (await prisma.specialty.findMany()).map((s) => [s.code, s.id]),
+  ) as Record<string, string>;
+
+  const dieselPkgs = await prisma.maintenancePackage.findMany({ where: { planId: plan.id } });
+  const p1 = dieselPkgs.find((p) => p.code === 'P1')!;
+  const p2 = dieselPkgs.find((p) => p.code === 'P2')!;
+
+  const tasks: Array<{ packageId: string; code: string; description: string; specialty: string; minutes: number }> = [
+    { packageId: p1.id, code: 'T01', description: 'Troca de óleo e filtro do motor', specialty: 'MEC', minutes: 60 },
+    { packageId: p1.id, code: 'T02', description: 'Filtro de ar', specialty: 'MEC', minutes: 20 },
+    { packageId: p1.id, code: 'T03', description: 'Filtro de combustível', specialty: 'MEC', minutes: 25 },
+    { packageId: p1.id, code: 'T04', description: 'Inspeção de freios e cuícas', specialty: 'PNE', minutes: 45 },
+    { packageId: p1.id, code: 'T05', description: 'Verificação do sistema de carga', specialty: 'ELE', minutes: 30 },
+    { packageId: p1.id, code: 'T06', description: 'Lubrificação de articulações', specialty: 'MEC', minutes: 30 },
+    { packageId: p2.id, code: 'T01', description: 'Troca de óleo e filtro do motor', specialty: 'MEC', minutes: 60 },
+    { packageId: p2.id, code: 'T02', description: 'Filtros de ar, combustível e cabine', specialty: 'MEC', minutes: 45 },
+    { packageId: p2.id, code: 'T03', description: 'Inspeção completa de freios', specialty: 'PNE', minutes: 90 },
+    { packageId: p2.id, code: 'T04', description: 'Sistema de carga e baterias', specialty: 'ELE', minutes: 45 },
+    { packageId: p2.id, code: 'T05', description: 'Ar-condicionado: carga e filtros', specialty: 'AC', minutes: 60 },
+    { packageId: ebusPkg.id, code: 'T01', description: 'Inspeção do pack de baterias', specialty: 'ELE', minutes: 60 },
+    { packageId: ebusPkg.id, code: 'T02', description: 'Torque das conexões de alta tensão', specialty: 'ELE', minutes: 40 },
+    { packageId: ebusPkg.id, code: 'T03', description: 'Inspeção de freios regenerativos', specialty: 'PNE', minutes: 45 },
+  ];
+  for (const t of tasks) {
+    await prisma.maintenanceTask.upsert({
+      where: { packageId_code: { packageId: t.packageId, code: t.code } },
+      update: {},
+      create: { packageId: t.packageId, code: t.code, description: t.description, specialtyId: specialtyByCode[t.specialty], estimatedMinutes: t.minutes },
+    });
+  }
+
+  const materials = [
+    { code: 'OLEO-15W40', description: 'Óleo motor 15W40', unit: 'L', isSerialized: false },
+    { code: 'FIL-OL-01', description: 'Filtro de óleo', unit: 'un', isSerialized: false },
+    { code: 'FIL-AR-01', description: 'Filtro de ar motor', unit: 'un', isSerialized: false },
+    { code: 'FIL-CB-01', description: 'Filtro de combustível', unit: 'un', isSerialized: false },
+    { code: 'FIL-INV-01', description: 'Filtro de ar do inversor', unit: 'un', isSerialized: false },
+    { code: 'ALT-24V', description: 'Alternador 24V 110A', unit: 'un', isSerialized: true },
+    { code: 'VAL-APU-01', description: 'Válvula APU', unit: 'un', isSerialized: true },
+    { code: 'CUI-FR-DT', description: 'Cuíca de freio dianteira 24"', unit: 'un', isSerialized: true },
+  ];
+  const materialByCode: Record<string, string> = {};
+  for (const m of materials) {
+    const row = await prisma.material.upsert({ where: { code: m.code }, update: {}, create: m });
+    materialByCode[m.code] = row.id;
+  }
+  const materialId = (code: string): string => {
+    const id = materialByCode[code];
+    if (!id) throw new Error(`Seed: material ${code} não cadastrado`);
+    return id;
+  };
+
+  const kit1 = await prisma.kit.upsert({
+    where: { code_version: { code: 'KIT-P1', version: 1 } },
+    update: {},
+    create: { code: 'KIT-P1', name: 'Kit 7.500 km diesel', packageId: p1.id, version: 1, effectiveFrom: new Date('2026-01-01') },
+  });
+  const kitE1 = await prisma.kit.upsert({
+    where: { code_version: { code: 'KIT-E1', version: 1 } },
+    update: {},
+    create: { code: 'KIT-E1', name: 'Kit 10.000 km eBUS', packageId: ebusPkg.id, version: 1, effectiveFrom: new Date('2026-01-01') },
+  });
+  for (const [kitId, code, qty] of [
+    [kit1.id, 'OLEO-15W40', 28], [kit1.id, 'FIL-OL-01', 1], [kit1.id, 'FIL-AR-01', 1], [kit1.id, 'FIL-CB-01', 2],
+    [kitE1.id, 'FIL-INV-01', 1],
+  ] as const) {
+    await prisma.kitItem.upsert({
+      where: { kitId_materialId: { kitId, materialId: materialId(code) } },
+      update: {},
+      create: { kitId, materialId: materialId(code), quantity: qty },
+    });
+  }
+
+  for (const t of [
+    { code: 'TORQ-01', description: 'Torquímetro 40–200 N·m', calibrationDueAt: new Date(Date.now() + 40 * 86_400_000) },
+    { code: 'TORQ-02', description: 'Torquímetro 200–800 N·m', calibrationDueAt: new Date(Date.now() - 5 * 86_400_000) },
+    { code: 'MAN-01', description: 'Manômetro de ar 0–12 bar', calibrationDueAt: new Date(Date.now() + 120 * 86_400_000) },
+  ]) {
+    await prisma.tool.upsert({ where: { code: t.code }, update: {}, create: t });
+  }
+
+  for (const [serial, code] of [['ALT-20431', 'ALT-24V'], ['ALT-20432', 'ALT-24V'], ['ALT-20433', 'ALT-24V'], ['APU-77812', 'VAL-APU-01']] as const) {
+    await prisma.poolComponent.upsert({
+      where: { serialNumber: serial },
+      update: {},
+      create: { serialNumber: serial, materialId: materialId(code) },
+    });
+  }
+
+  // Matriz de habilitações: consumida, não administrada (seção 4 do PRD).
+  const operators = [
+    { registration: '30412', name: 'Operador de reserva A', techs: [VehicleTechnology.DIESEL, VehicleTechnology.EBUS] },
+    { registration: '30877', name: 'Operador de reserva B', techs: [VehicleTechnology.DIESEL] },
+    { registration: '31105', name: 'Operador de reserva C', techs: [VehicleTechnology.EBUS] },
+    { registration: '29980', name: 'Operador de reserva D', techs: [VehicleTechnology.DIESEL] },
+  ];
+  for (const o of operators) {
+    const row = await prisma.operator.upsert({
+      where: { registration: o.registration },
+      update: {},
+      create: { registration: o.registration, name: o.name },
+    });
+    for (const technology of o.techs) {
+      await prisma.operatorQualification.upsert({
+        where: { operatorId_technology: { operatorId: row.id, technology } },
+        update: {},
+        create: { operatorId: row.id, technology },
+      });
+    }
+  }
+
+  console.log('Seed do R0/R1/R2 concluído.');
   console.log(`  admin: admin@transppass.local / admin123 (id ${admin.id})`);
   console.log('  personas: pcm@ cco@ plantao@ manutencao@ estoque@ transppass.local / transppass123');
 }

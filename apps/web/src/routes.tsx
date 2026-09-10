@@ -15,6 +15,8 @@ import { WorkOrdersPage } from '@/pages/work-orders-page';
 import { WorkOrderPage } from '@/pages/work-order-page';
 import { StockPage } from '@/pages/stock-page';
 import { MetricsPage } from '@/pages/metrics-page';
+import { SchedulingPage } from '@/pages/scheduling-page';
+import { OperationsPage } from '@/pages/operations-page';
 import { DesignKitPage } from '@/pages/design-kit-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 
@@ -42,7 +44,9 @@ export const router = createBrowserRouter([
           { path: '/estoque', element: <StockPage /> },
           { path: '/indicadores', element: <MetricsPage /> },
           { path: '/design', element: <DesignKitPage /> },
-          // R2 (preventiva, plantao) entra aqui.
+          // R2 — Preventiva e Plantao
+          { path: '/preventiva', element: <SchedulingPage /> },
+          { path: '/plantao', element: <OperationsPage /> },
         ],
       },
     ],

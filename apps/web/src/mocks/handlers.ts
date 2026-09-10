@@ -19,6 +19,7 @@ import {
 import { avgDailyKm, catalogItems, newId, reasonCodes, users, vehicles } from './fixtures';
 import { dashboardHandlers } from './dashboard.mock';
 import { r1Handlers } from './r1.mock';
+import { r2Handlers } from './r2.mock';
 
 /**
  * Handlers do modo mock.
@@ -61,6 +62,7 @@ const delay = () => new Promise((r) => setTimeout(r, 120 + Math.random() * 180))
 export const handlers = [
   ...dashboardHandlers,
   ...r1Handlers,
+  ...r2Handlers,
   // --- Autenticação --------------------------------------------------------
 
   http.post('*/api/auth/login', async ({ request }) => {

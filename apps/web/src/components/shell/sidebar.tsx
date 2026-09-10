@@ -4,6 +4,8 @@ import {
   BarChart3,
   BookOpen,
   Bus,
+  CalendarClock,
+  LifeBuoy,
   ChevronsLeft,
   ClipboardList,
   Gauge,
@@ -28,7 +30,7 @@ const {
 
 interface NavItem {
   to: string;
-  key: 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'designKit';
+  key: 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'scheduling' | 'operations' | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'designKit';
   icon: LucideIcon;
   roles?: UserRole[];
   /** Contador ao lado do item, quando a tela tem fila. */
@@ -55,6 +57,8 @@ const GROUPS: NavGroup[] = [
       { to: '/triagem', key: 'triage', icon: Stethoscope, roles: [ADMIN, PCM] },
       { to: '/fila', key: 'queue', icon: ListOrdered, roles: [ADMIN, PCM, MANUTENCAO, PLANTAO] },
       { to: '/socorro', key: 'field', icon: Siren, roles: [ADMIN, SOCORRO, PCM, CCO] },
+      { to: '/preventiva', key: 'scheduling', icon: CalendarClock, roles: [ADMIN, PCM, MANUTENCAO, ESTOQUE] },
+      { to: '/plantao', key: 'operations', icon: LifeBuoy, roles: [ADMIN, PLANTAO, CCO, PCM] },
     ],
   },
   {

@@ -1,0 +1,291 @@
+{
+  "ranAt": "2026-09-10T01:47:40.871Z",
+  "base": "http://localhost:5173",
+  "passed": 47,
+  "failed": 0,
+  "results": [
+    {
+      "id": "AUTH-01",
+      "name": "Tela de login renderiza com logo e formulário",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "AUTH-02",
+      "name": "Senha errada mostra erro e não entra",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "AUTH-03",
+      "name": "Login válido leva ao dashboard",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "SHELL-01",
+      "name": "Sidebar, header e subheader presentes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "SHELL-02",
+      "name": "Sidebar recolhe (264→72) e expande de volta",
+      "ok": true,
+      "detail": "264→72→264"
+    },
+    {
+      "id": "SHELL-03",
+      "name": "Trocar tema para escuro marca data-theme",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "SHELL-04",
+      "name": "Trocar idioma traduz o shell",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "SHELL-05",
+      "name": "Painel de notificações abre com itens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "DASH-01",
+      "name": "Quatro KPIs com valores",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "DASH-02",
+      "name": "Grade de ônibus com ilustrações",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "DASH-03",
+      "name": "Gráficos Recharts renderizados",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "DASH-04",
+      "name": "Bloco de atenção com links",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-01",
+      "name": "Painel da frota renderiza com subheader \"Painel da frota\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-02",
+      "name": "Eventos renderiza com subheader \"Eventos\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-03",
+      "name": "Triagem renderiza com subheader \"Triagem\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-04",
+      "name": "Fila renderiza com subheader \"Fila de manutenção\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-05",
+      "name": "Socorro renderiza com subheader \"Socorro em campo\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-06",
+      "name": "Preventiva renderiza com subheader \"Preventiva\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-07",
+      "name": "Plantão renderiza com subheader \"Plantão\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-08",
+      "name": "Ordens de serviço renderiza com subheader \"Ordens de serviço\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-09",
+      "name": "Estoque renderiza com subheader \"Estoque\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-10",
+      "name": "Indicadores renderiza com subheader \"Indicadores\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-11",
+      "name": "Quilometragem renderiza com subheader \"Lançamento de km\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-12",
+      "name": "Cadastro da frota renderiza com subheader \"Frota\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-13",
+      "name": "Catálogo renderiza com subheader \"Catálogo de falhas\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-14",
+      "name": "Design kit renderiza com subheader \"Design kit\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "QUEUE-01",
+      "name": "Clicar na fila abre o painel lateral",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "QUEUE-02",
+      "name": "Painel mostra histórico imutável",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "QUEUE-03",
+      "name": "Mover sem motivo fica bloqueado (RF-08)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "QUEUE-04",
+      "name": "Esc fecha o painel",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "TRI-01",
+      "name": "Painel de triagem abre com os três destinos",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "STK-01",
+      "name": "Painel da solicitação abre com fatos e ações",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "STK-02",
+      "name": "Badges de status com largura uniforme",
+      "ok": true,
+      "detail": "124–124px"
+    },
+    {
+      "id": "PREV-01",
+      "name": "Painel de programar parada abre",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "PREV-02",
+      "name": "Painel da parada mostra travas (kit + equipe) e escopo",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "PLT-01",
+      "name": "Janela em contagem visível",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "PLT-02",
+      "name": "Painel da demanda abre",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "OS-01",
+      "name": "Detalhe da OS com portões e relógio",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "OS-02",
+      "name": "Painel de nova sub-OS abre",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "VEH-01",
+      "name": "Painel de novo carro abre",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "VEH-02",
+      "name": "Placa inválida é recusada na origem (Zod compartilhado)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "VEH-03",
+      "name": "Carro válido é criado e o painel fecha",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "KM-01",
+      "name": "Delta absurdo é sinalizado antes do envio",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "RESP-01",
+      "name": "Dashboard a 390px sem rolagem horizontal",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "RESP-02",
+      "name": "Gaveta abre no celular com botão de fechar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "RESP-03",
+      "name": "Esc fecha a gaveta",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "CONS-01",
+      "name": "Sem erros de JavaScript em nenhuma tela",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "consoleErrors": []
+}

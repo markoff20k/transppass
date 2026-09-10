@@ -1485,3 +1485,19 @@ td.actions {
 }
 
 .ramp__step.is-anchor code { color: var(--color-text); font-weight: 600; }
+
+/* Janela em contagem do Plantão */
+.countdown {
+  font-family: var(--tp-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-success-text);
+}
+
+.countdown--warn {
+  color: var(--color-warning-text);
+}
+
+.countdown--over {
+  color: var(--color-danger-text);
+}
