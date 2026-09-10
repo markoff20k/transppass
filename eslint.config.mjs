@@ -10,7 +10,8 @@ import reactRefresh from 'eslint-plugin-react-refresh';
  */
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/*.tsbuildinfo', 'packages/shared/dist/**'],
+    // tools/ sao utilitarios de desenvolvedor (captura de tela com o Edge), fora do app.
+    ignores: ['**/dist/**', '**/node_modules/**', '**/*.tsbuildinfo', 'packages/shared/dist/**', 'tools/**'],
   },
 
   js.configs.recommended,
