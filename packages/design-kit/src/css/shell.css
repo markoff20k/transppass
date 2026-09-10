@@ -35,6 +35,7 @@
 /* ---- Sidebar ------------------------------------------------------------ */
 
 .sidebar {
+  grid-column: 1;
   grid-row: 1 / -1;
   position: sticky;
   top: 0;
@@ -47,6 +48,12 @@
   border-right: var(--tp-border-thin) solid var(--color-sidebar-border);
   overflow: hidden;
   z-index: var(--tp-z-sticky);
+  width: var(--shell-sidebar-w);
+  transition: width var(--tp-duration-slow) var(--tp-ease);
+}
+
+.shell--collapsed .sidebar {
+  width: var(--shell-sidebar-w-collapsed);
 }
 
 .sidebar__top {
@@ -61,8 +68,11 @@
 }
 
 .shell--collapsed .sidebar__top {
-  padding: 0;
+  flex-direction: column;
   justify-content: center;
+  gap: var(--tp-space-1);
+  padding: var(--tp-space-2) 0;
+  min-height: calc(var(--shell-header-h) + 28px);
 }
 
 .sidebar__nav {
@@ -639,7 +649,7 @@
     justify-content: space-between;
   }
 
-  .sidebar__collapse {
+  .sidebar__collapse:not(.sidebar__collapse--close) {
     display: none;
   }
 

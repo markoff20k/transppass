@@ -9,30 +9,6 @@
 
 @import '@app/design-kit/css';
 
-/* =========================================================================
-   Layout do app
-   ========================================================================= */
-
-.shell {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.shell-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--tp-space-4);
-  padding: var(--tp-space-5);
-}
-
-@media (max-width: 640px) {
-  .shell-main {
-    padding: var(--tp-space-3);
-  }
-}
-
 /* Login — única tela sem o shell. */
 .page-center {
   min-height: 100vh;
@@ -113,96 +89,6 @@
   justify-content: flex-end;
   gap: var(--tp-space-3);
   flex-wrap: wrap;
-}
-
-/* --- Topbar e navegação -------------------------------------------------- */
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: var(--tp-space-6);
-  padding: var(--tp-space-2) var(--tp-space-5);
-  background: var(--color-surface);
-  border-bottom: var(--tp-border-thin) solid var(--color-border);
-  position: sticky;
-  top: 0;
-  z-index: var(--tp-z-sticky);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: var(--tp-space-2);
-  white-space: nowrap;
-  font-weight: var(--tp-weight-bold);
-}
-
-/* O ponto laranja do logo da Transppass, reduzido a um elemento. */
-.brand::before {
-  content: '';
-  width: 10px;
-  height: 10px;
-  border-radius: var(--tp-radius-full);
-  background: var(--color-brand);
-  flex-shrink: 0;
-}
-
-.brand-sub {
-  color: var(--color-text-muted);
-  font-weight: var(--tp-weight-medium);
-  font-size: var(--tp-text-sm);
-  letter-spacing: 0.04em;
-}
-
-.nav {
-  display: flex;
-  gap: var(--tp-space-1);
-  flex: 1;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
-.nav-link {
-  padding: var(--tp-space-2) var(--tp-space-3);
-  border-radius: var(--tp-radius-md);
-  color: var(--color-text-muted);
-  text-decoration: none;
-  white-space: nowrap;
-  font-size: var(--tp-text-sm);
-  font-weight: var(--tp-weight-medium);
-  border-bottom: var(--tp-border-thick) solid transparent;
-}
-
-.nav-link:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text);
-}
-
-.nav-link.is-active {
-  color: var(--color-brand-text);
-  background: var(--color-brand-soft);
-  border-bottom-color: var(--color-brand);
-}
-
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: var(--tp-space-3);
-}
-
-.user-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  line-height: 1.25;
-  white-space: nowrap;
-  font-size: var(--tp-text-sm);
-}
-
-.user-chip em {
-  color: var(--color-text-muted);
-  font-size: var(--tp-text-xs);
-  font-style: normal;
 }
 
 /* --- KPI ----------------------------------------------------------------- */
@@ -404,7 +290,8 @@ td.validation {
 
 /* --- Formulários --------------------------------------------------------- */
 
-label {
+/* So os <label> soltos das telas antigas; os do kit (.tp-*) se definem sozinhos. */
+label:not([class]) {
   display: flex;
   flex-direction: column;
   gap: var(--tp-space-1);
@@ -1150,19 +1037,21 @@ td.actions {
 
 .dash-kpi__body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px;
+  grid-template-columns: minmax(0, 1fr) 88px;
   align-items: end;
-  gap: var(--tp-space-3);
+  gap: var(--tp-space-4);
 }
 
 .dash-kpi__value {
   font-family: var(--tp-font-display);
-  font-size: 34px;
+  font-size: clamp(24px, 2.2vw, 32px);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.005em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dash-kpi__delta {
@@ -1274,14 +1163,14 @@ td.actions {
 /* Grade de ônibus */
 .bus-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
-  gap: var(--tp-space-3);
+  grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
+  gap: var(--tp-space-2);
 }
 
 .bus-card {
   display: grid;
-  gap: var(--tp-space-2);
-  padding: var(--tp-space-3);
+  gap: var(--tp-space-1);
+  padding: var(--tp-space-2) var(--tp-space-2) var(--tp-space-3);
   border: var(--tp-border-thin) solid var(--color-border);
   border-radius: var(--tp-radius-lg);
   background: var(--color-surface-sunken);
@@ -1300,9 +1189,10 @@ td.actions {
 
 .bus-card__text {
   display: grid;
-  gap: 2px;
-  font-size: var(--tp-text-sm);
+  gap: 1px;
+  font-size: var(--tp-text-xs);
   min-width: 0;
+  padding: 0 var(--tp-space-1);
 }
 
 .bus-card__row {
@@ -1314,7 +1204,11 @@ td.actions {
 
 .bus-card__row b {
   font-family: var(--tp-font-mono);
-  font-size: var(--tp-text-md);
+  font-size: var(--tp-text-sm);
+}
+
+.bus-card .tp-state {
+  font-size: var(--tp-text-xs);
 }
 
 .bus-card__reason {
@@ -1559,9 +1453,11 @@ td.actions {
   border: var(--tp-border-thin) solid var(--color-border);
 }
 
-.logo-specimen--light { background: #ffffff; color: var(--tp-graphite-700); }
+.logo-specimen--light { background: #ffffff; }
+.logo-specimen--light .tp-logo { color: var(--tp-graphite-700); }
 .logo-specimen--light .tp-logo__tag { color: var(--tp-graphite-500); }
-.logo-specimen--dark { background: var(--tp-graphite-800); color: #ffffff; }
+.logo-specimen--dark { background: var(--tp-graphite-800); }
+.logo-specimen--dark .tp-logo { color: #ffffff; }
 .logo-specimen--dark .tp-logo__tag { color: var(--tp-graphite-400); }
 .logo-specimen--brand { background: var(--tp-orange-500); color: var(--tp-graphite-950); }
 

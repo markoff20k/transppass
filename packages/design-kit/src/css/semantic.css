@@ -160,6 +160,8 @@
 
   /* ---- Ilustração do ônibus ---------------------------------------------- */
   --bus-window: #dfe9f0;
+  --bus-tire: var(--tp-graphite-700);
+  --bus-hub: var(--tp-graphite-300);
 
   /* ---- Elevação ---------------------------------------------------------- */
   --shadow-card: var(--tp-shadow-sm);
@@ -286,6 +288,10 @@
     --chart-axis: var(--tp-graphite-500);
 
     --bus-window: #2f3a44;
+  --bus-tire: var(--tp-graphite-400);
+  --bus-hub: var(--tp-graphite-700);
+    --bus-tire: var(--tp-graphite-400);
+    --bus-hub: var(--tp-graphite-700);
 
     /* Sombra some no escuro: sem luz, ela vira borrão. A hierarquia passa a
        ser dada pela superfície mais clara. */
@@ -396,6 +402,8 @@
   --chart-axis: var(--tp-graphite-500);
 
   --bus-window: #2f3a44;
+  --bus-tire: var(--tp-graphite-400);
+  --bus-hub: var(--tp-graphite-700);
 
   --shadow-card: none;
   --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.4);

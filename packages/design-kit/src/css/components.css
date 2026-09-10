@@ -199,6 +199,7 @@
 /* Caixa e rádio com alvo grande o bastante para dedo com luva. */
 .tp-check {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: var(--tp-space-2);
   min-height: var(--tp-touch-min);
@@ -222,6 +223,7 @@
 /* Cartão de escolha — os três destinos da triagem, o desfecho do socorro. */
 .tp-radio-card {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: var(--tp-space-3);
   padding: var(--tp-space-3) var(--tp-space-4);

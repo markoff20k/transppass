@@ -110,21 +110,19 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, drawer, onClo
           <TransppassLogo height={40} compact={collapsed && !drawer} />
         </NavLink>
         {drawer ? (
-          <button type="button" className="sidebar__collapse" onClick={onClose} aria-label={t.nav.closeMenu}>
+          <button type="button" className="sidebar__collapse sidebar__collapse--close" onClick={onClose} aria-label={t.nav.closeMenu}>
             <X size={18} />
           </button>
         ) : (
-          !collapsed && (
-            <button
-              type="button"
-              className="sidebar__collapse"
-              onClick={onToggleCollapse}
-              aria-label={t.nav.collapse}
-              title={t.nav.collapse}
-            >
-              <ChevronsLeft size={18} />
-            </button>
-          )
+          <button
+            type="button"
+            className="sidebar__collapse"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? t.nav.expand : t.nav.collapse}
+            title={collapsed ? t.nav.expand : t.nav.collapse}
+          >
+            <ChevronsLeft size={18} />
+          </button>
         )}
       </div>
 
@@ -154,19 +152,6 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, drawer, onClo
         ))}
       </nav>
 
-      {!drawer && collapsed && (
-        <div className="sidebar__bottom" style={{ display: 'flex', justifyContent: 'center' }}>
-          <button
-            type="button"
-            className="sidebar__collapse"
-            onClick={onToggleCollapse}
-            aria-label={t.nav.expand}
-            title={t.nav.expand}
-          >
-            <ChevronsLeft size={18} />
-          </button>
-        </div>
-      )}
     </aside>
   );
 }

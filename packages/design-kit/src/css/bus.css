@@ -3,16 +3,18 @@
  *
  * O componente React monta as classes `bus--<visual>` e os modificadores
  * `bus--lifted / --moving / --hazard`. Aqui só há cor e movimento.
- * Com `prefers-reduced-motion`, todo movimento é desligado; a cor e o
- * distintivo de estado continuam informando.
+ *
+ * Movimento contido: a informação está na cor, no macaco e no distintivo,
+ * que ficam parados. A animação só dá sinal de vida — devagar, com easing,
+ * e desliga inteira com `prefers-reduced-motion`.
  */
 
 .bus {
   display: block;
-  overflow: visible;
+  overflow: hidden;
   --bus-body: var(--color-neutral);
-  --bus-body-dark: color-mix(in srgb, var(--bus-body) 78%, black);
-  --bus-badge: var(--bus-body);
+  --bus-body-dark: color-mix(in srgb, var(--bus-body) 76%, black);
+  --bus-body-light: color-mix(in srgb, var(--bus-body) 82%, white);
 }
 
 /* ---- Cor por estado ----------------------------------------------------- */
@@ -49,11 +51,12 @@
 
 .bus__road {
   stroke: var(--color-border-strong);
-  stroke-width: 2;
+  stroke-width: 1.5;
+  stroke-linecap: round;
 }
 
-.bus__road-dash {
-  stroke: var(--color-border);
+.bus__speed-line {
+  stroke: var(--bus-body);
   stroke-width: 2;
   stroke-linecap: round;
   opacity: 0;
@@ -61,8 +64,10 @@
 
 .bus__shadow {
   fill: var(--color-text);
-  opacity: 0.08;
-  transition: transform var(--tp-duration-slow) var(--tp-ease), opacity var(--tp-duration-slow);
+  opacity: 0.07;
+  transition:
+    transform var(--tp-duration-slow) var(--tp-ease),
+    opacity var(--tp-duration-slow);
 }
 
 .bus__body {
@@ -81,27 +86,27 @@
 .bus__window {
   fill: var(--bus-window);
   stroke: var(--bus-body-dark);
-  stroke-width: 1;
+  stroke-width: 0.8;
 }
 
 .bus__door {
   fill: none;
   stroke: var(--bus-body-dark);
-  stroke-width: 1.5;
+  stroke-width: 1.2;
 }
 
 .bus__door-split {
   stroke: var(--bus-body-dark);
-  stroke-width: 1;
+  stroke-width: 0.8;
 }
 
 .bus__stripe {
-  fill: rgb(255 255 255 / 0.82);
+  fill: rgb(255 255 255 / 0.85);
 }
 
 .bus__code {
   font-family: var(--tp-font-mono);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   fill: var(--tp-graphite-800);
   letter-spacing: 0.06em;
@@ -110,11 +115,12 @@
 .bus__headlight {
   fill: #fff3c4;
   stroke: var(--bus-body-dark);
-  stroke-width: 1;
+  stroke-width: 0.8;
 }
 
 .bus__taillight {
   fill: var(--tp-red-500);
+  opacity: 0.85;
 }
 
 .bus__hazard {
@@ -123,16 +129,17 @@
 }
 
 .bus__tire {
-  fill: var(--tp-graphite-900);
+  fill: var(--bus-tire);
 }
 
 .bus__hub {
-  fill: var(--tp-graphite-300);
+  fill: var(--bus-hub);
 }
 
-.bus__spoke {
-  stroke: var(--tp-graphite-500);
-  stroke-width: 1.5;
+.bus__notch {
+  stroke: var(--bus-tire);
+  stroke-width: 1.6;
+  stroke-linecap: round;
 }
 
 .bus__wheel {
@@ -152,9 +159,9 @@
 }
 
 .bus__badge-bg {
-  fill: var(--bus-badge);
+  fill: var(--bus-body);
   stroke: var(--color-surface);
-  stroke-width: 3;
+  stroke-width: 2.5;
 }
 
 .bus__badge-icon {
@@ -174,7 +181,7 @@
 
 /* Levantado no macaco: carroceria sobe, rodas ficam no chão, macacos aparecem. */
 .bus--lifted .bus__body-group {
-  transform: translateY(-12px);
+  transform: translateY(-11px);
 }
 
 .bus--lifted .bus__jack {
@@ -182,68 +189,64 @@
 }
 
 .bus--lifted .bus__shadow {
-  transform: scaleX(0.9);
-  opacity: 0.05;
+  transform: scaleX(0.92);
+  opacity: 0.04;
 }
 
 .bus--off {
-  opacity: 0.55;
-  filter: grayscale(0.35);
+  opacity: 0.5;
+  filter: grayscale(0.4);
 }
 
 .bus--off .bus__headlight {
   fill: var(--tp-graphite-300);
 }
 
-.bus--cleaning .bus__bubble {
-  opacity: 0.85;
-}
-
 .bus--hazard .bus__hazard {
   opacity: 1;
 }
 
-/* ---- Movimento ---------------------------------------------------------- */
+.bus--cleaning .bus__bubble {
+  opacity: 0.7;
+}
+
+/* ---- Movimento — devagar, com easing ----------------------------------- */
 
 .bus--moving .bus__wheel {
-  animation: bus-spin 1.1s linear infinite;
+  animation: bus-spin 2.4s linear infinite;
 }
 
-.bus--moving .bus__road-dash {
-  opacity: 1;
-  animation: bus-road 0.9s linear infinite;
+.bus--moving .bus__speed-line {
+  animation: bus-speed 1.8s ease-in-out infinite;
+}
+
+.bus--moving .bus__speed-line--2 {
+  animation-delay: 0.5s;
 }
 
 .bus--hazard .bus__hazard {
-  animation: bus-blink 1s steps(2, start) infinite;
+  animation: bus-breathe 1.6s ease-in-out infinite;
 }
 
 .bus__badge-icon--wrench {
   transform-box: fill-box;
   transform-origin: center;
-  animation: bus-wrench 1.8s ease-in-out infinite;
+  animation: bus-wrench 2.6s ease-in-out infinite;
 }
 
 .bus__badge-icon--magnifier {
-  animation: bus-scan 2.2s ease-in-out infinite;
+  animation: bus-scan 3s ease-in-out infinite;
 }
 
 .bus--cleaning .bus__bubble {
-  animation: bus-bubble 2.4s ease-in infinite;
+  animation: bus-bubble 3.2s ease-in infinite;
 }
 
 .bus--cleaning .bus__bubble:nth-child(2) {
-  animation-delay: 0.6s;
+  animation-delay: 1.1s;
 }
 .bus--cleaning .bus__bubble:nth-child(3) {
-  animation-delay: 1.2s;
-}
-.bus--cleaning .bus__bubble:nth-child(4) {
-  animation-delay: 1.8s;
-}
-
-.bus--parked .bus__headlight {
-  animation: bus-idle 3s ease-in-out infinite;
+  animation-delay: 2.1s;
 }
 
 @keyframes bus-spin {
@@ -252,43 +255,45 @@
   }
 }
 
-@keyframes bus-road {
-  from {
-    transform: translateX(0);
+@keyframes bus-speed {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateX(6px);
   }
-  to {
-    transform: translateX(-48px);
+  50% {
+    opacity: 0.45;
+    transform: translateX(0);
   }
 }
 
-@keyframes bus-blink {
+@keyframes bus-breathe {
   0%,
-  49% {
+  100% {
     opacity: 1;
   }
-  50%,
-  100% {
-    opacity: 0.15;
+  50% {
+    opacity: 0.3;
   }
 }
 
 @keyframes bus-wrench {
   0%,
   100% {
-    transform: rotate(-22deg);
+    transform: rotate(-9deg);
   }
   50% {
-    transform: rotate(22deg);
+    transform: rotate(9deg);
   }
 }
 
 @keyframes bus-scan {
   0%,
   100% {
-    transform: translateX(-3px);
+    transform: translateX(-1.5px);
   }
   50% {
-    transform: translateX(3px);
+    transform: translateX(1.5px);
   }
 }
 
@@ -297,22 +302,12 @@
     transform: translateY(0);
     opacity: 0;
   }
-  15% {
-    opacity: 0.85;
+  20% {
+    opacity: 0.7;
   }
   100% {
-    transform: translateY(-22px);
+    transform: translateY(-16px);
     opacity: 0;
-  }
-}
-
-@keyframes bus-idle {
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 1;
   }
 }
 
@@ -323,7 +318,7 @@
     transition: none !important;
   }
 
-  .bus--moving .bus__road-dash {
-    opacity: 0.6;
+  .bus--moving .bus__speed-line {
+    opacity: 0.35;
   }
 }
