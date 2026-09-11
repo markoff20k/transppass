@@ -33,6 +33,8 @@ packages/
 
 ## Como rodar
 
+Para colocar em produção num servidor Ubuntu (DigitalOcean), siga [DEPLOY.md](DEPLOY.md).
+
 O passo a passo completo — pré-requisitos, banco, `.env`, credenciais do seed, roteiro de verificação e problemas comuns — está em **[COMO-RODAR.md](COMO-RODAR.md)**.
 
 Resumo, para quem já configurou o `.env` e o banco:
