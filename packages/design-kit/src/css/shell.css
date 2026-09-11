@@ -16,12 +16,24 @@
   --shell-header-h: 60px;
   --shell-subheader-h: 64px;
   --shell-gutter: var(--tp-space-6);
+  /* Respiro entre as ilhas (sidebar, header) e a borda da janela. */
+  --shell-gap: var(--tp-space-3);
+  --shell-island-radius: var(--tp-radius-xl);
+  --shell-island-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -16px rgb(0 0 0 / 0.18);
 }
 
+/*
+ * Layout em ilhas: sidebar e header são painéis próprios, com cantos
+ * arredondados e respiro, soltos sobre o fundo da página; o miolo fica no
+ * fundo, com os cartões dele. A grade continua a mesma — só ganhou gap e
+ * padding — então recolher a sidebar segue sendo a transição das colunas.
+ */
 .shell {
   display: grid;
   grid-template-columns: var(--shell-sidebar-w) minmax(0, 1fr);
   grid-template-rows: var(--shell-header-h) minmax(0, 1fr);
+  gap: var(--shell-gap);
+  padding: var(--shell-gap);
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--color-bg);
@@ -38,14 +50,16 @@
   grid-column: 1;
   grid-row: 1 / -1;
   position: sticky;
-  top: 0;
-  height: 100vh;
-  height: 100dvh;
+  top: var(--shell-gap);
+  height: calc(100vh - 2 * var(--shell-gap));
+  height: calc(100dvh - 2 * var(--shell-gap));
   display: flex;
   flex-direction: column;
   background: var(--color-sidebar-bg);
   color: var(--color-sidebar-text);
-  border-right: var(--tp-border-thin) solid var(--color-sidebar-border);
+  border: var(--tp-border-thin) solid var(--color-sidebar-border);
+  border-radius: var(--shell-island-radius);
+  box-shadow: var(--shell-island-shadow);
   overflow: hidden;
   z-index: var(--tp-z-sticky);
   width: var(--shell-sidebar-w);
@@ -277,7 +291,7 @@
   grid-column: 2;
   grid-row: 1;
   position: sticky;
-  top: 0;
+  top: var(--shell-gap);
   z-index: var(--tp-z-sticky);
   display: flex;
   align-items: center;
@@ -285,7 +299,9 @@
   height: var(--shell-header-h);
   padding: 0 var(--shell-gutter);
   background: var(--color-surface);
-  border-bottom: var(--tp-border-thin) solid var(--color-border);
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--shell-island-radius);
+  box-shadow: var(--shell-island-shadow);
 }
 
 .header__menu {
@@ -615,6 +631,9 @@
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0 var(--shell-island-radius) var(--shell-island-radius) 0;
     width: var(--shell-sidebar-w);
     transform: translateX(-100%);
     transition: transform var(--tp-duration-slow) var(--tp-ease);
