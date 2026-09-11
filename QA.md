@@ -1,6 +1,6 @@
 # Relatório de QA — Transppass PCM (MVP: R0 + R1 + R2)
 
-**Rodada:** 11/09/2026 · **Ambiente:** modo mock (MSW) no Microsoft Edge, sem banco · **Resultado:** 50 verificações funcionais de UI, 50 aprovadas · typecheck, lint e build do monorepo limpos.
+**Rodada:** 11/09/2026 · **Ambiente:** modo mock (MSW) no Microsoft Edge, sem banco · **Resultado:** 52 verificações funcionais de UI, 52 aprovadas · typecheck, lint e build do monorepo limpos.
 
 Este relatório é o que um analista de QA entregaria ao fim da sprint: o que foi testado, como, o que passou, o que foi corrigido no caminho e — mais importante — **o que ainda não foi exercitado** e por quê.
 
@@ -25,7 +25,7 @@ Este relatório é o que um analista de QA entregaria ao fim da sprint: o que fo
 | Grupo | Verificações | Situação |
 | --- | --- | --- |
 | Autenticação | login renderiza; senha errada é recusada; login válido cai no dashboard | 3/3 |
-| Shell | sidebar/header/subheader; recolher 264→72 px e expandir; interruptor de tema (claro ↔ escuro, ida e volta); bandeira de idioma (pt-BR ↔ en, ida e volta); notificações | 7/7 |
+| Shell | sidebar/header/subheader; recolher 264→72 px e expandir; interruptor de tema (ida e volta); bandeira de idioma (ida e volta); notificações; avatar abre Meu perfil (foto + senha); botão Sair no rodapé da sidebar | 9/9 |
 | Dashboard | anel de disponibilidade + 3 KPIs; grade de ônibus ilustrados; gráficos Recharts; fichas de atenção; fluxo da garagem com 6 etapas clicáveis | 5/5 |
 | Rotas | 14 telas renderizam com o título correto no subheader | 14/14 |
 | Fila (RF-08) | painel lateral abre; histórico imutável; **mover sem motivo fica bloqueado**; Esc fecha | 4/4 |

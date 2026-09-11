@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, ChevronRight, LogOut, Menu, Moon, Sun, User } from 'lucide-react';
+import { Bell, ChevronRight, Menu, Moon, Sun } from 'lucide-react';
 import { Theme } from '@app/design-kit';
-import { USER_ROLE_LABELS } from '@app/shared';
 import { useAuth } from '@/features/auth/use-auth';
 import { useTheme } from '@/features/theme/use-theme';
 import { useI18n } from '@/i18n/i18n.context';
@@ -26,7 +25,7 @@ interface Props {
 }
 
 export function Header({ onOpenDrawer }: Props) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { t } = useI18n();
   const spec = usePageHeaderSpec();
 
@@ -67,34 +66,11 @@ export function Header({ onOpenDrawer }: Props) {
         <LanguageToggle />
         <ThemeToggle />
         <NotificationsMenu />
-        <Dropdown
-          label={t.header.profile}
-          trigger={
-            <>
-              <span className="header__avatar">{initials(user?.name ?? '?')}</span>
-              <span className="header__user">
-                <span>{user?.name}</span>
-                <span className="header__user-role">
-                  {user ? USER_ROLE_LABELS[user.role] : ''}
-                </span>
-              </span>
-            </>
-          }
-        >
-          <div className="menu__title">{t.header.signedAs}</div>
-          <div className="menu__item" style={{ cursor: 'default' }}>
-            <User />
-            <span style={{ display: 'grid', lineHeight: 1.2 }}>
-              <span>{user?.name}</span>
-              <span className="header__user-role">{user?.email}</span>
-            </span>
-          </div>
-          <div className="menu__sep" />
-          <button type="button" className="menu__item menu__item--danger" onClick={() => void logout()}>
-            <LogOut />
-            {t.header.signOut}
-          </button>
-        </Dropdown>
+        <Link to="/perfil" className="header__btn header__profile" aria-label={t.header.profile} title={t.header.profile}>
+          <span className="header__avatar">
+            {user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : initials(user?.name ?? '?')}
+          </span>
+        </Link>
       </div>
     </header>
   );

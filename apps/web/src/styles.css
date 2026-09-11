@@ -1857,16 +1857,125 @@ small.muted {
 }
 
 /* =========================================================================
-   Login
+   Login — imagem da marca à esquerda, formulário à direita
    ========================================================================= */
 
 .login {
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   background: var(--color-bg);
 }
+
+/* ---- A imagem: garagem à noite, luz da marca, o ônibus em linha ---------- */
+
+.login__art {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--tp-space-8);
+  padding: clamp(var(--tp-space-8), 5vw, var(--tp-space-16));
+  overflow: hidden;
+  color: var(--tp-graphite-100);
+  background:
+    radial-gradient(900px 620px at 12% 8%, color-mix(in srgb, var(--tp-orange-500) 30%, transparent), transparent 60%),
+    radial-gradient(700px 520px at 92% 92%, color-mix(in srgb, var(--tp-blue-500) 16%, transparent), transparent 60%),
+    linear-gradient(170deg, var(--tp-graphite-900), var(--tp-graphite-950) 65%);
+  /* O ônibus desenha sobre o grafite: os tokens de superfície viram escuros. */
+  --color-surface: var(--tp-graphite-900);
+  --color-border-strong: var(--tp-graphite-600);
+  --color-border: var(--tp-graphite-700);
+  --color-text: var(--tp-graphite-100);
+}
+
+/* Piso da garagem: linhas finas em perspectiva sutil, só no terço de baixo. */
+.login__art::before {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 38%;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 56px, rgb(255 255 255 / 0.035) 56px 57px),
+    repeating-linear-gradient(180deg, transparent 0 40px, rgb(255 255 255 / 0.025) 40px 41px),
+    linear-gradient(180deg, transparent, rgb(0 0 0 / 0.35));
+  pointer-events: none;
+}
+
+/* Linha do horizonte, iluminada pela marca. */
+.login__art::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 38%;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tp-orange-500) 55%, transparent), transparent 70%);
+  pointer-events: none;
+}
+
+.login__watermark {
+  position: absolute;
+  top: -40px;
+  right: -60px;
+  height: auto;
+  opacity: 0.05;
+  color: #fff;
+  pointer-events: none;
+}
+
+.login__art-copy {
+  position: relative;
+  max-width: 44ch;
+  z-index: 1;
+}
+
+.login__kicker {
+  display: block;
+  font-size: var(--tp-text-xs);
+  font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tp-orange-400);
+  margin-bottom: var(--tp-space-4);
+}
+
+.login__headline {
+  margin: 0 0 var(--tp-space-4);
+  font-family: var(--tp-font-display);
+  font-size: clamp(36px, 4.2vw, 56px);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: 0.005em;
+  color: #fff;
+  text-wrap: balance;
+}
+
+.login__art-copy p {
+  margin: 0;
+  max-width: 40ch;
+  font-size: var(--tp-text-md);
+  line-height: var(--tp-leading-relaxed);
+  color: var(--tp-graphite-300);
+}
+
+.login__road {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: 0;
+}
+
+.login__bus {
+  width: min(560px, 100%);
+  height: auto;
+  filter: drop-shadow(0 30px 40px rgb(0 0 0 / 0.45));
+}
+
+/* ---- O formulário ------------------------------------------------------- */
 
 .login__form-col {
   display: flex;
@@ -1874,6 +1983,7 @@ small.muted {
   justify-content: space-between;
   gap: var(--tp-space-8);
   padding: var(--tp-space-8) clamp(var(--tp-space-6), 6vw, var(--tp-space-16));
+  background: var(--color-surface);
 }
 
 /* Sobre fundo claro o logo é grafite — a cor do arquivo original. */
@@ -1901,88 +2011,94 @@ small.muted {
   gap: var(--tp-space-5);
   width: 100%;
   max-width: 400px;
+  margin: 0 auto;
 }
+
+.login__intro { display: grid; gap: var(--tp-space-1); }
+.login__intro p { margin: 0; }
 
 .login__title {
   font-family: var(--tp-font-display);
-  font-size: clamp(28px, 3.4vw, 36px);
+  font-size: clamp(30px, 3vw, 38px);
   font-weight: 600;
-  line-height: 1.08;
-  margin: var(--tp-space-1) 0 var(--tp-space-2);
+  line-height: 1.05;
+  margin: var(--tp-space-1) 0 0;
   text-wrap: balance;
+}
+
+.login__password {
+  position: relative;
+}
+
+.login__password .tp-input {
+  padding-right: 48px;
+  width: 100%;
+}
+
+.login__eye {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--tp-radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.login__eye:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.login__submit { width: 100%; }
+
+.login__help {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-muted);
 }
 
 .login__foot {
   font-size: var(--tp-text-xs);
-}
-
-.login__art {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: var(--tp-space-8);
-  padding: var(--tp-space-12);
-  background: var(--tp-graphite-800);
-  color: var(--tp-graphite-100);
-  overflow: hidden;
-  --color-surface: var(--tp-graphite-800);
-  --color-border-strong: var(--tp-graphite-600);
-  --color-border: var(--tp-graphite-700);
-  --color-text: var(--tp-graphite-100);
-  --bus-window: #2f3a44;
-}
-
-/* Trilho sutil do pátio, atrás dos ônibus */
-.login__art::before {
-  content: '';
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 42%;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 44px,
-      rgb(255 255 255 / 0.035) 44px 46px
-    ),
-    linear-gradient(180deg, transparent, rgb(0 0 0 / 0.18));
-  pointer-events: none;
-}
-
-.login__art-buses {
-  position: relative;
-  display: grid;
-  gap: var(--tp-space-4);
-  justify-items: center;
-}
-
-.login__art-buses .bus:nth-child(2) { transform: translateX(-9%); }
-.login__art-buses .bus:nth-child(3) { transform: translateX(7%); }
-
-.login__art-text {
-  position: relative;
-  max-width: 42ch;
-}
-
-.login__art-kicker {
-  display: block;
-  font-family: var(--tp-font-display);
-  font-size: var(--tp-text-xl);
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: var(--tp-space-2);
-}
-
-.login__art-text p {
-  color: var(--tp-graphite-300);
-  font-size: var(--tp-text-md);
-  line-height: var(--tp-leading-relaxed);
+  text-align: center;
 }
 
 @media (max-width: 900px) {
-  .login { grid-template-columns: 1fr; }
-  .login__art { display: none; }
-  .login__form-col { padding: var(--tp-space-6) var(--tp-space-5); min-height: 100dvh; }
+  .login { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .login__art {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: var(--tp-space-4);
+    padding: var(--tp-space-5) var(--tp-space-5) 0;
+    min-height: 220px;
+  }
+  .login__art::before { height: 30%; }
+  .login__art::after { bottom: 30%; }
+  .login__art-copy { align-self: center; }
+  .login__art-copy p { display: none; }
+  .login__headline { font-size: 24px; margin-bottom: 0; }
+  .login__kicker { margin-bottom: var(--tp-space-2); }
+  .login__watermark { display: none; }
+  .login__road { flex: none; width: 46%; }
+  .login__bus { width: 100%; filter: none; }
+  .login__form-col { padding: var(--tp-space-6) var(--tp-space-5); }
+}
+
+@media (max-width: 560px) {
+  .login__art { flex-direction: column; align-items: stretch; min-height: 0; padding-bottom: 0; }
+  .login__road { width: 100%; max-width: 300px; margin: 0 auto; }
 }
 
 /* Logo compacto na sidebar recolhida */
@@ -2082,4 +2198,122 @@ small.muted {
 
 @media (prefers-reduced-motion: reduce) {
   .header__theme-icon { animation: none; }
+}
+
+/* Meu perfil */
+.profile {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--tp-space-4);
+  align-items: start;
+}
+
+.profile__card { min-width: 0; }
+.profile__card .tp-card__head h3 { display: inline-flex; align-items: center; gap: 6px; }
+
+.profile__identity {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--tp-space-6);
+  align-items: start;
+}
+
+.profile__avatar-wrap {
+  display: grid;
+  justify-items: center;
+  gap: var(--tp-space-2);
+  text-align: center;
+}
+
+.profile__avatar {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--color-surface);
+  box-shadow: 0 0 0 1px var(--color-border), var(--tp-shadow-md);
+  background: var(--color-brand);
+  color: var(--color-text-on-brand);
+  display: grid;
+  place-items: center;
+  font-family: var(--tp-font-display);
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.profile__avatar:hover { background: var(--color-brand); }
+
+.profile__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile__avatar-hint {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 6px 0 8px;
+  background: rgb(0 0 0 / 0.45);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity var(--tp-duration-fast) var(--tp-ease);
+}
+
+.profile__avatar:hover .profile__avatar-hint,
+.profile__avatar:focus-visible .profile__avatar-hint { opacity: 1; }
+
+.profile__avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--tp-space-1);
+}
+
+.profile__fields { min-width: 0; }
+
+.profile__readonly {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tp-space-3);
+}
+
+.profile__value {
+  font-size: var(--tp-text-sm);
+  color: var(--color-text);
+  padding: 8px 0;
+}
+
+.profile__foot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--tp-space-3);
+  padding-top: var(--tp-space-3);
+  border-top: var(--tp-border-thin) solid var(--color-border-subtle);
+}
+
+.profile__saved {
+  font-size: var(--tp-text-xs);
+  color: var(--color-success-text);
+}
+
+.profile__password {
+  display: grid;
+  gap: var(--tp-space-3);
+}
+
+@media (max-width: 1100px) {
+  .profile { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .profile__identity { grid-template-columns: minmax(0, 1fr); }
+  .profile__readonly { grid-template-columns: minmax(0, 1fr); }
 }

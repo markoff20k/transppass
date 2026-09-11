@@ -92,6 +92,31 @@ export const handlers = [
     return HttpResponse.json(publicUser);
   }),
 
+  // --- Perfil da própria pessoa ------------------------------------------
+  http.patch('*/api/users/me', async ({ request }) => {
+    await delay();
+    const auth = requireAuth(request, '/api/users/me');
+    if ('error' in auth) return auth.error;
+    const body = (await request.json()) as { name?: string; phone?: string | null; avatarUrl?: string | null };
+    if (body.name) auth.user.name = body.name;
+    auth.user.phone = body.phone ?? null;
+    if (body.avatarUrl !== undefined) auth.user.avatarUrl = body.avatarUrl;
+    const { password: _password, ...publicUser } = auth.user;
+    return HttpResponse.json(publicUser);
+  }),
+
+  http.post('*/api/users/me/password', async ({ request }) => {
+    await delay();
+    const auth = requireAuth(request, '/api/users/me/password');
+    if ('error' in auth) return auth.error;
+    const body = (await request.json()) as { currentPassword: string; newPassword: string };
+    if (body.currentPassword !== auth.user.password) {
+      return apiError(400, 'BAD_REQUEST', 'Senha atual incorreta', '/api/users/me/password');
+    }
+    auth.user.password = body.newPassword;
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.post('*/api/auth/refresh', async () => {
     // No mock o access token nunca expira, então o refresh não deveria ocorrer.
     return apiError(401, 'UNAUTHORIZED', 'Refresh não disponível no modo mock', '/api/auth/refresh');

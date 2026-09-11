@@ -19,6 +19,7 @@ import { SchedulingPage } from '@/pages/scheduling-page';
 import { OperationsPage } from '@/pages/operations-page';
 import { DesignKitPage } from '@/pages/design-kit-page';
 import { NotFoundPage } from '@/pages/not-found-page';
+import { ProfilePage } from '@/pages/profile-page';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
           { path: '/estoque', element: <StockPage /> },
           { path: '/indicadores', element: <MetricsPage /> },
           { path: '/design', element: <DesignKitPage /> },
+          { path: '/perfil', element: <ProfilePage /> },
           // R2 — Preventiva e Plantao
           { path: '/preventiva', element: <SchedulingPage /> },
           { path: '/plantao', element: <OperationsPage /> },

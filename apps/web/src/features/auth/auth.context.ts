@@ -6,6 +6,8 @@ export interface AuthContextValue {
   isLoading: boolean;
   login: (input: LoginInput) => Promise<void>;
   logout: () => Promise<void>;
+  /** Atualiza o usuário em memória depois de editar o perfil. */
+  updateUser: (user: PublicUser) => void;
 }
 
 /**

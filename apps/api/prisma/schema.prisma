@@ -42,6 +42,9 @@ model User {
   passwordHash String
   role         UserRole
   garageId     String?  @db.Uuid
+  phone        String?  @db.VarChar(32)
+  /// Foto de perfil como data URL (JPEG 256px, redimensionada no navegador).
+  avatarUrl    String?  @db.Text
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

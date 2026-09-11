@@ -27,6 +27,8 @@ export interface MockUser extends PublicUser {
 const baseUser = {
   registration: null,
   garageId: null,
+  phone: null,
+  avatarUrl: null,
   createdAt: new Date('2026-01-01T00:00:00Z').toISOString(),
 };
 

@@ -13,7 +13,7 @@ Monorepo React + TypeScript / NestJS, estruturado para que front e back possam s
 | **R2 — Preventiva e Plantão** | E3, E6 — linha do tempo por km, escopo pacote + backlog, kit D-1, equipe, reprogramação com motivo; demanda de reposição, reserva habilitada, retorno ao vivo | **Implementado, não validado contra banco** |
 | Fase 2 | RF-16, RF-40, RF-41 | Fora do MVP |
 
-O schema Prisma cobre **os oito épicos**; todas as telas do MVP existem em `apps/web` e rodam em modo mock. O QA funcional automatizado (`node tools/qa-smoke.mjs`, 50 verificações de UI) e o relatório em [QA.md](QA.md) registram o que foi exercitado.
+O schema Prisma cobre **os oito épicos**; todas as telas do MVP existem em `apps/web` e rodam em modo mock. O QA funcional automatizado (`node tools/qa-smoke.mjs`, 52 verificações de UI) e o relatório em [QA.md](QA.md) registram o que foi exercitado.
 
 > **A API do R1 e do R2 ainda não rodou contra um banco.** Compila, o lint passa e as rotas sobem com o grafo de dependências resolvido, mas a máquina de estados (portões, relógio, fila, travas da preventiva, habilitação da reserva) não foi exercitada em Postgres. O teste que faz isso está pronto em `apps/api/test/r1-flow.e2e.ts` (R1 + R2) — rode `npm run test:e2e` com a API no ar assim que o Postgres existir.
 

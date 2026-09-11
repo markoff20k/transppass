@@ -62,6 +62,8 @@ export const publicUserSchema = z.object({
   role: userRoleSchema,
   registration: z.string().nullable(),
   garageId: z.string().uuid().nullable(),
+  phone: z.string().nullable(),
+  avatarUrl: z.string().nullable(),
   createdAt: z.string().datetime(),
 });
 
@@ -116,6 +118,28 @@ export const userQuerySchema = z.object({
   role: userRoleSchema.optional(),
   onlyActive: z.coerce.boolean().default(true),
 });
+
+// --- Perfil da própria pessoa ---------------------------------------------
+
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(2, 'Informe o nome').max(120),
+  phone: z.string().trim().max(32).optional(),
+  /** Data URL de imagem (JPEG/PNG/WebP), no máximo ~300 KB — redimensionada no navegador. */
+  avatarUrl: z
+    .string()
+    .max(400_000, 'Imagem grande demais')
+    .regex(/^data:image\/(png|jpeg|webp);base64,/, 'Imagem inválida')
+    .nullable()
+    .optional(),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Informe a senha atual'),
+  newPassword: passwordSchema,
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;

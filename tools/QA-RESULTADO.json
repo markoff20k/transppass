@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-09-11T17:34:15.396Z",
+  "ranAt": "2026-09-11T20:06:38.418Z",
   "base": "http://localhost:5173",
-  "passed": 50,
+  "passed": 52,
   "failed": 0,
   "results": [
     {
@@ -61,6 +61,18 @@
     {
       "id": "SHELL-05",
       "name": "Painel de notificações abre com itens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "SHELL-06",
+      "name": "Avatar do header abre Meu perfil, com foto e senha",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "SHELL-07",
+      "name": "Sidebar tem o botão Sair no rodapé",
       "ok": true,
       "detail": ""
     },

@@ -7,6 +7,7 @@ import {
   CalendarClock,
   LifeBuoy,
   ChevronsLeft,
+  LogOut,
   ClipboardList,
   Gauge,
   LayoutDashboard,
@@ -19,7 +20,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { UserRole } from '@app/shared';
+import { USER_ROLE_LABELS, UserRole } from '@app/shared';
 import { useAuth } from '@/features/auth/use-auth';
 import { useI18n } from '@/i18n/i18n.context';
 import { TransppassLogo } from '@/components/brand/transppass-logo';
@@ -99,7 +100,7 @@ interface Props {
 }
 
 export function Sidebar({ collapsed, onToggleCollapse, onNavigate, drawer, onClose, counts }: Props) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { t } = useI18n();
 
   const groups = GROUPS.map((g) => ({
@@ -156,6 +157,31 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, drawer, onClo
         ))}
       </nav>
 
+      {/* Quem está conectado, e a saída — no rodapé, como todo app de mesa. */}
+      <div className="sidebar__bottom">
+        <NavLink
+          to="/perfil"
+          onClick={onNavigate}
+          title={t.header.profile}
+          className={({ isActive }) => `sidebar__user${isActive ? ' is-active' : ''}`}
+        >
+          <span className="sidebar__avatar">
+            {user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : initials(user?.name ?? '?')}
+          </span>
+          <span className="sidebar__user-text">
+            <span className="sidebar__user-name">{user?.name}</span>
+            <span className="sidebar__user-role">{user ? USER_ROLE_LABELS[user.role] : ''}</span>
+          </span>
+        </NavLink>
+        <button type="button" className="sidebar__logout" onClick={() => void logout()} title={t.header.signOut}>
+          <LogOut className="sidebar__icon" strokeWidth={1.9} />
+          <span className="sidebar__label">{t.header.signOut}</span>
+        </button>
+      </div>
     </aside>
   );
+}
+
+function initials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
 }

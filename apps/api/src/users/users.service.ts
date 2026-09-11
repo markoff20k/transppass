@@ -1,11 +1,13 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { Prisma, type User } from '@prisma/client';
 import {
   paginate,
+  type ChangePasswordInput,
   type CreateUserInput,
   type Paginated,
   type PublicUser,
+  type UpdateProfileInput,
   type UpdateUserInput,
   type UserQuery,
 } from '@app/shared';
@@ -103,6 +105,50 @@ export class UsersService {
     return toPublicUser(user);
   }
 
+  async findPublic(id: string): Promise<PublicUser> {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    return toPublicUser(user);
+  }
+
+  /** O que a própria pessoa muda na conta: nome, telefone e foto. */
+  async updateProfile(id: string, input: UpdateProfileInput): Promise<PublicUser> {
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        name: input.name,
+        phone: input.phone ?? null,
+        ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
+      },
+    });
+    await this.audit.write({
+      actorId: id,
+      action: 'user.profile',
+      entity: 'User',
+      entityId: id,
+      after: { name: user.name, phone: user.phone, hasAvatar: Boolean(user.avatarUrl) },
+    });
+    return toPublicUser(user);
+  }
+
+  /** Troca de senha pela própria pessoa: exige a atual e derruba as outras sessões. */
+  async changePassword(id: string, input: ChangePasswordInput): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    if (!(await argon2.verify(user.passwordHash, input.currentPassword))) {
+      throw new BadRequestException('Senha atual incorreta');
+    }
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash: await argon2.hash(input.newPassword, { type: argon2.argon2id }) },
+    });
+    await this.prisma.refreshToken.updateMany({
+      where: { userId: id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await this.audit.write({ actorId: id, action: 'user.password', entity: 'User', entityId: id });
+  }
+
   async list(query: UserQuery): Promise<Paginated<PublicUser>> {
     const where: Prisma.UserWhereInput = {
       ...(query.onlyActive ? { isActive: true } : {}),
@@ -140,6 +186,8 @@ export function toPublicUser(user: User): PublicUser {
     role: user.role,
     registration: user.registration,
     garageId: user.garageId,
+    phone: user.phone,
+    avatarUrl: user.avatarUrl,
     createdAt: user.createdAt.toISOString(),
   };
 }

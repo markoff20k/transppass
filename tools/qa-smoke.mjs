@@ -140,6 +140,15 @@ async function run() {
   await page.keyboard.press('Escape');
   await sleep(200);
 
+  // Perfil pelo avatar do header; sair no rodapé da sidebar
+  await page.click('a[aria-label="Perfil"]');
+  await sleep(500);
+  record('SHELL-06', 'Avatar do header abre Meu perfil, com foto e senha', page.url().endsWith('/perfil') && (await exists(page, '.profile__avatar')) && (await exists(page, '.profile__password')));
+  record('SHELL-07', 'Sidebar tem o botão Sair no rodapé', await exists(page, '.sidebar__logout'));
+  await shot(page, 'perfil');
+  await page.goto(`${BASE}/`, { waitUntil: 'networkidle0' });
+  await sleep(400);
+
   // ---- Dashboard -----------------------------------------------------------
   console.log('\nDashboard');
   record('DASH-01', 'Anel de disponibilidade + três KPIs', (await page.$$('.dash-kpi')).length === 3 && (await exists(page, '.ring__value')));
