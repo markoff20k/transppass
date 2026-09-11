@@ -1496,23 +1496,64 @@ small.muted {
 
 /* ---- Linha de atenção -------------------------------------------------- */
 
-.dash-alerts {
+/* Faixa de alerta no rodapé do painel: pertence ao instrumento, não flutua. */
+.dash-hero__alerts {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--tp-space-2) var(--tp-space-3);
-  padding: 0 var(--tp-space-1);
+  gap: var(--tp-space-2) var(--tp-space-4);
+  margin: 0 calc(-1 * var(--tp-space-5)) calc(-1 * var(--tp-space-5));
+  padding: var(--tp-space-3) var(--tp-space-5);
+  border-top: 1px solid var(--dash-glass-border);
+  border-radius: 0 0 var(--tp-radius-xl) var(--tp-radius-xl);
+  background: color-mix(in srgb, var(--color-surface-sunken) 55%, transparent);
+  --alert-color: var(--color-success);
 }
 
-.dash-alerts__title {
+.dash-hero__alerts.has-warning { --alert-color: var(--color-warning); }
+.dash-hero__alerts.has-critical { --alert-color: var(--color-danger); }
+
+.dash-hero__alerts-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tp-space-2);
   font-size: var(--tp-text-2xs);
   font-weight: var(--tp-weight-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
 }
 
-.dash-alerts .attention-list--row {
+.dash-hero__alerts-title b {
+  font-family: var(--tp-font-mono);
+  font-size: var(--tp-text-xs);
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--alert-color) 16%, transparent);
+  color: var(--color-text);
+}
+
+/* O ponto pulsa só quando há algo crítico. */
+.dash-hero__alerts-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--alert-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--alert-color) 20%, transparent);
+}
+
+.dash-hero__alerts.has-critical .dash-hero__alerts-dot {
+  animation: alert-dot 1.8s ease-in-out infinite;
+}
+
+@keyframes alert-dot {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--alert-color) 20%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--alert-color) 8%, transparent); }
+}
+
+.dash-hero__alerts .attention-list--row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--tp-space-2);
@@ -1521,11 +1562,24 @@ small.muted {
   list-style: none;
 }
 
-.dash-alerts .attention-item {
+.dash-hero__alerts .attention-item {
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
-  padding: 6px 14px 6px 10px;
-  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  padding: 4px 12px 4px 9px;
+  font-size: var(--tp-text-xs);
+  transition: transform var(--tp-duration-fast) var(--tp-ease), box-shadow var(--tp-duration-fast) var(--tp-ease);
+}
+
+.dash-hero__alerts .attention-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -6px color-mix(in srgb, currentColor 40%, transparent);
+}
+
+.dash-hero__alerts .attention-item a:hover { text-decoration: none; }
+.dash-hero__alerts .attention-item b { font-family: var(--tp-font-mono); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-hero__alerts-dot { animation: none !important; }
 }
 
 .attention-item--ok {
@@ -1569,6 +1623,10 @@ small.muted {
     grid-template-columns: minmax(0, 1fr);
     padding: var(--tp-space-4);
     gap: var(--tp-space-4);
+  }
+  .dash-hero__alerts {
+    margin: 0 calc(-1 * var(--tp-space-4)) calc(-1 * var(--tp-space-4));
+    padding: var(--tp-space-3) var(--tp-space-4);
   }
   .dash-hero__kpis { grid-template-columns: minmax(0, 1fr); }
   .dash-flow { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--tp-space-4); }

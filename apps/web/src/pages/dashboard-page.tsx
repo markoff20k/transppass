@@ -150,28 +150,35 @@ export function DashboardPage() {
             }
           />
         </div>
-      </section>
 
-      {/* ---- O que precisa de atenção: uma linha de fichas clicáveis ---- */}
-      <section className="dash-alerts" aria-label={t.dash.attention}>
-        <span className="dash-alerts__title">{t.dash.attention}</span>
-        <ul className="attention-list attention-list--row">
-          {alerts.length === 0 ? (
-            <li className="attention-item attention-item--ok">
-              <CheckCircle2 size={16} />
-              <Link to="/frota">{t.dash.allClear}</Link>
-            </li>
-          ) : (
-            alerts.map((a) => (
-              <li key={a.text} className={`attention-item attention-item--${a.tone}`}>
-                <AlertTriangle size={16} />
-                <Link to={a.to}>
-                  <b>{a.n}</b> {a.text}
-                </Link>
+        {/* ---- Faixa de alerta: o que precisa de atenção, dentro do instrumento ---- */}
+        <footer
+          className={`dash-hero__alerts${alerts.some((a) => a.tone === 'danger') ? ' has-critical' : alerts.length ? ' has-warning' : ' is-clear'}`}
+          aria-label={t.dash.attention}
+        >
+          <span className="dash-hero__alerts-title">
+            <i className="dash-hero__alerts-dot" aria-hidden />
+            {t.dash.attention}
+            {alerts.length > 0 && <b>{alerts.reduce((sum, a) => sum + a.n, 0)}</b>}
+          </span>
+          <ul className="attention-list attention-list--row">
+            {alerts.length === 0 ? (
+              <li className="attention-item attention-item--ok">
+                <CheckCircle2 size={14} />
+                <Link to="/frota">{t.dash.allClear}</Link>
               </li>
-            ))
-          )}
-        </ul>
+            ) : (
+              alerts.map((a) => (
+                <li key={a.text} className={`attention-item attention-item--${a.tone}`}>
+                  <AlertTriangle size={14} />
+                  <Link to={a.to}>
+                    <b>{a.n}</b> {a.text}
+                  </Link>
+                </li>
+              ))
+            )}
+          </ul>
+        </footer>
       </section>
 
       {/* ---- A frota, carro a carro ---- */}
