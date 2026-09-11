@@ -94,8 +94,8 @@ async function run() {
   await page.type('#login-password', 'admin123');
   await page.click('button[type="submit"]');
   await page.waitForFunction(() => location.pathname === '/', { timeout: 20000 }).catch(() => {});
-  await page.waitForSelector('.dash-kpis', { timeout: 20000 }).catch(() => {});
-  record('AUTH-03', 'Login válido leva ao dashboard', page.url().endsWith('/') && await exists(page, '.dash-kpis'));
+  await page.waitForSelector('.dash-hero', { timeout: 20000 }).catch(() => {});
+  record('AUTH-03', 'Login válido leva ao dashboard', page.url().endsWith('/') && await exists(page, '.dash-hero'));
   await shot(page, 'dashboard');
 
   // ---- Shell ----------------------------------------------------------------
@@ -140,7 +140,8 @@ async function run() {
 
   // ---- Dashboard -----------------------------------------------------------
   console.log('\nDashboard');
-  record('DASH-01', 'Quatro KPIs com valores', (await page.$$('.dash-kpi')).length === 4);
+  record('DASH-01', 'Anel de disponibilidade + três KPIs', (await page.$$('.dash-kpi')).length === 3 && (await exists(page, '.ring__value')));
+  record('DASH-05', 'Fluxo da garagem com seis etapas clicáveis', (await page.$$('.dash-flow__node')).length === 6);
   record('DASH-02', 'Grade de ônibus com ilustrações', (await page.$$('.bus-grid .bus')).length >= 5);
   record('DASH-03', 'Gráficos Recharts renderizados', (await page.$$('.recharts-surface')).length >= 3);
   record('DASH-04', 'Bloco de atenção com links', (await page.$$('.attention-item a')).length >= 1);

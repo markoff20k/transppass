@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-09-10T01:47:40.871Z",
+  "ranAt": "2026-09-11T14:39:31.165Z",
   "base": "http://localhost:5173",
-  "passed": 47,
+  "passed": 48,
   "failed": 0,
   "results": [
     {
@@ -54,7 +54,13 @@
     },
     {
       "id": "DASH-01",
-      "name": "Quatro KPIs com valores",
+      "name": "Anel de disponibilidade + três KPIs",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "DASH-05",
+      "name": "Fluxo da garagem com seis etapas clicáveis",
       "ok": true,
       "detail": ""
     },

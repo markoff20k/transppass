@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
 import {
   Area,
   AreaChart,
@@ -291,6 +291,7 @@ export function Sparkline({
   width?: number;
   height?: number;
 }) {
+  const gradientId = useId();
   const nums = values.filter((v): v is number => v !== null);
   if (nums.length < 2) return <svg className="spark" viewBox={`0 0 ${width} ${height}`} />;
 
@@ -312,9 +313,86 @@ export function Sparkline({
 
   return (
     <svg className="spark" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden>
-      <path d={area} className="spark__area" fill={color} />
+      <defs>
+        <linearGradient id={`${gradientId}-a`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.55} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={area} className="spark__area" fill={`url(#${gradientId}-a)`} />
       <path d={line} className="spark__line" stroke={color} />
       <circle cx={last[0]} cy={last[1]} r={3} fill={color} className="spark__dot" />
+    </svg>
+  );
+}
+
+/**
+ * Anel de progresso com brilho — a disponibilidade da frota no dashboard.
+ * O arco começa no topo e cresce em sentido horário; a marca é a meta.
+ * A animação de entrada e as cores ficam no CSS (`.ring`), lendo as duas
+ * variáveis que o componente publica.
+ */
+export function RingGauge({
+  value,
+  target,
+  size = 184,
+  stroke = 13,
+  tone = 'good',
+  label,
+}: {
+  /** 0–100. */
+  value: number;
+  /** 0–100; desenha a marca da meta no arco. */
+  target?: number;
+  size?: number;
+  stroke?: number;
+  tone?: 'good' | 'warn' | 'danger';
+  label?: string;
+}) {
+  const id = useId();
+  const half = size / 2;
+  const r = half - stroke / 2 - 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(100, value));
+  const offset = c * (1 - pct / 100);
+  const style = { '--ring-c': c, '--ring-off': offset } as CSSProperties;
+
+  return (
+    <svg className={`ring ring--${tone}`} viewBox={`0 0 ${size} ${size}`} style={style} role="img" aria-label={label ? `${label}: ${pct}%` : undefined}>
+      <defs>
+        <filter id={`${id}-glow`} x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <circle className="ring__track" cx={half} cy={half} r={r} fill="none" strokeWidth={stroke} />
+      <g transform={`rotate(-90 ${half} ${half})`}>
+        <circle
+          className="ring__value"
+          cx={half}
+          cy={half}
+          r={r}
+          fill="none"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          filter={`url(#${id}-glow)`}
+        />
+      </g>
+      {target !== undefined && (
+        <line
+          className="ring__target"
+          x1={half}
+          y1={2}
+          x2={half}
+          y2={stroke + 4}
+          transform={`rotate(${target * 3.6} ${half} ${half})`}
+        />
+      )}
     </svg>
   );
 }

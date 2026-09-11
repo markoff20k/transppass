@@ -1,6 +1,6 @@
 # Relatório de QA — Transppass PCM (MVP: R0 + R1 + R2)
 
-**Rodada:** 09/09/2026 · **Ambiente:** modo mock (MSW) no Microsoft Edge, sem banco · **Resultado:** 47 verificações funcionais de UI, 47 aprovadas · typecheck, lint e build do monorepo limpos.
+**Rodada:** 11/09/2026 · **Ambiente:** modo mock (MSW) no Microsoft Edge, sem banco · **Resultado:** 48 verificações funcionais de UI, 48 aprovadas · typecheck, lint e build do monorepo limpos.
 
 Este relatório é o que um analista de QA entregaria ao fim da sprint: o que foi testado, como, o que passou, o que foi corrigido no caminho e — mais importante — **o que ainda não foi exercitado** e por quê.
 
@@ -26,7 +26,7 @@ Este relatório é o que um analista de QA entregaria ao fim da sprint: o que fo
 | --- | --- | --- |
 | Autenticação | login renderiza; senha errada é recusada; login válido cai no dashboard | 3/3 |
 | Shell | sidebar/header/subheader; recolher 264→72 px e expandir; tema escuro; idioma EN; notificações | 5/5 |
-| Dashboard | 4 KPIs com valor; grade de ônibus ilustrados; gráficos Recharts; bloco de atenção | 4/4 |
+| Dashboard | anel de disponibilidade + 3 KPIs; grade de ônibus ilustrados; gráficos Recharts; fichas de atenção; fluxo da garagem com 6 etapas clicáveis | 5/5 |
 | Rotas | 14 telas renderizam com o título correto no subheader | 14/14 |
 | Fila (RF-08) | painel lateral abre; histórico imutável; **mover sem motivo fica bloqueado**; Esc fecha | 4/4 |
 | Triagem (RF-02/03) | painel com os três destinos (socorro, fila, deferir) | 1/1 |

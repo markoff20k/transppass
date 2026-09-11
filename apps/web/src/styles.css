@@ -984,41 +984,340 @@ td.actions {
 }
 
 /* =========================================================================
-   Dashboard
+   Dashboard — centro de comando
+   -------------------------------------------------------------------------
+   Vidro sobre um fundo com dois focos de luz (a marca e o azul da oficina),
+   anel de disponibilidade com brilho, trilho do fluxo da garagem. Tudo em
+   tokens: no tema claro o vidro é fosco e a luz é discreta; no escuro a
+   profundidade aparece. Nada aqui é decoração sem dado por trás.
    ========================================================================= */
 
-.dash-kpis {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--tp-space-3);
+:root {
+  --dash-glow-a: color-mix(in srgb, var(--color-brand) 10%, transparent);
+  --dash-glow-b: color-mix(in srgb, var(--tp-blue-500) 7%, transparent);
+  --dash-glass-top: color-mix(in srgb, var(--color-surface) 96%, transparent);
+  --dash-glass-bottom: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  --dash-glass-border: color-mix(in srgb, var(--color-border) 85%, transparent);
+  --dash-glass-highlight: color-mix(in srgb, #ffffff 70%, transparent);
+  --dash-glass-shadow: 0 12px 32px -18px rgb(0 0 0 / 0.25);
+  --dash-ring-track: color-mix(in srgb, var(--color-border) 70%, transparent);
 }
 
-.dash-kpi {
-  display: grid;
-  gap: var(--tp-space-2);
-  padding: var(--tp-space-4);
-  background: var(--color-surface);
-  border: var(--tp-border-thin) solid var(--color-border);
-  border-radius: var(--tp-radius-lg);
-  box-shadow: var(--shadow-card);
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --dash-glow-a: color-mix(in srgb, var(--color-brand) 16%, transparent);
+    --dash-glow-b: color-mix(in srgb, var(--tp-blue-500) 14%, transparent);
+    --dash-glass-top: color-mix(in srgb, var(--color-surface) 78%, transparent);
+    --dash-glass-bottom: color-mix(in srgb, var(--color-surface) 58%, transparent);
+    --dash-glass-border: color-mix(in srgb, #ffffff 10%, transparent);
+    --dash-glass-highlight: color-mix(in srgb, #ffffff 8%, transparent);
+    --dash-glass-shadow: 0 24px 48px -24px rgb(0 0 0 / 0.7);
+    --dash-ring-track: color-mix(in srgb, #ffffff 8%, transparent);
+  }
+}
+
+:root[data-theme='dark'] {
+  --dash-glow-a: color-mix(in srgb, var(--color-brand) 16%, transparent);
+  --dash-glow-b: color-mix(in srgb, var(--tp-blue-500) 14%, transparent);
+  --dash-glass-top: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  --dash-glass-bottom: color-mix(in srgb, var(--color-surface) 58%, transparent);
+  --dash-glass-border: color-mix(in srgb, #ffffff 10%, transparent);
+  --dash-glass-highlight: color-mix(in srgb, #ffffff 8%, transparent);
+  --dash-glass-shadow: 0 24px 48px -24px rgb(0 0 0 / 0.7);
+  --dash-ring-track: color-mix(in srgb, #ffffff 8%, transparent);
+}
+
+.dash {
   position: relative;
-  overflow: hidden;
+  isolation: isolate;
+  display: grid;
+  gap: var(--tp-space-3);
   min-width: 0;
 }
 
-/* A faixa fica no topo, não na lateral: lê como semáforo, não como cartão genérico. */
+/* Os dois focos de luz ficam atrás de tudo e não capturam o mouse. */
+.dash::before {
+  content: '';
+  position: absolute;
+  inset: -24px 0 auto 0;
+  height: 600px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(560px 300px at 14% 32%, var(--dash-glow-a), transparent 70%),
+    radial-gradient(680px 340px at 86% 36%, var(--dash-glow-b), transparent 70%);
+}
+
+.dash-glass {
+  background: linear-gradient(160deg, var(--dash-glass-top), var(--dash-glass-bottom));
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid var(--dash-glass-border);
+  border-radius: var(--tp-radius-xl);
+  box-shadow: inset 0 1px 0 var(--dash-glass-highlight), var(--dash-glass-shadow);
+}
+
+/* ---- Painel de cima ---------------------------------------------------- */
+
+.dash-hero {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr) 272px;
+  gap: var(--tp-space-5);
+  padding: var(--tp-space-5);
+  min-width: 0;
+}
+
+.dash-hero > * { min-width: 0; }
+
+/* Anel de disponibilidade */
+.dash-gauge {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--tp-space-3);
+}
+
+.dash-gauge__ring {
+  position: relative;
+  width: 184px;
+  height: 184px;
+}
+
+.dash-gauge__ring .ring { width: 100%; height: 100%; display: block; }
+
+.dash-gauge__center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.dash-gauge__value {
+  font-family: var(--tp-font-display);
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-gauge__value small {
+  font-size: 0.5em;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-left: 2px;
+}
+
+.dash-gauge__label {
+  font-size: var(--tp-text-2xs);
+  font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.dash-gauge__foot {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.dash-gauge__ready {
+  font-size: var(--tp-text-sm);
+  color: var(--color-text-secondary);
+}
+
+.dash-gauge__ready b { color: var(--color-text); font-variant-numeric: tabular-nums; }
+
+.dash-gauge__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-3);
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-muted);
+}
+
+.dash-gauge__target::before {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 10px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  background: var(--color-text);
+  border-radius: 1px;
+}
+
+/* Anel (SVG) */
+.ring__track { stroke: var(--dash-ring-track); }
+
+.ring__value {
+  stroke: var(--color-state-running);
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: ring-in 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.ring--warn .ring__value { stroke: var(--color-warning); }
+.ring--danger .ring__value { stroke: var(--color-danger); }
+
+.ring__target {
+  stroke: var(--color-text);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+@keyframes ring-in {
+  from { stroke-dashoffset: var(--ring-c); }
+  to { stroke-dashoffset: var(--ring-off); }
+}
+
+/* Fluxo da garagem */
+.dash-flow-wrap {
+  display: grid;
+  align-content: space-between;
+  gap: var(--tp-space-4);
+}
+
+.dash-flow-wrap__head { display: grid; gap: 2px; }
+.dash-flow-wrap__head h3 { margin: 0; font-size: var(--tp-text-sm); }
+
+.dash-flow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.dash-flow__stage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--tp-space-2);
+  --flow-color: var(--color-state-waiting);
+}
+
+.dash-flow__stage--working { --flow-color: var(--color-state-working); }
+.dash-flow__stage--stopped { --flow-color: var(--color-state-stopped); }
+
+/* Trilho entre os nós: apagado por padrão, aceso quando a etapa tem carro. */
+.dash-flow__rail {
+  position: absolute;
+  top: 22px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: var(--dash-ring-track);
+  z-index: 0;
+}
+
+.dash-flow__stage.is-active .dash-flow__rail {
+  background: linear-gradient(90deg, var(--dash-ring-track), var(--flow-color));
+}
+
+.dash-flow__node {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--dash-ring-track);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-family: var(--tp-font-display);
+  font-size: var(--tp-text-md);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: transform var(--tp-duration-fast) var(--tp-ease), box-shadow var(--tp-duration-fast) var(--tp-ease);
+}
+
+.dash-flow__node:hover { transform: translateY(-2px); }
+.dash-flow__node:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 3px; }
+
+.dash-flow__stage.is-active .dash-flow__node {
+  border-color: var(--flow-color);
+  color: var(--color-text);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--flow-color) 18%, transparent),
+    0 0 18px color-mix(in srgb, var(--flow-color) 45%, transparent);
+}
+
+.dash-flow__stage--stopped.is-active .dash-flow__node {
+  animation: flow-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes flow-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--flow-color) 18%, transparent), 0 0 18px color-mix(in srgb, var(--flow-color) 45%, transparent); }
+  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--flow-color) 10%, transparent), 0 0 28px color-mix(in srgb, var(--flow-color) 60%, transparent); }
+}
+
+.dash-flow__label {
+  font-size: var(--tp-text-2xs);
+  font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.dash-flow__stage.is-active .dash-flow__label { color: var(--color-text-secondary); }
+
+/* KPIs empilhados à direita do painel */
+.dash-hero__kpis {
+  display: grid;
+  gap: var(--tp-space-3);
+  align-content: start;
+}
+
+.dash-kpi {
+  position: relative;
+  display: grid;
+  gap: var(--tp-space-1);
+  padding: var(--tp-space-3) var(--tp-space-4);
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--tp-radius-lg);
+  border: 1px solid var(--dash-glass-border);
+  background: linear-gradient(160deg, var(--dash-glass-top), var(--dash-glass-bottom));
+  box-shadow: inset 0 1px 0 var(--dash-glass-highlight);
+  --kpi-color: var(--color-border-strong);
+}
+
+.dash-kpi--good { --kpi-color: var(--color-success); }
+.dash-kpi--warn { --kpi-color: var(--color-warning); }
+.dash-kpi--danger { --kpi-color: var(--color-danger); }
+.dash-kpi--brand { --kpi-color: var(--color-brand); }
+
+/* Fio de luz no topo e um foco suave no canto, na cor do estado. */
 .dash-kpi::before {
   content: '';
   position: absolute;
   inset: 0 0 auto 0;
-  height: 3px;
-  background: var(--color-border-strong);
+  height: 2px;
+  background: linear-gradient(90deg, var(--kpi-color), transparent 70%);
 }
 
-.dash-kpi--good::before { background: var(--color-success); }
-.dash-kpi--warn::before { background: var(--color-warning); }
-.dash-kpi--danger::before { background: var(--color-danger); }
-.dash-kpi--brand::before { background: var(--color-brand); }
+.dash-kpi::after {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--kpi-color) 11%, transparent), transparent);
+  pointer-events: none;
+}
 
 .dash-kpi__head {
   display: flex;
@@ -1037,14 +1336,14 @@ td.actions {
 
 .dash-kpi__body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 88px;
+  grid-template-columns: minmax(0, 1fr) 96px;
   align-items: end;
-  gap: var(--tp-space-4);
+  gap: var(--tp-space-3);
 }
 
 .dash-kpi__value {
   font-family: var(--tp-font-display);
-  font-size: clamp(24px, 2.2vw, 32px);
+  font-size: clamp(22px, 1.8vw, 28px);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.005em;
@@ -1053,6 +1352,9 @@ td.actions {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.dash-kpi .spark { height: 34px; }
+.dash-kpi .spark__line { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--kpi-color) 55%, transparent)); }
 
 .dash-kpi__delta {
   display: inline-flex;
@@ -1073,13 +1375,54 @@ td.actions {
 .dash-kpi__delta--danger { color: var(--color-danger-text); }
 .dash-kpi__delta--neutral { color: var(--color-text-muted); }
 
+/* ---- Linha de atenção -------------------------------------------------- */
+
+.dash-alerts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--tp-space-2) var(--tp-space-3);
+  padding: 0 var(--tp-space-1);
+}
+
+.dash-alerts__title {
+  font-size: var(--tp-text-2xs);
+  font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.dash-alerts .attention-list--row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tp-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-alerts .attention-item {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  padding: 6px 14px 6px 10px;
+  backdrop-filter: blur(12px);
+}
+
+.attention-item--ok {
+  color: var(--color-success-text);
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
+}
+
+.attention-item--ok a { color: inherit; text-decoration: none; }
+
 .dash-row {
   display: grid;
   gap: var(--tp-space-3);
   min-width: 0;
 }
 
-.dash-row--fleet { grid-template-columns: minmax(280px, 1fr) minmax(0, 2.4fr); }
 .dash-row--charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .dash-row--bottom { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.1fr); }
 
@@ -1088,6 +1431,36 @@ td.actions {
 .dash-updated {
   text-align: right;
   font-size: var(--tp-text-2xs);
+}
+
+/* ---- Responsivo -------------------------------------------------------- */
+
+@media (max-width: 1240px) {
+  .dash-hero {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .dash-hero__kpis {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .dash-hero {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--tp-space-4);
+    gap: var(--tp-space-4);
+  }
+  .dash-hero__kpis { grid-template-columns: minmax(0, 1fr); }
+  .dash-flow { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--tp-space-4); }
+  .dash-flow__rail { display: none; }
+  .dash-gauge__ring { width: 160px; height: 160px; }
+  .dash-gauge__value { font-size: 38px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring__value { animation: none; }
+  .dash-flow__stage--stopped.is-active .dash-flow__node { animation: none; }
 }
 
 /* Atenção */

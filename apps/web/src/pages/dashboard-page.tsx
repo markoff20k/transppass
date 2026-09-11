@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2, Minus } from 'lucide-react';
 import {
   EVENT_STATUS_LABELS,
   VEHICLE_STATUS_LABELS,
@@ -19,16 +19,35 @@ import {
   DowntimeDonut,
   EventsPerDayChart,
   MkbfTrendChart,
+  RingGauge,
   Sparkline,
 } from '@/components/charts/charts';
 
 /**
  * Dashboard — a tela que abre depois do login.
  *
- * Ordem de leitura: quatro números que resumem a garagem, depois o que precisa
- * de atenção, depois a frota carro a carro, depois as tendências. O gestor
- * decide nos primeiros três segundos; os gráficos explicam o porquê.
+ * É um centro de comando, não um relatório: o painel de cima responde em três
+ * segundos "quantos carros tenho, onde estão os que faltam e o que está preso";
+ * o resto da tela explica o porquê com a frota carro a carro e as tendências.
+ *
+ * Meta de disponibilidade: ARBITRADO em 85% até o PCM fixar o valor (RF-38 fala
+ * em meta sem numerá-la). Vale para a cor do anel e para a marca no arco.
  */
+const AVAILABILITY_TARGET = 85;
+
+type StageKey = 'triage' | 'field' | 'queue' | 'shop' | 'part' | 'release';
+type Family = 'running' | 'waiting' | 'working' | 'stopped';
+
+/** Etapas do fluxo da garagem, na ordem em que um carro as atravessa. */
+const STAGES: { key: StageKey; statuses: VehicleStatus[]; family: Family; to: string }[] = [
+  { key: 'triage', statuses: ['AWAITING_TRIAGE'], family: 'waiting', to: '/triagem' },
+  { key: 'field', statuses: ['FIELD_SERVICE'], family: 'waiting', to: '/socorro' },
+  { key: 'queue', statuses: ['AWAITING_MAINTENANCE'], family: 'waiting', to: '/fila' },
+  { key: 'shop', statuses: ['IN_MAINTENANCE'], family: 'working', to: '/os' },
+  { key: 'part', statuses: ['AWAITING_PART'], family: 'stopped', to: '/estoque' },
+  { key: 'release', statuses: ['IN_INSPECTION', 'IN_CLEANING'], family: 'working', to: '/os' },
+];
+
 export function DashboardPage() {
   const { t } = useI18n();
 
@@ -48,111 +67,134 @@ export function DashboardPage() {
   if (isError || !data) return <div className="tp-alert tp-alert--danger">{t.dash.error}</div>;
 
   const availabilityPct = Math.round(data.fleet.availabilityRate * 1000) / 10;
+  const availabilityTone: Tone =
+    availabilityPct >= AVAILABILITY_TARGET ? 'good' : availabilityPct >= AVAILABILITY_TARGET - 10 ? 'warn' : 'danger';
+
   const alerts = [
     { n: data.alerts.safetyEventsOpen, text: t.dash.safetyOpen, to: '/eventos', tone: 'danger' as const },
     { n: data.materials.overdueParts, text: t.dash.overdueParts, to: '/estoque', tone: 'danger' as const },
+    { n: data.workOrders.overdue, text: t.dash.overdueWo, to: '/os', tone: 'danger' as const },
     { n: data.alerts.pendingTriage, text: t.dash.pendingTriage, to: '/triagem', tone: 'warning' as const },
     { n: data.alerts.degradedKm, text: t.dash.degradedKm, to: '/km', tone: 'warning' as const },
   ].filter((a) => a.n > 0);
 
   return (
-    <>
-      {/* ---- Os quatro números ---- */}
-      <section className="dash-kpis">
-        <Kpi
-          label={t.dash.availability}
-          hint={t.dash.availabilityHint}
-          value={`${availabilityPct.toLocaleString('pt-BR')}%`}
-          tone={availabilityPct >= 85 ? 'good' : availabilityPct >= 75 ? 'warn' : 'danger'}
-          delta={data.fleet.availabilityDelta}
-          deltaSuffix=" pp"
-          deltaLabel={t.dash.vs7d}
-          spark={data.availabilityByHour.map((h) => h.rate * 100)}
-          sparkColor="var(--chart-4)"
-        />
-        <Kpi
-          label={t.dash.mkbf}
-          hint={t.dash.mkbfHint}
-          value={data.mkbf.current === null ? '—' : `${formatNumber(data.mkbf.current)} km`}
-          tone="brand"
-          spark={data.mkbf.series.map((p) => p.mkbf)}
-          sparkColor="var(--chart-1)"
-          note={data.mkbf.current === null ? t.dash.noReturns : undefined}
-        />
-        <Kpi
-          label={t.dash.inQueue}
-          hint={t.dash.inQueueHint}
-          value={String(data.queue.waiting)}
-          tone={data.queue.waiting > 3 ? 'warn' : 'neutral'}
-          note={
-            data.queue.oldestWaitingHours !== null
-              ? `+ ${data.queue.inService} em atendimento · mais antigo há ${data.queue.oldestWaitingHours}${t.dash.hours}`
-              : `+ ${data.queue.inService} em atendimento`
-          }
-        />
-        <Kpi
-          label={t.dash.openWo}
-          hint={t.dash.openWoHint}
-          value={String(data.workOrders.open)}
-          tone={data.workOrders.overdue > 0 ? 'danger' : 'neutral'}
-          note={
-            data.workOrders.overdue > 0
-              ? `${data.workOrders.overdue} ${t.dash.overdue}`
-              : data.workOrders.averageDowntimeMinutes !== null
-                ? `média ${formatMinutes(data.workOrders.averageDowntimeMinutes)} por OS`
-                : undefined
-          }
-        />
-      </section>
-
-      {/* ---- Atenção + frota ---- */}
-      <section className="dash-row dash-row--fleet">
-        <div className="tp-card dash-attention">
-          <div className="tp-card__head">
-            <h3>{t.dash.attention}</h3>
+    <div className="dash">
+      {/* ---- Centro de comando: anel, fluxo e os três números ---- */}
+      <section className="dash-hero dash-glass" aria-label={t.dash.title}>
+        <div className="dash-gauge">
+          <div className="dash-gauge__ring">
+            <RingGauge value={availabilityPct} target={AVAILABILITY_TARGET} tone={availabilityTone} label={t.dash.availability} />
+            <div className="dash-gauge__center">
+              <strong className="dash-gauge__value">
+                {availabilityPct.toLocaleString('pt-BR')}
+                <small>%</small>
+              </strong>
+              <span className="dash-gauge__label">{t.dash.availability}</span>
+            </div>
           </div>
-          {alerts.length === 0 ? (
-            <p className="tp-muted">{t.dash.allClear}</p>
-          ) : (
-            <ul className="attention-list">
-              {alerts.map((a) => (
-                <li key={a.text} className={`attention-item attention-item--${a.tone}`}>
-                  <AlertTriangle size={16} />
-                  <Link to={a.to}>
-                    <b>{a.n}</b> {a.text}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="tp-card__head" style={{ marginTop: 'var(--tp-space-2)' }}>
-            <h3>{t.dash.fleetNow}</h3>
+          <div className="dash-gauge__foot">
+            <span className="dash-gauge__ready">
+              <b>{data.fleet.available}</b> {t.dash.of} <b>{data.fleet.total}</b> {t.dash.readyBuses}
+            </span>
+            <span className="dash-gauge__meta">
+              <Delta value={data.fleet.availabilityDelta} suffix=" pp" label={t.dash.vs7d} />
+              <span className="dash-gauge__target">
+                {t.dash.target} {AVAILABILITY_TARGET}%
+              </span>
+            </span>
           </div>
+        </div>
+
+        <div className="dash-flow-wrap">
+          <div className="dash-flow-wrap__head">
+            <h3>{t.dash.flowTitle}</h3>
+            <span className="chart__hint">{t.dash.flowHint}</span>
+          </div>
+          <GarageFlow byStatus={data.fleet.byStatus} />
           <StatusSummary byStatus={data.fleet.byStatus} total={data.fleet.total} />
         </div>
 
-        <div className="tp-card dash-fleet">
-          <div className="tp-card__head">
-            <div>
-              <h3>{t.dash.fleetNow}</h3>
-              <span className="chart__hint">{t.dash.fleetNowHint}</span>
-            </div>
-            <Link to="/frota" className="tp-btn tp-btn--ghost tp-btn--sm">
-              {t.dash.seeAll}
-            </Link>
+        <div className="dash-hero__kpis">
+          <Kpi
+            label={t.dash.mkbf}
+            hint={t.dash.mkbfHint}
+            value={data.mkbf.current === null ? '—' : `${formatNumber(data.mkbf.current)} km`}
+            tone="brand"
+            spark={data.mkbf.series.map((p) => p.mkbf)}
+            sparkColor="var(--chart-1)"
+            note={data.mkbf.current === null ? t.dash.noReturns : undefined}
+          />
+          <Kpi
+            label={t.dash.inQueue}
+            hint={t.dash.inQueueHint}
+            value={String(data.queue.waiting)}
+            tone={data.queue.waiting > 3 ? 'warn' : 'neutral'}
+            note={
+              data.queue.oldestWaitingHours !== null
+                ? `+ ${data.queue.inService} ${t.dash.inService} · ${t.dash.oldest} ${data.queue.oldestWaitingHours}${t.dash.hours}`
+                : `+ ${data.queue.inService} ${t.dash.inService}`
+            }
+          />
+          <Kpi
+            label={t.dash.openWo}
+            hint={t.dash.openWoHint}
+            value={String(data.workOrders.open)}
+            tone={data.workOrders.overdue > 0 ? 'danger' : 'neutral'}
+            note={
+              data.workOrders.overdue > 0
+                ? `${data.workOrders.overdue} ${t.dash.overdue}`
+                : data.workOrders.averageDowntimeMinutes !== null
+                  ? `${t.dash.avg} ${formatMinutes(data.workOrders.averageDowntimeMinutes)} ${t.dash.perWo}`
+                  : undefined
+            }
+          />
+        </div>
+      </section>
+
+      {/* ---- O que precisa de atenção: uma linha de fichas clicáveis ---- */}
+      <section className="dash-alerts" aria-label={t.dash.attention}>
+        <span className="dash-alerts__title">{t.dash.attention}</span>
+        <ul className="attention-list attention-list--row">
+          {alerts.length === 0 ? (
+            <li className="attention-item attention-item--ok">
+              <CheckCircle2 size={16} />
+              <Link to="/frota">{t.dash.allClear}</Link>
+            </li>
+          ) : (
+            alerts.map((a) => (
+              <li key={a.text} className={`attention-item attention-item--${a.tone}`}>
+                <AlertTriangle size={16} />
+                <Link to={a.to}>
+                  <b>{a.n}</b> {a.text}
+                </Link>
+              </li>
+            ))
+          )}
+        </ul>
+      </section>
+
+      {/* ---- A frota, carro a carro ---- */}
+      <section className="tp-card dash-glass dash-fleet">
+        <div className="tp-card__head">
+          <div>
+            <h3>{t.dash.fleetNow}</h3>
+            <span className="chart__hint">{t.dash.fleetNowHint}</span>
           </div>
-          <div className="bus-grid">
-            {data.vehicles.map((v) => (
-              <BusCard key={v.id} vehicle={v} />
-            ))}
-          </div>
+          <Link to="/frota" className="tp-btn tp-btn--ghost tp-btn--sm">
+            {t.dash.seeAll}
+          </Link>
+        </div>
+        <div className="bus-grid">
+          {data.vehicles.map((v) => (
+            <BusCard key={v.id} vehicle={v} />
+          ))}
         </div>
       </section>
 
       {/* ---- Tendências ---- */}
       <section className="dash-row dash-row--charts">
-        <div className="tp-card">
+        <div className="tp-card dash-glass">
           <div className="chart__title">
             <h3>{t.dash.mkbfTrend}</h3>
             <span className="chart__hint">{t.dash.mkbfTrendHint}</span>
@@ -160,7 +202,7 @@ export function DashboardPage() {
           <MkbfTrendChart data={data.mkbf.series} />
         </div>
 
-        <div className="tp-card">
+        <div className="tp-card dash-glass">
           <div className="chart__title">
             <h3>{t.dash.availByHour}</h3>
             <span className="chart__hint">{t.dash.availByHourHint}</span>
@@ -170,7 +212,7 @@ export function DashboardPage() {
       </section>
 
       <section className="dash-row dash-row--bottom">
-        <div className="tp-card">
+        <div className="tp-card dash-glass">
           <div className="chart__title">
             <h3>{t.dash.downtime}</h3>
             <span className="chart__hint">{t.dash.downtimeHint}</span>
@@ -178,7 +220,7 @@ export function DashboardPage() {
           <DowntimeDonut data={data.downtimeByCause} totalMinutes={data.totalDowntimeMinutes} />
         </div>
 
-        <div className="tp-card">
+        <div className="tp-card dash-glass">
           <div className="chart__title">
             <h3>{t.dash.eventsPerDay}</h3>
             <span className="chart__hint">{t.dash.eventsPerDayHint}</span>
@@ -186,7 +228,7 @@ export function DashboardPage() {
           <EventsPerDayChart data={data.eventsPerDay} />
         </div>
 
-        <div className="tp-card">
+        <div className="tp-card dash-glass">
           <div className="tp-card__head">
             <h3>{t.dash.recentEvents}</h3>
             <Link to="/eventos" className="tp-btn tp-btn--ghost tp-btn--sm">
@@ -206,7 +248,7 @@ export function DashboardPage() {
                 </div>
               </li>
             ))}
-            {data.recentEvents.length === 0 && <li className="tp-muted">Nenhum evento registrado.</li>}
+            {data.recentEvents.length === 0 && <li className="tp-muted">{t.dash.noEvents}</li>}
           </ul>
         </div>
       </section>
@@ -214,11 +256,28 @@ export function DashboardPage() {
       <p className="tp-muted dash-updated">
         {t.dash.updated} {formatDateTime(data.generatedAt)}
       </p>
-    </>
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
+
+type Tone = 'good' | 'warn' | 'danger' | 'brand' | 'neutral';
+
+function Delta({ value, suffix = '', label }: { value: number | null | undefined; suffix?: string; label?: string }) {
+  if (value === null || value === undefined) return null;
+  const Icon = value === 0 ? Minus : value > 0 ? ArrowUpRight : ArrowDownRight;
+  const tone = value === 0 ? 'neutral' : value > 0 ? 'good' : 'danger';
+  return (
+    <span className={`dash-kpi__delta dash-kpi__delta--${tone}`}>
+      <Icon size={14} />
+      {value > 0 ? '+' : ''}
+      {value.toLocaleString('pt-BR')}
+      {suffix}
+      {label && <em> {label}</em>}
+    </span>
+  );
+}
 
 function Kpi({
   label,
@@ -235,7 +294,7 @@ function Kpi({
   label: string;
   hint?: string;
   value: string;
-  tone: 'good' | 'warn' | 'danger' | 'brand' | 'neutral';
+  tone: Tone;
   delta?: number | null;
   deltaSuffix?: string;
   deltaLabel?: string;
@@ -243,9 +302,6 @@ function Kpi({
   spark?: (number | null)[];
   sparkColor?: string;
 }) {
-  const DeltaIcon = delta === null || delta === undefined || delta === 0 ? Minus : delta > 0 ? ArrowUpRight : ArrowDownRight;
-  const deltaTone = delta === null || delta === undefined || delta === 0 ? 'neutral' : delta > 0 ? 'good' : 'danger';
-
   return (
     <div className={`dash-kpi dash-kpi--${tone}`}>
       <div className="dash-kpi__head">
@@ -256,17 +312,38 @@ function Kpi({
         <strong className="dash-kpi__value">{value}</strong>
         {spark && <Sparkline values={spark} color={sparkColor} />}
       </div>
-      {delta !== undefined && delta !== null && (
-        <span className={`dash-kpi__delta dash-kpi__delta--${deltaTone}`}>
-          <DeltaIcon size={14} />
-          {delta > 0 ? '+' : ''}
-          {delta.toLocaleString('pt-BR')}
-          {deltaSuffix}
-          {deltaLabel && <em> {deltaLabel}</em>}
-        </span>
-      )}
+      <Delta value={delta} suffix={deltaSuffix} label={deltaLabel} />
       {note && <span className="tp-kpi__note">{note}</span>}
     </div>
+  );
+}
+
+/**
+ * O fluxo da garagem como um trilho: cada nó é uma etapa, o número dentro é
+ * quantos carros estão nela agora. Nó apagado = etapa vazia; nó aceso = há
+ * carro ali; "aguardando peça" pulsa porque é o único estado em que o carro
+ * está parado sem ninguém trabalhando nele (RN-09).
+ */
+function GarageFlow({ byStatus }: { byStatus: Record<VehicleStatus, number> }) {
+  const { t } = useI18n();
+  const stages = STAGES.map((s) => ({
+    ...s,
+    label: t.dash.stages[s.key],
+    n: s.statuses.reduce((sum, st) => sum + (byStatus[st] ?? 0), 0),
+  }));
+
+  return (
+    <ol className="dash-flow" aria-label={t.dash.flowTitle}>
+      {stages.map((s, i) => (
+        <li key={s.key} className={`dash-flow__stage dash-flow__stage--${s.family}${s.n > 0 ? ' is-active' : ''}`}>
+          {i > 0 && <i className="dash-flow__rail" aria-hidden />}
+          <Link to={s.to} className="dash-flow__node" aria-label={`${s.label}: ${s.n}`}>
+            <b>{s.n}</b>
+          </Link>
+          <span className="dash-flow__label">{s.label}</span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -348,17 +425,10 @@ function badgeFor(status: string): string {
 function DashboardSkeleton() {
   const { t } = useI18n();
   return (
-    <>
-      <section className="dash-kpis">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="dash-kpi skeleton" style={{ minHeight: 118 }} />
-        ))}
-      </section>
-      <section className="dash-row dash-row--fleet">
-        <div className="tp-card skeleton" style={{ minHeight: 260 }} />
-        <div className="tp-card skeleton" style={{ minHeight: 260 }} />
-      </section>
+    <div className="dash">
+      <section className="dash-hero dash-glass skeleton" style={{ minHeight: 280 }} />
+      <section className="tp-card skeleton" style={{ minHeight: 260 }} />
       <p className="tp-muted">{t.dash.loading}</p>
-    </>
+    </div>
   );
 }
