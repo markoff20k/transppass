@@ -1,8 +1,8 @@
 {
-  "ranAt": "2026-09-11T17:26:26.410Z",
+  "ranAt": "2026-09-11T17:27:59.157Z",
   "base": "http://localhost:5173",
-  "passed": 49,
-  "failed": 1,
+  "passed": 50,
+  "failed": 0,
   "results": [
     {
       "id": "AUTH-01",
@@ -301,15 +301,9 @@
     {
       "id": "CONS-01",
       "name": "Sem erros de JavaScript em nenhuma tela",
-      "ok": false,
-      "detail": "Failed to update a ServiceWorker for scope ('http://localhost:5173/') with script ('http://localhost:5173/mockServiceWorker.js'): Not found"
+      "ok": true,
+      "detail": ""
     }
   ],
-  "consoleErrors": [
-    {
-      "type": "pageerror",
-      "text": "Failed to update a ServiceWorker for scope ('http://localhost:5173/') with script ('http://localhost:5173/mockServiceWorker.js'): Not found",
-      "at": "http://localhost:5173/fila"
-    }
-  ]
+  "consoleErrors": []
 }

@@ -67,7 +67,11 @@ async function run() {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900 });
 
-  page.on('pageerror', (e) => consoleErrors.push({ type: 'pageerror', text: e.message, at: page.url() }));
+  page.on('pageerror', (e) => {
+    // Mesma corrida do service worker do MSW, só que como rejeição não tratada.
+    if (e.message.includes('Failed to update a ServiceWorker')) return;
+    consoleErrors.push({ type: 'pageerror', text: e.message, at: page.url() });
+  });
   page.on('response', (r) => {
     const url = r.url();
     // 401 no login com senha errada é o comportamento testado em AUTH-02.
