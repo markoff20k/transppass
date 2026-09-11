@@ -16,27 +16,24 @@
   --shell-header-h: 60px;
   --shell-subheader-h: 64px;
   --shell-gutter: var(--tp-space-6);
-  /* Respiro entre as ilhas (sidebar, header) e a borda da janela. */
+  /* Respiro entre o chassi (sidebar + header) e o painel do miolo. */
   --shell-gap: var(--tp-space-3);
   --shell-island-radius: var(--tp-radius-xl);
-  --shell-island-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -16px rgb(0 0 0 / 0.18);
 }
 
 /*
- * Layout em ilhas: sidebar e header são painéis próprios, com cantos
- * arredondados e respiro, soltos sobre o fundo da página; o miolo fica no
- * fundo, com os cartões dele. A grade continua a mesma — só ganhou gap e
- * padding — então recolher a sidebar segue sendo a transição das colunas.
+ * Chassi em L + miolo solto: sidebar e header são UMA superfície contínua
+ * (a mesma cor grafite da marca), e o conteúdo é um painel arredondado com
+ * respiro dentro dela. A grade continua a mesma, então recolher a sidebar
+ * segue sendo a transição das colunas.
  */
 .shell {
   display: grid;
   grid-template-columns: var(--shell-sidebar-w) minmax(0, 1fr);
   grid-template-rows: var(--shell-header-h) minmax(0, 1fr);
-  gap: var(--shell-gap);
-  padding: var(--shell-gap);
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--color-bg);
+  background: var(--color-sidebar-bg);
   transition: grid-template-columns var(--tp-duration-slow) var(--tp-ease);
 }
 
@@ -50,16 +47,13 @@
   grid-column: 1;
   grid-row: 1 / -1;
   position: sticky;
-  top: var(--shell-gap);
-  height: calc(100vh - 2 * var(--shell-gap));
-  height: calc(100dvh - 2 * var(--shell-gap));
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--color-sidebar-bg);
   color: var(--color-sidebar-text);
-  border: var(--tp-border-thin) solid var(--color-sidebar-border);
-  border-radius: var(--shell-island-radius);
-  box-shadow: var(--shell-island-shadow);
   overflow: hidden;
   z-index: var(--tp-z-sticky);
   width: var(--shell-sidebar-w);
@@ -287,21 +281,20 @@
 
 /* ---- Header ------------------------------------------------------------- */
 
+/* O header é a barra horizontal do mesmo chassi da sidebar. */
 .header {
   grid-column: 2;
   grid-row: 1;
   position: sticky;
-  top: var(--shell-gap);
+  top: 0;
   z-index: var(--tp-z-sticky);
   display: flex;
   align-items: center;
   gap: var(--tp-space-3);
   height: var(--shell-header-h);
   padding: 0 var(--shell-gutter);
-  background: var(--color-surface);
-  border: var(--tp-border-thin) solid var(--color-border);
-  border-radius: var(--shell-island-radius);
-  box-shadow: var(--shell-island-shadow);
+  background: var(--color-sidebar-bg);
+  color: var(--color-sidebar-text);
 }
 
 .header__menu {
@@ -318,16 +311,16 @@
 }
 
 .header__crumbs a {
-  color: var(--color-text-muted);
+  color: var(--color-sidebar-muted);
   text-decoration: none;
 }
 
 .header__crumbs a:hover {
-  color: var(--color-text);
+  color: var(--color-sidebar-text-strong);
 }
 
 .header__crumbs .is-current {
-  color: var(--color-text);
+  color: var(--color-sidebar-text-strong);
   font-weight: var(--tp-weight-semibold);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -360,7 +353,7 @@
   border-radius: var(--tp-radius-md);
   background: transparent;
   border: none;
-  color: var(--color-text-secondary);
+  color: var(--color-sidebar-text);
   font-size: var(--tp-text-sm);
   font-weight: var(--tp-weight-medium);
   cursor: pointer;
@@ -368,12 +361,12 @@
 }
 
 .header__btn:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text);
+  background: var(--color-sidebar-hover);
+  color: var(--color-sidebar-text-strong);
 }
 
 .header__btn[aria-expanded='true'] {
-  background: var(--color-surface-sunken);
+  background: var(--color-sidebar-active-bg);
   color: var(--color-text);
 }
 
@@ -397,8 +390,8 @@
   width: 30px;
   height: 30px;
   border-radius: var(--tp-radius-full);
-  background: var(--color-structure);
-  color: var(--color-text-inverse);
+  background: var(--color-brand);
+  color: var(--color-text-on-brand);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -419,7 +412,7 @@
 
 .header__user-role {
   font-size: var(--tp-text-2xs);
-  color: var(--color-text-muted);
+  color: var(--color-sidebar-muted);
 }
 
 /* Menu suspenso */
@@ -609,6 +602,10 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  background: var(--color-bg);
+  border-radius: var(--shell-island-radius);
+  margin: 0 var(--shell-gap) var(--shell-gap) 0;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
 }
 
 .content__body {
@@ -628,12 +625,15 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .content {
+    margin: 0 var(--shell-gap) var(--shell-gap);
+  }
+
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
     height: 100vh;
     height: 100dvh;
-    border-radius: 0 var(--shell-island-radius) var(--shell-island-radius) 0;
     width: var(--shell-sidebar-w);
     transform: translateX(-100%);
     transition: transform var(--tp-duration-slow) var(--tp-ease);
