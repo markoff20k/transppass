@@ -113,10 +113,11 @@ docker compose -f docker-compose.prod.yml exec api npm run db:seed
 ## 9. Conferir
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1/api/dashboard
+docker compose -f docker-compose.prod.yml logs caddy | tail -20
+curl -s -o /dev/null -w "%{http_code}\n" https://transppass.online/api/dashboard
 ```
 
-`401` é o esperado (rota protegida, API respondendo pelo nginx). Abra no navegador: `http://SEU_IP` — tela de login.
+No log do Caddy deve aparecer `certificate obtained successfully`; o `curl` responde `401` (rota protegida, API respondendo por trás do HTTPS). Abra no navegador: `https://transppass.online` — tela de login. `http://` redireciona para `https://` sozinho.
 
 ---
 
