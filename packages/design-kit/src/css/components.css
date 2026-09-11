@@ -239,6 +239,25 @@
   background: var(--color-surface-hover);
 }
 
+.tp-radio-card input[type='radio'] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-brand);
+}
+
+/* O foco por teclado veste o cartão inteiro, não o botãozinho redondo
+   (o anel num rádio nativo sai quadrado no Chromium). */
+.tp-radio-card input[type='radio']:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.tp-radio-card:has(input:focus-visible) {
+  box-shadow: var(--color-focus-ring);
+}
+
 .tp-radio-card:has(input:checked) {
   border-color: var(--color-brand);
   background: var(--color-brand-soft);

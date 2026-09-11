@@ -306,7 +306,8 @@ label.inline {
   gap: var(--tp-space-2);
 }
 
-input,
+/* Rádio e checkbox não são caixas de texto: ficam fora deste molde. */
+input:not([type='radio']):not([type='checkbox']),
 select,
 textarea {
   padding: var(--tp-space-2) var(--tp-space-3);
