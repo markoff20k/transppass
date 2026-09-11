@@ -1874,3 +1874,35 @@ td.actions {
 .countdown--over {
   color: var(--color-danger-text);
 }
+
+/* Interruptores do header: bandeira circular e tema de um toque. */
+.header__btn--flag {
+  width: 36px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.header__btn--flag .flag {
+  display: block;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--color-border-strong), 0 1px 3px rgb(0 0 0 / 0.25);
+  transition: transform var(--tp-duration-fast) var(--tp-ease), box-shadow var(--tp-duration-fast) var(--tp-ease);
+}
+
+.header__btn--flag:hover .flag { transform: scale(1.08); box-shadow: 0 0 0 2px var(--color-brand), 0 1px 3px rgb(0 0 0 / 0.25); }
+
+.header__btn--theme { width: 36px; padding: 0; border-radius: 50%; }
+
+.header__theme-icon {
+  display: inline-flex;
+  animation: theme-icon-in 0.35s var(--tp-ease) both;
+}
+
+@keyframes theme-icon-in {
+  from { transform: rotate(-90deg) scale(0.6); opacity: 0; }
+  to { transform: rotate(0) scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header__theme-icon { animation: none; }
+}

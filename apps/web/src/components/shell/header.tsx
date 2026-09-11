@@ -1,25 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Bell,
-  Check,
-  ChevronRight,
-  Contrast,
-  Globe,
-  LogOut,
-  Menu,
-  Monitor,
-  Moon,
-  Sun,
-  User,
-} from 'lucide-react';
-import { Theme, THEME_LABELS } from '@app/design-kit';
+import { Bell, ChevronRight, LogOut, Menu, Moon, Sun, User } from 'lucide-react';
+import { Theme } from '@app/design-kit';
 import { USER_ROLE_LABELS } from '@app/shared';
 import { useAuth } from '@/features/auth/use-auth';
 import { useTheme } from '@/features/theme/use-theme';
 import { useI18n } from '@/i18n/i18n.context';
 import { Locale, LOCALE_LABELS } from '@/i18n/dictionaries';
+import { FlagBR, FlagUS } from './flags';
 import { api } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/format';
 import { usePageHeaderSpec } from './page-header.context';
@@ -75,8 +64,8 @@ export function Header({ onOpenDrawer }: Props) {
       <div className="header__spacer" />
 
       <div className="header__actions">
-        <LanguageMenu />
-        <ThemeMenu />
+        <LanguageToggle />
+        <ThemeToggle />
         <NotificationsMenu />
         <Dropdown
           label={t.header.profile}
@@ -111,61 +100,51 @@ export function Header({ onOpenDrawer }: Props) {
   );
 }
 
-function LanguageMenu() {
+/**
+ * Idioma: só há dois, então é um interruptor, não um menu. A bandeira mostra
+ * o idioma em uso; o título diz para qual ele muda.
+ */
+function LanguageToggle() {
   const { locale, setLocale, t } = useI18n();
+  const next = locale === Locale.PT_BR ? Locale.EN : Locale.PT_BR;
+  const hint = locale === Locale.PT_BR ? t.header.switchToEn : t.header.switchToPt;
   return (
-    <Dropdown label={t.header.language} trigger={<Globe />} triggerClass="header__btn--label">
-      <div className="menu__title">{t.header.language}</div>
-      {Object.values(Locale).map((l) => (
-        <button
-          key={l}
-          type="button"
-          className={`menu__item${locale === l ? ' is-selected' : ''}`}
-          onClick={() => setLocale(l)}
-        >
-          {locale === l ? <Check /> : <span style={{ width: 16 }} />}
-          {LOCALE_LABELS[l]}
-        </button>
-      ))}
-    </Dropdown>
+    <button
+      type="button"
+      className="header__btn header__btn--flag"
+      aria-label={t.header.language}
+      title={hint}
+      onClick={() => setLocale(next)}
+    >
+      {locale === Locale.PT_BR ? <FlagBR title={LOCALE_LABELS[locale]} /> : <FlagUS title={LOCALE_LABELS[locale]} />}
+    </button>
   );
 }
 
-function ThemeMenu() {
-  const { theme, setTheme, highContrast, setHighContrast } = useTheme();
+/** Tema: claro ou escuro, um toque. O ícone é o estado atual; o título, o próximo. */
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
   const { t } = useI18n();
-  const icon = theme === Theme.DARK ? <Moon /> : theme === Theme.LIGHT ? <Sun /> : <Monitor />;
-  const label: Record<Theme, string> = {
-    light: t.header.themeLight,
-    dark: t.header.themeDark,
-    system: t.header.themeSystem,
-  };
-
+  const resolved =
+    theme === Theme.SYSTEM
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? Theme.DARK
+        : Theme.LIGHT
+      : theme;
+  const isDark = resolved === Theme.DARK;
   return (
-    <Dropdown label={t.header.theme} trigger={icon}>
-      <div className="menu__title">{t.header.theme}</div>
-      {Object.values(Theme).map((th) => (
-        <button
-          key={th}
-          type="button"
-          className={`menu__item${theme === th ? ' is-selected' : ''}`}
-          onClick={() => setTheme(th)}
-        >
-          {th === Theme.DARK ? <Moon /> : th === Theme.LIGHT ? <Sun /> : <Monitor />}
-          {label[th] ?? THEME_LABELS[th]}
-        </button>
-      ))}
-      <div className="menu__sep" />
-      <button
-        type="button"
-        className={`menu__item${highContrast ? ' is-selected' : ''}`}
-        onClick={() => setHighContrast(!highContrast)}
-        aria-pressed={highContrast}
-      >
-        <Contrast />
-        {t.header.contrast}
-      </button>
-    </Dropdown>
+    <button
+      type="button"
+      className="header__btn header__btn--theme"
+      aria-label={t.header.theme}
+      aria-pressed={isDark}
+      title={isDark ? t.header.switchToLight : t.header.switchToDark}
+      onClick={() => setTheme(isDark ? Theme.LIGHT : Theme.DARK)}
+    >
+      <span key={resolved} className="header__theme-icon">
+        {isDark ? <Moon /> : <Sun />}
+      </span>
+    </button>
   );
 }
 

@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-09-11T14:39:31.165Z",
+  "ranAt": "2026-09-11T14:49:41.447Z",
   "base": "http://localhost:5173",
-  "passed": 48,
+  "passed": 50,
   "failed": 0,
   "results": [
     {
@@ -36,13 +36,25 @@
     },
     {
       "id": "SHELL-03",
-      "name": "Trocar tema para escuro marca data-theme",
+      "name": "Interruptor de tema marca data-theme=dark",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "SHELL-03b",
+      "name": "Segundo toque volta ao claro",
       "ok": true,
       "detail": ""
     },
     {
       "id": "SHELL-04",
-      "name": "Trocar idioma traduz o shell",
+      "name": "Bandeira troca o idioma e traduz o shell",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "SHELL-04b",
+      "name": "Segundo toque volta ao português",
       "ok": true,
       "detail": ""
     },

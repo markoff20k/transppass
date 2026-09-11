@@ -110,27 +110,23 @@ async function run() {
   const w3 = await page.$eval('.sidebar', (el) => el.getBoundingClientRect().width);
   record('SHELL-02', 'Sidebar recolhe (264→72) e expande de volta', w1 === 264 && w2 === 72 && w3 === 264, `${w1}→${w2}→${w3}`);
 
+  // Tema: interruptor de um toque (claro ↔ escuro)
   await page.click('button[aria-label="Tema"]');
-  await sleep(250);
-  await clickText(page, '.menu__item', 'Escuro');
   await sleep(300);
   const themeAttr = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
-  record('SHELL-03', 'Trocar tema para escuro marca data-theme', themeAttr === 'dark');
+  record('SHELL-03', 'Interruptor de tema marca data-theme=dark', themeAttr === 'dark');
   await shot(page, 'dashboard-dark');
   await page.click('button[aria-label="Tema"]');
-  await sleep(250);
-  await clickText(page, '.menu__item', 'Claro');
   await sleep(300);
+  record('SHELL-03b', 'Segundo toque volta ao claro', (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) === 'light');
 
+  // Idioma: bandeira circular (pt-BR ↔ en), sem menu
   await page.click('button[aria-label="Idioma"]');
-  await sleep(250);
-  await clickText(page, '.menu__item', 'English');
   await sleep(300);
-  record('SHELL-04', 'Trocar idioma traduz o shell', (await textOf(page, '.subheader__title')) === 'Dashboard' && (await page.evaluate(() => document.documentElement.lang)) === 'en');
+  record('SHELL-04', 'Bandeira troca o idioma e traduz o shell', (await textOf(page, '.subheader__title')) === 'Dashboard' && (await page.evaluate(() => document.documentElement.lang)) === 'en' && (await exists(page, 'button[aria-label="Language"] .flag')));
   await page.click('button[aria-label="Language"]');
-  await sleep(250);
-  await clickText(page, '.menu__item', 'Português');
   await sleep(300);
+  record('SHELL-04b', 'Segundo toque volta ao português', (await page.evaluate(() => document.documentElement.lang)) === 'pt-BR');
 
   await page.click('button[aria-label="Notificações"]');
   await sleep(300);
