@@ -77,7 +77,7 @@ if (width < 1024) {
   await page.keyboard.press('Escape');
 }
 
-for (const [path, name] of [['/frota', 'frota'], ['/fila', 'fila'], ['/os', 'os'], ['/estoque', 'estoque'], ['/preventiva', 'preventiva'], ['/plantao', 'plantao'], ['/design', 'design']]) {
+for (const [path, name] of [['/frota', 'frota'], ['/fila', 'fila'], ['/socorro', 'socorro'], ['/os', 'os'], ['/estoque', 'estoque'], ['/preventiva', 'preventiva'], ['/plantao', 'plantao'], ['/design', 'design']]) {
   await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle0', timeout: 60000 });
   await shot(name);
 }
