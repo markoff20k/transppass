@@ -356,7 +356,20 @@ button {
   transition: background var(--tp-duration-fast) var(--tp-ease);
 }
 
-button:hover:not(:disabled) {
+/*
+ * Isto é o hover padrão de um <button> nu, sem classe — não deveria nunca
+ * vencer um componente com hover próprio (.header__btn, .sidebar__collapse,
+ * .menu__item...). Mas ":not(:disabled)" soma um nível de especificidade,
+ * e ".foo:hover" (classe + pseudo-classe) empata nesse nível com
+ * "button:hover:not(:disabled)" (elemento + duas pseudo-classes) — quem
+ * ganha o desempate é a ORDEM no arquivo, e como este bloco vem depois do
+ * design kit, ele vencia. Resultado: o botão de idioma/tema ficava preto
+ * (claro) ou branco (escuro) no hover, porque --color-action-hover é esse
+ * tom, não o cinza discreto de --color-surface-hover. `:where()` zera a
+ * especificidade do que está dentro — assim esta regra volta a ser só o
+ * "porão" do hover, e qualquer classe com hover próprio vence de verdade.
+ */
+button:hover:where(:not(:disabled)) {
   background: var(--color-action-hover);
 }
 
