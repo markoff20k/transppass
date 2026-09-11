@@ -1,8 +1,8 @@
 # Produção: banco, API e front, tudo em containers.
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
-# Lê o .env da raiz (POSTGRES_*, JWT_*, CORS_ORIGIN). Só o front expõe porta
-# para fora (80); API e banco conversam pela rede interna do compose.
+# Lê o .env da raiz (POSTGRES_*, JWT_*, CORS_ORIGIN, DOMAIN). Só o Caddy expõe
+# portas para fora (80/443); front, API e banco conversam pela rede interna.
 
 services:
   postgres:
@@ -44,10 +44,30 @@ services:
       dockerfile: apps/web/Dockerfile
     container_name: transppass-web
     restart: unless-stopped
-    ports:
-      - '80:80'
+    expose:
+      - '80'
     depends_on:
       - api
 
+  # Porta de entrada: HTTPS automático para o DOMAIN do .env, repassando ao web.
+  caddy:
+    image: caddy:2-alpine
+    container_name: transppass-caddy
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?defina DOMAIN no .env (ex.: transppass.online)}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

@@ -6,9 +6,10 @@ Tudo em containers, a partir de [docker-compose.prod.yml](docker-compose.prod.ym
 | --- | --- | --- |
 | `postgres` | `postgres:16-alpine` | Banco, com os dados num volume (`pgdata`) |
 | `api` | construída de [apps/api/Dockerfile](apps/api/Dockerfile) | API NestJS na porta 3000 (só na rede interna); sincroniza o schema ao subir |
-| `web` | construída de [apps/web/Dockerfile](apps/web/Dockerfile) | nginx servindo o front e repassando `/api` para a API — única porta exposta (80) |
+| `web` | construída de [apps/web/Dockerfile](apps/web/Dockerfile) | nginx servindo o front e repassando `/api` para a API (rede interna) |
+| `caddy` | `caddy:2-alpine` | Porta de entrada (80/443): HTTPS automático via Let's Encrypt para o domínio, repassando ao `web` |
 
-Substitua ao longo do roteiro: `SEU_IP` pelo IP público do droplet.
+Pré-requisito: um registro **A** do domínio (ex.: `transppass.online`) apontando para o IP do droplet. Substitua `SEU_IP` pelo IP público.
 
 Cada bloco é para copiar e colar, na ordem. Linhas que começam com `#` são comentários.
 
@@ -76,7 +77,7 @@ openssl rand -base64 48     # JWT_ACCESS_SECRET
 openssl rand -base64 48     # JWT_REFRESH_SECRET
 ```
 
-Crie o `.env` a partir do exemplo e preencha `POSTGRES_PASSWORD`, os dois `JWT_*_SECRET` e `CORS_ORIGIN` (com o IP: `http://SEU_IP`):
+Crie o `.env` a partir do exemplo e preencha `POSTGRES_PASSWORD`, os dois `JWT_*_SECRET`, `DOMAIN` e `CORS_ORIGIN` (`https://` + o domínio):
 
 ```bash
 cp .env.prod.example .env
@@ -95,7 +96,7 @@ O primeiro build leva alguns minutos. Acompanhe a API subindo (ela cria as tabel
 docker compose -f docker-compose.prod.yml logs -f api
 ```
 
-Saia do log com `Ctrl+C` e confira os três containers `running`/`healthy`:
+Saia do log com `Ctrl+C` e confira os quatro containers `running`/`healthy`:
 
 ```bash
 docker compose -f docker-compose.prod.yml ps
@@ -151,6 +152,14 @@ docker compose -f docker-compose.prod.yml down               # parar tudo (mant�
 docker compose -f docker-compose.prod.yml exec postgres psql -U transppass transppass_pcm   # abrir o banco
 ```
 
-## HTTPS (quando houver domínio)
+## Trocar o domínio depois
 
-Aponte um registro **A** do domínio para `SEU_IP`, ajuste `CORS_ORIGIN=https://SEU_DOMINIO` no `.env` e me avise: a forma limpa em Docker é colocar um **Caddy** na frente do `web` (certificado automático via Let's Encrypt), que entra como um quarto serviço no compose.
+Aponte o novo registro A para o IP, edite `DOMAIN` e `CORS_ORIGIN` no `.env` e suba de novo:
+
+```bash
+cd /opt/transppass/app
+nano .env
+docker compose -f docker-compose.prod.yml up -d
+```
+
+O Caddy emite o certificado novo sozinho.

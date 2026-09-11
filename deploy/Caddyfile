@@ -1,0 +1,7 @@
+# Caddy na frente do front: HTTPS automático (Let's Encrypt) para o domínio
+# definido em DOMAIN no .env. Tudo que chega vai para o nginx do serviço `web`,
+# que serve o front e repassa /api para a API.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:80
+}
