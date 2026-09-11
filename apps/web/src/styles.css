@@ -943,12 +943,26 @@ small.muted {
 
 .field-card__elapsed.is-late { color: var(--color-danger-text); }
 
+/* No desktop, botões no tamanho padrão do kit, lado a lado. No telefone ou
+   com ponteiro grosso (luva), viram alvos de toque empilhados — seção 8. */
 .field-card__actions {
-  display: grid;
+  display: flex;
   gap: var(--tp-space-2);
 }
 
-.field-card__actions .tp-btn--ghost { width: 100%; }
+.field-card__actions .tp-btn--primary { flex: 1; }
+
+@media (pointer: coarse), (max-width: 760px) {
+  .field-card__actions { display: grid; }
+
+  .field-card__actions .tp-btn {
+    min-height: var(--tp-touch-min);
+    font-size: var(--tp-text-md);
+    border-radius: var(--tp-radius-lg);
+  }
+
+  .field-card__actions .tp-btn--primary { min-height: var(--tp-touch-comfortable); }
+}
 
 /* Desfecho: cinco cartões de escolha com o efeito de cada um. */
 .field-outcomes {

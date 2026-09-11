@@ -82,7 +82,7 @@ export function FieldServicePage() {
         <div className="tp-card__head">
           <div>
             <h3>Atendimentos</h3>
-            <span className="chart__hint">um cartão por carro na rua — o botão grande é sempre o próximo passo</span>
+            <span className="chart__hint">um cartão por carro na rua — o botão laranja é sempre o próximo passo</span>
           </div>
           <span className="tp-muted">{rows.length} em curso</span>
         </div>
@@ -240,7 +240,7 @@ function FieldCard({
         {next ? (
           <button
             type="button"
-            className="tp-btn tp-btn--primary tp-btn--touch tp-btn--touch-lg"
+            className="tp-btn tp-btn--primary"
             disabled={step.isPending}
             onClick={() => step.mutate(next.step)}
           >
@@ -249,14 +249,14 @@ function FieldCard({
         ) : (
           <button
             type="button"
-            className="tp-btn tp-btn--primary tp-btn--touch tp-btn--touch-lg"
+            className="tp-btn tp-btn--primary"
             onClick={() => setOutcomeOpen(true)}
           >
             Registrar desfecho
           </button>
         )}
         {next && (
-          <button type="button" className="tp-btn tp-btn--ghost tp-btn--touch" onClick={() => setOutcomeOpen(true)}>
+          <button type="button" className="tp-btn tp-btn--ghost" onClick={() => setOutcomeOpen(true)}>
             Registrar desfecho
           </button>
         )}
