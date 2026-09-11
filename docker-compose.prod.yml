@@ -11,7 +11,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-transppass}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}'
       POSTGRES_DB: ${POSTGRES_DB:-transppass_pcm}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -55,7 +55,7 @@ services:
     container_name: transppass-caddy
     restart: unless-stopped
     environment:
-      DOMAIN: ${DOMAIN:?defina DOMAIN no .env (ex.: transppass.online)}
+      DOMAIN: '${DOMAIN:?defina DOMAIN no .env}'
     ports:
       - '80:80'
       - '443:443'
