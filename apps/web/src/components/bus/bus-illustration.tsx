@@ -87,20 +87,15 @@ export function BusIllustration({ status, width = 240, code, className, title }:
         <rect x="187" y="96" width="15" height="2.5" rx="1" className="bus__lift-post" />
       </g>
 
-      {/* Chão */}
+      {/* Chão — e, em linha, o asfalto passando por baixo */}
       <line x1="16" y1="98.5" x2="224" y2="98.5" className="bus__ground" />
+      <line x1="16" y1="98.5" x2="224" y2="98.5" className="bus__road" />
 
       {/* Veículo inteiro — sobe junto no elevador */}
       <g className="bus__vehicle">
-        {/* Rodas */}
-        <g className="bus__wheel">
-          <circle cx="64" cy="86" r="11" className="bus__tire" />
-          <circle cx="64" cy="86" r="4.5" className="bus__hub" />
-        </g>
-        <g className="bus__wheel">
-          <circle cx="176" cy="86" r="11" className="bus__tire" />
-          <circle cx="176" cy="86" r="4.5" className="bus__hub" />
-        </g>
+        {/* Rodas — giram quando o carro está em linha */}
+        <Wheel cx={64} cy={86} />
+        <Wheel cx={176} cy={86} />
 
         {/* Carroceria */}
         <rect x="24" y="22" width="192" height="58" rx="7" className="bus__body" />
@@ -150,5 +145,33 @@ export function BusIllustration({ status, width = 240, code, className, title }:
         <circle cx="24" cy="105" r="2.6" className="bus__led" />
       </g>
     </svg>
+  );
+}
+
+/**
+ * Roda com cinco raios e a marca da válvula: sem eles a rotação seria
+ * invisível num círculo. O giro fica no CSS (`.bus--running .bus__wheel`),
+ * com `transform-box: fill-box` para o eixo ser o centro da própria roda.
+ */
+function Wheel({ cx, cy }: { cx: number; cy: number }) {
+  const spokes = [0, 72, 144, 216, 288].map((deg) => {
+    const a = (deg * Math.PI) / 180;
+    return {
+      x1: cx + Math.cos(a) * 4.5,
+      y1: cy + Math.sin(a) * 4.5,
+      x2: cx + Math.cos(a) * 9.2,
+      y2: cy + Math.sin(a) * 9.2,
+    };
+  });
+  return (
+    <g className="bus__wheel">
+      <circle cx={cx} cy={cy} r={11} className="bus__tire" />
+      <circle cx={cx} cy={cy} r={9.4} className="bus__rim" />
+      {spokes.map((l, i) => (
+        <line key={i} x1={l.x1.toFixed(2)} y1={l.y1.toFixed(2)} x2={l.x2.toFixed(2)} y2={l.y2.toFixed(2)} className="bus__spoke" />
+      ))}
+      <circle cx={cx} cy={cy} r={4.5} className="bus__hub" />
+      <circle cx={cx + 7.3} cy={cy - 5.2} r={0.9} className="bus__valve" />
+    </g>
   );
 }
