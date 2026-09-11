@@ -1032,10 +1032,22 @@
   cursor: pointer;
 }
 
+/* O anel global de foco (box-shadow) numa <tr> vira só uma linha no topo;
+   a linha sinaliza o foco de outro jeito, logo abaixo. */
 .tp-table tr.is-clickable:focus-visible {
   outline: none;
+  box-shadow: none;
 }
 
+/*
+ * Foco por teclado (ou o foco que volta à linha quando o painel fecha):
+ * um só sinal na linha inteira — fundo suave e uma barra na primeira
+ * célula — e não uma moldura por célula, que vira uma grade de quadros.
+ */
 .tp-table tr.is-clickable:focus-visible td {
-  box-shadow: inset 0 0 0 2px var(--color-focus);
+  background: var(--color-brand-soft);
+}
+
+.tp-table tr.is-clickable:focus-visible td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-brand);
 }
