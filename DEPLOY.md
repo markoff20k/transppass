@@ -9,7 +9,7 @@ Tudo em containers, a partir de [docker-compose.prod.yml](docker-compose.prod.ym
 | `web` | construída de [apps/web/Dockerfile](apps/web/Dockerfile) | nginx servindo o front e repassando `/api` para a API (rede interna) |
 | `caddy` | `caddy:2-alpine` | Porta de entrada (80/443): HTTPS automático via Let's Encrypt para o domínio, repassando ao `web` |
 
-Pré-requisito: um registro **A** do domínio (ex.: `transppass.online`) apontando para o IP do droplet. Substitua `SEU_IP` pelo IP público.
+Pré-requisito: um registro **A** do domínio (ex.: `transppass.online`) apontando para o IP do droplet — e, se quiser `www`, um CNAME `www` para o domínio (o Caddy emite o certificado dos dois e redireciona `www` para o endereço sem `www`). Substitua `SEU_IP` pelo IP público.
 
 Cada bloco é para copiar e colar, na ordem. Linhas que começam com `#` são comentários.
 
