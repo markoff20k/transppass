@@ -67,14 +67,16 @@ async function run() {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900 });
 
-  page.on('pageerror', (e) => consoleErrors.push({ type: 'pageerror', text: e.message }));
+  page.on('pageerror', (e) => consoleErrors.push({ type: 'pageerror', text: e.message, at: page.url() }));
   page.on('response', (r) => {
     const url = r.url();
     // 401 no login com senha errada é o comportamento testado em AUTH-02.
     if (r.status() >= 400 && !url.includes('/auth/login')) consoleErrors.push({ type: 'http', text: `${r.status()} ${url}` });
   });
   page.on('console', (m) => {
-    if (m.type() === 'error' && !m.text().includes('Failed to load resource')) consoleErrors.push({ type: 'console', text: m.text().slice(0, 200) });
+    // "Failed to update a ServiceWorker" é o navegador rechecando o worker do
+    // MSW enquanto o Vite recarrega — corrida do ambiente, não erro da tela.
+    if (m.type() === 'error' && !m.text().includes('Failed to load resource') && !m.text().includes('Failed to update a ServiceWorker')) consoleErrors.push({ type: 'console', text: m.text().slice(0, 200), at: page.url() });
   });
 
   console.log('\n=== QA funcional — Transppass PCM (modo mock) ===\n');

@@ -130,6 +130,9 @@ export function BusIllustration({ status, width = 240, code, className, title }:
           {/* Farol */}
           <rect x="211" y="66" width="5" height="5" rx="1" className="bus__lamp bus__lamp--front" />
 
+          {/* Adesivos e prefixo, na faixa branca — como no carro real */}
+          <Decals code={code} />
+
           {/* Caixas de roda */}
           <circle cx={REAR_WHEEL_X} cy={WHEEL_Y} r="13.5" className="bus__arch" />
           <circle cx={FRONT_WHEEL_X} cy={WHEEL_Y} r="13.5" className="bus__arch" />
@@ -198,6 +201,54 @@ function Wheel({ cx, cy }: { cx: number; cy: number }) {
         <circle key={i} cx={h.x.toFixed(2)} cy={h.y.toFixed(2)} r={1} className="bus__rim-hole" />
       ))}
       <circle cx={cx} cy={cy} r={2.2} className="bus__hub" />
+    </g>
+  );
+}
+
+/**
+ * O que está colado na lataria do carro real, na mesma ordem: prefixo atrás,
+ * a marca da Transppass, o selo da Prefeitura de São Paulo e o da SPTrans
+ * junto à porta da frente. Desenhos simplificados para ler a 240 px — o
+ * símbolo da Transppass é o mesmo do logo do sistema.
+ */
+function Decals({ code }: { code?: string }) {
+  return (
+    <g className="bus__decals">
+      {/* Prefixo */}
+      {code && (
+        <text x="62" y="66.5" className="bus__prefix">
+          {code}
+        </text>
+      )}
+
+      {/* Transppass: símbolo + nome */}
+      <g transform="translate(98 57.5) scale(0.052) translate(-70 -48)">
+        <circle cx="118" cy="72" r="18.5" fill="#f87509" />
+        <path
+          fill="#444544"
+          d="M84 95 H170 C184 95 194 106 194 122 V134 C194 152 184 164 168 167 L152 169 Q144 170 146 162 L150 150 H162 C168 150 170 144 170 136 V128 C170 122 166 120 160 120 H130 V208 Q130 215 123 215 H115 Q108 215 108 208 V120 H84 Q76 120 76 112 V103 Q76 95 84 95 Z"
+        />
+      </g>
+      <text x="106" y="64.5" className="bus__decal-text bus__decal-text--brand">
+        TRANSPPASS
+      </text>
+
+      {/* Prefeitura de São Paulo: brasão e duas linhas */}
+      <g className="bus__decal-pref">
+        <rect x="130" y="57" width="32" height="12" rx="1" className="bus__decal-plate" />
+        <path d="M133 59 H139 V64.5 Q136 67 133 64.5 Z" fill="#d61f26" />
+        <path d="M136 59 H139 V64.5 Q137.5 65.8 136 66 Z" fill="#1f4e9b" />
+        <text x="141" y="61.6" className="bus__decal-text">PREFEITURA DE</text>
+        <text x="141" y="66.2" className="bus__decal-text bus__decal-text--strong">SÃO PAULO</text>
+      </g>
+
+      {/* SPTrans: selo pequeno sob a janela do motorista */}
+      <g className="bus__decal-sptrans">
+        <rect x="164.5" y="57" width="10.5" height="6" rx="1" className="bus__decal-plate" />
+        <rect x="165.5" y="58" width="4" height="4" rx="0.8" fill="#1f4e9b" />
+        <rect x="166.5" y="59" width="2" height="1.6" rx="0.3" fill="#fff" />
+        <text x="170" y="61.4" className="bus__decal-text bus__decal-text--tiny">sptrans</text>
+      </g>
     </g>
   );
 }

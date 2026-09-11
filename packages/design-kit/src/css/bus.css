@@ -104,6 +104,33 @@
 
 .bus__arch { fill: var(--bus-arch); }
 
+/* Adesivos: texto em px do viewBox — só legível com zoom, como no carro. */
+.bus__prefix {
+  font-family: var(--tp-font-display);
+  font-weight: 700;
+  font-size: 8px;
+  fill: #2b2c2b;
+  letter-spacing: 0.02em;
+}
+
+.bus__decal-plate {
+  fill: #ffffff;
+  stroke: #d8d9d6;
+  stroke-width: 0.4;
+}
+
+.bus__decal-text {
+  font-family: var(--tp-font-sans);
+  font-size: 2.7px;
+  font-weight: 600;
+  fill: #2b2c2b;
+  letter-spacing: 0.01em;
+}
+
+.bus__decal-text--strong { font-size: 3.4px; font-weight: 800; }
+.bus__decal-text--brand { font-family: var(--tp-font-display); font-size: 5px; font-weight: 700; fill: #444544; }
+.bus__decal-text--tiny { font-size: 2.1px; font-weight: 700; fill: #1f4e9b; }
+
 .bus__tire { fill: var(--bus-tire); }
 .bus__rim { fill: var(--bus-rim); stroke: #8f9496; stroke-width: 0.6; }
 .bus__rim-hole { fill: #6b7073; }
