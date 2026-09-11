@@ -1,16 +1,20 @@
-# Instalação num droplet da DigitalOcean (Ubuntu 24.04 LTS)
+# Instalação com Docker num droplet da DigitalOcean (Ubuntu 24.04 LTS)
 
-Arquitetura no servidor: **nginx** serve o front (arquivos estáticos de `apps/web/dist`) e repassa `/api` para a **API NestJS** (porta 3000, gerenciada pelo **PM2**), que fala com o **PostgreSQL 16** local. Tudo na mesma origem, então não há CORS entre front e API.
+Tudo em containers, a partir de [docker-compose.prod.yml](docker-compose.prod.yml):
 
-Substitua ao longo do roteiro:
-- `SEU_IP` → o IP público do droplet
-- `SENHA_DO_BANCO` → uma senha forte para o usuário do PostgreSQL
+| Serviço | Imagem | Faz o quê |
+| --- | --- | --- |
+| `postgres` | `postgres:16-alpine` | Banco, com os dados num volume (`pgdata`) |
+| `api` | construída de [apps/api/Dockerfile](apps/api/Dockerfile) | API NestJS na porta 3000 (só na rede interna); sincroniza o schema ao subir |
+| `web` | construída de [apps/web/Dockerfile](apps/web/Dockerfile) | nginx servindo o front e repassando `/api` para a API — única porta exposta (80) |
 
-Cada bloco abaixo é para copiar e colar na ordem. Linhas que começam com `#` são comentários.
+Substitua ao longo do roteiro: `SEU_IP` pelo IP público do droplet.
+
+Cada bloco é para copiar e colar, na ordem. Linhas que começam com `#` são comentários.
 
 ---
 
-## 1. Entrar no servidor e atualizar o sistema
+## 1. Entrar no servidor e atualizar
 
 No seu computador:
 
@@ -22,10 +26,10 @@ No servidor:
 
 ```bash
 apt update && apt upgrade -y
-apt install -y git curl build-essential ufw nginx postgresql postgresql-contrib
+apt install -y git curl ufw
 ```
 
-## 2. Swap (evita ficar sem memória no build em droplets de 1–2 GB)
+## 2. Swap (o build das imagens precisa de memória; droplets de 1–2 GB agradecem)
 
 ```bash
 fallocate -l 2G /swapfile
@@ -39,209 +43,114 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
 ```bash
 ufw allow OpenSSH
-ufw allow 'Nginx Full'
+ufw allow 80/tcp
+ufw allow 443/tcp
 ufw --force enable
 ufw status
 ```
 
-## 4. Node.js 22 LTS e PM2
+## 4. Docker (repositório oficial)
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-apt install -y nodejs
-node -v
-npm -v
-npm install -g pm2
+curl -fsSL https://get.docker.com | sh
+systemctl enable --now docker
+docker --version
+docker compose version
 ```
 
-## 5. Banco de dados
+## 5. Código
 
 ```bash
-sudo -u postgres psql -c "CREATE USER transppass WITH PASSWORD 'SENHA_DO_BANCO';"
-sudo -u postgres psql -c "CREATE DATABASE transppass_pcm OWNER transppass;"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE transppass_pcm TO transppass;"
-```
-
-## 6. Usuário da aplicação e código
-
-```bash
-adduser --disabled-password --gecos "" transppass
-chmod 755 /home/transppass
-su - transppass
+mkdir -p /opt/transppass && cd /opt/transppass
 git clone https://github.com/markoff20k/transppass.git app
 cd app
 ```
 
-## 7. Variáveis de ambiente
+## 6. Variáveis de ambiente
 
-Gere os dois segredos do JWT (guarde a saída):
+Gere a senha do banco e os dois segredos do JWT (guarde as três saídas):
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
-node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+openssl rand -hex 24        # POSTGRES_PASSWORD (só letras e números: ela entra numa URL)
+openssl rand -base64 48     # JWT_ACCESS_SECRET
+openssl rand -base64 48     # JWT_REFRESH_SECRET
 ```
 
-Crie o `.env` na raiz do projeto (troque `SENHA_DO_BANCO`, os dois segredos e `SEU_IP`):
+Crie o `.env` a partir do exemplo e preencha `POSTGRES_PASSWORD`, os dois `JWT_*_SECRET` e `CORS_ORIGIN` (com o IP: `http://SEU_IP`):
 
 ```bash
-cat > .env <<'EOF'
-# ---- API ----
-NODE_ENV=production
-PORT=3000
-DATABASE_URL="postgresql://transppass:SENHA_DO_BANCO@localhost:5432/transppass_pcm?schema=public"
-
-JWT_ACCESS_SECRET=COLE_AQUI_O_PRIMEIRO_SEGREDO
-JWT_REFRESH_SECRET=COLE_AQUI_O_SEGUNDO_SEGREDO
-JWT_ACCESS_TTL=15m
-JWT_REFRESH_TTL=7d
-
-CORS_ORIGIN=http://SEU_IP
-
-# ---- WEB ----
-# Vazio de propósito: o front chama /api na mesma origem e o nginx repassa.
-VITE_API_URL=
-EOF
+cp .env.prod.example .env
 nano .env
 ```
 
-O Prisma procura o `.env` dentro de `apps/api`; aponte para o da raiz:
+## 7. Construir e subir
 
 ```bash
-ln -s ../../.env apps/api/.env
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-## 8. Instalar dependências e compilar
+O primeiro build leva alguns minutos. Acompanhe a API subindo (ela cria as tabelas e depois imprime `API em http://localhost:3000/api`):
 
 ```bash
-npm ci
-npm run build
+docker compose -f docker-compose.prod.yml logs -f api
 ```
 
-Ao final devem existir `apps/api/dist/main.js` e `apps/web/dist/index.html`:
+Saia do log com `Ctrl+C` e confira os três containers `running`/`healthy`:
 
 ```bash
-ls apps/api/dist/main.js apps/web/dist/index.html
+docker compose -f docker-compose.prod.yml ps
 ```
 
-## 9. Criar as tabelas e a carga inicial
+## 8. Carga inicial (uma vez)
 
 ```bash
-npm run db:generate
-npx -w @app/api prisma db push
-npm run db:seed
+docker compose -f docker-compose.prod.yml exec api npm run db:seed
 ```
 
 > O seed cria as personas com senha padrão (`admin@transppass.local` / `admin123` e as demais em `COMO-RODAR.md`). Troque as senhas assim que entrar — o sistema vai estar exposto na internet.
 
-## 10. Subir a API com PM2
+## 9. Conferir
 
 ```bash
-pm2 start npm --name transppass-api -- run start -w @app/api
-pm2 save
-pm2 startup
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1/api/dashboard
 ```
 
-O `pm2 startup` imprime um comando começando com `sudo env PATH=...`. Copie-o, saia para o root e execute:
-
-```bash
-exit
-# (agora como root) cole aqui o comando que o pm2 startup imprimiu
-```
-
-Confira que a API responde (401 é o esperado — rota protegida):
-
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3000/api/dashboard
-```
-
-## 11. nginx: front estático + proxy da API
-
-Ainda como root:
-
-```bash
-cat > /etc/nginx/sites-available/transppass <<'EOF'
-server {
-    listen 80;
-    server_name _;
-
-    root /home/transppass/app/apps/web/dist;
-    index index.html;
-
-    # Front (SPA): qualquer rota cai no index.html
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # API NestJS (mantém o prefixo /api)
-    location /api/ {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 60s;
-    }
-
-    # Assets com hash podem ficar em cache por muito tempo
-    location /assets/ {
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
-}
-EOF
-ln -sf /etc/nginx/sites-available/transppass /etc/nginx/sites-enabled/transppass
-rm -f /etc/nginx/sites-enabled/default
-nginx -t
-systemctl reload nginx
-```
-
-Abra no navegador: `http://SEU_IP` — deve aparecer a tela de login.
-
-## 12. (Opcional, recomendado) HTTPS com domínio
-
-Aponte um registro **A** do seu domínio para `SEU_IP`. Depois, no servidor:
-
-```bash
-sed -i 's/server_name _;/server_name SEU_DOMINIO;/' /etc/nginx/sites-available/transppass
-nginx -t && systemctl reload nginx
-apt install -y certbot python3-certbot-nginx
-certbot --nginx -d SEU_DOMINIO
-```
-
-E ajuste a origem no `.env` para o domínio com https, reiniciando a API:
-
-```bash
-su - transppass
-cd app
-sed -i 's#^CORS_ORIGIN=.*#CORS_ORIGIN=https://SEU_DOMINIO#' .env
-pm2 restart transppass-api
-exit
-```
+`401` é o esperado (rota protegida, API respondendo pelo nginx). Abra no navegador: `http://SEU_IP` — tela de login.
 
 ---
 
-## Atualizar o sistema depois (nova versão no GitHub)
+## Atualizar depois (nova versão no GitHub)
 
 ```bash
-su - transppass
-cd app
+cd /opt/transppass/app
 git pull
-npm ci
-npm run build
-npx -w @app/api prisma db push
-pm2 restart transppass-api
-exit
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml image prune -f
+```
+
+A API sincroniza o schema sozinha ao subir (`prisma db push`); os dados ficam no volume `pgdata`.
+
+## Backup e restauração do banco
+
+```bash
+# backup (arquivo no host)
+docker compose -f docker-compose.prod.yml exec -T postgres pg_dump -U transppass transppass_pcm > backup-$(date +%F).sql
+
+# restaurar
+cat backup-2026-09-11.sql | docker compose -f docker-compose.prod.yml exec -T postgres psql -U transppass transppass_pcm
 ```
 
 ## Comandos úteis
 
 ```bash
-pm2 status                      # a API está de pé?
-pm2 logs transppass-api         # log da API ao vivo
-tail -f /var/log/nginx/error.log
-sudo -u postgres psql transppass_pcm   # abrir o banco
+docker compose -f docker-compose.prod.yml ps                 # estado dos containers
+docker compose -f docker-compose.prod.yml logs -f api        # log da API
+docker compose -f docker-compose.prod.yml logs -f web        # log do nginx
+docker compose -f docker-compose.prod.yml restart api        # reiniciar só a API
+docker compose -f docker-compose.prod.yml down               # parar tudo (mantém os dados)
+docker compose -f docker-compose.prod.yml exec postgres psql -U transppass transppass_pcm   # abrir o banco
 ```
+
+## HTTPS (quando houver domínio)
+
+Aponte um registro **A** do domínio para `SEU_IP`, ajuste `CORS_ORIGIN=https://SEU_DOMINIO` no `.env` e me avise: a forma limpa em Docker é colocar um **Caddy** na frente do `web` (certificado automático via Let's Encrypt), que entra como um quarto serviço no compose.

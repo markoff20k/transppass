@@ -1,0 +1,53 @@
+# Produção: banco, API e front, tudo em containers.
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Lê o .env da raiz (POSTGRES_*, JWT_*, CORS_ORIGIN). Só o front expõe porta
+# para fora (80); API e banco conversam pela rede interna do compose.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: transppass-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-transppass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${POSTGRES_DB:-transppass_pcm}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-transppass} -d ${POSTGRES_DB:-transppass_pcm}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: transppass-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-transppass}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-transppass_pcm}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - '3000'
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: transppass-web
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
