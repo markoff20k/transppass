@@ -24,6 +24,7 @@
     "dev:shared": "npm run dev -w @app/shared",
     "setup": "npm install && npm run build -w @app/shared && npm run db:generate -w @app/api",
     "db:seed": "npm run db:seed -w @app/api",
+  "db:seed:demo": "npm run db:seed:demo -w @app/api",
     "db:generate": "npm run db:generate -w @app/api",
     "dev:mock": "npm run build -w @app/shared && npm run build -w @app/design-kit && npm run dev:mock -w @app/web",
     "test:e2e": "npm run test:e2e -w @app/api"

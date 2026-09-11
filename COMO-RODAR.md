@@ -137,6 +137,10 @@ O seed cria:
 
 > As flags de fast-track/segurança do catálogo e o conteúdo das listas de códigos são **propostas**, não verdade. São questões abertas da seção 12 do PRD, a fechar com PCM, Manutenção, Estoque e Operação antes do R1.
 
+### Cenário de demonstração
+
+`npm run db:seed:demo` (depois do seed base) povoa a garagem como no modo mock: 13 carros, seis meses de km e eventos, fila, OS em cada etapa, preventivas, plantão e notificações. Apaga o movimento anterior e recria; cadastros ficam.
+
 ### Credenciais do seed
 
 | E-mail | Senha | Perfil |

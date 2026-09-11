@@ -14,6 +14,7 @@
     "db:push": "prisma db push --skip-generate",
     "db:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts",
+    "db:seed:demo": "ts-node prisma/seed-demo.ts",
     "test:e2e": "ts-node test/r1-flow.e2e.ts"
   },
   "prisma": {

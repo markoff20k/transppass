@@ -110,6 +110,14 @@ docker compose -f docker-compose.prod.yml exec api npm run db:seed
 
 > O seed cria as personas com senha padrão (`admin@transppass.local` / `admin123` e as demais em `COMO-RODAR.md`). Troque as senhas assim que entrar — o sistema vai estar exposto na internet.
 
+Para apresentar o sistema com uma garagem em movimento (13 carros, seis meses de histórico, fila, OS em todas as etapas, preventiva, plantão), rode também o **seed de demonstração**:
+
+```bash
+docker compose -f docker-compose.prod.yml exec api npm run db:seed:demo
+```
+
+> Ele apaga todo o movimento anterior (eventos, OS, fila, leituras, paradas, demandas) e recria o cenário. Cadastros e usuários ficam. Pode rodar de novo quando quiser "resetar" a demonstração — nunca com dados reais.
+
 ## 9. Conferir
 
 ```bash
