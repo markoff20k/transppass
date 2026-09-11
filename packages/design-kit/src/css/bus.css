@@ -1,9 +1,7 @@
 /**
- * Ilustração do ônibus — desenho técnico, linha fina, monocromático.
- *
- * O componente monta `bus--<visual>` e `bus--lifted`. A cor do estado mora
- * em `--bus-state` e aparece em três lugares, todos pequenos: o trilho de
- * 2px, o LED, e uma tinta de 8% na carroceria. O resto é linha em grafite.
+ * Ilustração do ônibus — o Caio Millennium III da Transppass na pintura da
+ * frota de São Paulo. A pintura é fixa; o ESTADO mora em `--bus-state` e
+ * aparece só nos instrumentos: trilho de 2px, LED, elevador, scanner.
  *
  * Um movimento por estado, lento, com significado. Nada se move com
  * `prefers-reduced-motion`.
@@ -13,9 +11,14 @@
   display: block;
   overflow: visible;
   --bus-state: var(--color-neutral);
-  --bus-line: var(--color-text-secondary);
-  --bus-fill: color-mix(in srgb, var(--bus-state) 8%, var(--color-surface));
-  --bus-glass: color-mix(in srgb, var(--color-text) 7%, var(--color-surface));
+  --bus-line: var(--tp-graphite-700);
+  --bus-orange: var(--tp-orange-500);
+  --bus-white: #f6f6f4;
+  --bus-glass: #4d545e;
+  --bus-arch: #1f2022;
+  --bus-yellow: #f2c400;
+  --bus-tire: #2a2b2a;
+  --bus-rim: #cfd2d3;
 }
 
 /* ---- Cor por estado ----------------------------------------------------- */
@@ -47,7 +50,7 @@
   --bus-state: var(--color-neutral);
 }
 
-/* ---- Linhas ------------------------------------------------------------- */
+/* ---- Pintura e linhas -------------------------------------------------- */
 
 .bus__ground {
   stroke: var(--color-border-strong);
@@ -55,68 +58,59 @@
   stroke-linecap: round;
 }
 
-.bus__body {
-  fill: var(--bus-fill);
-  stroke: var(--bus-line);
-  stroke-width: 1.2;
-  transition: fill var(--tp-duration-normal) var(--tp-ease);
-}
+.bus__paint-white { fill: var(--bus-white); }
+.bus__paint-orange { fill: var(--bus-orange); }
 
-.bus__waist {
-  stroke: var(--bus-line);
-  stroke-width: 0.8;
-  opacity: 0.55;
-}
-
-.bus__glass rect,
-.bus__glass path {
-  fill: var(--bus-glass);
-  stroke: var(--bus-line);
-  stroke-width: 0.8;
-}
-
-.bus__door {
+.bus__outline {
   fill: none;
   stroke: var(--bus-line);
-  stroke-width: 0.9;
-  opacity: 0.8;
+  stroke-width: 1;
 }
 
-.bus__lamp {
-  fill: none;
-  stroke: var(--bus-line);
-  stroke-width: 0.9;
-}
+.bus__glass { fill: var(--bus-glass); }
 
-.bus__tire {
-  fill: var(--color-surface);
-  stroke: var(--bus-line);
+.bus__mullion {
+  stroke: var(--bus-white);
   stroke-width: 1.4;
 }
 
-.bus__hub {
-  fill: var(--color-surface);
-  stroke: var(--bus-line);
-  stroke-width: 0.9;
-}
+.bus__sign { fill: #111; }
 
-.bus__rim {
-  fill: none;
-  stroke: var(--bus-line);
-  stroke-width: 0.5;
-  opacity: 0.45;
-}
+.bus__door-panel { fill: var(--bus-white); }
 
-.bus__spoke {
+.bus__door-split {
   stroke: var(--bus-line);
-  stroke-width: 0.8;
-  stroke-linecap: round;
+  stroke-width: 0.6;
   opacity: 0.7;
 }
 
-.bus__valve {
-  fill: var(--bus-line);
-  opacity: 0.8;
+.bus__door-stripe {
+  stroke: var(--bus-yellow);
+  stroke-width: 1.2;
+}
+
+.bus__grille {
+  stroke: var(--bus-line);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.bus__lamp--front { fill: #fff3c4; stroke: var(--bus-line); stroke-width: 0.5; }
+.bus__lamp--rear { fill: #d9342b; }
+
+.bus__mirror { fill: var(--bus-arch); }
+.bus__mirror-stem { stroke: var(--bus-line); stroke-width: 0.9; }
+
+.bus__arch { fill: var(--bus-arch); }
+
+.bus__tire { fill: var(--bus-tire); }
+.bus__rim { fill: var(--bus-rim); stroke: #8f9496; stroke-width: 0.6; }
+.bus__rim-hole { fill: #6b7073; }
+.bus__hub { fill: #9ea3a5; stroke: #6b7073; stroke-width: 0.5; }
+
+.bus__vehicle {
+  transition: transform var(--tp-duration-slow) var(--tp-ease);
 }
 
 /* A roda gira em torno do próprio centro, não da origem do SVG. */
@@ -207,12 +201,13 @@
   opacity: 0;
 }
 
-/* Fora de operação: apagado e tracejado, como num inventário. */
+/* Fora de operação: sem cor e apagado, como num inventário. */
 .bus--off {
-  opacity: 0.5;
+  opacity: 0.55;
+  filter: grayscale(1);
 }
 
-.bus--off .bus__body {
+.bus--off .bus__outline {
   stroke-dasharray: 3 3;
 }
 
