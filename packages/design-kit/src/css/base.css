@@ -75,6 +75,11 @@ a:hover {
   border-radius: var(--tp-radius-sm);
 }
 
+/* O anel acompanha a forma do controle: redondo no rádio. */
+input[type='radio']:focus-visible {
+  border-radius: 50%;
+}
+
 hr {
   border: none;
   border-top: var(--tp-border-thin) solid var(--color-border);
