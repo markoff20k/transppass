@@ -4,6 +4,7 @@ import {
   MATERIAL_REQUEST_STATUS_LABELS,
   MaterialRequestStatus,
   POOL_STATUS_LABELS,
+  PoolComponentStatus,
   ReasonCodeList,
   type MaterialRequestRow,
   type PoolComponentRow,
@@ -12,6 +13,7 @@ import {
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate, formatDateTime } from '@/lib/format';
+import { useAuth } from '@/features/auth/use-auth';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 
@@ -60,6 +62,9 @@ export function StockPage() {
     queryFn: () => api.get<MaterialRequestRow[]>('/materials/requests?onlyPending=true'),
     refetchInterval: 20_000,
   });
+
+  const [tool, setTool] = useState<ToolRow | null>(null);
+  const [component, setComponent] = useState<PoolComponentRow | null>(null);
 
   const pool = useQuery({
     queryKey: ['materials', 'pool'],
@@ -149,9 +154,10 @@ export function StockPage() {
       </section>
 
       <div className="tp-split">
-        <section className="tp-card">
+        <section className="tp-card stock-pool">
           <div className="tp-card__head">
             <h3>Pool rotativo</h3>
+            <span className="tp-muted">clique para movimentar</span>
           </div>
           <p className="tp-muted">
             Componentes controlados por número de série — alternadores, válvulas APU e cuícas, os
@@ -165,22 +171,28 @@ export function StockPage() {
                   <th>Componente</th>
                   <th>Estado</th>
                   <th>Carro</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 {(pool.data ?? []).map((c) => (
-                  <tr key={c.id}>
+                  <tr key={c.id} className="is-clickable" tabIndex={0} onClick={() => setComponent(c)} onKeyDown={(e) => e.key === 'Enter' && setComponent(c)}>
                     <td className="is-strong">{c.serialNumber}</td>
                     <td>{c.materialDescription}</td>
                     <td>
-                      <span className="tp-badge tp-badge--status">{POOL_STATUS_LABELS[c.status]}</span>
+                      <span className={`tp-badge tp-badge--status ${poolBadge(c.status)}`}>{POOL_STATUS_LABELS[c.status]}</span>
                     </td>
                     <td className="tp-muted">{c.currentVehicleCode ?? '—'}</td>
+                    <td className="is-num">
+                      <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={(e) => { e.stopPropagation(); setComponent(c); }}>
+                        Movimentar
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {(pool.data ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={4} className="tp-table__empty">Nenhum componente no pool.</td>
+                    <td colSpan={5} className="tp-table__empty">Nenhum componente no pool.</td>
                   </tr>
                 )}
               </tbody>
@@ -188,9 +200,10 @@ export function StockPage() {
           </div>
         </section>
 
-        <section className="tp-card">
+        <section className="tp-card stock-tools">
           <div className="tp-card__head">
             <h3>Ferramentas</h3>
+            <span className="tp-muted">calibração vencida bloqueia o empréstimo (RF-28)</span>
           </div>
           <div className="tp-table-wrap">
             <table className="tp-table">
@@ -200,6 +213,7 @@ export function StockPage() {
                   <th>Ferramenta</th>
                   <th>Calibração</th>
                   <th>Com quem</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -214,11 +228,22 @@ export function StockPage() {
                       )}
                     </td>
                     <td className="tp-muted">{t.loanedToName ?? 'disponível'}</td>
+                    <td className="is-num">
+                      <button
+                        type="button"
+                        className="tp-btn tp-btn--ghost tp-btn--sm"
+                        disabled={!t.loanedToName && t.isCalibrationExpired}
+                        title={!t.loanedToName && t.isCalibrationExpired ? 'Calibração vencida — não pode sair da ferramentaria' : undefined}
+                        onClick={() => setTool(t)}
+                      >
+                        {t.loanedToName ? 'Devolver' : 'Emprestar'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {(tools.data ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={4} className="tp-table__empty">Nenhuma ferramenta cadastrada.</td>
+                    <td colSpan={5} className="tp-table__empty">Nenhuma ferramenta cadastrada.</td>
                   </tr>
                 )}
               </tbody>
@@ -235,7 +260,119 @@ export function StockPage() {
           invalidate();
         }}
       />
+      <ToolDrawer tool={tool} onClose={() => setTool(null)} onChanged={() => { setTool(null); invalidate(); }} />
+      <PoolDrawer component={component} onClose={() => setComponent(null)} onChanged={() => { setComponent(null); invalidate(); }} />
     </>
+  );
+}
+
+function poolBadge(status: PoolComponentStatus): string {
+  switch (status) {
+    case PoolComponentStatus.IN_STOCK: return 'tp-badge--success';
+    case PoolComponentStatus.IN_USE: return 'tp-badge--info';
+    case PoolComponentStatus.IN_WORKSHOP: return 'tp-badge--warning';
+    default: return '';
+  }
+}
+
+/** RF-28 — empréstimo e devolução; a calibração vencida é bloqueio do servidor, antecipado aqui. */
+function ToolDrawer({ tool, onClose, onChanged }: { tool: ToolRow | null; onClose: () => void; onChanged: () => void }) {
+  const { user } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: () => (tool?.loanedToName ? api.post(`/materials/tools/${tool.id}/return`) : api.post('/materials/tools/loan', { toolId: tool?.id })),
+    onSuccess: () => { setError(null); onChanged(); },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha na operação'),
+  });
+  if (!tool) return null;
+  const returning = Boolean(tool.loanedToName);
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      eyebrow={`Ferramenta · ${tool.code}`}
+      title={returning ? 'Devolver à ferramentaria' : 'Emprestar ferramenta'}
+      description={tool.description}
+      footer={
+        <>
+          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button>
+          <button type="button" className="tp-btn tp-btn--primary" disabled={mutation.isPending || (!returning && tool.isCalibrationExpired)} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Registrando…' : returning ? 'Confirmar devolução' : 'Confirmar empréstimo'}
+          </button>
+        </>
+      }
+    >
+      <dl className="tp-facts">
+        <div>
+          <dt>Calibração</dt>
+          <dd>{tool.calibrationDueAt ? formatDate(tool.calibrationDueAt) : '—'}{tool.isCalibrationExpired && <span className="tp-badge tp-badge--danger" style={{ marginLeft: 6 }}>vencida</span>}</dd>
+        </div>
+        <div>
+          <dt>{returning ? 'Com quem' : 'Sai com'}</dt>
+          <dd>{returning ? `${tool.loanedToName} · desde ${tool.loanedAt ? formatDateTime(tool.loanedAt) : '—'}` : (user?.name ?? '—')}</dd>
+        </div>
+      </dl>
+      {!returning && tool.isCalibrationExpired && (
+        <div className="tp-alert tp-alert--danger">Calibração vencida: a ferramenta não pode sair da ferramentaria até ser recalibrada (RF-28).</div>
+      )}
+      {error && <p className="tp-error">{error}</p>}
+    </Drawer>
+  );
+}
+
+const POOL_MOVES: { to: PoolComponentStatus; label: string; hint: string }[] = [
+  { to: PoolComponentStatus.IN_STOCK, label: 'Voltou ao saldo', hint: 'Recuperado ou retirado de um carro, pronto para aplicar.' },
+  { to: PoolComponentStatus.IN_USE, label: 'Aplicado no carro', hint: 'Instalado numa sub-OS — informe a sub-OS quando houver.' },
+  { to: PoolComponentStatus.IN_WORKSHOP, label: 'Enviado à Oficina', hint: 'Em recuperação; sai do saldo até voltar.' },
+  { to: PoolComponentStatus.SCRAPPED, label: 'Sucateado', hint: 'Sem recuperação. Movimento definitivo.' },
+];
+
+/** RF-26 — pool rotativo por número de série: cada mudança de estado é um movimento registrado. */
+function PoolDrawer({ component, onClose, onChanged }: { component: PoolComponentRow | null; onClose: () => void; onChanged: () => void }) {
+  const [toStatus, setToStatus] = useState<PoolComponentStatus | null>(null);
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: () => api.post(`/materials/pool/${component?.id}/move`, { toStatus, note: note || undefined }),
+    onSuccess: () => { setError(null); setToStatus(null); setNote(''); onChanged(); },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao movimentar'),
+  });
+  if (!component) return null;
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      eyebrow={`Pool rotativo · ${component.materialCode}`}
+      title={component.serialNumber}
+      description={`${component.materialDescription} · hoje: ${POOL_STATUS_LABELS[component.status]}${component.currentVehicleCode ? ` no ${component.currentVehicleCode}` : ''}`}
+      footer={
+        <>
+          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button>
+          <button type="button" className="tp-btn tp-btn--primary" disabled={!toStatus || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Registrando…' : 'Registrar movimento'}
+          </button>
+        </>
+      }
+    >
+      <div className="tp-stack">
+        <div className="tp-field">
+          <span className="tp-label">Para onde vai</span>
+          <div className="tp-stack tp-stack--tight">
+            {POOL_MOVES.filter((m) => m.to !== component.status).map((m) => (
+              <label key={m.to} className="tp-radio-card">
+                <input type="radio" name="pool-move" value={m.to} checked={toStatus === m.to} onChange={() => setToStatus(m.to)} />
+                <span className="field-outcomes__text"><b>{m.label}</b><small>{m.hint}</small></span>
+              </label>
+            ))}
+          </div>
+        </div>
+        <label className="tp-field">
+          <span className="tp-label">Observação</span>
+          <input className="tp-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Opcional — carro, OS ou motivo" maxLength={255} />
+        </label>
+        {error && <p className="tp-error">{error}</p>}
+      </div>
+    </Drawer>
   );
 }
 

@@ -14,6 +14,7 @@ import {
   type CreatePoolComponentInput,
   type DeliverMaterialInput,
   type LoanToolInput,
+  type MaterialOption,
   type MaterialQuery,
   type MaterialRequestRow,
   type PoolComponentRow,
@@ -432,6 +433,12 @@ export class MaterialsService {
     });
 
     return this.listTools();
+  }
+
+  /** Cadastro de materiais ativos — a lista de onde a valeta e o socorro escolhem. */
+  async listMaterials(): Promise<MaterialOption[]> {
+    const rows = await this.prisma.material.findMany({ where: { isActive: true }, orderBy: { code: 'asc' } });
+    return rows.map((m) => ({ id: m.id, code: m.code, description: m.description, unit: m.unit, isSerialized: m.isSerialized }));
   }
 
   async listTools(): Promise<ToolRow[]> {

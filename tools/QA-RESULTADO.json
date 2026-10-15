@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-09-11T20:06:38.418Z",
+  "ranAt": "2026-10-15T20:44:51.890Z",
   "base": "http://localhost:5173",
-  "passed": 52,
+  "passed": 60,
   "failed": 0,
   "results": [
     {
@@ -186,6 +186,12 @@
     },
     {
       "id": "ROUTE-14",
+      "name": "Usuários renderiza com subheader \"Usuários\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-15",
       "name": "Design kit renderiza com subheader \"Design kit\"",
       "ok": true,
       "detail": ""
@@ -307,6 +313,48 @@
     {
       "id": "RESP-03",
       "name": "Esc fecha a gaveta",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "STK-03",
+      "name": "Ferramenta: emprestar/devolver pela tela (RF-28)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "STK-04",
+      "name": "Pool: movimentar componente pela tela (RF-26)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "CAT-01",
+      "name": "Catálogo mostra versão publicada e rascunho com botão de publicar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "USR-01",
+      "name": "Usuários: painel de nova conta com perfil de acesso (RF-36)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "USR-02",
+      "name": "Usuários: editar abre painel com desativar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "FLD-01",
+      "name": "Desfecho do socorro permite lançar material embarcado (RF-27)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "OS-03",
+      "name": "OS: ajustar previsão de conclusão abre painel (RN-03)",
       "ok": true,
       "detail": ""
     },

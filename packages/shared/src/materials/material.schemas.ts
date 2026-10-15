@@ -144,6 +144,15 @@ export interface PoolComponentRow {
   currentVehicleCode: string | null;
 }
 
+/** Item do cadastro de materiais, para seleção em solicitações e no socorro. */
+export interface MaterialOption {
+  id: string;
+  code: string;
+  description: string;
+  unit: string;
+  isSerialized: boolean;
+}
+
 export interface ToolRow {
   id: string;
   code: string;

@@ -145,6 +145,20 @@ const tools: ToolRow[] = [
   { id: 'tl-3', code: 'MAN-01', description: 'Manômetro de ar 0–12 bar', calibrationDueAt: new Date(Date.now() + 120 * 24 * H).toISOString(), isCalibrationExpired: false, loanedToName: null, loanedAt: null },
 ];
 
+const materialOptions = [
+  { id: 'm-1', code: 'CUI-FR-DT', description: 'Cuíca de freio dianteira 24"', unit: 'un', isSerialized: true },
+  { id: 'm-2', code: 'FIL-AR-01', description: 'Filtro de ar motor', unit: 'un', isSerialized: false },
+  { id: 'm-3', code: 'VAL-APU-01', description: 'Válvula APU', unit: 'un', isSerialized: true },
+  { id: 'm-4', code: 'ALT-24V', description: 'Alternador 24V 110A', unit: 'un', isSerialized: true },
+  { id: 'm-5', code: 'OLEO-15W40', description: 'Óleo motor 15W40', unit: 'L', isSerialized: false },
+  { id: 'm-6', code: 'CORR-ALT', description: 'Correia do alternador', unit: 'un', isSerialized: false },
+];
+
+const catalogVersions = {
+  draft: { id: 'cv-2', version: 2, notes: null as string | null, publishedAt: null as string | null, createdAt: ago(48) },
+  published: { id: 'cv-1', version: 1, notes: 'Carga inicial a partir do ranking IIO', publishedAt: ago(30 * 24), createdAt: ago(31 * 24) } as { id: string; version: number; notes: string | null; publishedAt: string | null; createdAt: string } | null,
+};
+
 function metrics(): R1Metrics {
   const d = buildDashboard();
   return {
@@ -198,6 +212,34 @@ export const r1Handlers = [
   http.get('*/api/materials/tools', () => HttpResponse.json(tools)),
   http.post('*/api/materials/escalate-overdue', () => HttpResponse.json({ escalated: 1 }, { status: 201 })),
   http.post('*/api/materials/requests/:id/*', () => HttpResponse.json(materialRequests[0], { status: 201 })),
+
+  http.get('*/api/materials/catalog', () => HttpResponse.json(materialOptions)),
+  http.post('*/api/materials/tools/loan', async ({ request }) => {
+    const body = (await request.json()) as { toolId: string };
+    const t = tools.find((x) => x.id === body.toolId);
+    if (t?.isCalibrationExpired) return HttpResponse.json({ statusCode: 400, code: 'BAD_REQUEST', message: 'Ferramenta com calibração vencida não pode ser emprestada (RF-28)', timestamp: new Date().toISOString(), path: '/api/materials/tools/loan' }, { status: 400 });
+    if (t) { t.loanedToName = 'Administrador'; t.loanedAt = new Date().toISOString(); }
+    return HttpResponse.json(tools, { status: 201 });
+  }),
+  http.post('*/api/materials/tools/:id/return', ({ params }) => {
+    const t = tools.find((x) => x.id === params.id);
+    if (t) { t.loanedToName = null; t.loanedAt = null; }
+    return HttpResponse.json(tools, { status: 201 });
+  }),
+  http.post('*/api/materials/pool/:id/move', async ({ request, params }) => {
+    const body = (await request.json()) as { toStatus: PoolComponentStatus };
+    const c = pool.find((x) => x.id === params.id);
+    if (c) { c.status = body.toStatus; if (body.toStatus !== PoolComponentStatus.IN_USE) c.currentVehicleCode = null; }
+    return HttpResponse.json(c ?? pool[0], { status: 201 });
+  }),
+  http.get('*/api/catalog/versions/draft', () => HttpResponse.json(catalogVersions.draft)),
+  http.get('*/api/catalog/versions/published', () => HttpResponse.json(catalogVersions.published)),
+  http.post('*/api/catalog/versions/:id/publish', () => {
+    catalogVersions.published = { ...catalogVersions.draft, publishedAt: new Date().toISOString() };
+    catalogVersions.draft = { id: 'cv-next', version: catalogVersions.draft.version + 1, notes: null, publishedAt: null, createdAt: new Date().toISOString() };
+    return HttpResponse.json(catalogVersions.published, { status: 201 });
+  }),
+  http.post('*/api/events/:id/field/dispatch', () => HttpResponse.json(buildDashboard().recentEvents[2], { status: 201 })),
 
   http.get('*/api/metrics', () => HttpResponse.json(metrics())),
   http.get('*/api/catalog/specialties', () => HttpResponse.json(specialties)),

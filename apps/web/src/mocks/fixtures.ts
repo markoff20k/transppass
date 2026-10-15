@@ -24,11 +24,21 @@ export interface MockUser extends PublicUser {
   password: string;
 }
 
+export const baseMockUser = {
+  registration: null,
+  garageId: null,
+  phone: null,
+  avatarUrl: null,
+  isActive: true,
+  createdAt: new Date('2026-01-01T00:00:00Z').toISOString(),
+};
+
 const baseUser = {
   registration: null,
   garageId: null,
   phone: null,
   avatarUrl: null,
+  isActive: true,
   createdAt: new Date('2026-01-01T00:00:00Z').toISOString(),
 };
 

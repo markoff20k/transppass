@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, LifeBuoy, MapPin, Radio, Route } from 'lucide-react';
+import { Check, LifeBuoy, MapPin, Plus, Radio, Route, Trash2 } from 'lucide-react';
 import {
   EventStatus,
   FIELD_OUTCOME_LABELS,
@@ -9,6 +9,7 @@ import {
   FieldStep,
   type FailureCatalogItem,
   type FailureEventSummary,
+  type MaterialOption,
   type Paginated,
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
@@ -156,6 +157,7 @@ function FieldCard({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [outcomeOpen, setOutcomeOpen] = useState(false);
+  const [dispatchOpen, setDispatchOpen] = useState(false);
   const field = event.fieldService;
   const stage = stageOf(event);
   const next = NEXT_STEP[stage];
@@ -188,11 +190,14 @@ function FieldCard({
         <div className="field-card__tags">
           {event.catalog?.isSafety && <span className="tp-badge tp-badge--danger">segurança</span>}
           {event.catalog?.isFastTrack && <span className="tp-badge tp-badge--warning">fast-track</span>}
-          {field?.supportVehicleCode && (
-            <span className="tp-badge">
-              <Radio size={12} /> {field.supportVehicleCode}
-            </span>
-          )}
+          <button
+            type="button"
+            className={`tp-badge field-card__dispatch${field?.supportVehicleCode ? '' : ' is-empty'}`}
+            onClick={() => setDispatchOpen(true)}
+            title="Viatura de apoio (despacho)"
+          >
+            <Radio size={12} /> {field?.supportVehicleCode ?? 'sem viatura'}
+          </button>
         </div>
       </header>
 
@@ -262,6 +267,16 @@ function FieldCard({
         )}
       </div>
 
+      {dispatchOpen && (
+        <DispatchDrawer
+          event={event}
+          onClose={() => setDispatchOpen(false)}
+          onDone={() => {
+            setDispatchOpen(false);
+            onChanged();
+          }}
+        />
+      )}
       {outcomeOpen && (
         <OutcomeDrawer
           event={event}
@@ -298,12 +313,17 @@ function OutcomeDrawer({
   const [outcome, setOutcome] = useState<FieldOutcome | null>(null);
   const [confirmedCatalogItemId, setConfirmedCatalogItemId] = useState(event.catalogItemId ?? '');
   const [note, setNote] = useState('');
+  const [materials, setMaterials] = useState<{ materialId: string; quantity: string; serialNumber: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const isSafety = Boolean(event.catalog?.isSafety);
 
   const catalog = useQuery({
     queryKey: ['catalog', 'items', 'select'],
     queryFn: () => api.get<Paginated<FailureCatalogItem>>('/catalog/items?perPage=100'),
+  });
+  const materialOptions = useQuery({
+    queryKey: ['materials', 'catalog'],
+    queryFn: () => api.get<MaterialOption[]>('/materials/catalog'),
   });
 
   const mutation = useMutation({
@@ -312,7 +332,10 @@ function OutcomeDrawer({
         outcome: o,
         confirmedCatalogItemId: confirmedCatalogItemId || undefined,
         note: note || undefined,
-        materials: [],
+        // RF-27 — material embarcado da viatura: baixa por consumo.
+        materials: materials
+          .filter((m) => m.materialId && Number(m.quantity) > 0)
+          .map((m) => ({ materialId: m.materialId, quantity: Number(m.quantity), serialNumber: m.serialNumber || undefined })),
       }),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao registrar o desfecho'),
@@ -389,6 +412,34 @@ function OutcomeDrawer({
           <span className="tp-help">O que a equipe constatou realimenta o catálogo (RF-32).</span>
         </label>
 
+        <div className="tp-field field-materials">
+          <span className="tp-label">Material usado da viatura (RF-27)</span>
+          {materials.length === 0 && <span className="tp-help">Nada lançado. O que sair do apoio dá baixa por consumo.</span>}
+          {materials.map((m, i) => {
+            const opt = materialOptions.data?.find((o) => o.id === m.materialId);
+            return (
+              <div key={i} className="field-materials__row">
+                <select className="tp-select" value={m.materialId} onChange={(e) => setMaterials((rows) => rows.map((r, j) => (j === i ? { ...r, materialId: e.target.value } : r)))}>
+                  <option value="">Material…</option>
+                  {(materialOptions.data ?? []).map((o) => (
+                    <option key={o.id} value={o.id}>{o.code} — {o.description}</option>
+                  ))}
+                </select>
+                <input className="tp-input" type="number" min={0} step="any" placeholder={opt ? opt.unit : 'qtd'} value={m.quantity} onChange={(e) => setMaterials((rows) => rows.map((r, j) => (j === i ? { ...r, quantity: e.target.value } : r)))} />
+                {opt?.isSerialized && (
+                  <input className="tp-input" placeholder="nº de série" value={m.serialNumber} onChange={(e) => setMaterials((rows) => rows.map((r, j) => (j === i ? { ...r, serialNumber: e.target.value } : r)))} />
+                )}
+                <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" aria-label="Remover" onClick={() => setMaterials((rows) => rows.filter((_, j) => j !== i))}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
+          <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" style={{ justifySelf: 'start' }} onClick={() => setMaterials((rows) => [...rows, { materialId: '', quantity: '1', serialNumber: '' }])}>
+            <Plus size={14} /> Lançar material
+          </button>
+        </div>
+
         <label className="tp-field">
           <span className="tp-label">Observação</span>
           <textarea
@@ -400,6 +451,43 @@ function OutcomeDrawer({
           />
         </label>
 
+        {error && <p className="tp-error">{error}</p>}
+      </div>
+    </Drawer>
+  );
+}
+
+/** RF-04 — despacho: qual viatura de apoio foi com a equipe. */
+function DispatchDrawer({ event, onClose, onDone }: { event: FailureEventSummary; onClose: () => void; onDone: () => void }) {
+  const [code, setCode] = useState(event.fieldService?.supportVehicleCode ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: () => api.post(`/events/${event.id}/field/dispatch`, { supportVehicleCode: code.trim() || undefined }),
+    onSuccess: onDone,
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao registrar o despacho'),
+  });
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      eyebrow={`Socorro · carro ${event.vehicleCode}`}
+      title="Despacho da equipe"
+      description="Qual viatura de apoio saiu para o carro. Quem registra fica como técnico responsável."
+      footer={
+        <>
+          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button>
+          <button type="button" className="tp-btn tp-btn--primary" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Registrando…' : 'Registrar despacho'}
+          </button>
+        </>
+      }
+    >
+      <div className="tp-stack">
+        <label className="tp-field">
+          <span className="tp-label">Viatura de apoio</span>
+          <input className="tp-input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="APOIO-1" maxLength={16} autoFocus />
+          <span className="tp-help">O prefixo da viatura, como consta na frota de apoio.</span>
+        </label>
         {error && <p className="tp-error">{error}</p>}
       </div>
     </Drawer>

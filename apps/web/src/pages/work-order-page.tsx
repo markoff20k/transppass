@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { CalendarClock, Plus } from 'lucide-react';
 import {
   DOWNTIME_CAUSE_LABELS,
   InspectionResult,
@@ -25,6 +25,8 @@ import { Drawer } from '@/components/ui/drawer';
 type Panel =
   | { kind: 'closed' }
   | { kind: 'add-task' }
+  | { kind: 'estimate' }
+  | { kind: 'damage' }
   | { kind: 'finish-task'; task: TaskRow }
   | { kind: 'inspect'; task: TaskRow };
 
@@ -75,6 +77,9 @@ export function WorkOrderPage() {
     crumbs: [{ label: 'Ordens de serviço', to: '/os' }],
     actions: data && isOpen ? (
       <>
+        <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setPanel({ kind: 'estimate' })}>
+          <CalendarClock size={14} /> Ajustar previsão
+        </button>
         <button
           type="button"
           className="tp-btn tp-btn--secondary tp-btn--sm"
@@ -195,6 +200,9 @@ export function WorkOrderPage() {
               )}
               {data.cleaning.status !== 'DONE' && (
                 <div className="tp-row tp-row--end">
+                  <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setPanel({ kind: 'damage' })}>
+                    Reportar avaria
+                  </button>
                   {data.cleaning.status === 'PENDING' && (
                     <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm" onClick={() => action.mutate(`${id}/cleaning/start`)}>
                       Iniciar limpeza
@@ -287,6 +295,18 @@ export function WorkOrderPage() {
         </div>
       </div>
 
+      <EstimateDrawer
+        open={panel.kind === 'estimate'}
+        workOrder={data}
+        onClose={() => setPanel({ kind: 'closed' })}
+        onDone={() => { setPanel({ kind: 'closed' }); invalidate(); }}
+      />
+      <DamageDrawer
+        open={panel.kind === 'damage'}
+        workOrderId={id}
+        onClose={() => setPanel({ kind: 'closed' })}
+        onDone={() => { setPanel({ kind: 'closed' }); invalidate(); }}
+      />
       <AddTaskDrawer
         open={panel.kind === 'add-task'}
         workOrderId={id}
@@ -662,6 +682,89 @@ function InspectionDrawer({ task, onClose, onDone }: { task: TaskRow | null; onC
         <textarea id="in-note" className="tp-textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
       {error && <div className="tp-alert tp-alert--danger">{error}</div>}
+    </Drawer>
+  );
+}
+
+/** Valor de <input type="datetime-local"> a partir de um ISO, no fuso local. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** RN-03 — a previsão de conclusão é obrigatória e pode ser ajustada; cada ajuste notifica os interessados (RF-09). */
+function EstimateDrawer({ open, workOrder, onClose, onDone }: { open: boolean; workOrder: WorkOrderDetail; onClose: () => void; onDone: () => void }) {
+  const [value, setValue] = useState(() => toLocalInput(workOrder.estimatedCompletionAt));
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: () => api.patch(`/work-orders/${workOrder.id}/estimate`, { estimatedCompletionAt: new Date(value).toISOString() }),
+    onSuccess: () => { setError(null); onDone(); },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao ajustar a previsão'),
+  });
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      eyebrow={`${workOrder.code} · carro ${workOrder.vehicleCode}`}
+      title="Ajustar previsão de conclusão"
+      description="O Plantão e o CCO recebem a nova previsão na hora (RF-09)."
+      footer={
+        <>
+          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button>
+          <button type="button" className="tp-btn tp-btn--primary" disabled={!value || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Salvando…' : 'Salvar previsão'}
+          </button>
+        </>
+      }
+    >
+      <div className="tp-stack">
+        <dl className="tp-facts">
+          <div><dt>Previsão atual</dt><dd>{formatDateTime(workOrder.estimatedCompletionAt)}</dd></div>
+          <div><dt>Relógio</dt><dd>{formatMinutes(workOrder.downtimeMinutes)}</dd></div>
+        </dl>
+        <label className="tp-field">
+          <span className="tp-label">Nova previsão</span>
+          <input className="tp-input" type="datetime-local" value={value} onChange={(e) => setValue(e.target.value)} />
+        </label>
+        {error && <p className="tp-error">{error}</p>}
+      </div>
+    </Drawer>
+  );
+}
+
+/** RF-21 / RN-07 — avaria vista na limpeza vira backlog do carro para a próxima parada. */
+function DamageDrawer({ open, workOrderId, onClose, onDone }: { open: boolean; workOrderId: string; onClose: () => void; onDone: () => void }) {
+  const [description, setDescription] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: () => api.post(`/work-orders/${workOrderId}/cleaning/damage`, { description: description.trim() }),
+    onSuccess: () => { setError(null); setDescription(''); onDone(); },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao reportar a avaria'),
+  });
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      eyebrow="Limpeza"
+      title="Reportar avaria"
+      description="Banco rasgado, vidro trincado, corrimão solto — vira backlog do carro e entra na próxima parada (RN-07)."
+      footer={
+        <>
+          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button>
+          <button type="button" className="tp-btn tp-btn--primary" disabled={description.trim().length < 3 || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Registrando…' : 'Registrar avaria'}
+          </button>
+        </>
+      }
+    >
+      <div className="tp-stack">
+        <label className="tp-field">
+          <span className="tp-label">O que foi encontrado</span>
+          <textarea className="tp-textarea" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex.: banco 12 com estofado rasgado" maxLength={500} autoFocus />
+        </label>
+        {error && <p className="tp-error">{error}</p>}
+      </div>
     </Drawer>
   );
 }

@@ -2317,3 +2317,82 @@ small.muted {
   .profile__identity { grid-template-columns: minmax(0, 1fr); }
   .profile__readonly { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Duas colunas de campos num formulário de painel */
+.tp-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tp-space-3);
+}
+
+@media (max-width: 480px) {
+  .tp-grid-2 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Socorro: viatura de apoio como etiqueta clicável; materiais embarcados */
+.field-card__dispatch {
+  cursor: pointer;
+  border-style: solid;
+}
+
+.field-card__dispatch.is-empty {
+  border-style: dashed;
+  color: var(--color-text-muted);
+}
+
+.field-card__dispatch:hover { background: var(--color-surface-hover); }
+
+.field-materials { display: grid; gap: var(--tp-space-2); }
+
+.field-materials__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 84px auto auto;
+  gap: var(--tp-space-2);
+  align-items: center;
+}
+
+.field-materials__row .tp-select { min-width: 0; }
+
+/* Catálogo: versão em uso × rascunho */
+.catalog-versions {
+  display: grid;
+  grid-template-columns: 180px 180px minmax(0, 1fr);
+  gap: var(--tp-space-3);
+  align-items: stretch;
+}
+
+.catalog-versions__card {
+  display: grid;
+  gap: 2px;
+  padding: var(--tp-space-3) var(--tp-space-4);
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-left: 3px solid var(--color-success);
+  border-radius: var(--tp-radius-lg);
+  background: var(--color-surface);
+}
+
+.catalog-versions__card.is-draft { border-left-color: var(--color-warning); }
+
+.catalog-versions__value {
+  font-family: var(--tp-font-display);
+  font-size: var(--tp-text-2xl);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.catalog-versions__action {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-4);
+  padding: var(--tp-space-3) var(--tp-space-4);
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-lg);
+  background: var(--color-surface);
+}
+
+.catalog-versions__action p { margin: 0; flex: 1; font-size: var(--tp-text-sm); }
+
+@media (max-width: 900px) {
+  .catalog-versions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .catalog-versions__action { grid-column: 1 / -1; flex-wrap: wrap; }
+}

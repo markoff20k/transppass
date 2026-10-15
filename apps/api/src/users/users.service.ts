@@ -188,6 +188,7 @@ export function toPublicUser(user: User): PublicUser {
     garageId: user.garageId,
     phone: user.phone,
     avatarUrl: user.avatarUrl,
+    isActive: user.isActive,
     createdAt: user.createdAt.toISOString(),
   };
 }

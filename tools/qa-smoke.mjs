@@ -173,6 +173,7 @@ async function run() {
     { path: '/km', name: 'Quilometragem', check: 'table' },
     { path: '/cadastros/frota', name: 'Cadastro da frota', check: '.tp-table' },
     { path: '/cadastros/catalogo', name: 'Catálogo', check: '.tp-table' },
+    { path: '/cadastros/usuarios', name: 'Usuários', check: '.tp-table' },
     { path: '/design', name: 'Design kit', check: '.bus-gallery' },
   ];
   let i = 0;
@@ -305,6 +306,56 @@ async function run() {
   await page.keyboard.press('Escape');
   await sleep(350);
   record('RESP-03', 'Esc fecha a gaveta', !(await exists(page, '.shell--drawer')));
+
+  // Item 2 do levantamento do PRD: ações que só existiam na API
+  await page.goto(`${BASE}/estoque`, { waitUntil: 'networkidle0' });
+  await sleep(400);
+  await page.$$eval('.stock-tools tbody tr', (rows) => rows[0]?.querySelector('button')?.click());
+  await sleep(300);
+  record('STK-03', 'Ferramenta: emprestar/devolver pela tela (RF-28)', await exists(page, '.tp-drawer'));
+  await page.keyboard.press('Escape');
+  await sleep(300);
+  await page.$$eval('.stock-pool tbody tr', (rows) => rows[0]?.querySelector('button')?.click());
+  await sleep(300);
+  record('STK-04', 'Pool: movimentar componente pela tela (RF-26)', await exists(page, '.tp-drawer') && (await page.$$('.tp-drawer .tp-radio-card')).length >= 2);
+  await page.keyboard.press('Escape');
+  await sleep(300);
+
+  await page.goto(`${BASE}/cadastros/catalogo`, { waitUntil: 'networkidle0' });
+  await sleep(400);
+  record('CAT-01', 'Catálogo mostra versão publicada e rascunho com botão de publicar', await exists(page, '.catalog-versions') && (await page.$$('.catalog-versions button')).length >= 1);
+
+  await page.goto(`${BASE}/cadastros/usuarios`, { waitUntil: 'networkidle0' });
+  await sleep(400);
+  await clickText(page, '.subheader__actions button', 'Novo usuário');
+  await sleep(300);
+  record('USR-01', 'Usuários: painel de nova conta com perfil de acesso (RF-36)', (await drawerOpen(page)) && (await exists(page, '.tp-drawer select')));
+  await page.keyboard.press('Escape');
+  await sleep(300);
+  // A primeira linha é a própria conta (sem desativar); escolhe outra.
+  await page.$$eval('.tp-table tbody tr.is-clickable', (rows) => (rows[1] ?? rows[0])?.click());
+  await sleep(300);
+  record('USR-02', 'Usuários: editar abre painel com desativar', (await drawerOpen(page)) && (await page.$$eval('.tp-drawer button', (bs) => bs.some((b) => /Desativar|Reativar/.test(b.textContent || '')))));
+  await page.keyboard.press('Escape');
+  await sleep(300);
+
+  await page.goto(`${BASE}/socorro`, { waitUntil: 'networkidle0' });
+  await sleep(400);
+  await page.$$eval('.field-card__actions button', (bs) => bs.find((b) => b.textContent.includes('desfecho'))?.click());
+  await sleep(400);
+  record('FLD-01', 'Desfecho do socorro permite lançar material embarcado (RF-27)', await exists(page, '.field-materials'));
+  await page.keyboard.press('Escape');
+  await sleep(300);
+
+  await page.goto(`${BASE}/os`, { waitUntil: 'networkidle0' });
+  await sleep(400);
+  await page.click('.tp-table tbody tr a');
+  await sleep(600);
+  await clickText(page, '.subheader__actions button', 'Ajustar previsão');
+  await sleep(300);
+  record('OS-03', 'OS: ajustar previsão de conclusão abre painel (RN-03)', (await drawerOpen(page)) && (await exists(page, '.tp-drawer input[type="datetime-local"]')));
+  await page.keyboard.press('Escape');
+  await sleep(300);
 
   // Erros de console
   record('CONS-01', 'Sem erros de JavaScript em nenhuma tela', consoleErrors.length === 0, consoleErrors.map((e) => e.text).join(' | ').slice(0, 300));

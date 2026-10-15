@@ -16,7 +16,7 @@ import {
   type ReasonCodeList,
   type Vehicle,
 } from '@app/shared';
-import { avgDailyKm, catalogItems, newId, reasonCodes, users, vehicles } from './fixtures';
+import { avgDailyKm, baseMockUser, catalogItems, newId, reasonCodes, users, vehicles, type MockUser } from './fixtures';
 import { dashboardHandlers } from './dashboard.mock';
 import { r1Handlers } from './r1.mock';
 import { r2Handlers } from './r2.mock';
@@ -89,6 +89,39 @@ export const handlers = [
     const auth = requireAuth(request, '/api/auth/me');
     if ('error' in auth) return auth.error;
     const { password: _password, ...publicUser } = auth.user;
+    return HttpResponse.json(publicUser);
+  }),
+
+  // --- Administração de usuários (RF-36) ----------------------------------
+  http.get('*/api/users', async ({ request }) => {
+    await delay();
+    const auth = requireAuth(request, '/api/users');
+    if ('error' in auth) return auth.error;
+    const rows = users.map(({ password: _p, ...u }) => u);
+    return HttpResponse.json({ data: rows, meta: { page: 1, perPage: 100, total: rows.length, totalPages: 1 } });
+  }),
+
+  http.post('*/api/users', async ({ request }) => {
+    await delay();
+    const auth = requireAuth(request, '/api/users');
+    if ('error' in auth) return auth.error;
+    const body = (await request.json()) as { name: string; email: string; password: string; role: MockUser['role']; registration?: string };
+    if (users.some((u) => u.email === body.email)) return apiError(409, 'CONFLICT', 'Já existe um usuário com este e-mail', '/api/users');
+    const created: MockUser = { ...baseMockUser, id: newId(), name: body.name, email: body.email, role: body.role, registration: body.registration ?? null, password: body.password };
+    users.push(created);
+    const { password: _p, ...publicUser } = created;
+    return HttpResponse.json(publicUser, { status: 201 });
+  }),
+
+  http.patch('*/api/users/:id', async ({ request, params }) => {
+    await delay();
+    const auth = requireAuth(request, '/api/users/:id');
+    if ('error' in auth) return auth.error;
+    const target = users.find((u) => u.id === params.id);
+    if (!target) return apiError(404, 'NOT_FOUND', 'Usuário não encontrado', '/api/users/:id');
+    const body = (await request.json()) as Partial<MockUser>;
+    Object.assign(target, { name: body.name ?? target.name, role: body.role ?? target.role, registration: body.registration ?? target.registration, isActive: body.isActive ?? target.isActive, password: body.password ?? target.password });
+    const { password: _p, ...publicUser } = target;
     return HttpResponse.json(publicUser);
   }),
 

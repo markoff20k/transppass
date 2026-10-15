@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { BookCheck, Plus } from 'lucide-react';
 import {
   createFailureCatalogItemSchema,
   createReasonCodeSchema,
@@ -15,6 +15,7 @@ import {
   type ReasonCode,
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
+import { formatDateTime } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 
@@ -61,6 +62,7 @@ export function CatalogPage() {
 
   return (
     <>
+      <CatalogVersions items={items.data?.data ?? []} onPublished={invalidate} />
       <section className="tp-card">
         <div className="tp-card__head">
           <h3>Falhas do catálogo</h3>
@@ -283,5 +285,51 @@ function NewReasonDrawer({ list, onClose, onDone }: { list: ReasonCodeList | nul
         {error && <div className="tp-alert tp-alert--danger">{error}</div>}
       </form>
     </Drawer>
+  );
+}
+
+interface CatalogVersion {
+  id: string;
+  version: number;
+  notes: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+/**
+ * RF-32 — o catálogo é versionado: a constatação de campo nunca reescreve a
+ * versão sob a qual um evento passado foi registrado. Itens novos entram no
+ * rascunho; publicar é o que os põe em uso.
+ */
+function CatalogVersions({ items, onPublished }: { items: FailureCatalogItem[]; onPublished: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  const published = useQuery({ queryKey: ['catalog', 'versions', 'published'], queryFn: () => api.get<CatalogVersion | null>('/catalog/versions/published') });
+  const draft = useQuery({ queryKey: ['catalog', 'versions', 'draft'], queryFn: () => api.get<CatalogVersion>('/catalog/versions/draft') });
+  const publish = useMutation({
+    mutationFn: () => api.post(`/catalog/versions/${draft.data?.id}/publish`),
+    onSuccess: () => { setError(null); onPublished(); },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível publicar'),
+  });
+  const draftItems = draft.data ? items.filter((i) => i.versionId === draft.data!.id).length : 0;
+  return (
+    <section className="catalog-versions">
+      <div className="catalog-versions__card">
+        <span className="tp-kpi__label">Versão em uso</span>
+        <strong className="catalog-versions__value">{published.data ? `v${published.data.version}` : '—'}</strong>
+        <span className="tp-muted">{published.data?.publishedAt ? `publicada em ${formatDateTime(published.data.publishedAt)}` : 'nenhuma versão publicada'}</span>
+      </div>
+      <div className="catalog-versions__card is-draft">
+        <span className="tp-kpi__label">Rascunho</span>
+        <strong className="catalog-versions__value">{draft.data ? `v${draft.data.version}` : '—'}</strong>
+        <span className="tp-muted">{draftItems} item(ns) aguardando publicação</span>
+      </div>
+      <div className="catalog-versions__action">
+        <p className="tp-muted">Itens novos entram no rascunho. Publicar põe a versão em uso para triagem, socorro e OS; eventos antigos continuam na versão em que foram registrados.</p>
+        <button type="button" className="tp-btn tp-btn--primary tp-btn--sm" disabled={!draft.data || draftItems === 0 || publish.isPending} onClick={() => publish.mutate()}>
+          <BookCheck size={14} /> {publish.isPending ? 'Publicando…' : `Publicar v${draft.data?.version ?? ''}`}
+        </button>
+        {error && <span className="tp-error">{error}</span>}
+      </div>
+    </section>
   );
 }

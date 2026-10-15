@@ -20,6 +20,7 @@ import { OperationsPage } from '@/pages/operations-page';
 import { DesignKitPage } from '@/pages/design-kit-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 import { ProfilePage } from '@/pages/profile-page';
+import { UsersPage } from '@/pages/users-page';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
           { path: '/km', element: <OdometerEntryPage /> },
           { path: '/cadastros/frota', element: <VehiclesPage /> },
           { path: '/cadastros/catalogo', element: <CatalogPage /> },
+          { path: '/cadastros/usuarios', element: <UsersPage /> },
           // R1 — Corretivo e execucao
           { path: '/eventos', element: <EventsPage /> },
           { path: '/triagem', element: <TriagePage /> },

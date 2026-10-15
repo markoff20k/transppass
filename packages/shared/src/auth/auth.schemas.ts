@@ -64,6 +64,7 @@ export const publicUserSchema = z.object({
   garageId: z.string().uuid().nullable(),
   phone: z.string().nullable(),
   avatarUrl: z.string().nullable(),
+  isActive: z.boolean(),
   createdAt: z.string().datetime(),
 });
 

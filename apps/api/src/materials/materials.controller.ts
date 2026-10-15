@@ -13,6 +13,7 @@ import {
   type CreatePoolComponentInput,
   type DeliverMaterialInput,
   type LoanToolInput,
+  type MaterialOption,
   type MaterialQuery,
   type MaterialRequestRow,
   type PoolComponentRow,
@@ -37,6 +38,11 @@ const SHOP_FLOOR = [UserRole.ADMIN, UserRole.MANUTENCAO, UserRole.MECANICO] as c
 @UseGuards(RolesGuard)
 export class MaterialsController {
   constructor(private readonly materials: MaterialsService) {}
+
+  @Get('catalog')
+  listMaterials(): Promise<MaterialOption[]> {
+    return this.materials.listMaterials();
+  }
 
   /** Fila única de solicitações — o que o Estoque abre de manhã. */
   @Get('requests')
