@@ -489,9 +489,9 @@ async function main() {
   check('"esqueci" responde igual para e-mail inexistente', forgot.status === 202, `status ${forgot.status}`);
 
   const { body: users } = await call<{ data: { id: string; email: string }[] }>(admin, 'GET', '/users?perPage=50');
-  const target = users.data.find((u) => u.email === 'estoque@transppass.local');
-  if (target) {
-    const link = await call<{ url: string }>(admin, 'POST', `/users/${target.id}/reset-link`);
+  const resetTarget = users.data.find((u) => u.email === 'estoque@transppass.local');
+  if (resetTarget) {
+    const link = await call<{ url: string }>(admin, 'POST', `/users/${resetTarget.id}/reset-link`);
     check('admin gera link de redefinição', link.status === 201 && link.body.url.includes('/redefinir-senha?token='), `status ${link.status}`);
     const token = link.body.url.split('token=')[1] ?? '';
     const reset = await call(admin, 'POST', '/auth/reset-password', { token, newPassword: 'transppass123' });
