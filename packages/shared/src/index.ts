@@ -10,5 +10,6 @@ export * from './metrics/metrics.schemas.js';
 export * from './dashboard/dashboard.schemas.js';
 export * from './scheduling/scheduling.schemas.js';
 export * from './operations/operations.schemas.js';
+export * from './plans/plans.schemas.js';
 export * from './common/pagination.js';
 export * from './common/api-error.js';

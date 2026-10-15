@@ -6,6 +6,7 @@ import {
   userQuerySchema,
   UserRole,
   type CreateUserInput,
+  type PasswordResetLink,
   type Paginated,
   type PublicUser,
   type UpdateUserInput,
@@ -16,6 +17,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { UsersService } from './users.service';
+import { AuthService } from '../auth/auth.service';
 
 @ApiTags('usuários')
 @ApiBearerAuth()
@@ -23,7 +25,10 @@ import { UsersService } from './users.service';
 @UseGuards(RolesGuard)
 @Roles(UserRole.ADMIN)
 export class UsersController {
-  constructor(private readonly users: UsersService) {}
+  constructor(
+    private readonly users: UsersService,
+    private readonly auth: AuthService,
+  ) {}
 
   @Get()
   list(
@@ -38,6 +43,12 @@ export class UsersController {
     @CurrentUser('sub') actorId: string,
   ): Promise<PublicUser> {
     return this.users.create(body, actorId);
+  }
+
+  /** Link de redefinição para passar à pessoa (e-mail, se houver SMTP). */
+  @Post(':id/reset-link')
+  resetLink(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('sub') actorId: string): Promise<PasswordResetLink> {
+    return this.auth.createResetLink(id, actorId);
   }
 
   @Patch(':id')

@@ -1,10 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { InspectionResult, OdometerStatus, WorkOrderStatus } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import {
+  CleaningStatus,
+  InspectionResult,
+  OdometerStatus,
+  ScheduleStatus,
+  TaskStatus,
+  WorkOrderStatus,
+} from '@prisma/client';
 import {
   FieldOutcome,
+  MetricKey,
   type DowntimeByCause,
+  type MetricHistoryPoint,
+  type MetricsHistoryQuery,
   type MetricsQuery,
   type MkbfResult,
+  type ProcessAdherence,
   type R1Metrics,
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,13 +35,14 @@ export class MetricsService {
   async r1(query: MetricsQuery): Promise<R1Metrics> {
     const { from, to } = resolvePeriod(query);
 
-    const [mkbf, downtime, triage, field, rework, released] = await Promise.all([
+    const [mkbf, downtime, triage, field, rework, released, adherence] = await Promise.all([
       this.mkbf(from, to),
       this.downtimeByCause(from, to),
       this.triageSla(from, to),
       this.fieldResolution(from, to),
       this.internalRework(from, to),
       this.releasedWorkOrders(from, to),
+      this.adherence(from, to),
     ]);
 
     return {
@@ -41,7 +54,129 @@ export class MetricsService {
       internalRework: rework,
       workOrdersReleased: released.count,
       averageDowntimeMinutes: released.averageMinutes,
+      adherence,
     };
+  }
+
+  /**
+   * Aderência à preventiva e adoção do processo (ARBITRADO — ver shared).
+   * Preventiva: das paradas com data planejada no período, quantas entraram
+   * na garagem até a data (ou antes do km da janela + tolerância). Adoção: das
+   * OS liberadas, quantas tiveram toda sub-OS inspecionada e a limpeza feita.
+   */
+  private async adherence(from: Date, to: Date): Promise<ProcessAdherence> {
+    const [schedules, released] = await Promise.all([
+      this.prisma.scheduledMaintenance.findMany({
+        where: { plannedDate: { gte: from, lte: to }, status: { not: ScheduleStatus.CANCELLED } },
+        select: { plannedDate: true, status: true, workOrder: { select: { openedAt: true } } },
+      }),
+      this.prisma.workOrder.findMany({
+        where: { status: WorkOrderStatus.RELEASED, releasedAt: { gte: from, lte: to } },
+        select: {
+          cleaning: { select: { status: true } },
+          tasks: { where: { status: { not: TaskStatus.CANCELLED } }, select: { status: true } },
+        },
+      }),
+    ]);
+
+    const onTime = schedules.filter((s) => {
+      const started = s.workOrder?.openedAt;
+      if (!started || !s.plannedDate) return false;
+      // Tolerância de um dia sobre a data planejada.
+      return started.getTime() <= s.plannedDate.getTime() + 24 * 60 * 60_000;
+    }).length;
+
+    const complete = released.filter(
+      (wo) => wo.tasks.length > 0 && wo.tasks.every((t) => t.status === TaskStatus.APPROVED) && wo.cleaning?.status === CleaningStatus.DONE,
+    ).length;
+
+    return {
+      preventive: { due: schedules.length, onTime, rate: schedules.length ? onTime / schedules.length : null },
+      adoption: { released: released.length, complete, rate: released.length ? complete / released.length : null },
+    };
+  }
+
+  /** Disponibilidade média do mês: carros sem OS aberta ÷ frota, amostrada a cada 6 h. */
+  private async availability(from: Date, to: Date): Promise<number | null> {
+    const fleet = await this.prisma.vehicle.count({ where: { isActive: true } });
+    if (fleet === 0) return null;
+    const workOrders = await this.prisma.workOrder.findMany({
+      where: { openedAt: { lte: to }, OR: [{ releasedAt: null }, { releasedAt: { gte: from } }], status: { not: WorkOrderStatus.CANCELLED } },
+      select: { openedAt: true, releasedAt: true },
+    });
+    let sum = 0;
+    let samples = 0;
+    for (let t = from.getTime(); t <= to.getTime(); t += 6 * 60 * 60_000) {
+      const at = new Date(t);
+      const down = workOrders.filter((w) => w.openedAt <= at && (!w.releasedAt || w.releasedAt >= at)).length;
+      sum += (fleet - down) / fleet;
+      samples += 1;
+    }
+    return samples ? sum / samples : null;
+  }
+
+  // --- Snapshots mensais (E8) ------------------------------------------------
+
+  /** Calcula e grava (upsert) todos os indicadores de um mês. Idempotente. */
+  async snapshotMonth(monthStart: Date): Promise<void> {
+    const start = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1);
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 23, 59, 59, 999);
+    const end = monthEnd < new Date() ? monthEnd : new Date();
+
+    const [r1, availability] = await Promise.all([this.r1({ from: start, to: end }), this.availability(start, end)]);
+
+    const rows: { metric: MetricKey; value: number | null; detail?: object }[] = [
+      { metric: MetricKey.MKBF, value: r1.mkbf.mkbf, detail: { kmTraveled: r1.mkbf.kmTraveled, unscheduledReturns: r1.mkbf.unscheduledReturns } },
+      { metric: MetricKey.FLEET_AVAILABILITY, value: availability },
+      { metric: MetricKey.DOWNTIME_BY_CAUSE, value: r1.totalDowntimeMinutes, detail: { byCause: r1.downtimeByCause } },
+      { metric: MetricKey.FIELD_RESOLUTION, value: r1.fieldResolution.rate, detail: r1.fieldResolution },
+      { metric: MetricKey.INTERNAL_REWORK, value: r1.internalRework.rate, detail: r1.internalRework },
+      { metric: MetricKey.TRIAGE_SLA, value: r1.triageSla.medianSeconds, detail: r1.triageSla },
+      { metric: MetricKey.PREVENTIVE_ADHERENCE, value: r1.adherence.preventive.rate, detail: r1.adherence.preventive },
+      { metric: MetricKey.ADOPTION, value: r1.adherence.adoption.rate, detail: r1.adherence.adoption },
+    ];
+
+    for (const row of rows) {
+      if (row.value === null) continue;
+      await this.prisma.metricSnapshot.upsert({
+        where: { metric_scope_periodStart_periodEnd: { metric: row.metric, scope: 'FLEET', periodStart: start, periodEnd: monthEnd } },
+        update: { value: row.value, detail: row.detail as Prisma.InputJsonValue | undefined, computedAt: new Date() },
+        create: { metric: row.metric, scope: 'FLEET', periodStart: start, periodEnd: monthEnd, value: row.value, detail: row.detail as Prisma.InputJsonValue | undefined },
+      });
+    }
+  }
+
+  /** Série mensal dos snapshots; meses sem snapshot são calculados na hora e gravados. */
+  async history(query: MetricsHistoryQuery): Promise<MetricHistoryPoint[]> {
+    const now = new Date();
+    const months: Date[] = [];
+    for (let i = query.months - 1; i >= 0; i -= 1) months.push(new Date(now.getFullYear(), now.getMonth() - i, 1));
+
+    const stored = await this.prisma.metricSnapshot.findMany({
+      where: { scope: 'FLEET', periodStart: { gte: months[0] } },
+      select: { metric: true, periodStart: true, value: true },
+    });
+    const have = new Set(stored.map((s) => s.periodStart.toISOString().slice(0, 7)));
+
+    for (const m of months) {
+      // Mês corrente sempre recalculado; passados só se faltarem.
+      const key = m.toISOString().slice(0, 7);
+      if (!have.has(key) || m.getMonth() === now.getMonth()) await this.snapshotMonth(m);
+    }
+
+    const rows = await this.prisma.metricSnapshot.findMany({
+      where: { scope: 'FLEET', periodStart: { gte: months[0] } },
+      select: { metric: true, periodStart: true, value: true },
+    });
+
+    return months.map((m) => {
+      const key = m.toISOString().slice(0, 7);
+      const values: Partial<Record<MetricKey, number | null>> = {};
+      for (const r of rows) {
+        if (r.periodStart.toISOString().slice(0, 7) === key) values[r.metric as MetricKey] = Number(r.value);
+      }
+      return { month: m.toISOString(), values };
+    });
   }
 
   /**

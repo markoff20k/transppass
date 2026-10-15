@@ -129,6 +129,22 @@ No log do Caddy deve aparecer `certificate obtained successfully`; o `curl` resp
 
 ---
 
+## E-mail de redefinição de senha (opcional)
+
+Sem SMTP o sistema funciona: o administrador gera o link em **Cadastros › Usuários** e passa à pessoa. Para o "Esqueci minha senha" enviar e-mail sozinho, acrescente ao `.env`:
+
+```
+SMTP_URL=smtp://usuario:senha@smtp.seuprovedor.com:587
+MAIL_FROM=Transppass PCM <no-reply@transppass.online>
+APP_URL=https://transppass.online
+```
+
+e reinicie a API: `docker compose -f docker-compose.prod.yml up -d api`.
+
+## Rotinas automáticas
+
+A API roda sozinha, sem configuração: a cada 5 min marca janelas de reposição estouradas; a cada hora recalcula a projeção de km e escalona peças com prazo vencido; às 02:10 grava o snapshot mensal dos indicadores. Os endpoints de disparo manual continuam existindo.
+
 ## Atualizar depois (nova versão no GitHub)
 
 ```bash

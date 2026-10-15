@@ -170,6 +170,7 @@ function metrics(): R1Metrics {
     internalRework: { inspections: 41, rejections: 3, rate: 3 / 41 },
     workOrdersReleased: 27,
     averageDowntimeMinutes: 386,
+    adherence: { preventive: { due: 9, onTime: 7, rate: 7 / 9 }, adoption: { released: 27, complete: 23, rate: 23 / 27 } },
   };
 }
 

@@ -33,6 +33,52 @@ export interface DowntimeByCause {
   share: number;
 }
 
+/** Chaves dos snapshots mensais (E8). Espelha o enum do banco. */
+export const MetricKey = {
+  MKBF: 'MKBF',
+  FLEET_AVAILABILITY: 'FLEET_AVAILABILITY',
+  DOWNTIME_BY_CAUSE: 'DOWNTIME_BY_CAUSE',
+  FIELD_RESOLUTION: 'FIELD_RESOLUTION',
+  PREVENTIVE_ADHERENCE: 'PREVENTIVE_ADHERENCE',
+  INTERNAL_REWORK: 'INTERNAL_REWORK',
+  ADOPTION: 'ADOPTION',
+  TRIAGE_SLA: 'TRIAGE_SLA',
+} as const;
+export type MetricKey = (typeof MetricKey)[keyof typeof MetricKey];
+
+export const METRIC_KEY_LABELS: Record<MetricKey, string> = {
+  MKBF: 'MKBF (km)',
+  FLEET_AVAILABILITY: 'Disponibilidade da frota',
+  DOWNTIME_BY_CAUSE: 'Indisponibilidade (min)',
+  FIELD_RESOLUTION: 'Resolução em campo',
+  PREVENTIVE_ADHERENCE: 'Aderência à preventiva',
+  INTERNAL_REWORK: 'Retrabalho interno',
+  ADOPTION: 'Adoção do processo',
+  TRIAGE_SLA: 'SLA de triagem (mediana, s)',
+};
+
+export const metricsHistoryQuerySchema = z.object({
+  months: z.coerce.number().int().min(1).max(36).default(12),
+});
+export type MetricsHistoryQuery = z.infer<typeof metricsHistoryQuerySchema>;
+
+/** Um mês da série histórica: um valor por chave (nulo quando não calculável). */
+export interface MetricHistoryPoint {
+  month: string;
+  values: Partial<Record<MetricKey, number | null>>;
+}
+
+/**
+ * Aderência à preventiva: paradas que começaram dentro da tolerância da
+ * janela ÷ paradas que venciam no período. Adoção: OS liberadas no período
+ * em que o processo foi seguido inteiro (sub-OS inspecionada e limpeza
+ * concluída) ÷ OS liberadas. Ambas ARBITRADAS até o PCM fixar a definição.
+ */
+export interface ProcessAdherence {
+  preventive: { due: number; onTime: number; rate: number | null };
+  adoption: { released: number; complete: number; rate: number | null };
+}
+
 export interface R1Metrics {
   mkbf: MkbfResult;
   /** RF-39 — decomposicao do relogio das OS do periodo. */
@@ -46,4 +92,5 @@ export interface R1Metrics {
   internalRework: { inspections: number; rejections: number; rate: number | null };
   workOrdersReleased: number;
   averageDowntimeMinutes: number | null;
+  adherence: ProcessAdherence;
 }

@@ -3,11 +3,15 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import {
+  forgotPasswordSchema,
   loginSchema,
   refreshSchema,
+  resetPasswordSchema,
   type AuthResponse,
   type AuthTokens,
+  type ForgotPasswordInput,
   type LoginInput,
+  type ResetPasswordInput,
   type PublicUser,
   type RefreshInput,
 } from '@app/shared';
@@ -44,6 +48,24 @@ export class AuthController {
   @UsePipes(new ZodValidationPipe(refreshSchema))
   logout(@Body() body: RefreshInput): Promise<void> {
     return this.auth.logout(body.refreshToken);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UsePipes(new ZodValidationPipe(forgotPasswordSchema))
+  forgotPassword(@Body() body: ForgotPasswordInput): Promise<void> {
+    return this.auth.forgotPassword(body.email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UsePipes(new ZodValidationPipe(resetPasswordSchema))
+  resetPassword(@Body() body: ResetPasswordInput): Promise<void> {
+    return this.auth.resetPassword(body.token, body.newPassword);
   }
 
   @ApiBearerAuth()

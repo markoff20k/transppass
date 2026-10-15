@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, LockKeyhole } from 'lucide-react';
 import { loginSchema, VehicleStatus, type LoginInput } from '@app/shared';
 import { ApiError } from '@/lib/api-client';
@@ -116,10 +116,13 @@ export function LoginPage() {
             {isSubmitting ? 'Entrando…' : 'Entrar'}
           </button>
 
-          <p className="login__help">
-            <LockKeyhole size={14} />
-            Acesso individual. Precisa de conta? Fale com o administrador do sistema.
-          </p>
+          <div className="login__links">
+            <Link to="/esqueci-senha" className="login__forgot">Esqueci minha senha</Link>
+            <p className="login__help">
+              <LockKeyhole size={14} />
+              Acesso individual. Precisa de conta? Fale com o administrador.
+            </p>
+          </div>
         </form>
 
         <p className="login__foot tp-muted">Transppass · Transporte de Passageiros · São Paulo</p>

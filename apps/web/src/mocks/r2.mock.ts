@@ -12,6 +12,8 @@ import {
   type OperatorCandidate,
   type OperatorRow,
   type PlanPackageRow,
+  type PlanTaskRow,
+  type PlanTree,
   type ReserveCandidate,
   type ScheduleDetail,
   type ScheduleSummary,
@@ -222,7 +224,128 @@ function returns(): ExpectedReturnRow[] {
   ];
 }
 
+const now = new Date();
+const monthIso = (offset: number) => new Date(now.getFullYear(), now.getMonth() - offset, 1).toISOString();
+const MKBF_HIST = [6_120, 6_480, 6_840, 7_120, 6_590, 7_880, 8_210, 8_420, 8_050, 8_600, 8_930, 8_420];
+const history = MKBF_HIST.map((mkbf, i) => ({
+  month: monthIso(MKBF_HIST.length - 1 - i),
+  values: {
+    MKBF: mkbf,
+    FLEET_AVAILABILITY: 0.84 + ((i * 7) % 9) / 100,
+    FIELD_RESOLUTION: 0.48 + ((i * 5) % 7) / 50,
+    INTERNAL_REWORK: 0.04 + ((i * 3) % 5) / 100,
+    PREVENTIVE_ADHERENCE: 0.7 + ((i * 11) % 9) / 40,
+    ADOPTION: Math.min(0.98, 0.55 + i * 0.035),
+    TRIAGE_SLA: 600 + ((i * 13) % 7) * 60,
+  },
+}));
+
+const specialtyIds: Record<string, string> = { MEC: 'sp-1', ELE: 'sp-2', PNE: 'sp-3', AC: 'sp-4' };
+const specialtyNames: Record<string, string> = { 'sp-1': 'Mecânica', 'sp-2': 'Elétrica', 'sp-3': 'Pneus', 'sp-4': 'Ar-condicionado' };
+const task = (id: string, code: string, description: string, sp: string, min: number): PlanTaskRow => ({ id, code, description, specialtyId: specialtyIds[sp]!, specialtyName: specialtyNames[specialtyIds[sp]!]!, estimatedMinutes: min });
+const plansTree: PlanTree[] = [
+  {
+    id: 'plan-1', code: 'PLAN-DIESEL', name: 'Plano preventivo — frota diesel', technology: 'DIESEL', version: 1, controlledDocument: 'IT.MAN-01', effectiveFrom: '2026-01-01T00:00:00.000Z', isActive: true,
+    packages: [
+      { id: 'pkg-1', code: 'P1', name: 'Revisão de 7.500 km', intervalKm: 7500, toleranceKm: 500, estimatedMinutes: 210,
+        tasks: [task('t-1', 'T01', 'Troca de óleo e filtro do motor', 'MEC', 60), task('t-2', 'T02', 'Filtro de ar', 'MEC', 20), task('t-3', 'T03', 'Filtro de combustível', 'MEC', 25), task('t-4', 'T04', 'Inspeção de freios e cuícas', 'PNE', 45), task('t-5', 'T05', 'Verificação do sistema de carga', 'ELE', 30), task('t-6', 'T06', 'Lubrificação de articulações', 'MEC', 30)],
+        kit: { id: 'kit-1', code: 'KIT-P1', name: 'Kit 7.500 km diesel', version: 1, isActive: true, items: [
+          { materialId: 'm-5', materialCode: 'OLEO-15W40', materialDescription: 'Óleo motor 15W40', unit: 'L', quantity: 28 },
+          { materialId: 'm-7', materialCode: 'FIL-OL-01', materialDescription: 'Filtro de óleo', unit: 'un', quantity: 1 },
+          { materialId: 'm-2', materialCode: 'FIL-AR-01', materialDescription: 'Filtro de ar motor', unit: 'un', quantity: 1 },
+        ] } },
+      { id: 'pkg-2', code: 'P2', name: 'Revisão de 15.000 km', intervalKm: 15000, toleranceKm: 500, estimatedMinutes: 300,
+        tasks: [task('t-7', 'T01', 'Troca de óleo e filtro do motor', 'MEC', 60), task('t-8', 'T02', 'Filtros de ar, combustível e cabine', 'MEC', 45), task('t-9', 'T03', 'Inspeção completa de freios', 'PNE', 90), task('t-10', 'T04', 'Sistema de carga e baterias', 'ELE', 45), task('t-11', 'T05', 'Ar-condicionado: carga e filtros', 'AC', 60)],
+        kit: null },
+    ],
+  },
+  {
+    id: 'plan-2', code: 'PLAN-EBUS', name: 'Plano preventivo — eBUS', technology: 'EBUS', version: 1, controlledDocument: 'IT.MAN-54', effectiveFrom: '2026-01-01T00:00:00.000Z', isActive: true,
+    packages: [
+      { id: 'pkg-3', code: 'E1', name: 'Revisão de 10.000 km', intervalKm: 10000, toleranceKm: 500, estimatedMinutes: 145,
+        tasks: [task('t-12', 'T01', 'Inspeção do pack de baterias', 'ELE', 60), task('t-13', 'T02', 'Torque das conexões de alta tensão', 'ELE', 40), task('t-14', 'T03', 'Inspeção de freios regenerativos', 'PNE', 45)],
+        kit: { id: 'kit-3', code: 'KIT-E1', name: 'Kit 10.000 km eBUS', version: 1, isActive: true, items: [{ materialId: 'm-8', materialCode: 'FIL-INV-01', materialDescription: 'Filtro de ar do inversor', unit: 'un', quantity: 1 }] } },
+    ],
+  },
+];
+const materialRows = [
+  { id: 'm-1', code: 'CUI-FR-DT', description: 'Cuíca de freio dianteira 24"', unit: 'un', isSerialized: true, isActive: true, kitCount: 0 },
+  { id: 'm-2', code: 'FIL-AR-01', description: 'Filtro de ar motor', unit: 'un', isSerialized: false, isActive: true, kitCount: 1 },
+  { id: 'm-3', code: 'VAL-APU-01', description: 'Válvula APU', unit: 'un', isSerialized: true, isActive: true, kitCount: 0 },
+  { id: 'm-4', code: 'ALT-24V', description: 'Alternador 24V 110A', unit: 'un', isSerialized: true, isActive: true, kitCount: 0 },
+  { id: 'm-5', code: 'OLEO-15W40', description: 'Óleo motor 15W40', unit: 'L', isSerialized: false, isActive: true, kitCount: 1 },
+  { id: 'm-6', code: 'CORR-ALT', description: 'Correia do alternador', unit: 'un', isSerialized: false, isActive: true, kitCount: 0 },
+  { id: 'm-7', code: 'FIL-OL-01', description: 'Filtro de óleo', unit: 'un', isSerialized: false, isActive: true, kitCount: 1 },
+  { id: 'm-8', code: 'FIL-INV-01', description: 'Filtro de ar do inversor', unit: 'un', isSerialized: false, isActive: true, kitCount: 1 },
+  { id: 'm-9', code: 'PAST-FR-01', description: 'Pastilha de freio (jogo)', unit: 'jg', isSerialized: false, isActive: false, kitCount: 0 },
+];
+
 export const r2Handlers = [
+  http.get('*/api/metrics/history', () => HttpResponse.json(history)),
+  http.post('*/api/metrics/snapshot', () => new HttpResponse(null, { status: 204 })),
+  http.get('*/api/plans/materials', () => HttpResponse.json(materialRows)),
+  http.post('*/api/plans/materials', async ({ request }) => {
+    const body = (await request.json()) as { code: string; description: string; unit: string; isSerialized: boolean };
+    const row = { id: `m-${Date.now()}`, ...body, isActive: true, kitCount: 0 };
+    materialRows.push(row);
+    return HttpResponse.json(row, { status: 201 });
+  }),
+  http.patch('*/api/plans/materials/:id', async ({ request, params }) => {
+    const row = materialRows.find((m) => m.id === params.id);
+    if (row) Object.assign(row, await request.json());
+    return HttpResponse.json(row ?? materialRows[0]);
+  }),
+  http.get('*/api/plans', () => HttpResponse.json(plansTree)),
+  http.post('*/api/plans', async ({ request }) => {
+    const body = (await request.json()) as { code: string; name: string; technology: 'DIESEL' | 'EBUS'; controlledDocument?: string };
+    plansTree.push({ id: `plan-${Date.now()}`, code: body.code, name: body.name, technology: body.technology, version: 1, controlledDocument: body.controlledDocument ?? null, effectiveFrom: new Date().toISOString(), isActive: true, packages: [] });
+    return HttpResponse.json(plansTree[plansTree.length - 1], { status: 201 });
+  }),
+  http.patch('*/api/plans/:id', async ({ request, params }) => {
+    const plan = plansTree.find((p) => p.id === params.id);
+    if (plan) Object.assign(plan, await request.json());
+    return HttpResponse.json(plan ?? plansTree[0]);
+  }),
+  http.post('*/api/plans/:id/packages', async ({ request, params }) => {
+    const plan = plansTree.find((p) => p.id === params.id);
+    const body = (await request.json()) as { code: string; name: string; intervalKm: number; toleranceKm: number };
+    const pkg = { id: `pkg-${Date.now()}`, ...body, estimatedMinutes: 0, tasks: [], kit: null };
+    plan?.packages.push(pkg);
+    return HttpResponse.json(pkg, { status: 201 });
+  }),
+  http.post('*/api/plans/packages/:id/tasks', async ({ request, params }) => {
+    const pkg = plansTree.flatMap((p) => p.packages).find((x) => x.id === params.id);
+    const body = (await request.json()) as { code: string; description: string; specialtyId?: string; estimatedMinutes?: number };
+    const row = { id: `t-${Date.now()}`, code: body.code, description: body.description, specialtyId: body.specialtyId ?? null, specialtyName: body.specialtyId ? (specialtyNames[body.specialtyId] ?? null) : null, estimatedMinutes: body.estimatedMinutes ?? null };
+    pkg?.tasks.push(row);
+    if (pkg) pkg.estimatedMinutes += row.estimatedMinutes ?? 0;
+    return HttpResponse.json(row, { status: 201 });
+  }),
+  http.patch('*/api/plans/tasks/:id', async ({ request, params }) => {
+    const row = plansTree.flatMap((p) => p.packages).flatMap((x) => x.tasks).find((t) => t.id === params.id);
+    if (row) Object.assign(row, await request.json());
+    return HttpResponse.json(row ?? {});
+  }),
+  http.delete('*/api/plans/tasks/:id', ({ params }) => {
+    for (const pkg of plansTree.flatMap((p) => p.packages)) pkg.tasks = pkg.tasks.filter((t) => t.id !== params.id);
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.post('*/api/plans/packages/:id/kits', async ({ request, params }) => {
+    const pkg = plansTree.flatMap((p) => p.packages).find((x) => x.id === params.id);
+    const body = (await request.json()) as { code: string; name: string; items: { materialId: string; quantity: number }[] };
+    const kit = { id: `kit-${Date.now()}`, code: body.code, name: body.name, version: 1, isActive: true, items: body.items.map((i) => { const m = materialRows.find((x) => x.id === i.materialId)!; return { materialId: i.materialId, materialCode: m.code, materialDescription: m.description, unit: m.unit, quantity: i.quantity }; }) };
+    if (pkg) pkg.kit = kit;
+    return HttpResponse.json(kit, { status: 201 });
+  }),
+  http.patch('*/api/plans/kits/:id', async ({ request, params }) => {
+    const pkg = plansTree.flatMap((p) => p.packages).find((x) => x.kit?.id === params.id);
+    const body = (await request.json()) as { name?: string; items?: { materialId: string; quantity: number }[] };
+    if (pkg?.kit) {
+      if (body.items) pkg.kit = { ...pkg.kit, id: `kit-${Date.now()}`, version: pkg.kit.version + 1, name: body.name ?? pkg.kit.name, items: body.items.map((i) => { const m = materialRows.find((x) => x.id === i.materialId)!; return { materialId: i.materialId, materialCode: m.code, materialDescription: m.description, unit: m.unit, quantity: i.quantity }; }) };
+      else Object.assign(pkg.kit, body);
+    }
+    return HttpResponse.json(pkg?.kit ?? {});
+  }),
   http.get('*/api/scheduling/timeline', () => HttpResponse.json(buildTimeline())),
   http.get('*/api/scheduling/packages', () => HttpResponse.json(packages)),
   http.get('*/api/scheduling/kits', () => HttpResponse.json(kits())),

@@ -174,6 +174,8 @@ async function run() {
     { path: '/cadastros/frota', name: 'Cadastro da frota', check: '.tp-table' },
     { path: '/cadastros/catalogo', name: 'Catálogo', check: '.tp-table' },
     { path: '/cadastros/usuarios', name: 'Usuários', check: '.tp-table' },
+    { path: '/cadastros/planos', name: 'Planos preventivos', check: '.plan-pkg' },
+    { path: '/cadastros/materiais', name: 'Materiais', check: '.tp-table' },
     { path: '/design', name: 'Design kit', check: '.bus-gallery' },
   ];
   let i = 0;
@@ -356,6 +358,61 @@ async function run() {
   record('OS-03', 'OS: ajustar previsão de conclusão abre painel (RN-03)', (await drawerOpen(page)) && (await exists(page, '.tp-drawer input[type="datetime-local"]')));
   await page.keyboard.press('Escape');
   await sleep(300);
+
+  // Planos, materiais, histórico de indicadores e recuperação de senha
+  await page.goto(`${BASE}/cadastros/planos`, { waitUntil: 'networkidle0' });
+  await sleep(400);
+  await page.$$eval('.plan-pkg__col-head button', (bs) => bs.find((b) => /Tarefa/.test(b.textContent || ''))?.click());
+  await sleep(300);
+  record('PLN-01', 'Planos: painel de nova tarefa com especialidade (RF-34)', (await drawerOpen(page)) && (await exists(page, '.tp-drawer select')));
+  await page.keyboard.press('Escape');
+  await sleep(300);
+  await page.$$eval('.plan-pkg__col-head button', (bs) => bs.find((b) => /kit/i.test(b.textContent || ''))?.click());
+  await sleep(300);
+  record('PLN-02', 'Planos: painel do kit com itens do cadastro de materiais', (await drawerOpen(page)) && (await exists(page, '.field-materials__row--kit')));
+  await page.keyboard.press('Escape');
+  await sleep(300);
+
+  await page.goto(`${BASE}/cadastros/materiais`, { waitUntil: 'networkidle0' });
+  await sleep(400);
+  await clickText(page, '.subheader__actions button', 'Novo material');
+  await sleep(300);
+  record('MAT-01', 'Materiais: painel de novo material com controle por série', (await drawerOpen(page)) && (await exists(page, '.tp-drawer input[type="checkbox"]')));
+  await page.keyboard.press('Escape');
+  await sleep(300);
+
+  await page.goto(`${BASE}/indicadores`, { waitUntil: 'networkidle0' });
+  await sleep(800);
+  record('MET-01', 'Indicadores: aderência à preventiva e adoção na tela', (await page.$$eval('.tp-kpi__label', (ls) => ls.map((l) => l.textContent || '').join('|'))).includes('Aderência'));
+  record('MET-02', 'Indicadores: histórico mensal com seis gráficos (E8)', (await page.$$('.metrics-history .recharts-surface')).length >= 6);
+  await shot(page, 'indicadores-historico');
+
+  await page.goto(`${BASE}/login`, { waitUntil: 'networkidle0' });
+  await sleep(300);
+  await page.click('.login__forgot');
+  await sleep(400);
+  record('PWD-01', 'Login tem "Esqueci minha senha" que leva ao pedido de link', page.url().includes('/esqueci-senha') && (await exists(page, '#forgot-email')));
+  await page.type('#forgot-email', 'admin@transppass.local');
+  await page.click('button[type="submit"]');
+  await sleep(500);
+  record('PWD-02', 'Pedido de link responde sem revelar se a conta existe', await page.$$eval('h1', (hs) => hs.some((h) => /Verifique seu e-mail/.test(h.textContent || ''))));
+  await page.goto(`${BASE}/redefinir-senha?token=mock-reset-token-2026-valid`, { waitUntil: 'networkidle0' });
+  await sleep(300);
+  await page.type('#reset-password', 'novaSenha123');
+  await page.type('#reset-confirm', 'novaSenha123');
+  await page.click('button[type="submit"]');
+  await sleep(500);
+  record('PWD-03', 'Redefinição com token válido conclui', await page.$$eval('h1', (hs) => hs.some((h) => /Senha redefinida/.test(h.textContent || ''))));
+  // volta a senha do mock para o restante do roteiro não depender da ordem
+  await page.goto(`${BASE}/redefinir-senha?token=mock-reset-token-2026-valid`, { waitUntil: 'networkidle0' });
+  await sleep(300);
+  await page.type('#reset-password', 'admin123');
+  await page.type('#reset-confirm', 'admin123');
+  await page.click('button[type="submit"]');
+  await sleep(500);
+  // o roteiro continua autenticado? o token ficou no storage; recarrega o app
+  await page.goto(`${BASE}/`, { waitUntil: 'networkidle0' });
+  await sleep(400);
 
   // Erros de console
   record('CONS-01', 'Sem erros de JavaScript em nenhuma tela', consoleErrors.length === 0, consoleErrors.map((e) => e.text).join(' | ').slice(0, 300));

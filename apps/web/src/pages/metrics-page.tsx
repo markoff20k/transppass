@@ -1,6 +1,7 @@
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { useQuery } from '@tanstack/react-query';
-import { DOWNTIME_CAUSE_LABELS, type R1Metrics } from '@app/shared';
+import { DOWNTIME_CAUSE_LABELS, METRIC_KEY_LABELS, MetricKey, type MetricHistoryPoint, type R1Metrics } from '@app/shared';
+import { MetricHistoryChart } from '@/components/charts/charts';
 import { api } from '@/lib/api-client';
 import { formatDuration, formatMinutes, formatNumber } from '@/lib/format';
 
@@ -17,6 +18,10 @@ export function MetricsPage() {
     queryKey: ['metrics'],
     queryFn: () => api.get<R1Metrics>('/metrics'),
     refetchInterval: 60_000,
+  });
+  const history = useQuery({
+    queryKey: ['metrics', 'history'],
+    queryFn: () => api.get<MetricHistoryPoint[]>('/metrics/history?months=12'),
   });
 
   if (isPending) return <p className="tp-muted">Calculando indicadores…</p>;
@@ -171,6 +176,20 @@ export function MetricsPage() {
               </span>
             </div>
             <div className="kpi">
+              <span className="tp-kpi__label">Aderência à preventiva</span>
+              <strong className="tp-kpi__value">
+                {data.adherence.preventive.rate === null ? '—' : `${(data.adherence.preventive.rate * 100).toFixed(0)}%`}
+              </strong>
+              <span className="tp-muted">{data.adherence.preventive.onTime} de {data.adherence.preventive.due} paradas no prazo</span>
+            </div>
+            <div className="kpi">
+              <span className="tp-kpi__label">Adoção do processo</span>
+              <strong className="tp-kpi__value">
+                {data.adherence.adoption.rate === null ? '—' : `${(data.adherence.adoption.rate * 100).toFixed(0)}%`}
+              </strong>
+              <span className="tp-muted">{data.adherence.adoption.complete} de {data.adherence.adoption.released} OS com inspeção e limpeza</span>
+            </div>
+            <div className="kpi">
               <span className="tp-kpi__label">Indisponibilidade média</span>
               <strong className="tp-kpi__value tp-kpi__value--sm">
                 {data.averageDowntimeMinutes === null
@@ -181,6 +200,27 @@ export function MetricsPage() {
           </div>
         </section>
       </div>
+
+      <section className="tp-card">
+        <div className="tp-card__head">
+          <div>
+            <h2>Histórico mensal</h2>
+            <span className="chart__hint">snapshots gravados toda madrugada (E8); o mês corrente é recalculado ao abrir</span>
+          </div>
+        </div>
+        {history.isPending ? (
+          <p className="tp-muted">Carregando histórico…</p>
+        ) : (
+          <div className="metrics-history">
+            <MetricHistoryChart data={history.data ?? []} metric={MetricKey.MKBF} title={METRIC_KEY_LABELS.MKBF} color="var(--chart-1)" />
+            <MetricHistoryChart data={history.data ?? []} metric={MetricKey.FLEET_AVAILABILITY} title={METRIC_KEY_LABELS.FLEET_AVAILABILITY} color="var(--chart-4)" percent />
+            <MetricHistoryChart data={history.data ?? []} metric={MetricKey.FIELD_RESOLUTION} title={METRIC_KEY_LABELS.FIELD_RESOLUTION} color="var(--chart-3)" percent />
+            <MetricHistoryChart data={history.data ?? []} metric={MetricKey.INTERNAL_REWORK} title={METRIC_KEY_LABELS.INTERNAL_REWORK} color="var(--chart-5)" percent />
+            <MetricHistoryChart data={history.data ?? []} metric={MetricKey.PREVENTIVE_ADHERENCE} title={METRIC_KEY_LABELS.PREVENTIVE_ADHERENCE} color="var(--chart-2)" percent />
+            <MetricHistoryChart data={history.data ?? []} metric={MetricKey.ADOPTION} title={METRIC_KEY_LABELS.ADOPTION} color="var(--chart-6)" percent />
+          </div>
+        )}
+      </section>
     </>
   );
 }

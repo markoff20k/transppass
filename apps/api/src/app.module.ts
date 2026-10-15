@@ -18,6 +18,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { OperationsModule } from './operations/operations.module';
+import { PlansModule } from './plans/plans.module';
+import { JobsModule } from './jobs/jobs.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { envSchema } from './config/env.validation';
 
@@ -48,6 +50,9 @@ import { envSchema } from './config/env.validation';
     // R2 — Preventiva e Plantao
     SchedulingModule,
     OperationsModule,
+    // Cadastro do plano preventivo (RF-34) e rotinas agendadas
+    PlansModule,
+    JobsModule,
   ],
   providers: [
     // Tudo é protegido por padrão; rotas abertas usam @Public().

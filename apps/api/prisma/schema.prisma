@@ -51,6 +51,7 @@ model User {
 
   garage        Garage?        @relation(fields: [garageId], references: [id])
   refreshTokens RefreshToken[]
+  resetTokens   PasswordResetToken[]
 
   @@index([role])
   @@map("users")
@@ -72,6 +73,21 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+/// Redefinicao de senha: token de uso unico, hasheado, com validade curta.
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 /// RF-36 — permissoes por area. Toda alteracao gera AuditLog.

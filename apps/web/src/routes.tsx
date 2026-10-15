@@ -21,9 +21,14 @@ import { DesignKitPage } from '@/pages/design-kit-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 import { ProfilePage } from '@/pages/profile-page';
 import { UsersPage } from '@/pages/users-page';
+import { PlansPage } from '@/pages/plans-page';
+import { MaterialsPage } from '@/pages/materials-page';
+import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-pages';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/esqueci-senha', element: <ForgotPasswordPage /> },
+  { path: '/redefinir-senha', element: <ResetPasswordPage /> },
   {
     element: <ProtectedRoute />,
     children: [
@@ -37,6 +42,8 @@ export const router = createBrowserRouter([
           { path: '/cadastros/frota', element: <VehiclesPage /> },
           { path: '/cadastros/catalogo', element: <CatalogPage /> },
           { path: '/cadastros/usuarios', element: <UsersPage /> },
+          { path: '/cadastros/planos', element: <PlansPage /> },
+          { path: '/cadastros/materiais', element: <MaterialsPage /> },
           // R1 — Corretivo e execucao
           { path: '/eventos', element: <EventsPage /> },
           { path: '/triagem', element: <TriagePage /> },

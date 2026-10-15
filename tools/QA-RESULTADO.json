@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-10-15T20:44:51.890Z",
+  "ranAt": "2026-10-15T21:23:41.974Z",
   "base": "http://localhost:5173",
-  "passed": 60,
+  "passed": 70,
   "failed": 0,
   "results": [
     {
@@ -192,6 +192,18 @@
     },
     {
       "id": "ROUTE-15",
+      "name": "Planos preventivos renderiza com subheader \"Planos preventivos\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-16",
+      "name": "Materiais renderiza com subheader \"Materiais\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-17",
       "name": "Design kit renderiza com subheader \"Design kit\"",
       "ok": true,
       "detail": ""
@@ -355,6 +367,54 @@
     {
       "id": "OS-03",
       "name": "OS: ajustar previsão de conclusão abre painel (RN-03)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "PLN-01",
+      "name": "Planos: painel de nova tarefa com especialidade (RF-34)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "PLN-02",
+      "name": "Planos: painel do kit com itens do cadastro de materiais",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "MAT-01",
+      "name": "Materiais: painel de novo material com controle por série",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "MET-01",
+      "name": "Indicadores: aderência à preventiva e adoção na tela",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "MET-02",
+      "name": "Indicadores: histórico mensal com seis gráficos (E8)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "PWD-01",
+      "name": "Login tem \"Esqueci minha senha\" que leva ao pedido de link",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "PWD-02",
+      "name": "Pedido de link responde sem revelar se a conta existe",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "PWD-03",
+      "name": "Redefinição com token válido conclui",
       "ok": true,
       "detail": ""
     },

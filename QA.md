@@ -1,6 +1,6 @@
 # Relatório de QA — Transppass PCM (MVP: R0 + R1 + R2)
 
-**Rodada:** 11/09/2026 · **Ambiente:** modo mock (MSW) no Microsoft Edge, sem banco · **Resultado:** 60 verificações funcionais de UI, 60 aprovadas · typecheck, lint e build do monorepo limpos.
+**Rodada:** 11/09/2026 · **Ambiente:** modo mock (MSW) no Microsoft Edge, sem banco · **Resultado:** 70 verificações funcionais de UI, 70 aprovadas · typecheck, lint e build do monorepo limpos.
 
 Este relatório é o que um analista de QA entregaria ao fim da sprint: o que foi testado, como, o que passou, o que foi corrigido no caminho e — mais importante — **o que ainda não foi exercitado** e por quê.
 

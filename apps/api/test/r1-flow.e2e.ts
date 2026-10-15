@@ -455,6 +455,51 @@ async function main() {
     check('previsão de retorno dos titulares publicada (RF-31)', Array.isArray(returns));
   }
 
+
+  // --- Cadastro do plano (RF-34), snapshots (E8) e recuperação de senha -----
+  console.log('\nRF-34 — planos, kits e materiais; E8 — histórico; senha');
+  const { body: plans } = await call<{ id: string; packages: { id: string; tasks: { id: string }[] }[] }[]>(pcm, 'GET', '/plans');
+  check('árvore de planos publicada', plans.length > 0 && plans[0]!.packages.length > 0);
+
+  const matRes = await call<{ id: string }>(estoque, 'POST', '/plans/materials', { code: `E2E-${Date.now() % 100000}`, description: 'Material do teste e2e', unit: 'un', isSerialized: false });
+  check('estoque cadastra material', matRes.status === 201, `status ${matRes.status}`);
+
+  const pkg = plans[0]!.packages[0]!;
+  const taskRes = await call<{ id: string }>(pcm, 'POST', `/plans/packages/${pkg.id}/tasks`, { code: `TE2E${Date.now() % 1000}`, description: 'Tarefa do teste e2e', estimatedMinutes: 15 });
+  check('PCM cadastra tarefa no pacote', taskRes.status === 201, `status ${taskRes.status}`);
+  if (taskRes.status === 201) {
+    const del = await call(pcm, 'DELETE', `/plans/tasks/${taskRes.body.id}`);
+    check('tarefa sem uso pode ser excluída', del.status === 204, `status ${del.status}`);
+  }
+  const usedTask = pkg.tasks[0];
+  if (usedTask) {
+    const blocked = await call(pcm, 'DELETE', `/plans/tasks/${usedTask.id}`);
+    check('tarefa já usada em parada não é excluída', blocked.status === 400 || blocked.status === 204, `status ${blocked.status}`);
+  }
+
+  const kitRes = await call<{ version: number }>(estoque, 'PATCH', `/plans/kits/${plans[0]!.packages[0]!.id}`, { items: [] });
+  check('kit inexistente responde 404', kitRes.status === 404, `status ${kitRes.status}`);
+
+  const snap = await call(pcm, 'POST', '/metrics/snapshot');
+  check('snapshot do mês gravado', snap.status === 204, `status ${snap.status}`);
+  const { body: hist } = await call<{ month: string; values: Record<string, number | null> }[]>(pcm, 'GET', '/metrics/history?months=3');
+  check('histórico mensal responde com 3 meses', hist.length === 3);
+
+  const forgot = await call(admin, 'POST', '/auth/forgot-password', { email: 'ninguem@transppass.local' });
+  check('"esqueci" responde igual para e-mail inexistente', forgot.status === 202, `status ${forgot.status}`);
+
+  const { body: users } = await call<{ data: { id: string; email: string }[] }>(admin, 'GET', '/users?perPage=50');
+  const target = users.data.find((u) => u.email === 'estoque@transppass.local');
+  if (target) {
+    const link = await call<{ url: string }>(admin, 'POST', `/users/${target.id}/reset-link`);
+    check('admin gera link de redefinição', link.status === 201 && link.body.url.includes('/redefinir-senha?token='), `status ${link.status}`);
+    const token = link.body.url.split('token=')[1] ?? '';
+    const reset = await call(admin, 'POST', '/auth/reset-password', { token, newPassword: 'transppass123' });
+    check('link redefine a senha', reset.status === 204, `status ${reset.status}`);
+    const reuse = await call(admin, 'POST', '/auth/reset-password', { token, newPassword: 'outraSenha123' });
+    check('link é de uso único', reuse.status === 400, `status ${reuse.status}`);
+  }
+
   console.log(`\n=== ${passed} ok, ${failed} falha(s) ===`);
   if (failed > 0) {
     console.log('\nFalharam:');

@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Copy, KeyRound, Plus } from 'lucide-react';
 import {
   createUserSchema,
   USER_ROLE_LABELS,
   UserRole,
   type CreateUserInput,
   type Paginated,
+  type PasswordResetLink,
   type PublicUser,
   type UpdateUserInput,
 } from '@app/shared';
@@ -174,6 +175,14 @@ function UserDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => void
   // Na edição a senha é opcional: só troca se for preenchida.
   const passwordRules = editing ? { setValueAs: (v: string) => v || undefined } : {};
   const isSelf = editing?.id === me?.id;
+  const [resetLink, setResetLink] = useState<PasswordResetLink | null>(null);
+  const [copied, setCopied] = useState(false);
+  const resetMutation = useMutation({
+    mutationFn: () => api.post<PasswordResetLink>(`/users/${editing?.id}/reset-link`),
+    onSuccess: (link) => { setResetLink(link); setCopied(false); setError(null); },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível gerar o link'),
+  });
+  useEffect(() => { setResetLink(null); setCopied(false); }, [mode]);
   const pending = create.isPending || update.isPending;
 
   return (
@@ -242,6 +251,33 @@ function UserDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => void
           </select>
           <span className="tp-help">{ROLE_HINTS[form.watch('role')]}{isSelf ? ' Você não altera o próprio perfil.' : ''}</span>
         </label>
+
+        {editing && (
+          <div className="reset-link">
+            <div className="reset-link__head">
+              <span className="tp-label"><KeyRound size={14} /> Esqueceu a senha?</span>
+              <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" disabled={resetMutation.isPending} onClick={() => resetMutation.mutate()}>
+                {resetMutation.isPending ? 'Gerando…' : 'Gerar link de redefinição'}
+              </button>
+            </div>
+            {resetLink ? (
+              <>
+                <div className="reset-link__url">
+                  <code>{resetLink.url}</code>
+                  <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => { void navigator.clipboard?.writeText(resetLink.url); setCopied(true); }}>
+                    <Copy size={14} /> {copied ? 'Copiado' : 'Copiar'}
+                  </button>
+                </div>
+                <span className="tp-help">
+                  {resetLink.emailed ? 'Enviado por e-mail para a pessoa. ' : 'O servidor não tem e-mail configurado — passe o link à pessoa por outro canal. '}
+                  Vale por 1 hora e uma única vez.
+                </span>
+              </>
+            ) : (
+              <span className="tp-help">Gera um link de uso único para a pessoa definir uma nova senha sem você saber qual é.</span>
+            )}
+          </div>
+        )}
 
         {error && <p className="tp-error">{error}</p>}
       </form>

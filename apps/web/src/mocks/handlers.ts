@@ -150,6 +150,25 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  http.post('*/api/auth/forgot-password', async () => {
+    await delay();
+    return new HttpResponse(null, { status: 202 });
+  }),
+  http.post('*/api/auth/reset-password', async ({ request }) => {
+    await delay();
+    const body = (await request.json()) as { token: string; newPassword: string };
+    if (body.token !== 'mock-reset-token-2026-valid') return apiError(400, 'BAD_REQUEST', 'Este link é inválido ou já expirou. Peça um novo.', '/api/auth/reset-password');
+    const admin = users[0]!;
+    admin.password = body.newPassword;
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.post('*/api/users/:id/reset-link', async ({ request }) => {
+    await delay();
+    const auth = requireAuth(request, '/api/users/:id/reset-link');
+    if ('error' in auth) return auth.error;
+    return HttpResponse.json({ url: `${location.origin}/redefinir-senha?token=mock-reset-token-2026-valid`, expiresAt: new Date(Date.now() + 3_600_000).toISOString(), emailed: false }, { status: 201 });
+  }),
+
   http.post('*/api/auth/refresh', async () => {
     // No mock o access token nunca expira, então o refresh não deveria ocorrer.
     return apiError(401, 'UNAUTHORIZED', 'Refresh não disponível no modo mock', '/api/auth/refresh');

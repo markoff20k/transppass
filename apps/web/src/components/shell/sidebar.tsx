@@ -3,8 +3,10 @@ import {
   Activity,
   BarChart3,
   BookOpen,
+  Boxes,
   Bus,
   CalendarClock,
+  ClipboardCheck,
   LifeBuoy,
   ChevronsLeft,
   LogOut,
@@ -32,7 +34,7 @@ const {
 
 interface NavItem {
   to: string;
-  key: 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'scheduling' | 'operations' | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'users' | 'designKit';
+  key: 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'scheduling' | 'operations' | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'users' | 'plans' | 'materials' | 'designKit';
   icon: LucideIcon;
   roles?: UserRole[];
   /** Contador ao lado do item, quando a tela tem fila. */
@@ -82,6 +84,8 @@ const GROUPS: NavGroup[] = [
     items: [
       { to: '/cadastros/frota', key: 'vehicles', icon: ClipboardList, roles: [ADMIN, PCM] },
       { to: '/cadastros/catalogo', key: 'catalog', icon: BookOpen, roles: [ADMIN, PCM, MANUTENCAO] },
+      { to: '/cadastros/planos', key: 'plans', icon: ClipboardCheck, roles: [ADMIN, PCM] },
+      { to: '/cadastros/materiais', key: 'materials', icon: Boxes, roles: [ADMIN, PCM, ESTOQUE] },
       { to: '/cadastros/usuarios', key: 'users', icon: Users, roles: [ADMIN] },
     ],
   },

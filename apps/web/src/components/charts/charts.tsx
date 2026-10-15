@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { DOWNTIME_CAUSE_LABELS, type DowntimeByCause, type HourAvailability, type MkbfPoint, type DayCount } from '@app/shared';
+import { DOWNTIME_CAUSE_LABELS, type DowntimeByCause, type HourAvailability, type MetricHistoryPoint, type MetricKey, type MkbfPoint, type DayCount } from '@app/shared';
 import { formatMinutes, formatNumber } from '@/lib/format';
 
 /**
@@ -394,5 +394,57 @@ export function RingGauge({
         />
       )}
     </svg>
+  );
+}
+
+/** Um indicador ao longo dos meses (snapshots do E8): área suave, último ponto em destaque. */
+export function MetricHistoryChart({
+  data,
+  metric,
+  title,
+  color,
+  percent = false,
+}: {
+  data: MetricHistoryPoint[];
+  metric: MetricKey;
+  title: string;
+  color: string;
+  percent?: boolean;
+}) {
+  const rows = data.map((p) => {
+    const d = new Date(p.month);
+    const v = p.values[metric];
+    return { label: `${MONTHS_PT[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, value: v === undefined || v === null ? null : percent ? Math.round(v * 1000) / 10 : v };
+  });
+  const fmt = (v: number) => (percent ? `${v.toLocaleString('pt-BR')}%` : formatNumber(v));
+  const id = `hist-${metric.toLowerCase()}`;
+  return (
+    <div className="metrics-history__item">
+      <div className="chart__title">
+        <h3>{title}</h3>
+      </div>
+      <ResponsiveContainer width="100%" height={150}>
+        <AreaChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+          <defs>
+            <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} interval="preserveStartEnd" />
+          <YAxis width={44} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} tickFormatter={(v: number) => (percent ? `${v}%` : v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))} domain={percent ? [0, 100] : ['auto', 'auto']} />
+          <Tooltip
+            cursor={{ stroke: 'var(--chart-grid)' }}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const p = payload[0]!.payload as { label: string; value: number | null };
+              return <Tip title={p.label} rows={[{ label: title, value: p.value === null ? '—' : fmt(p.value), color }]} />;
+            }}
+          />
+          <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fill={`url(#${id})`} connectNulls isAnimationActive={false} dot={{ r: 2.5, fill: color, stroke: 'var(--color-surface)', strokeWidth: 1.5 }} activeDot={{ r: 4, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 }} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

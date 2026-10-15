@@ -92,6 +92,28 @@ export interface JwtAccessPayload {
   role: UserRole;
 }
 
+// --- Recuperação de senha ----------------------------------------------------
+
+export const forgotPasswordSchema = z.object({
+  email: emailSchema,
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20, 'Link inválido').max(200),
+  newPassword: passwordSchema,
+});
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+/** Resposta do admin ao gerar um link de redefinição para alguém. */
+export interface PasswordResetLink {
+  url: string;
+  expiresAt: string;
+  /** Se o e-mail foi enviado pelo servidor (SMTP configurado). */
+  emailed: boolean;
+}
+
 // --- Administração de usuários (RF-36) -------------------------------------
 
 export const createUserSchema = z.object({
