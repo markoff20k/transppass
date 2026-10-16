@@ -14,6 +14,8 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime, formatDuration } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { FailureCodePicker, FlagBadges } from '@/components/failure-code/failure-code-picker';
+import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
 
 /**
  * RF-03 — fila de triagem com os três destinos e SLA medido.
@@ -143,6 +145,8 @@ function TriageDrawer({
   onDone: () => void;
 }) {
   const [destination, setDestination] = useState<TriageDestination>(TriageDestination.RECALL);
+  const [reclassify, setReclassify] = useState(false);
+  const [code, setCode] = useState<FailureCodeValue>(EMPTY_FAILURE_CODE);
   const [reasonCodeId, setReasonCodeId] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +170,7 @@ function TriageDrawer({
 
   // RF-05 — o bloqueio é do servidor; a tela só antecipa para não oferecer o
   // que vai ser recusado.
-  const deferBlocked = event.catalog?.isSafety === true || event.catalog?.isDeferrable === false;
+  const deferBlocked = event.flags.isSafety || !event.flags.isDeferrable;
 
   return (
     <Drawer
@@ -186,7 +190,7 @@ function TriageDrawer({
             disabled={mutation.isPending || (destination === TriageDestination.DEFER && !reasonCodeId)}
             onClick={() => {
               setError(null);
-              mutation.mutate({ destination, reasonCodeId: reasonCodeId || undefined, note: note || undefined });
+              mutation.mutate({ destination, reasonCodeId: reasonCodeId || undefined, note: note || undefined, ...(reclassify ? toCodeFields(code) : {}) });
             }}
           >
             {mutation.isPending ? 'Registrando…' : 'Confirmar destino'}
@@ -263,6 +267,23 @@ function TriageDrawer({
           </div>
         )}
       </dl>
+
+      <div className="tp-stack">
+        <div className="tp-row" style={{ justifyContent: 'space-between' }}>
+          <h3 style={{ margin: 0 }}>Código da falha</h3>
+          {event.failureCode && <FlagBadges flags={event.flags} />}
+        </div>
+        {event.failureCode ? (
+          <p className="fcode__summary"><code className="fcode__inline">{event.failureCode}</code> {event.failureLabel}</p>
+        ) : (
+          <p className="tp-muted">Registrado sem código composto.</p>
+        )}
+        <label className="tp-check">
+          <input type="checkbox" checked={reclassify} onChange={(e) => { setReclassify(e.target.checked); if (e.target.checked && event.failureModeCode && event.subsystemCode) setCode({ failureModeCode: event.failureModeCode, subsystemCode: event.subsystemCode, position: event.position ?? '' }); }} />
+          Reclassificar na triagem
+        </label>
+        {reclassify && <FailureCodePicker value={code} onChange={setCode} catalogFlags={event.catalog} idPrefix="tr" />}
+      </div>
 
       <div className="tp-stack">
         <h3>Destino (RF-03)</h3>

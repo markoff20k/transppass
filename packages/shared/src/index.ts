@@ -2,6 +2,7 @@ export * from './auth/auth.schemas.js';
 export * from './fleet/vehicle.schemas.js';
 export * from './fleet/odometer.schemas.js';
 export * from './catalog/catalog.schemas.js';
+export * from './catalog/failure-codes.js';
 export * from './events/event.schemas.js';
 export * from './queue/queue.schemas.js';
 export * from './work-orders/work-order.schemas.js';

@@ -14,6 +14,8 @@ import type { Prisma } from '@prisma/client';
 import {
   MATERIAL_STATUSES_BLOCKING,
   TASK_STATUSES_SETTLED,
+  composeFailureCode,
+  describeFailureCode,
   paginate,
   type ChecklistItemInput,
   type CleaningDamageInput,
@@ -282,10 +284,15 @@ export class WorkOrdersService {
       throw new BadRequestException(`Há ${blocking} solicitação(ões) de material em aberto`);
     }
 
-    const catalogItem = await this.prisma.failureCatalogItem.findUnique({
-      where: { id: input.confirmedCatalogItemId },
-    });
-    if (!catalogItem) throw new BadRequestException('Causa constatada inválida');
+    const catalogItem = input.confirmedCatalogItemId
+      ? await this.prisma.failureCatalogItem.findUnique({ where: { id: input.confirmedCatalogItemId } })
+      : null;
+    if (input.confirmedCatalogItemId && !catalogItem) throw new BadRequestException('Causa constatada inválida');
+
+    // Constatação no código composto — explícita ou herdada do atalho do catálogo.
+    const modeCode = input.confirmedFailureModeCode ?? catalogItem?.failureModeCode ?? null;
+    const subsystemCode = input.confirmedSubsystemCode ?? catalogItem?.subsystemCode ?? null;
+    const confirmedFailureCode = modeCode && subsystemCode ? composeFailureCode(modeCode, subsystemCode, input.confirmedPosition) : null;
 
     await this.prisma.workOrderTask.update({
       where: { id: taskId },
@@ -293,6 +300,10 @@ export class WorkOrdersService {
         status: TaskStatus.DONE,
         finishedAt: new Date(),
         confirmedCatalogItemId: input.confirmedCatalogItemId,
+        confirmedFailureModeCode: modeCode,
+        confirmedSubsystemCode: subsystemCode,
+        confirmedPosition: input.confirmedPosition,
+        confirmedFailureCode,
       },
     });
 
@@ -301,7 +312,7 @@ export class WorkOrdersService {
       action: 'task.finish',
       entity: 'WorkOrderTask',
       entityId: taskId,
-      after: { confirmedCause: catalogItem.code },
+      after: { confirmedCause: catalogItem?.code ?? null, confirmedFailureCode },
     });
 
     return this.findOne(task.workOrderId);
@@ -785,6 +796,8 @@ export class WorkOrdersService {
         confirmedCause: t.confirmedCatalogItem
           ? `${t.confirmedCatalogItem.code} — ${t.confirmedCatalogItem.description}`
           : null,
+        confirmedFailureCode: t.confirmedFailureCode,
+        confirmedFailureLabel: describeFailureCode(t.confirmedFailureModeCode, t.confirmedSubsystemCode, t.confirmedPosition),
         reopenedCount: t.reopenedCount,
         openMaterialRequests: t.materialRequests.length,
         checklist: t.checklistItems.map((c) => ({

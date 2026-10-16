@@ -330,7 +330,7 @@ export class DashboardService {
       this.prisma.failureEvent.count({
         where: {
           status: { notIn: [EventStatus.CLOSED, EventStatus.CANCELLED] },
-          catalogItem: { isSafety: true },
+          isSafety: true,
         },
       }),
     ]);

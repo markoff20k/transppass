@@ -21,6 +21,8 @@ import { formatDateTime, formatMinutes } from '@/lib/format';
 import { useAuth } from '@/features/auth/use-auth';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { FailureCodePicker } from '@/components/failure-code/failure-code-picker';
+import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
 
 type Panel =
   | { kind: 'closed' }
@@ -426,7 +428,9 @@ function TaskCard({
         </div>
       )}
 
-      {task.confirmedCause && <p className="tp-muted">Causa constatada: {task.confirmedCause}</p>}
+      {(task.confirmedFailureCode || task.confirmedCause) && (
+        <p className="tp-muted">Causa constatada: {task.confirmedFailureCode && <code className="fcode__inline">{task.confirmedFailureCode}</code>} {task.confirmedFailureLabel ?? task.confirmedCause}</p>
+      )}
 
       {task.lastInspection && (
         <p className={task.lastInspection.result === InspectionResult.REJECTED ? 'tp-error' : 'tp-muted'}>
@@ -536,6 +540,7 @@ function AddTaskDrawer({ open, workOrderId, onClose, onDone }: { open: boolean; 
 
 function FinishTaskDrawer({ task, onClose, onDone }: { task: TaskRow | null; onClose: () => void; onDone: () => void }) {
   const [causeId, setCauseId] = useState('');
+  const [code, setCode] = useState<FailureCodeValue>(EMPTY_FAILURE_CODE);
   const [error, setError] = useState<string | null>(null);
 
   const catalog = useQuery({
@@ -545,9 +550,10 @@ function FinishTaskDrawer({ task, onClose, onDone }: { task: TaskRow | null; onC
   });
 
   const mutation = useMutation({
-    mutationFn: () => api.post(`/work-orders/tasks/${task?.id}/finish`, { confirmedCatalogItemId: causeId }),
+    mutationFn: () => api.post(`/work-orders/tasks/${task?.id}/finish`, { confirmedCatalogItemId: causeId || undefined, ...toCodeFields(code, 'confirmed') }),
     onSuccess: () => {
       setCauseId('');
+      setCode(EMPTY_FAILURE_CODE);
       setError(null);
       onDone();
     },
@@ -567,7 +573,7 @@ function FinishTaskDrawer({ task, onClose, onDone }: { task: TaskRow | null; onC
       footer={
         <>
           <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button>
-          <button type="button" className="tp-btn tp-btn--primary" disabled={!causeId || pending > 0 || mutation.isPending} onClick={() => mutation.mutate()}>
+          <button type="button" className="tp-btn tp-btn--primary" disabled={!(causeId || (code.failureModeCode && code.subsystemCode)) || pending > 0 || mutation.isPending} onClick={() => mutation.mutate()}>
             {mutation.isPending ? 'Concluindo…' : 'Concluir'}
           </button>
         </>
@@ -576,15 +582,18 @@ function FinishTaskDrawer({ task, onClose, onDone }: { task: TaskRow | null; onC
       {pending > 0 && (
         <div className="tp-alert tp-alert--warning">Faltam {pending} item(ns) do checklist. Marque todos antes de concluir.</div>
       )}
-      <div className="tp-field">
-        <label className="tp-label" htmlFor="ft-cause">Causa constatada <span className="tp-label__required">obrigatório</span></label>
-        <select id="ft-cause" className="tp-select" value={causeId} onChange={(e) => setCauseId(e.target.value)}>
-          <option value="">Escolha da lista…</option>
-          {(catalog.data?.data ?? []).map((item) => (
-            <option key={item.id} value={item.id}>{item.code} — {item.description}</option>
-          ))}
-        </select>
-        <span className="tp-help">Vem do catálogo, nunca de texto livre (RN-13). É o que realimenta a inteligência da triagem.</span>
+      <div className="tp-stack">
+        <h3>Causa constatada <span className="tp-label__hint">RN-13 — de lista, no código composto</span></h3>
+        <FailureCodePicker value={code} onChange={setCode} idPrefix="ft" />
+        <label className="tp-field">
+          <span className="tp-label">Ou um atalho do catálogo</span>
+          <select id="ft-cause" className="tp-select" value={causeId} onChange={(e) => { setCauseId(e.target.value); const item = (catalog.data?.data ?? []).find((i) => i.id === e.target.value); if (item?.failureModeCode && item.subsystemCode) setCode({ failureModeCode: item.failureModeCode, subsystemCode: item.subsystemCode, position: '' }); }}>
+            <option value="">—</option>
+            {(catalog.data?.data ?? []).map((item) => (
+              <option key={item.id} value={item.id}>{item.code} — {item.description}</option>
+            ))}
+          </select>
+        </label>
       </div>
       {error && <div className="tp-alert tp-alert--danger">{error}</div>}
     </Drawer>

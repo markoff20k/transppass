@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-10-15T21:23:41.974Z",
+  "ranAt": "2026-10-16T00:33:10.286Z",
   "base": "http://localhost:5173",
-  "passed": 70,
+  "passed": 75,
   "failed": 0,
   "results": [
     {
@@ -415,6 +415,36 @@
     {
       "id": "PWD-03",
       "name": "Redefinição com token válido conclui",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "FC-01",
+      "name": "Atalho do catálogo pré-preenche Modo × Subsistema e mostra o código",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "FC-02",
+      "name": "Trocar o sistema cai no subsistema genérico e oferece Posição",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "FC-03",
+      "name": "Código de freios resolve as flags de segurança pela regra",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "FC-04",
+      "name": "Catálogo mostra as regras de criticidade e as tabelas de referência",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "FC-05",
+      "name": "Indicadores: alinhamento origem × diagnóstico",
       "ok": true,
       "detail": ""
     },

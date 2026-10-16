@@ -86,6 +86,8 @@ async function main() {
     {
       code: 'ELE-ALT-01',
       description: 'Alternador não carrega',
+      failureModeCode: 'NC',
+      subsystemCode: '030-001',
       system: 'Elétrica',
       subsystem: 'Carga',
       isFastTrack: true,
@@ -97,6 +99,8 @@ async function main() {
     {
       code: 'PNE-APU-01',
       description: 'Válvula APU com vazamento',
+      failureModeCode: 'VZ',
+      subsystemCode: '021-004',
       system: 'Pneumático',
       subsystem: 'Ar',
       isFastTrack: true,
@@ -108,6 +112,8 @@ async function main() {
     {
       code: 'PNE-CUI-01',
       description: 'Cuíca de freio inoperante',
+      failureModeCode: 'IN',
+      subsystemCode: '021-004',
       system: 'Pneumático',
       subsystem: 'Freio',
       isFastTrack: true,
@@ -119,6 +125,8 @@ async function main() {
     {
       code: 'MEC-MOT-01',
       description: 'Superaquecimento do motor',
+      failureModeCode: 'SA',
+      subsystemCode: '011-003',
       system: 'Motor',
       subsystem: 'Arrefecimento',
       isFastTrack: false,
@@ -130,6 +138,8 @@ async function main() {
     {
       code: 'AC-CLI-01',
       description: 'Ar-condicionado sem refrigeração',
+      failureModeCode: 'NR',
+      subsystemCode: '031-002',
       system: 'Conforto',
       subsystem: 'Climatização',
       isFastTrack: false,
@@ -141,6 +151,8 @@ async function main() {
     {
       code: 'CAR-POR-01',
       description: 'Porta não fecha completamente',
+      failureModeCode: 'AF',
+      subsystemCode: '174-010',
       system: 'Carroceria',
       subsystem: 'Portas',
       isFastTrack: false,
@@ -339,6 +351,32 @@ async function main() {
       update: {},
       create: { serialNumber: serial, materialId: materialId(code) },
     });
+  }
+
+  // Regras de criticidade por código composto — PROPOSTA inicial a validar
+  // com Manutenção + PCM (o padrão define a codificação, não a criticidade).
+  const rules: Array<{ failureModeCode?: string; subsystemCode?: string; isFastTrack: boolean; isSafety: boolean; isDeferrable: boolean; note: string }> = [
+    { failureModeCode: 'SF', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Sem freio, em qualquer sistema' },
+    { subsystemCode: '021-000', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Freios: qualquer modo' },
+    { subsystemCode: '021-001', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Freios: qualquer modo' },
+    { subsystemCode: '021-002', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Freios: qualquer modo' },
+    { subsystemCode: '021-003', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Freios: qualquer modo' },
+    { subsystemCode: '021-004', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Sistema de ar dos freios' },
+    { subsystemCode: '023-001', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Direção hidráulica' },
+    { failureModeCode: 'AF', subsystemCode: '174-010', isFastTrack: false, isSafety: true, isDeferrable: false, note: 'Porta pneumática que não fecha' },
+    { failureModeCode: 'AF', subsystemCode: '174-011', isFastTrack: false, isSafety: true, isDeferrable: false, note: 'Porta elétrica que não fecha' },
+    { failureModeCode: 'SA', subsystemCode: '011-003', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Superaquecimento do motor' },
+    { failureModeCode: 'NC', subsystemCode: '030-001', isFastTrack: true, isSafety: false, isDeferrable: false, note: 'Alternador não carrega' },
+    { failureModeCode: 'SP', isFastTrack: true, isSafety: false, isDeferrable: false, note: 'Sem partida' },
+    { failureModeCode: 'DM', isFastTrack: true, isSafety: false, isDeferrable: false, note: 'Morreu em movimento' },
+    { failureModeCode: 'FU', subsystemCode: '025-001', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Pneu furado/estourado' },
+    { failureModeCode: 'NR', isFastTrack: false, isSafety: false, isDeferrable: true, note: 'Ar-condicionado: cabe na próxima parada' },
+    { failureModeCode: 'FA', isFastTrack: false, isSafety: false, isDeferrable: true, note: 'Item ausente: cabe na próxima parada' },
+    { failureModeCode: 'SR', isFastTrack: false, isSafety: false, isDeferrable: true, note: 'Sem regulagem: cabe na próxima parada' },
+  ];
+  for (const r of rules) {
+    const existing = await prisma.failureCodeRule.findFirst({ where: { failureModeCode: r.failureModeCode ?? null, subsystemCode: r.subsystemCode ?? null } });
+    if (!existing) await prisma.failureCodeRule.create({ data: { ...r, failureModeCode: r.failureModeCode ?? null, subsystemCode: r.subsystemCode ?? null } });
   }
 
   // Matriz de habilitações: consumida, não administrada (seção 4 do PRD).

@@ -17,6 +17,8 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { FailureCodePicker } from '@/components/failure-code/failure-code-picker';
+import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
 
 /**
  * RF-01/RF-02 — registro do evento pelo CCO.
@@ -76,6 +78,7 @@ export function EventsPage() {
                 <tr>
                   <th>Evento</th>
                   <th>Carro</th>
+                  <th>Código</th>
                   <th>Falha</th>
                   <th>Origem</th>
                   <th>Estado</th>
@@ -91,9 +94,10 @@ export function EventsPage() {
                       {event.vehicleCode}
                       <span className="tp-muted" style={{ marginLeft: 6 }}>{event.vehiclePlate}</span>
                     </td>
+                    <td>{event.failureCode ? <code className="fcode__inline">{event.failureCode}</code> : <span className="tp-muted">—</span>}</td>
                     <td>
-                      {event.catalog?.description ?? event.reportedDescription ?? '—'}
-                      {event.catalog?.isSafety && <span className="tp-badge tp-badge--danger" style={{ marginLeft: 6 }}>segurança</span>}
+                      {event.failureLabel ?? event.catalog?.description ?? event.reportedDescription ?? '—'}
+                      {event.flags.isSafety && <span className="tp-badge tp-badge--danger" style={{ marginLeft: 6 }}>segurança</span>}
                     </td>
                     <td className="tp-muted">{EVENT_ORIGIN_LABELS[event.origin]}</td>
                     <td>
@@ -146,6 +150,7 @@ function statusBadge(status: EventStatus): string {
 function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const [vehicleId, setVehicleId] = useState('');
   const [catalogItemId, setCatalogItemId] = useState('');
+  const [code, setCode] = useState<FailureCodeValue>(EMPTY_FAILURE_CODE);
   const [description, setDescription] = useState('');
   const [lineCode, setLineCode] = useState('');
   const [location, setLocation] = useState('');
@@ -165,12 +170,21 @@ function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: 
   });
 
   const selected = (catalog.data?.data ?? []).find((i) => i.id === catalogItemId);
+  const codeComplete = Boolean(code.failureModeCode && code.subsystemCode);
+
+  // O atalho pré-preenche o código composto; a pessoa pode ajustar depois.
+  const pickShortcut = (id: string) => {
+    setCatalogItemId(id);
+    const item = (catalog.data?.data ?? []).find((i) => i.id === id);
+    if (item?.failureModeCode && item.subsystemCode) setCode({ failureModeCode: item.failureModeCode, subsystemCode: item.subsystemCode, position: '' });
+  };
 
   const mutation = useMutation({
     mutationFn: (body: CreateEventInput) => api.post<FailureEventSummary>('/events', body),
     onSuccess: () => {
       setVehicleId('');
       setCatalogItemId('');
+      setCode(EMPTY_FAILURE_CODE);
       setDescription('');
       setLineCode('');
       setLocation('');
@@ -195,12 +209,13 @@ function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: 
           <button
             type="button"
             className="tp-btn tp-btn--primary"
-            disabled={!vehicleId || mutation.isPending}
+            disabled={!vehicleId || !codeComplete || mutation.isPending}
             onClick={() => {
               setError(null);
               mutation.mutate({
                 vehicleId,
                 catalogItemId: catalogItemId || undefined,
+                ...toCodeFields(code),
                 reportedDescription: description || undefined,
                 origin,
                 lineCode: lineCode || undefined,
@@ -226,9 +241,9 @@ function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: 
       </div>
 
       <div className="tp-field">
-        <label className="tp-label" htmlFor="ev-cat">Falha do catálogo</label>
-        <select id="ev-cat" className="tp-select" value={catalogItemId} onChange={(e) => setCatalogItemId(e.target.value)}>
-          <option value="">Não classificada</option>
+        <label className="tp-label" htmlFor="ev-cat">Falha frequente <span className="tp-label__hint">atalho — preenche o código abaixo</span></label>
+        <select id="ev-cat" className="tp-select" value={catalogItemId} onChange={(e) => pickShortcut(e.target.value)}>
+          <option value="">Escolher pelo código…</option>
           {(catalog.data?.data ?? []).map((item) => (
             <option key={item.id} value={item.id}>{item.code} — {item.description}</option>
           ))}
@@ -265,8 +280,13 @@ function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: 
         </div>
       )}
 
+      <div className="tp-stack">
+        <h3>Código da falha <span className="tp-label__hint">Modo × Sistema/Subsistema × Posição</span></h3>
+        <FailureCodePicker value={code} onChange={setCode} catalogFlags={selected ?? null} idPrefix="ev" />
+      </div>
+
       <div className="tp-field">
-        <label className="tp-label" htmlFor="ev-desc">Descrição do que foi relatado</label>
+        <label className="tp-label" htmlFor="ev-desc">Observação <span className="tp-label__hint">texto livre, não entra no código</span></label>
         <textarea id="ev-desc" className="tp-textarea" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
 

@@ -16,6 +16,8 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { FailureCodePicker } from '@/components/failure-code/failure-code-picker';
+import { toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
 
 /**
  * RF-04 — tela do socorro.
@@ -314,6 +316,7 @@ function OutcomeDrawer({
   const [confirmedCatalogItemId, setConfirmedCatalogItemId] = useState(event.catalogItemId ?? '');
   const [note, setNote] = useState('');
   const [materials, setMaterials] = useState<{ materialId: string; quantity: string; serialNumber: string }[]>([]);
+  const [confirmCode, setConfirmCode] = useState<FailureCodeValue>(() => ({ failureModeCode: event.failureModeCode ?? '', subsystemCode: event.subsystemCode ?? '', position: event.position ?? '' }));
   const [error, setError] = useState<string | null>(null);
   const isSafety = Boolean(event.catalog?.isSafety);
 
@@ -331,6 +334,7 @@ function OutcomeDrawer({
       api.post(`/events/${event.id}/field/outcome`, {
         outcome: o,
         confirmedCatalogItemId: confirmedCatalogItemId || undefined,
+        ...toCodeFields(confirmCode, 'confirmed'),
         note: note || undefined,
         // RF-27 — material embarcado da viatura: baixa por consumo.
         materials: materials
@@ -395,22 +399,23 @@ function OutcomeDrawer({
           </div>
         </div>
 
-        <label className="tp-field">
-          <span className="tp-label">Constatação</span>
+        <div className="tp-field">
+          <span className="tp-label">Constatação <span className="tp-label__hint">o que a equipe viu, no mesmo código do registro</span></span>
+          <FailureCodePicker value={confirmCode} onChange={setConfirmCode} required={false} idPrefix="fo" />
           <select
             className="tp-select"
             value={confirmedCatalogItemId}
             onChange={(e) => setConfirmedCatalogItemId(e.target.value)}
           >
-            <option value="">Manter a classificação inicial</option>
+            <option value="">Sem atalho do catálogo</option>
             {(catalog.data?.data ?? []).map((item) => (
               <option key={item.id} value={item.id}>
                 {item.code} — {item.description}
               </option>
             ))}
           </select>
-          <span className="tp-help">O que a equipe constatou realimenta o catálogo (RF-32).</span>
-        </label>
+          <span className="tp-help">A constatação realimenta o catálogo (RF-32) e mede o alinhamento origem × diagnóstico.</span>
+        </div>
 
         <div className="tp-field field-materials">
           <span className="tp-label">Material usado da viatura (RF-27)</span>

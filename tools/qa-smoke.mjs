@@ -414,6 +414,28 @@ async function run() {
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle0' });
   await sleep(400);
 
+  // Padrão de codificação de falhas: picker em cascata, regras no catálogo
+  await page.goto(`${BASE}/eventos`, { waitUntil: 'networkidle0' });
+  await sleep(400);
+  await clickText(page, '.subheader__actions button', 'Registrar evento');
+  await sleep(400);
+  await page.select('#ev-cat', (await page.$$eval('#ev-cat option', (os) => os.map((o) => o.value)))[1]);
+  await sleep(300);
+  record('FC-01', 'Atalho do catálogo pré-preenche Modo × Subsistema e mostra o código', await exists(page, '.fcode__code'));
+  const sysSelect = (await page.$$('.fcode__grid select'))[1];
+  await sysSelect.select('021');
+  await sleep(300);
+  record('FC-02', 'Trocar o sistema cai no subsistema genérico e oferece Posição', (await page.$eval('.fcode__code', (c) => c.textContent || '')).includes('021-000') && (await page.$$('.fcode__grid select')).length === 4);
+  record('FC-03', 'Código de freios resolve as flags de segurança pela regra', await page.$$eval('.fcode__result .tp-badge', (bs) => bs.some((b) => /segurança/.test(b.textContent || ''))));
+  await page.keyboard.press('Escape');
+  await sleep(300);
+  await page.goto(`${BASE}/cadastros/catalogo`, { waitUntil: 'networkidle0' });
+  await sleep(400);
+  record('FC-04', 'Catálogo mostra as regras de criticidade e as tabelas de referência', (await exists(page, '.fcode-rules')) && (await page.$$('.fcode-ref details')).length >= 2);
+  await page.goto(`${BASE}/indicadores`, { waitUntil: 'networkidle0' });
+  await sleep(600);
+  record('FC-05', 'Indicadores: alinhamento origem × diagnóstico', (await page.$$eval('h2', (hs) => hs.map((h) => h.textContent || '').join('|'))).includes('Alinhamento'));
+
   // Erros de console
   record('CONS-01', 'Sem erros de JavaScript em nenhuma tela', consoleErrors.length === 0, consoleErrors.map((e) => e.text).join(' | ').slice(0, 300));
 

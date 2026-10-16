@@ -2438,3 +2438,32 @@ small.muted {
 @media (max-width: 1100px) { .metrics-history { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 900px) { .plan-pkg__body { grid-template-columns: minmax(0, 1fr); } .plan-pkg__meta { display: none; } }
 @media (max-width: 640px) { .metrics-history { grid-template-columns: minmax(0, 1fr); } .plan-pkg__km { display: none; } }
+
+/* Código composto de falha: picker em cascata, código em mono, resumo */
+.fcode { display: grid; gap: var(--tp-space-3); }
+.fcode__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tp-space-3); }
+.fcode__grid .tp-field:first-child { grid-column: 1 / -1; }
+.fcode__result { display: flex; align-items: center; gap: var(--tp-space-3); flex-wrap: wrap; }
+.fcode__code, .fcode__inline {
+  font-family: var(--tp-font-mono);
+  font-size: var(--tp-text-sm);
+  font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: var(--tp-radius-md);
+  background: var(--color-brand-soft);
+  color: var(--color-brand-text);
+  border: 1px solid var(--color-brand-soft-border);
+  white-space: nowrap;
+}
+.fcode__inline { font-size: var(--tp-text-xs); padding: 1px 6px; }
+.fcode__summary { margin: 0; display: flex; align-items: center; gap: var(--tp-space-2); flex-wrap: wrap; }
+
+/* Regras de criticidade e tabelas de referência */
+.fcode-rules__grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: var(--tp-space-4); align-items: start; }
+.fcode-ref { display: grid; gap: var(--tp-space-2); }
+.fcode-ref details { border: var(--tp-border-thin) solid var(--color-border); border-radius: var(--tp-radius-lg); padding: 0 var(--tp-space-3); }
+.fcode-ref summary { cursor: pointer; padding: var(--tp-space-2) 0; font-weight: var(--tp-weight-semibold); font-size: var(--tp-text-sm); }
+.fcode-ref .tp-table { margin-bottom: var(--tp-space-2); }
+@media (max-width: 1000px) { .fcode-rules__grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 520px) { .fcode__grid { grid-template-columns: minmax(0, 1fr); } }

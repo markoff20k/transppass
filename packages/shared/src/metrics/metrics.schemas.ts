@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { DowntimeCause } from '../work-orders/work-order.schemas.js';
+import type { CodeAlignment } from '../catalog/failure-codes.js';
 
 /**
  * E8 — indicadores que emergem dos estados do processo (RF-38/RF-39).
@@ -93,4 +94,6 @@ export interface R1Metrics {
   workOrdersReleased: number;
   averageDowntimeMinutes: number | null;
   adherence: ProcessAdherence;
+  /** Alinhamento entre o código do registro e o da constatação (seção 8.2 do padrão). */
+  codeAlignment: CodeAlignment;
 }

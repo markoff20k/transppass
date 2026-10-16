@@ -272,7 +272,7 @@ export const handlers = [
       system: (body.system as string) ?? null, subsystem: (body.subsystem as string) ?? null,
       isFastTrack: Boolean(body.isFastTrack), isSafety: Boolean(body.isSafety), isDeferrable: Boolean(body.isDeferrable),
       probableCause: (body.probableCause as string) ?? null, estimatedRepairMinutes: (body.estimatedRepairMinutes as number) ?? null,
-      fieldResolutionRate: null, fieldResolutionSamples: 0, isActive: true,
+      fieldResolutionRate: null, fieldResolutionSamples: 0, isActive: true, failureModeCode: (body.failureModeCode as string) ?? null, subsystemCode: (body.subsystemCode as string) ?? null,
     };
     catalogItems.push(item);
     return HttpResponse.json(item, { status: 201 });

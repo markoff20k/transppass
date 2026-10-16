@@ -4,18 +4,23 @@ import { z } from 'zod';
 import {
   catalogQuerySchema,
   createFailureCatalogItemSchema,
+  createFailureCodeRuleSchema,
   createReasonCodeSchema,
   ReasonCodeList,
   updateFailureCatalogItemSchema,
+  updateFailureCodeRuleSchema,
   updateReasonCodeSchema,
   UserRole,
   type CatalogQuery,
   type CreateFailureCatalogItemInput,
+  type CreateFailureCodeRuleInput,
   type CreateReasonCodeInput,
+  type FailureCodeRule,
   type FailureCatalogItem,
   type Paginated,
   type ReasonCode,
   type UpdateFailureCatalogItemInput,
+  type UpdateFailureCodeRuleInput,
   type UpdateReasonCodeInput,
 } from '@app/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -83,6 +88,25 @@ export class CatalogController {
   @Get('specialties')
   listSpecialties() {
     return this.catalog.listSpecialties();
+  }
+
+  // --- Regras de criticidade por código composto -----------------------------
+
+  @Get('failure-rules')
+  listRules(): Promise<FailureCodeRule[]> {
+    return this.catalog.listRules();
+  }
+
+  @Post('failure-rules')
+  @Roles(UserRole.ADMIN, UserRole.PCM)
+  createRule(@Body(new ZodValidationPipe(createFailureCodeRuleSchema)) body: CreateFailureCodeRuleInput, @CurrentUser('sub') actorId: string): Promise<FailureCodeRule> {
+    return this.catalog.createRule(body, actorId);
+  }
+
+  @Patch('failure-rules/:id')
+  @Roles(UserRole.ADMIN, UserRole.PCM)
+  updateRule(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(updateFailureCodeRuleSchema)) body: UpdateFailureCodeRuleInput, @CurrentUser('sub') actorId: string): Promise<FailureCodeRule> {
+    return this.catalog.updateRule(id, body, actorId);
   }
 
   // --- Códigos de motivo (RF-33) -------------------------------------------

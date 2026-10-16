@@ -13,7 +13,7 @@ Monorepo React + TypeScript / NestJS, estruturado para que front e back possam s
 | **R2 — Preventiva e Plantão** | E3, E6 — linha do tempo por km, escopo pacote + backlog, kit D-1, equipe, reprogramação com motivo; demanda de reposição, reserva habilitada, retorno ao vivo | **Implementado, não validado contra banco** |
 | Fase 2 | RF-16, RF-40, RF-41 | Fora do MVP |
 
-O schema Prisma cobre **os oito épicos**; todas as telas do MVP existem em `apps/web` e rodam em modo mock. O QA funcional automatizado (`node tools/qa-smoke.mjs`, 70 verificações de UI) e o relatório em [QA.md](QA.md) registram o que foi exercitado.
+O schema Prisma cobre **os oito épicos**; todas as telas do MVP existem em `apps/web` e rodam em modo mock. O QA funcional automatizado (`node tools/qa-smoke.mjs`, 75 verificações de UI) e o relatório em [QA.md](QA.md) registram o que foi exercitado.
 
 > **A API do R1 e do R2 ainda não rodou contra um banco.** Compila, o lint passa e as rotas sobem com o grafo de dependências resolvido, mas a máquina de estados (portões, relógio, fila, travas da preventiva, habilitação da reserva) não foi exercitada em Postgres. O teste que faz isso está pronto em `apps/api/test/r1-flow.e2e.ts` (R1 + R2) — rode `npm run test:e2e` com a API no ar assim que o Postgres existir.
 
@@ -63,6 +63,10 @@ O sistema visual vive em [`packages/design-kit`](packages/design-kit/README.md).
 Referência visual: **[artifact compartilhável](https://claude.ai/code/artifact/0beb3e1d-8f90-4dcb-ada4-f98154f6fcef)** · referência viva: rota `/design` no sistema.
 
 **Achado que mudou o desenho:** branco sobre o laranja da marca dá 2,79:1 e reprova em AA. Por isso o kit separa `--color-brand` (preenche) de `--color-brand-text` (escreve), e o texto sobre o laranja é grafite escuro (6,45:1), nunca branco.
+
+## Padrão de codificação de falhas
+
+O registro, a triagem e a constatação (socorro e sub-OS) usam o código composto **Modo de Falha × Sistema/Subsistema (VMRS) × Posição** — ex. `IN-174-011-FD` — do documento [docs/Codificacao-de-Falhas_Proposta.pdf](docs/Codificacao-de-Falhas_Proposta.pdf) (Eng. de Confiabilidade, Garagem Jaguaré). As três listas (32 modos, 13 sistemas / 52 subsistemas, posições por tipo) vivem em `packages/shared/src/catalog/failure-codes.ts`, versionadas com o código; o PCM administra as **regras de criticidade** por combinação (fast-track, segurança, deferível) em Cadastros › Catálogo. Os itens do catálogo antigo viraram atalhos que pré-preenchem o código. O indicador "alinhamento origem × diagnóstico" (seção 8.2 do documento) é medido pelo sistema.
 
 ## Decisões de arquitetura ligadas ao PRD
 

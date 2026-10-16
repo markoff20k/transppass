@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { optionalNumber } from '../fleet/vehicle.schemas.js';
+import { FAILURE_MODE_CODES, VMRS_SUBSYSTEM_CODES } from './failure-codes.js';
 
 /**
  * RF-32 — catálogo de falhas com flags, versões e realimentação pelas
@@ -26,6 +27,9 @@ export const failureCatalogItemSchema = z.object({
   fieldResolutionRate: z.number().nullable(),
   fieldResolutionSamples: z.number().int(),
   isActive: z.boolean(),
+  /** Atalho: o item pré-preenche o código composto Modo × Subsistema. */
+  failureModeCode: z.string().nullable(),
+  subsystemCode: z.string().nullable(),
 });
 
 export const createFailureCatalogItemSchema = z
@@ -39,6 +43,8 @@ export const createFailureCatalogItemSchema = z
     isDeferrable: z.boolean().default(true),
     probableCause: z.string().trim().max(255).optional(),
     estimatedRepairMinutes: optionalNumber(z.coerce.number().int().min(1).max(10_000)),
+    failureModeCode: z.enum(FAILURE_MODE_CODES).optional(),
+    subsystemCode: z.enum(VMRS_SUBSYSTEM_CODES).optional(),
   })
   .refine((v) => !(v.isSafety && v.isDeferrable), {
     // RF-05: falha de segurança não pode ser deferida para a parada programada.
@@ -55,6 +61,8 @@ export const updateFailureCatalogItemSchema = z.object({
   isDeferrable: z.boolean().optional(),
   probableCause: z.string().trim().max(255).optional(),
   estimatedRepairMinutes: optionalNumber(z.coerce.number().int().min(1).max(10_000)),
+  failureModeCode: z.enum(FAILURE_MODE_CODES).nullable().optional(),
+  subsystemCode: z.enum(VMRS_SUBSYSTEM_CODES).nullable().optional(),
   isActive: z.boolean().optional(),
 });
 

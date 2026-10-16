@@ -500,6 +500,49 @@ async function main() {
     check('link é de uso único', reuse.status === 400, `status ${reuse.status}`);
   }
 
+
+  // --- Padrão de codificação de falhas: código composto, regras e alinhamento --
+  console.log('\nCodificação de falhas — Modo × Subsistema × Posição');
+  const { body: rules } = await call<{ id: string; subsystemCode: string | null; isSafety: boolean }[]>(pcm, 'GET', '/catalog/failure-rules');
+  check('regras de criticidade carregadas do seed', rules.length > 0);
+
+  const badPosition = await call(cco, 'POST', '/events', { vehicleId: carA!.id, failureModeCode: 'SA', subsystemCode: '011-003', position: 'FD' });
+  check('posição incompatível com o subsistema é recusada', badPosition.status === 422 || badPosition.status === 400, `status ${badPosition.status}`);
+
+  const coded = await call<{ id: string; failureCode: string | null; flags: { isSafety: boolean; isDeferrable: boolean; source: string } }>(cco, 'POST', '/events', {
+    vehicleId: carA!.id, failureModeCode: 'SF', subsystemCode: '021-002', position: 'TE', lineCode: '8012',
+  });
+  check('evento com código composto é criado', coded.status === 201 && coded.body.failureCode === 'SF-021-002-TE', `status ${coded.status} / ${coded.body?.failureCode}`);
+  check('flags resolvem pela regra (sem freio = segurança)', coded.body.flags?.isSafety === true && coded.body.flags?.source.startsWith('rule'), coded.body.flags?.source);
+
+  const deferCoded = await call(pcm, 'POST', `/events/${coded.body.id}/triage`, { destination: 'DEFER', reasonCodeId: deferralReasons[0]?.id });
+  check('deferir falha de segurança pelo código é recusado (RF-05)', deferCoded.status === 400, `status ${deferCoded.status}`);
+
+  const recalled = await call<{ workOrderId: string | null }>(pcm, 'POST', `/events/${coded.body.id}/triage`, { destination: 'RECALL', failureModeCode: 'SF', subsystemCode: '021-001', position: 'TE' });
+  check('triagem reclassifica o subsistema e recolhe', recalled.status === 201 && Boolean(recalled.body.workOrderId), `status ${recalled.status}`);
+
+  if (recalled.body.workOrderId) {
+    const { body: woCoded } = await call<WorkOrderDetail>(manut, 'GET', `/work-orders/${recalled.body.workOrderId}`);
+    const t = woCoded.tasks[0];
+    if (t) {
+      await call(manut, 'POST', `/work-orders/tasks/${t.id}/start`);
+      for (const c of t.checklist) await call(manut, 'PATCH', `/work-orders/checklist/${c.id}`, { isChecked: true });
+      const noCause = await call(manut, 'POST', `/work-orders/tasks/${t.id}/finish`, {});
+      check('concluir sub-OS sem causa constatada é recusado (RN-13)', noCause.status === 422 || noCause.status === 400, `status ${noCause.status}`);
+      const finished = await call<WorkOrderDetail>(manut, 'POST', `/work-orders/tasks/${t.id}/finish`, { confirmedFailureModeCode: 'SF', confirmedSubsystemCode: '021-001', confirmedPosition: 'TE' });
+      check('constatação da sub-OS no código composto', finished.status === 201 && finished.body.tasks[0]?.confirmedFailureCode === 'SF-021-001-TE', `status ${finished.status}`);
+    }
+    const ruleRes = await call<{ id: string }>(pcm, 'POST', '/catalog/failure-rules', { failureModeCode: 'VB', subsystemCode: '025-001', isFastTrack: true, isSafety: false, isDeferrable: false, note: 'e2e' });
+    check('PCM cria regra de criticidade', ruleRes.status === 201, `status ${ruleRes.status}`);
+    const dup = await call(pcm, 'POST', '/catalog/failure-rules', { failureModeCode: 'VB', subsystemCode: '025-001' });
+    check('regra duplicada é recusada', dup.status === 409, `status ${dup.status}`);
+    const badRule = await call(pcm, 'POST', '/catalog/failure-rules', { failureModeCode: 'QB', isSafety: true, isDeferrable: true });
+    check('regra de segurança deferível é recusada', badRule.status === 422 || badRule.status === 400, `status ${badRule.status}`);
+  }
+
+  const { body: metricsCoded } = await call<{ codeAlignment: { compared: number; systemMatch: number } }>(admin, 'GET', '/metrics');
+  check('alinhamento origem × diagnóstico medido', metricsCoded.codeAlignment.compared >= 1 && metricsCoded.codeAlignment.systemMatch >= 1, JSON.stringify(metricsCoded.codeAlignment));
+
   console.log(`\n=== ${passed} ok, ${failed} falha(s) ===`);
   if (failed > 0) {
     console.log('\nFalharam:');
@@ -536,6 +579,7 @@ interface WorkOrderDetail {
     id: string;
     status: string;
     reopenedCount: number;
+    confirmedFailureCode?: string | null;
     checklist: { id: string }[];
   }[];
   breakdown: { minutes: number }[];

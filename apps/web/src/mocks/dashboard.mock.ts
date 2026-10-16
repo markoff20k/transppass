@@ -9,6 +9,7 @@ import {
   type FailureEventSummary,
 } from '@app/shared';
 import { catalogItems, users, vehicles } from './fixtures';
+import { composeFailureCode, describeFailureCode } from '@app/shared';
 
 /**
  * Dashboard e notificações no modo mock.
@@ -96,6 +97,12 @@ function recentEvents(): FailureEventSummary[] {
       isSafety: i.cat.isSafety,
       isDeferrable: i.cat.isDeferrable,
     },
+    failureModeCode: i.cat.failureModeCode,
+    subsystemCode: i.cat.subsystemCode,
+    position: null,
+    failureCode: i.cat.failureModeCode && i.cat.subsystemCode ? composeFailureCode(i.cat.failureModeCode, i.cat.subsystemCode) : null,
+    failureLabel: describeFailureCode(i.cat.failureModeCode, i.cat.subsystemCode),
+    flags: { isFastTrack: i.cat.isFastTrack, isSafety: i.cat.isSafety, isDeferrable: i.cat.isDeferrable, source: 'catalog-item' as const },
     reportedDescription: null,
     origin: EventOrigin.CCO,
     status: i.status,

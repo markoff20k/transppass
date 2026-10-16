@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FAILURE_MODE_CODES, POSITION_CODES, VMRS_SUBSYSTEM_CODES, type ResolvedFlags } from '../catalog/failure-codes.js';
 
 /**
  * E1 — Eventos corretivos (RF-01 a RF-06).
@@ -89,10 +90,18 @@ export const FIELD_OUTCOMES_RETURNING_TO_LINE: readonly FieldOutcome[] = [
 
 // --- Registro do evento (RF-01) --------------------------------------------
 
+/** Código composto Modo × Subsistema × Posição (padrão de codificação de falhas). */
+const failureCodeInput = {
+  failureModeCode: z.enum(FAILURE_MODE_CODES).optional(),
+  subsystemCode: z.enum(VMRS_SUBSYSTEM_CODES).optional(),
+  position: z.enum(POSITION_CODES).optional(),
+};
+
 export const createEventSchema = z.object({
   vehicleId: z.string().uuid('Selecione o carro'),
-  /** Falha do catálogo. Opcional porque o CCO nem sempre sabe classificar. */
+  /** Atalho do catálogo (falhas frequentes). Opcional. */
   catalogItemId: z.string().uuid().optional(),
+  ...failureCodeInput,
   reportedDescription: z.string().trim().max(500).optional(),
   origin: z.nativeEnum(EventOrigin).default(EventOrigin.CCO),
   operatorId: z.string().uuid().optional(),
@@ -123,6 +132,7 @@ export const triageSchema = z
     note: z.string().trim().max(255).optional(),
     /** Confirmação da falha, quando o PCM reclassifica o que o CCO registrou. */
     catalogItemId: z.string().uuid().optional(),
+    ...failureCodeInput,
   })
   .refine((v) => v.destination !== TriageDestination.DEFER || Boolean(v.reasonCodeId), {
     message: 'Deferir exige código de motivo',
@@ -146,6 +156,10 @@ export const fieldStepSchema = z.object({
 export const fieldOutcomeSchema = z.object({
   outcome: z.nativeEnum(FieldOutcome),
   confirmedCatalogItemId: z.string().uuid().optional(),
+  /** Constatação em campo, no mesmo código do registro — base do alinhamento origem × diagnóstico. */
+  confirmedFailureModeCode: z.enum(FAILURE_MODE_CODES).optional(),
+  confirmedSubsystemCode: z.enum(VMRS_SUBSYSTEM_CODES).optional(),
+  confirmedPosition: z.enum(POSITION_CODES).optional(),
   note: z.string().trim().max(500).optional(),
   materials: z
     .array(
@@ -191,6 +205,14 @@ export interface FailureEventSummary {
   vehiclePlate: string;
   catalogItemId: string | null;
   catalog: CatalogIntelligence | null;
+  /** Código composto do registro (Modo × Subsistema × Posição) e sua leitura. */
+  failureModeCode: string | null;
+  subsystemCode: string | null;
+  position: string | null;
+  failureCode: string | null;
+  failureLabel: string | null;
+  /** Flags resolvidas (regras por código > item do catálogo > padrão). */
+  flags: ResolvedFlags;
   reportedDescription: string | null;
   origin: EventOrigin;
   status: EventStatus;
@@ -215,6 +237,7 @@ export interface FailureEventSummary {
     finishedAt: string | null;
     outcome: FieldOutcome | null;
     supportVehicleCode: string | null;
+    confirmedFailureCode: string | null;
   } | null;
   workOrderId: string | null;
   workOrderCode: string | null;

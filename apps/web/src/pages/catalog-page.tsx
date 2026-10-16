@@ -18,6 +18,7 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { FailureCodeRules } from '@/components/failure-code/failure-code-rules';
 
 type Panel = { kind: 'closed' } | { kind: 'item' } | { kind: 'reason'; list: ReasonCodeList };
 
@@ -65,7 +66,7 @@ export function CatalogPage() {
       <CatalogVersions items={items.data?.data ?? []} onPublished={invalidate} />
       <section className="tp-card">
         <div className="tp-card__head">
-          <h3>Falhas do catálogo</h3>
+          <div><h3>Falhas do catálogo</h3><span className="chart__hint">atalhos de falhas frequentes — cada um pré-preenche o código composto</span></div>
           <input type="search" className="tp-input" style={{ maxWidth: 260 }} placeholder="Código ou descrição" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
 
@@ -78,7 +79,7 @@ export function CatalogPage() {
                 <tr>
                   <th>Código</th>
                   <th>Descrição</th>
-                  <th>Sistema</th>
+                  <th>Código composto</th>
                   <th>Flags</th>
                   <th className="is-num">Reparo (min)</th>
                   <th className="is-num">Taxa de campo</th>
@@ -89,7 +90,7 @@ export function CatalogPage() {
                   <tr key={item.id} className={item.isActive ? undefined : 'is-inactive'}>
                     <td className="is-strong">{item.code}</td>
                     <td>{item.description}</td>
-                    <td className="tp-muted">{item.system ?? '—'}</td>
+                    <td>{item.failureModeCode && item.subsystemCode ? <code className="fcode__inline">{item.failureModeCode}-{item.subsystemCode}</code> : <span className="tp-muted">{item.system ?? '—'}</span>}</td>
                     <td>
                       <span className="tp-row">
                         {item.isSafety && <span className="tp-badge tp-badge--danger">segurança</span>}
@@ -108,6 +109,8 @@ export function CatalogPage() {
           </div>
         )}
       </section>
+
+      <FailureCodeRules />
 
       <section className="tp-card">
         <div className="tp-card__head">

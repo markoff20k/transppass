@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FAILURE_MODE_CODES, POSITION_CODES, VMRS_SUBSYSTEM_CODES } from '../catalog/failure-codes.js';
 
 /**
  * E4 — Execução da manutenção (RF-17 a RF-22).
@@ -126,10 +127,18 @@ export const createTaskSchema = z.object({
     .default([]),
 });
 
-export const finishTaskSchema = z.object({
-  /** RN-13 — causa constatada vem de lista, nunca de texto livre. */
-  confirmedCatalogItemId: z.string().uuid({ message: 'Informe a causa constatada' }),
-});
+/** RN-13 — causa constatada vem de lista, nunca de texto livre: o código composto ou um atalho do catálogo. */
+export const finishTaskSchema = z
+  .object({
+    confirmedCatalogItemId: z.string().uuid().optional(),
+    confirmedFailureModeCode: z.enum(FAILURE_MODE_CODES).optional(),
+    confirmedSubsystemCode: z.enum(VMRS_SUBSYSTEM_CODES).optional(),
+    confirmedPosition: z.enum(POSITION_CODES).optional(),
+  })
+  .refine((v) => v.confirmedCatalogItemId || (v.confirmedFailureModeCode && v.confirmedSubsystemCode), {
+    message: 'Informe a causa constatada (modo de falha e subsistema)',
+    path: ['confirmedSubsystemCode'],
+  });
 
 export const checklistItemSchema = z.object({
   isChecked: z.boolean(),
@@ -217,6 +226,8 @@ export interface TaskRow {
   finishedAt: string | null;
   confirmedCatalogItemId: string | null;
   confirmedCause: string | null;
+  confirmedFailureCode: string | null;
+  confirmedFailureLabel: string | null;
   reopenedCount: number;
   checklist: ChecklistItemRow[];
   openMaterialRequests: number;

@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client';
 import {
   CRITICALITY,
   DEFAULT_REPAIR_MINUTES,
+  describeFailureCode,
   type QueueChangeRow,
   type QueueEntryRow,
   type QueueQuery,
@@ -278,8 +279,8 @@ export class QueueService {
       vehiclePlate: r.vehicle.plate,
       eventId: r.eventId,
       eventCode: r.event?.code ?? null,
-      failureDescription: r.event?.catalogItem?.description ?? r.event?.reportedDescription ?? null,
-      isSafety: r.event?.catalogItem?.isSafety ?? false,
+      failureDescription: describeFailureCode(r.event?.failureModeCode ?? null, r.event?.subsystemCode ?? null, r.event?.position) ?? r.event?.catalogItem?.description ?? r.event?.reportedDescription ?? null,
+      isSafety: r.event?.isSafety ?? r.event?.catalogItem?.isSafety ?? false,
       workOrderId: r.workOrderId,
       workOrderCode: r.workOrder?.code ?? null,
       enteredAt: r.enteredAt.toISOString(),

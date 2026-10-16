@@ -12,7 +12,12 @@ import {
   FIELD_OUTCOMES_RETURNING_TO_LINE,
   FieldOutcome,
   FieldStep,
+  composeFailureCode,
+  describeFailureCode,
   paginate,
+  resolveFailureFlags,
+  type FailureCodeRule,
+  type ResolvedFlags,
   type CreateEventInput,
   type DispatchFieldServiceInput,
   type EventQuery,
@@ -54,7 +59,14 @@ export class EventsService {
     if (!vehicle) throw new NotFoundException('Carro não encontrado');
     if (!vehicle.isActive) throw new BadRequestException('Carro inativo não aceita evento');
 
-    if (input.catalogItemId) await this.requireCatalogItem(input.catalogItemId);
+    const catalogItem = input.catalogItemId ? await this.requireCatalogItem(input.catalogItemId) : null;
+    // O atalho do catálogo pré-preenche o código; o que vier explícito vence.
+    const fields = {
+      failureModeCode: input.failureModeCode ?? catalogItem?.failureModeCode ?? null,
+      subsystemCode: input.subsystemCode ?? catalogItem?.subsystemCode ?? null,
+      position: input.position ?? null,
+    };
+    const flags = await this.flagsFor(fields, catalogItem);
 
     const event = await this.prisma.$transaction(async (tx) => {
       const created = await tx.failureEvent.create({
@@ -62,6 +74,10 @@ export class EventsService {
           code: await nextSequentialCode(tx, 'failureEvent', 'EV'),
           vehicleId: input.vehicleId,
           catalogItemId: input.catalogItemId,
+          ...fields,
+          failureCode: fields.failureModeCode && fields.subsystemCode ? composeFailureCode(fields.failureModeCode, fields.subsystemCode, fields.position) : null,
+          isSafety: flags.isSafety,
+          isFastTrack: flags.isFastTrack,
           reportedDescription: input.reportedDescription,
           origin: input.origin,
           operatorId: input.operatorId,
@@ -89,7 +105,7 @@ export class EventsService {
       action: 'event.create',
       entity: 'FailureEvent',
       entityId: event.id,
-      after: { code: event.code, vehicleId: input.vehicleId, catalogItemId: input.catalogItemId },
+      after: { code: event.code, vehicleId: input.vehicleId, catalogItemId: input.catalogItemId, failureCode: event.failureCode, flags },
     });
 
     return this.findOne(event.id);
@@ -111,24 +127,31 @@ export class EventsService {
       throw new BadRequestException('Evento encerrado não pode ser triado');
     }
 
-    // A triagem pode reclassificar a falha que o CCO registrou às pressas.
+    // A triagem pode reclassificar a falha que o CCO registrou às pressas —
+    // pelo atalho do catálogo ou pelo código composto.
     const catalogItem = input.catalogItemId
       ? await this.requireCatalogItem(input.catalogItemId)
       : event.catalogItem;
+    const fields = {
+      failureModeCode: input.failureModeCode ?? (input.catalogItemId ? catalogItem?.failureModeCode : event.failureModeCode) ?? null,
+      subsystemCode: input.subsystemCode ?? (input.catalogItemId ? catalogItem?.subsystemCode : event.subsystemCode) ?? null,
+      position: input.position ?? event.position ?? null,
+    };
+    const flags = await this.flagsFor(fields, catalogItem);
+    const failureCode = fields.failureModeCode && fields.subsystemCode ? composeFailureCode(fields.failureModeCode, fields.subsystemCode, fields.position) : null;
+    const failureName = failureCode ?? catalogItem?.code ?? 'esta falha';
 
     // RF-05 — o bloqueio de segurança vale nos dois destinos que deixam o carro
     // rodando: deferir para a parada programada e resolver em campo.
-    if (catalogItem?.isSafety && input.destination === TriageDestination.DEFER) {
+    if (flags.isSafety && input.destination === TriageDestination.DEFER) {
       throw new BadRequestException(
-        `Falha de segurança (${catalogItem.code}) não pode ser deferida para a parada programada`,
+        `Falha de segurança (${failureName}) não pode ser deferida para a parada programada`,
       );
     }
 
     if (input.destination === TriageDestination.DEFER) {
-      if (catalogItem && !catalogItem.isDeferrable) {
-        throw new BadRequestException(
-          `A falha ${catalogItem.code} não é deferível segundo o catálogo`,
-        );
+      if (!flags.isDeferrable) {
+        throw new BadRequestException(`A falha ${failureName} não é deferível segundo as regras do catálogo`);
       }
       await this.requireReasonCode(input.reasonCodeId, ReasonCodeList.EVENT_DEFERRAL);
     }
@@ -149,12 +172,16 @@ export class EventsService {
         },
       });
 
-      if (input.catalogItemId) {
-        await tx.failureEvent.update({
-          where: { id: eventId },
-          data: { catalogItemId: input.catalogItemId },
-        });
-      }
+      await tx.failureEvent.update({
+        where: { id: eventId },
+        data: {
+          ...(input.catalogItemId ? { catalogItemId: input.catalogItemId } : {}),
+          ...fields,
+          failureCode,
+          isSafety: flags.isSafety,
+          isFastTrack: flags.isFastTrack,
+        },
+      });
 
       switch (input.destination) {
         case TriageDestination.FIELD:
@@ -173,8 +200,8 @@ export class EventsService {
           await this.recallToGarage(tx, {
             eventId,
             vehicleId: event.vehicleId,
-            isSafety: catalogItem?.isSafety ?? false,
-            isFastTrack: catalogItem?.isFastTrack ?? false,
+            isSafety: flags.isSafety,
+            isFastTrack: flags.isFastTrack,
             estimatedRepairMinutes: catalogItem?.estimatedRepairMinutes ?? null,
             actorId,
           });
@@ -191,6 +218,7 @@ export class EventsService {
             data: {
               vehicleId: event.vehicleId,
               description:
+                describeFailureCode(fields.failureModeCode, fields.subsystemCode, fields.position) ??
                 catalogItem?.description ??
                 event.reportedDescription ??
                 'Falha deferida na triagem',
@@ -212,7 +240,7 @@ export class EventsService {
       action: 'event.triage',
       entity: 'FailureEvent',
       entityId: eventId,
-      after: { destination: input.destination, slaSeconds },
+      after: { destination: input.destination, slaSeconds, failureCode, flags },
       reason: input.note,
     });
 
@@ -343,14 +371,28 @@ export class EventsService {
     const confirmed = input.confirmedCatalogItemId
       ? await this.requireCatalogItem(input.confirmedCatalogItemId)
       : event.catalogItem;
+    // Constatação no código composto: explícita, ou herdada do atalho/registro.
+    const confirmedFields = {
+      confirmedFailureModeCode: input.confirmedFailureModeCode ?? (input.confirmedCatalogItemId ? confirmed?.failureModeCode : event.failureModeCode) ?? null,
+      confirmedSubsystemCode: input.confirmedSubsystemCode ?? (input.confirmedCatalogItemId ? confirmed?.subsystemCode : event.subsystemCode) ?? null,
+      confirmedPosition: input.confirmedPosition ?? event.position ?? null,
+    };
+    const confirmedFailureCode =
+      confirmedFields.confirmedFailureModeCode && confirmedFields.confirmedSubsystemCode
+        ? composeFailureCode(confirmedFields.confirmedFailureModeCode, confirmedFields.confirmedSubsystemCode, confirmedFields.confirmedPosition)
+        : null;
+    const flags = await this.flagsFor(
+      { failureModeCode: confirmedFields.confirmedFailureModeCode, subsystemCode: confirmedFields.confirmedSubsystemCode },
+      confirmed,
+    );
 
     // RF-05 — a constatação em campo pode revelar falha de segurança que o
     // registro inicial não capturou. Nesse caso o carro não volta para a linha,
     // independentemente do que o socorrista escolheu.
     const wantsToReturn = FIELD_OUTCOMES_RETURNING_TO_LINE.includes(input.outcome as FieldOutcome);
-    if (wantsToReturn && confirmed?.isSafety) {
+    if (wantsToReturn && flags.isSafety) {
       throw new BadRequestException(
-        `Falha de segurança constatada (${confirmed.code}): o carro não pode retornar à linha. ` +
+        `Falha de segurança constatada (${confirmedFailureCode ?? confirmed?.code ?? 'código'}): o carro não pode retornar à linha. ` +
           `Use o desfecho de reboque ou retorno à garagem.`,
       );
     }
@@ -363,6 +405,8 @@ export class EventsService {
         data: {
           outcome: input.outcome,
           confirmedCatalogItemId: input.confirmedCatalogItemId,
+          ...confirmedFields,
+          confirmedFailureCode,
           note: input.note,
           finishedAt: event.fieldService?.finishedAt ?? now,
         },
@@ -400,11 +444,12 @@ export class EventsService {
         });
       } else {
         // Rebocado ou voltou por meios próprios: segue para a garagem.
+        await tx.failureEvent.update({ where: { id: eventId }, data: { isSafety: flags.isSafety, isFastTrack: flags.isFastTrack } });
         await this.recallToGarage(tx, {
           eventId,
           vehicleId: event.vehicleId,
-          isSafety: confirmed?.isSafety ?? false,
-          isFastTrack: confirmed?.isFastTrack ?? false,
+          isSafety: flags.isSafety,
+          isFastTrack: flags.isFastTrack,
           estimatedRepairMinutes: confirmed?.estimatedRepairMinutes ?? null,
           actorId,
         });
@@ -433,7 +478,7 @@ export class EventsService {
       action: 'field.outcome',
       entity: 'FieldService',
       entityId: event.fieldService.id,
-      after: { outcome: input.outcome, confirmedCatalogItemId: input.confirmedCatalogItemId },
+      after: { outcome: input.outcome, confirmedCatalogItemId: input.confirmedCatalogItemId, confirmedFailureCode },
     });
 
     return this.findOne(eventId);
@@ -453,7 +498,7 @@ export class EventsService {
       },
     });
     if (!event) throw new NotFoundException('Evento não encontrado');
-    return toSummary(event);
+    return toSummary(event, await this.rules());
   }
 
   async list(query: EventQuery): Promise<Paginated<FailureEventSummary>> {
@@ -490,7 +535,20 @@ export class EventsService {
       this.prisma.failureEvent.count({ where }),
     ]);
 
-    return paginate(rows.map(toSummary), total, { page: query.page, perPage: query.perPage });
+    const rules = await this.rules();
+    return paginate(rows.map((r) => toSummary(r, rules)), total, { page: query.page, perPage: query.perPage });
+  }
+
+  private rules(): Promise<FailureCodeRule[]> {
+    return this.prisma.failureCodeRule.findMany({ where: { isActive: true } });
+  }
+
+  /** Regra por código > item do catálogo > padrão — a mesma função da tela. */
+  private async flagsFor(
+    fields: { failureModeCode?: string | null; subsystemCode?: string | null },
+    catalogItem: { isFastTrack: boolean; isSafety: boolean; isDeferrable: boolean } | null,
+  ): Promise<ResolvedFlags> {
+    return resolveFailureFlags(await this.rules(), fields, catalogItem);
   }
 
   private async requireCatalogItem(id: string) {
@@ -521,7 +579,8 @@ type EventWithRelations = Prisma.FailureEventGetPayload<{
   };
 }>;
 
-function toSummary(event: EventWithRelations): FailureEventSummary {
+function toSummary(event: EventWithRelations, rules: FailureCodeRule[]): FailureEventSummary {
+  const flags = resolveFailureFlags(rules, event, event.catalogItem);
   return {
     id: event.id,
     code: event.code,
@@ -544,6 +603,12 @@ function toSummary(event: EventWithRelations): FailureEventSummary {
           isDeferrable: event.catalogItem.isDeferrable,
         }
       : null,
+    failureModeCode: event.failureModeCode,
+    subsystemCode: event.subsystemCode,
+    position: event.position,
+    failureCode: event.failureCode,
+    failureLabel: describeFailureCode(event.failureModeCode, event.subsystemCode, event.position),
+    flags,
     reportedDescription: event.reportedDescription,
     origin: event.origin,
     status: event.status,
@@ -570,6 +635,7 @@ function toSummary(event: EventWithRelations): FailureEventSummary {
           finishedAt: event.fieldService.finishedAt?.toISOString() ?? null,
           outcome: event.fieldService.outcome,
           supportVehicleCode: event.fieldService.supportVehicleCode,
+          confirmedFailureCode: event.fieldService.confirmedFailureCode,
         }
       : null,
     workOrderId: event.workOrder?.id ?? null,

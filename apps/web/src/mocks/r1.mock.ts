@@ -8,6 +8,7 @@ import {
   TaskStatus,
   WorkOrderStatus,
   WorkOrderType,
+  type FailureCodeRule,
   type MaterialRequestRow,
   type PoolComponentRow,
   type QueueChangeRow,
@@ -74,7 +75,7 @@ function workOrder(id: string): WorkOrderDetail {
       {
         id: `${id}-t1`, code: 'S01', description: isFirst ? 'Substituir válvula APU' : 'Substituir cuíca de freio dianteira', specialtyId: 'sp-3', specialtyName: 'Pneus',
         status: isFirst ? TaskStatus.IN_PROGRESS : TaskStatus.BLOCKED_BY_MATERIAL, assignedToId: null, assignedToName: 'Mecânico de turno',
-        startedAt: ago(isFirst ? 3.5 : 30), finishedAt: null, confirmedCatalogItemId: null, confirmedCause: null, reopenedCount: 0,
+        startedAt: ago(isFirst ? 3.5 : 30), finishedAt: null, confirmedCatalogItemId: null, confirmedCause: null, confirmedFailureCode: null, confirmedFailureLabel: null, reopenedCount: 0,
         checklist: [
           { id: `${id}-c1`, sequence: 1, description: 'Despressurizar o sistema', isChecked: true, checkedAt: ago(3), measurement: null, unit: null },
           { id: `${id}-c2`, sequence: 2, description: 'Substituir o componente', isChecked: isFirst, checkedAt: isFirst ? ago(1) : null, measurement: null, unit: null },
@@ -87,7 +88,7 @@ function workOrder(id: string): WorkOrderDetail {
         ? [{
             id: `${id}-t2`, code: 'S02', description: 'Verificar sistema de carga', specialtyId: 'sp-2', specialtyName: 'Elétrica',
             status: TaskStatus.APPROVED, assignedToId: null, assignedToName: 'Eletricista', startedAt: ago(4), finishedAt: ago(2.2),
-            confirmedCatalogItemId: catalogItems[0]!.id, confirmedCause: `${catalogItems[0]!.code} — ${catalogItems[0]!.description}`, reopenedCount: 1,
+            confirmedCatalogItemId: catalogItems[0]!.id, confirmedCause: `${catalogItems[0]!.code} — ${catalogItems[0]!.description}`, confirmedFailureCode: 'NC-030-001', confirmedFailureLabel: 'Não carrega / não pressuriza · Geração e partida', reopenedCount: 1,
             checklist: [], openMaterialRequests: 0,
             lastInspection: { result: 'APPROVED' as const, inspectedAt: ago(1.8), note: null, reasonDescription: null },
           }]
@@ -159,6 +160,17 @@ const catalogVersions = {
   published: { id: 'cv-1', version: 1, notes: 'Carga inicial a partir do ranking IIO', publishedAt: ago(30 * 24), createdAt: ago(31 * 24) } as { id: string; version: number; notes: string | null; publishedAt: string | null; createdAt: string } | null,
 };
 
+const failureRules: FailureCodeRule[] = [
+  { id: 'rule-1', failureModeCode: 'SF', subsystemCode: null, isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Sem freio, em qualquer sistema', isActive: true },
+  { id: 'rule-2a', failureModeCode: null, subsystemCode: '021-000', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Freios: qualquer modo', isActive: true },
+  { id: 'rule-2', failureModeCode: null, subsystemCode: '021-004', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Sistema de ar dos freios', isActive: true },
+  { id: 'rule-3', failureModeCode: 'AF', subsystemCode: '174-010', isFastTrack: false, isSafety: true, isDeferrable: false, note: 'Porta pneumática que não fecha', isActive: true },
+  { id: 'rule-4', failureModeCode: 'SA', subsystemCode: '011-003', isFastTrack: true, isSafety: true, isDeferrable: false, note: 'Superaquecimento do motor', isActive: true },
+  { id: 'rule-5', failureModeCode: 'NC', subsystemCode: '030-001', isFastTrack: true, isSafety: false, isDeferrable: false, note: 'Alternador não carrega', isActive: true },
+  { id: 'rule-6', failureModeCode: 'NR', subsystemCode: null, isFastTrack: false, isSafety: false, isDeferrable: true, note: 'Ar-condicionado: cabe na próxima parada', isActive: true },
+  { id: 'rule-7', failureModeCode: 'FA', subsystemCode: null, isFastTrack: false, isSafety: false, isDeferrable: true, note: 'Item ausente: cabe na próxima parada', isActive: true },
+];
+
 function metrics(): R1Metrics {
   const d = buildDashboard();
   return {
@@ -171,6 +183,7 @@ function metrics(): R1Metrics {
     workOrdersReleased: 27,
     averageDowntimeMinutes: 386,
     adherence: { preventive: { due: 9, onTime: 7, rate: 7 / 9 }, adoption: { released: 27, complete: 23, rate: 23 / 27 } },
+    codeAlignment: { compared: 31, systemMatch: 27, fullMatch: 19, systemRate: 27 / 31, fullRate: 19 / 31 },
   };
 }
 
@@ -191,7 +204,7 @@ export const r1Handlers = [
     else if (status) rows = all.filter((e) => e.status === status);
     // Um evento aguardando triagem e um socorro em campo, para os contadores da sidebar.
     if (pending && rows.length === 0) rows = [{ ...all[3]!, id: 'ev-pend', code: 'EV-2026-000143', status: EventStatus.REGISTERED, vehicleCode: '10005', vehiclePlate: 'ABC1D27', waitingSeconds: 25 * 60, reportedAt: ago(0.4) }];
-    if (status === EventStatus.FIELD_SERVICE && rows.length === 0) rows = [{ ...all[2]!, id: 'ev-field', code: 'EV-2026-000144', status: EventStatus.FIELD_SERVICE, vehicleCode: '10006', vehiclePlate: 'ABC1D28', reportedAt: ago(1.2), fieldService: { id: 'fs-1', dispatchedAt: ago(1.1), arrivedAt: ago(0.7), startedAt: null, finishedAt: null, outcome: null, supportVehicleCode: 'APOIO-2' } }];
+    if (status === EventStatus.FIELD_SERVICE && rows.length === 0) rows = [{ ...all[2]!, id: 'ev-field', code: 'EV-2026-000144', status: EventStatus.FIELD_SERVICE, vehicleCode: '10006', vehiclePlate: 'ABC1D28', reportedAt: ago(1.2), fieldService: { id: 'fs-1', dispatchedAt: ago(1.1), arrivedAt: ago(0.7), startedAt: null, finishedAt: null, outcome: null, supportVehicleCode: 'APOIO-2', confirmedFailureCode: null } }];
     return HttpResponse.json(pageOf(rows, url));
   }),
   http.post('*/api/events', () => HttpResponse.json(buildDashboard().recentEvents[0], { status: 201 })),
@@ -241,6 +254,19 @@ export const r1Handlers = [
     return HttpResponse.json(catalogVersions.published, { status: 201 });
   }),
   http.post('*/api/events/:id/field/dispatch', () => HttpResponse.json(buildDashboard().recentEvents[2], { status: 201 })),
+
+  http.get('*/api/catalog/failure-rules', () => HttpResponse.json(failureRules)),
+  http.post('*/api/catalog/failure-rules', async ({ request }) => {
+    const body = (await request.json()) as Omit<FailureCodeRule, 'id' | 'isActive'>;
+    const rule: FailureCodeRule = { id: `rule-${Date.now()}`, isActive: true, ...body, note: body.note ?? null, failureModeCode: body.failureModeCode ?? null, subsystemCode: body.subsystemCode ?? null };
+    failureRules.push(rule);
+    return HttpResponse.json(rule, { status: 201 });
+  }),
+  http.patch('*/api/catalog/failure-rules/:id', async ({ request, params }) => {
+    const rule = failureRules.find((r) => r.id === params.id);
+    if (rule) Object.assign(rule, await request.json());
+    return HttpResponse.json(rule ?? failureRules[0]);
+  }),
 
   http.get('*/api/metrics', () => HttpResponse.json(metrics())),
   http.get('*/api/catalog/specialties', () => HttpResponse.json(specialties)),

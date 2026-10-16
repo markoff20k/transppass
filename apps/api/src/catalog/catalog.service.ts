@@ -4,6 +4,9 @@ import {
   paginate,
   type CatalogQuery,
   type CreateFailureCatalogItemInput,
+  type CreateFailureCodeRuleInput,
+  type FailureCodeRule,
+  type UpdateFailureCodeRuleInput,
   type CreateReasonCodeInput,
   type FailureCatalogItem,
   type Paginated,
@@ -250,10 +253,40 @@ export class CatalogService {
       isActive: updated.isActive,
     };
   }
+
+  // --- Regras de criticidade por código composto -----------------------------
+
+  async listRules(): Promise<FailureCodeRule[]> {
+    const rows = await this.prisma.failureCodeRule.findMany({ orderBy: [{ subsystemCode: 'asc' }, { failureModeCode: 'asc' }] });
+    return rows.map(toRule);
+  }
+
+  async createRule(input: CreateFailureCodeRuleInput, actorId: string): Promise<FailureCodeRule> {
+    const clash = await this.prisma.failureCodeRule.findFirst({
+      where: { failureModeCode: input.failureModeCode ?? null, subsystemCode: input.subsystemCode ?? null },
+    });
+    if (clash) throw new ConflictException('Já existe uma regra para esta combinação');
+    const rule = await this.prisma.failureCodeRule.create({ data: { ...input, failureModeCode: input.failureModeCode ?? null, subsystemCode: input.subsystemCode ?? null } });
+    await this.audit.write({ actorId, action: 'catalog.rule.create', entity: 'FailureCodeRule', entityId: rule.id, after: input });
+    return toRule(rule);
+  }
+
+  async updateRule(id: string, input: UpdateFailureCodeRuleInput, actorId: string): Promise<FailureCodeRule> {
+    const before = await this.prisma.failureCodeRule.findUnique({ where: { id } });
+    if (!before) throw new NotFoundException('Regra não encontrada');
+    const next = { isFastTrack: input.isFastTrack ?? before.isFastTrack, isSafety: input.isSafety ?? before.isSafety, isDeferrable: input.isDeferrable ?? before.isDeferrable };
+    if (next.isSafety && next.isDeferrable) throw new BadRequestException('Falha de segurança não pode ser deferível');
+    const rule = await this.prisma.failureCodeRule.update({ where: { id }, data: { ...next, note: input.note, isActive: input.isActive } });
+    await this.audit.write({ actorId, action: 'catalog.rule.update', entity: 'FailureCodeRule', entityId: id, before: { isFastTrack: before.isFastTrack, isSafety: before.isSafety, isDeferrable: before.isDeferrable, isActive: before.isActive }, after: next });
+    return toRule(rule);
+  }
+
 }
 
 function toCatalogItem(item: {
   id: string;
+  failureModeCode: string | null;
+  subsystemCode: string | null;
   versionId: string;
   code: string;
   description: string;
@@ -283,5 +316,20 @@ function toCatalogItem(item: {
     fieldResolutionRate: item.fieldResolutionRate ? Number(item.fieldResolutionRate) : null,
     fieldResolutionSamples: item.fieldResolutionSamples,
     isActive: item.isActive,
+    failureModeCode: item.failureModeCode,
+    subsystemCode: item.subsystemCode,
   };
+}
+
+function toRule(r: {
+  id: string;
+  failureModeCode: string | null;
+  subsystemCode: string | null;
+  isFastTrack: boolean;
+  isSafety: boolean;
+  isDeferrable: boolean;
+  note: string | null;
+  isActive: boolean;
+}): FailureCodeRule {
+  return { id: r.id, failureModeCode: r.failureModeCode, subsystemCode: r.subsystemCode, isFastTrack: r.isFastTrack, isSafety: r.isSafety, isDeferrable: r.isDeferrable, note: r.note, isActive: r.isActive };
 }

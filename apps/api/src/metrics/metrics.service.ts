@@ -16,6 +16,7 @@ import {
   type MetricsHistoryQuery,
   type MetricsQuery,
   type MkbfResult,
+  type CodeAlignment,
   type ProcessAdherence,
   type R1Metrics,
 } from '@app/shared';
@@ -35,7 +36,7 @@ export class MetricsService {
   async r1(query: MetricsQuery): Promise<R1Metrics> {
     const { from, to } = resolvePeriod(query);
 
-    const [mkbf, downtime, triage, field, rework, released, adherence] = await Promise.all([
+    const [mkbf, downtime, triage, field, rework, released, adherence, codeAlignment] = await Promise.all([
       this.mkbf(from, to),
       this.downtimeByCause(from, to),
       this.triageSla(from, to),
@@ -43,6 +44,7 @@ export class MetricsService {
       this.internalRework(from, to),
       this.releasedWorkOrders(from, to),
       this.adherence(from, to),
+      this.codeAlignment(from, to),
     ]);
 
     return {
@@ -55,7 +57,36 @@ export class MetricsService {
       workOrdersReleased: released.count,
       averageDowntimeMinutes: released.averageMinutes,
       adherence,
+      codeAlignment,
     };
+  }
+
+  /**
+   * Seção 8.2 do padrão de codificação: o código decidido no registro se
+   * sustenta frente ao que a manutenção constata? Compara, por evento com
+   * código e constatação (sub-OS ou socorro), o Sistema (3 dígitos) e o
+   * Subsistema completo.
+   */
+  private async codeAlignment(from: Date, to: Date): Promise<CodeAlignment> {
+    const events = await this.prisma.failureEvent.findMany({
+      where: { reportedAt: { gte: from, lte: to }, subsystemCode: { not: null } },
+      select: {
+        subsystemCode: true,
+        fieldService: { select: { confirmedSubsystemCode: true } },
+        workOrder: { select: { tasks: { where: { confirmedSubsystemCode: { not: null } }, select: { confirmedSubsystemCode: true }, take: 1 } } },
+      },
+    });
+    let compared = 0;
+    let systemMatch = 0;
+    let fullMatch = 0;
+    for (const e of events) {
+      const confirmed = e.workOrder?.tasks[0]?.confirmedSubsystemCode ?? e.fieldService?.confirmedSubsystemCode ?? null;
+      if (!confirmed || !e.subsystemCode) continue;
+      compared += 1;
+      if (confirmed.slice(0, 3) === e.subsystemCode.slice(0, 3)) systemMatch += 1;
+      if (confirmed === e.subsystemCode) fullMatch += 1;
+    }
+    return { compared, systemMatch, fullMatch, systemRate: compared ? systemMatch / compared : null, fullRate: compared ? fullMatch / compared : null };
   }
 
   /**
