@@ -20,6 +20,7 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:migrate": "npm run db:migrate -w @app/api",
+  "db:push": "npm run db:push -w @app/api",
     "db:studio": "npm run db:studio -w @app/api",
     "dev:shared": "npm run dev -w @app/shared",
     "setup": "npm install && npm run build -w @app/shared && npm run db:generate -w @app/api",

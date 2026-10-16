@@ -222,6 +222,25 @@ export function describeFailureCode(modeCode: string | null, subsystemCode: stri
   return `${mode.name} · ${subsystem.name}${pos ? ` · ${pos.toLowerCase()}` : ''}`;
 }
 
+/** Posição admitida pelo subsistema? (sem posição é sempre válido) */
+export function isPositionAllowed(subsystemCode: string | null | undefined, position: string | null | undefined): boolean {
+  if (!position) return true;
+  const s = subsystemByCode(subsystemCode);
+  if (!s) return false;
+  return POSITION_OPTIONS[s.positionType].some((p) => p.code === position);
+}
+
+/** Refinamento reutilizável: a posição informada precisa caber no subsistema. */
+export function positionRefinement<T extends Record<string, unknown>>(subsystemKey: keyof T & string, positionKey: keyof T & string) {
+  return (v: T, ctx: z.RefinementCtx) => {
+    const subsystem = v[subsystemKey] as string | undefined;
+    const position = v[positionKey] as string | undefined;
+    if (position && !isPositionAllowed(subsystem, position)) {
+      ctx.addIssue({ code: 'custom', path: [positionKey], message: 'Posição não se aplica a este subsistema' });
+    }
+  };
+}
+
 /** Os três campos do código, validados contra as tabelas; posição coerente com o subsistema. */
 export const failureCodeFieldsSchema = z
   .object({

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FAILURE_MODE_CODES, POSITION_CODES, VMRS_SUBSYSTEM_CODES } from '../catalog/failure-codes.js';
+import { FAILURE_MODE_CODES, POSITION_CODES, VMRS_SUBSYSTEM_CODES, positionRefinement } from '../catalog/failure-codes.js';
 
 /**
  * E4 — Execução da manutenção (RF-17 a RF-22).
@@ -138,7 +138,8 @@ export const finishTaskSchema = z
   .refine((v) => v.confirmedCatalogItemId || (v.confirmedFailureModeCode && v.confirmedSubsystemCode), {
     message: 'Informe a causa constatada (modo de falha e subsistema)',
     path: ['confirmedSubsystemCode'],
-  });
+  })
+  .superRefine(positionRefinement('confirmedSubsystemCode', 'confirmedPosition'));
 
 export const checklistItemSchema = z.object({
   isChecked: z.boolean(),

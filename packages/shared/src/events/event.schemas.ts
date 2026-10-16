@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FAILURE_MODE_CODES, POSITION_CODES, VMRS_SUBSYSTEM_CODES, type ResolvedFlags } from '../catalog/failure-codes.js';
+import { FAILURE_MODE_CODES, POSITION_CODES, VMRS_SUBSYSTEM_CODES, positionRefinement, type ResolvedFlags } from '../catalog/failure-codes.js';
 
 /**
  * E1 — Eventos corretivos (RF-01 a RF-06).
@@ -109,7 +109,7 @@ export const createEventSchema = z.object({
   locationDescription: z.string().trim().max(255).optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
-});
+}).superRefine(positionRefinement('subsystemCode', 'position'));
 
 export const eventQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -137,7 +137,8 @@ export const triageSchema = z
   .refine((v) => v.destination !== TriageDestination.DEFER || Boolean(v.reasonCodeId), {
     message: 'Deferir exige código de motivo',
     path: ['reasonCodeId'],
-  });
+  })
+  .superRefine(positionRefinement('subsystemCode', 'position'));
 
 // --- Socorro em campo (RF-04) ----------------------------------------------
 
@@ -170,7 +171,8 @@ export const fieldOutcomeSchema = z.object({
       }),
     )
     .default([]),
-});
+})
+  .superRefine(positionRefinement('confirmedSubsystemCode', 'confirmedPosition'));
 
 export const dispatchFieldServiceSchema = z.object({
   technicianId: z.string().uuid().optional(),

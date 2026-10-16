@@ -1,6 +1,6 @@
 # Relatório de QA — Transppass PCM (MVP: R0 + R1 + R2)
 
-**Rodada:** 11/09/2026 · **Ambiente:** modo mock (MSW) no Microsoft Edge, sem banco · **Resultado:** 75 verificações funcionais de UI, 75 aprovadas · typecheck, lint e build do monorepo limpos.
+**Rodada:** 16/10/2026 · **Ambiente:** modo mock (MSW) no Microsoft Edge, sem banco · **Resultado:** 75 verificações funcionais de UI, 75 aprovadas · typecheck, lint e build do monorepo limpos.
 
 Este relatório é o que um analista de QA entregaria ao fim da sprint: o que foi testado, como, o que passou, o que foi corrigido no caminho e — mais importante — **o que ainda não foi exercitado** e por quê.
 
@@ -18,7 +18,7 @@ Este relatório é o que um analista de QA entregaria ao fim da sprint: o que fo
 1. **Estático** — `npm run typecheck` (api, web, shared, design-kit), `npx eslint .`, `npm run build`. Tudo limpo.
 2. **Funcional de UI, automatizado** — `node tools/qa-smoke.mjs` dirige o Edge real (puppeteer-core) contra `npm run dev:mock`. Cada passo é uma asserção sobre o DOM, não sobre uma captura. Saída em `tools/QA-RESULTADO.json` e 26 capturas em `tools/qa-shots/`.
 3. **Visual, manual** — capturas em 1440 px (claro e escuro) e 390 px de todas as telas, revisadas uma a uma para layout, contraste, alinhamento e badges.
-4. **API** — `apps/api/test/r1-flow.e2e.ts` cobre o ciclo completo (R1: 25 verificações; R2: 27 verificações adicionadas nesta rodada). **Não rodou**: não há Postgres acessível nesta máquina (serviço Docker parado, senha do PG local desconhecida). O teste compila e está pronto para `npm run test:e2e`.
+4. **API contra Postgres** — `apps/api/test/r1-flow.e2e.ts`, **78 verificações, 78 aprovadas, zero erros no log do servidor**, contra o Postgres local (porta 5433) com o schema sincronizado por `db:push` e os seeds base + demonstração. Cobre R1 (portões, relógio, fila, MKBF), R2 (travas da preventiva, habilitação da reserva), planos/kits/materiais, snapshots, recuperação de senha e a codificação de falhas (posição validada contra o subsistema, regras de criticidade, alinhamento).
 
 ## 3. Resultado funcional (mock)
 
@@ -47,6 +47,9 @@ Este relatório é o que um analista de QA entregaria ao fim da sprint: o que fo
 | 2 | `apps/web/index.html` | Sem favicon — 404 em toda carga de página. | Favicon SVG com a marca (grafite + laranja) e `theme-color`. |
 | 3 | `apps/api/prisma/seed.ts` | Lookup de material podia retornar `undefined` e passar em silêncio para o Prisma. | Lookup estrito que falha com mensagem clara. |
 | 4 | `tools/qa-smoke.mjs` | O roteiro clicava na primeira linha da fila (em execução, sem "Mover") e o 401 esperado do teste de senha errada contava como erro. | Escolhe uma linha aguardando; erros HTTP rastreados por URL, ignorando só o login negativo. |
+| 5 | `work-orders.service.ts` (findOne) | `id: { in: [...assigneeIds, releasedById ?? ''] }` mandava string vazia como UUID; o Postgres recusava e **todo detalhe de OS com sub-OS respondia 500**. Invisível no mock. | Só ids reais entram na lista. |
+| 6 | `packages/shared` (codificação) | Posição fora do tipo do subsistema (ex.: `FD` em Arrefecimento, que não tem posição) era aceita. | `positionRefinement` nos schemas de evento, triagem, desfecho e sub-OS. |
+| 7 | Banco local | Tabelas do R2 nunca criadas; o agendador novo falhava a cada 5 min. `prisma` lia `apps/api/.env`, inexistente. | `scripts/with-env.cjs` carrega o `.env` da raiz para `db:push`, `db:seed`, `db:seed:demo`, `test:e2e`. |
 
 Defeitos de UI corrigidos antes desta rodada (já em commits anteriores): layout do shell sobrescrito por CSS antigo, header no rodapé, rodas do ônibus orbitando, pneus invisíveis no escuro, badges de larguras diferentes, edição inline em vez de painel lateral.
 
@@ -54,8 +57,7 @@ Defeitos de UI corrigidos antes desta rodada (já em commits anteriores): layout
 
 | Lacuna | Risco | Como fechar |
 | --- | --- | --- |
-| **API contra Postgres** (R1 e R2) | Alto. Portões de encerramento, relógio de parada por causa, fila append-only, travas RN-10 e bloqueio RF-30 só existem como código compilado. | Subir Postgres (`COMO-RODAR.md`, Caminho A ou B), `npm run db:migrate && npm run db:seed`, `npm run test:e2e`. |
-| Mock ≠ API | Médio. O MSW espelha os contratos de `packages/shared`, mas não a lógica de estado. Uma tela pode passar no mock e receber outro código de erro da API. | O e2e acima. |
+| Mock ≠ API | Baixo agora: o e2e exercita a lógica de estado no servidor. Resta a camada tela → API real (o QA de UI roda no mock). | Rodar o roteiro de UI contra a API real (`VITE_API_URL`) numa próxima rodada. |
 | Valores de SLA e fórmula de criticidade | Médio. Marcados como ARBITRADO no código; o PRD não os fixa. | Definição com PCM + Manutenção. |
 | Especificação MVP v1.1 (RN-01…16, P-01…10) | Médio. Não está no repositório; as regras RN foram implementadas pelo resumo do PRD. | Anexar o documento e revisar regra a regra. |
 | Integração com telemetria / API do JB (km) | Baixo no MVP. Só o lançamento manual está exercitado. | Fase seguinte. |
@@ -75,4 +77,4 @@ Credenciais do mock: `admin@transppass.local` / `admin123` (demais personas em `
 
 ## 7. Parecer
 
-Do ponto de vista de **interface e experiência**, o MVP está completo e consistente: todas as telas do PRD existem, seguem o design kit, respondem a 390 px sem quebrar, e os bloqueios de negócio visíveis ao usuário (motivo obrigatório, placa, km, travas da preventiva) acontecem na origem. Do ponto de vista de **regra de negócio no servidor**, o parecer é **condicional**: o código está escrito e testável, mas a evidência de execução contra banco ainda não existe. A primeira ação da próxima sessão deve ser `npm run test:e2e` com o Postgres de pé.
+Do ponto de vista de **interface e experiência**, o MVP está completo e consistente: todas as telas do PRD existem, seguem o design kit, respondem a 390 px sem quebrar, e os bloqueios de negócio visíveis ao usuário (motivo obrigatório, placa, km, travas da preventiva) acontecem na origem. Do ponto de vista de **regra de negócio no servidor**, o parecer passa a ser **favorável**: o ciclo completo rodou contra Postgres (78/78) sem erro no log. A rodada real revelou um defeito que o mock escondia — `findOne` da OS enviava `''` como UUID ao buscar quem liberou o carro (corrigido) — e um buraco de validação no padrão de codificação (posição fora do tipo do subsistema era aceita; agora recusada no Zod compartilhado, tela e API). Pendências restantes são de definição com o cliente (flags de criticidade, SLAs, Especificação MVP v1.1), não de código.

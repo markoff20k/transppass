@@ -121,9 +121,11 @@ O `.env` fica na raiz e é lido pelos dois apps: a API pelo `ConfigModule` e o f
 ## Passo 4 — Criar as tabelas e a carga inicial
 
 ```bash
-npm run db:migrate    # cria as 47 tabelas do modelo
+npm run db:push       # cria/sincroniza as tabelas do modelo com o .env da raiz
 npm run db:seed       # carga inicial
 ```
+
+Os comandos de banco (`db:push`, `db:seed`, `db:seed:demo`, `test:e2e`) leem o `.env` da raiz — não precisa de `.env` dentro de `apps/api`.
 
 O seed cria:
 

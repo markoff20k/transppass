@@ -740,12 +740,13 @@ export class WorkOrdersService {
     if (!workOrder) throw new NotFoundException('OS não encontrada');
 
     const now = new Date();
-    const assigneeIds = workOrder.tasks
-      .map((t) => t.assignedToId)
-      .filter((v): v is string => Boolean(v));
-    const users = assigneeIds.length
+    // Só ids reais: uma string vazia aqui vira "UUID inválido" no Postgres.
+    const userIds = [...workOrder.tasks.map((t) => t.assignedToId), workOrder.releasedById].filter(
+      (v): v is string => Boolean(v),
+    );
+    const users = userIds.length
       ? await this.prisma.user.findMany({
-          where: { id: { in: [...assigneeIds, workOrder.releasedById ?? ''] } },
+          where: { id: { in: userIds } },
           select: { id: true, name: true },
         })
       : [];

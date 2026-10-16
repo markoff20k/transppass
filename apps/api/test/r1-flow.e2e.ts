@@ -54,7 +54,7 @@ async function login(email: string, password: string): Promise<Session> {
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) throw new Error(`Login falhou para ${email}: ${res.status}`);
-  const body = await res.json();
+  const body = (await res.json()) as { tokens: { accessToken: string }; user: { id: string } };
   return { token: body.tokens.accessToken, userId: body.user.id };
 }
 
@@ -383,7 +383,10 @@ async function main() {
     check('estoque separa o kit → trava de kit liberada', withKit.kitReady === true);
     check('ainda falta equipe', withKit.canLeaveSchedule === false);
 
-    const { body: withTeam } = await call<ScheduleDetail>(pcm, 'POST', `/scheduling/${sched.id}/team`, {
+    const teamByPcm = await call(pcm, 'POST', `/scheduling/${sched.id}/team`, { specialtyId: specialties[0]?.id, headcount: 1 });
+    check('PCM não reserva equipe — é a Manutenção (RF-12)', teamByPcm.status === 403, `status ${teamByPcm.status}`);
+
+    const { body: withTeam } = await call<ScheduleDetail>(manut, 'POST', `/scheduling/${sched.id}/team`, {
       specialtyId: specialties[0]?.id,
       headcount: 2,
     });
@@ -443,13 +446,13 @@ async function main() {
       operatorId: qualified?.operatorId,
     });
     check(
-      'reserva designada dentro da janela → atendida',
-      assigned.status < 300 && assigned.body.status === 'MET' && assigned.body.assignment !== null,
+      'reserva designada dentro da janela → reserva na rua, com hora de atendimento',
+      assigned.status < 300 && assigned.body.status === 'ASSIGNED' && assigned.body.metAt !== null && assigned.body.assignment !== null,
       `status ${assigned.status} / ${assigned.body?.status}`,
     );
 
     const { body: returned } = await call<DemandRow>(cco, 'POST', `/operations/demands/${demand.id}/return`);
-    check('retorno da reserva registrado', returned.assignment?.returnedAt != null);
+    check('retorno da reserva registrado e demanda atendida', returned.assignment?.returnedAt != null && returned.status === 'MET');
 
     const { body: returns } = await call<unknown[]>(cco, 'GET', '/operations/returns');
     check('previsão de retorno dos titulares publicada (RF-31)', Array.isArray(returns));
@@ -532,8 +535,10 @@ async function main() {
       const finished = await call<WorkOrderDetail>(manut, 'POST', `/work-orders/tasks/${t.id}/finish`, { confirmedFailureModeCode: 'SF', confirmedSubsystemCode: '021-001', confirmedPosition: 'TE' });
       check('constatação da sub-OS no código composto', finished.status === 201 && finished.body.tasks[0]?.confirmedFailureCode === 'SF-021-001-TE', `status ${finished.status}`);
     }
+    // Regras não se apagam (histórico), então uma rodada anterior pode já tê-la criado.
     const ruleRes = await call<{ id: string }>(pcm, 'POST', '/catalog/failure-rules', { failureModeCode: 'VB', subsystemCode: '025-001', isFastTrack: true, isSafety: false, isDeferrable: false, note: 'e2e' });
-    check('PCM cria regra de criticidade', ruleRes.status === 201, `status ${ruleRes.status}`);
+    const { body: rulesAfter } = await call<{ failureModeCode: string | null; subsystemCode: string | null }[]>(pcm, 'GET', '/catalog/failure-rules');
+    check('PCM cria regra de criticidade', (ruleRes.status === 201 || ruleRes.status === 409) && rulesAfter.some((r) => r.failureModeCode === 'VB' && r.subsystemCode === '025-001'), `status ${ruleRes.status}`);
     const dup = await call(pcm, 'POST', '/catalog/failure-rules', { failureModeCode: 'VB', subsystemCode: '025-001' });
     check('regra duplicada é recusada', dup.status === 409, `status ${dup.status}`);
     const badRule = await call(pcm, 'POST', '/catalog/failure-rules', { failureModeCode: 'QB', isSafety: true, isDeferrable: true });

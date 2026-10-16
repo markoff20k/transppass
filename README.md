@@ -9,13 +9,13 @@ Monorepo React + TypeScript / NestJS, estruturado para que front e back possam s
 | Release | Escopo do PRD | Situação |
 | --- | --- | --- |
 | **R0 — Fundações** | Cadastros (E7), frota, permissões, entrada de km (RF-14/15), painel da frota | **Implementado** |
-| **R1 — Corretivo e execução** | E1, E2, E4, E5 — evento → triagem → fila → OS → portões → liberação | **Implementado, não validado contra banco** |
-| **R2 — Preventiva e Plantão** | E3, E6 — linha do tempo por km, escopo pacote + backlog, kit D-1, equipe, reprogramação com motivo; demanda de reposição, reserva habilitada, retorno ao vivo | **Implementado, não validado contra banco** |
+| **R1 — Corretivo e execução** | E1, E2, E4, E5 — evento → triagem → fila → OS → portões → liberação | **Implementado e validado contra Postgres** (e2e) |
+| **R2 — Preventiva e Plantão** | E3, E6 — linha do tempo por km, escopo pacote + backlog, kit D-1, equipe, reprogramação com motivo; demanda de reposição, reserva habilitada, retorno ao vivo | **Implementado e validado contra Postgres** (e2e) |
 | Fase 2 | RF-16, RF-40, RF-41 | Fora do MVP |
 
 O schema Prisma cobre **os oito épicos**; todas as telas do MVP existem em `apps/web` e rodam em modo mock. O QA funcional automatizado (`node tools/qa-smoke.mjs`, 75 verificações de UI) e o relatório em [QA.md](QA.md) registram o que foi exercitado.
 
-> **A API do R1 e do R2 ainda não rodou contra um banco.** Compila, o lint passa e as rotas sobem com o grafo de dependências resolvido, mas a máquina de estados (portões, relógio, fila, travas da preventiva, habilitação da reserva) não foi exercitada em Postgres. O teste que faz isso está pronto em `apps/api/test/r1-flow.e2e.ts` (R1 + R2) — rode `npm run test:e2e` com a API no ar assim que o Postgres existir.
+> **A API roda contra Postgres e passa no ciclo ponta a ponta.** `npm run test:e2e` (com a API no ar) exercita 78 verificações em `apps/api/test/r1-flow.e2e.ts`: RF-05/06/08, portões e relógio da OS, MKBF, preventiva com travas, plantão com habilitação, planos/kits, snapshots, recuperação de senha e o padrão de codificação de falhas. A primeira rodada real encontrou e corrigiu um bug (lookup de usuário com UUID vazio no detalhe da OS) que o modo mock nunca pegaria.
 
 ## Estrutura
 
