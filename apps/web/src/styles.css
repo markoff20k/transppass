@@ -1198,8 +1198,9 @@ small.muted {
 
 .dash-gauge__ring {
   position: relative;
-  width: 184px;
-  height: 184px;
+  width: 232px;
+  height: 232px;
+  margin: -16px 0;
 }
 
 .dash-gauge__ring .ring { width: 100%; height: 100%; display: block; }
@@ -1285,8 +1286,21 @@ small.muted {
 
 .ring__target {
   stroke: var(--color-text);
-  stroke-width: 2;
+  stroke-width: 2.5;
   stroke-linecap: round;
+}
+
+/* Rótulo da meta: halo na cor da superfície para ler sobre o anel em qualquer tema. */
+.ring__target-label {
+  font-family: var(--tp-font-sans);
+  font-size: 10px;
+  font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--color-text);
+  stroke: var(--color-surface);
+  stroke-width: 3;
+  paint-order: stroke fill;
 }
 
 @keyframes ring-in {
@@ -1631,7 +1645,7 @@ small.muted {
   .dash-hero__kpis { grid-template-columns: minmax(0, 1fr); }
   .dash-flow { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--tp-space-4); }
   .dash-flow__rail { display: none; }
-  .dash-gauge__ring { width: 160px; height: 160px; }
+  .dash-gauge__ring { width: 208px; height: 208px; }
   .dash-gauge__value { font-size: 38px; }
 }
 

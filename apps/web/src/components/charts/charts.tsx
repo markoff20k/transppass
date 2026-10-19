@@ -356,9 +356,11 @@ export function RingGauge({
   const pct = Math.max(0, Math.min(100, value));
   const offset = c * (1 - pct / 100);
   const style = { '--ring-c': c, '--ring-off': offset } as CSSProperties;
+  // Margem no viewBox para o rótulo da meta caber fora do anel sem ser recortado.
+  const pad = target !== undefined ? 30 : 0;
 
   return (
-    <svg className={`ring ring--${tone}`} viewBox={`0 0 ${size} ${size}`} style={style} role="img" aria-label={label ? `${label}: ${pct}%` : undefined}>
+    <svg className={`ring ring--${tone}`} viewBox={`${-pad} ${-pad} ${size + 2 * pad} ${size + 2 * pad}`} style={style} role="img" aria-label={label ? `${label}: ${pct}%` : undefined}>
       <defs>
         <filter id={`${id}-glow`} x="-30%" y="-30%" width="160%" height="160%">
           <feGaussianBlur stdDeviation="3.5" result="blur" />
@@ -383,16 +385,33 @@ export function RingGauge({
           filter={`url(#${id}-glow)`}
         />
       </g>
-      {target !== undefined && (
-        <line
-          className="ring__target"
-          x1={half}
-          y1={2}
-          x2={half}
-          y2={stroke + 4}
-          transform={`rotate(${target * 3.6} ${half} ${half})`}
-        />
-      )}
+      {target !== undefined && (() => {
+        // Marca da meta: um traço que atravessa o anel e um rótulo logo fora dele,
+        // no ângulo da meta — para ninguém ter de adivinhar o que o risco significa.
+        const a = ((target * 3.6 - 90) * Math.PI) / 180;
+        const inner = r - stroke / 2 - 3;
+        const outer = r + stroke / 2 + 3;
+        const labelR = outer + 5;
+        const lx = half + labelR * Math.cos(a);
+        const ly = half + labelR * Math.sin(a);
+        const anchor = Math.cos(a) < -0.2 ? 'end' : Math.cos(a) > 0.2 ? 'start' : 'middle';
+        const baseline = Math.sin(a) < -0.2 ? 'auto' : Math.sin(a) > 0.2 ? 'hanging' : 'middle';
+        return (
+          <g className="ring__target-group">
+            <line
+              className="ring__target"
+              x1={half + inner * Math.cos(a)}
+              y1={half + inner * Math.sin(a)}
+              x2={half + outer * Math.cos(a)}
+              y2={half + outer * Math.sin(a)}
+            />
+            <text className="ring__target-label" x={lx} y={ly} textAnchor={anchor} dominantBaseline={baseline}>
+              <tspan x={lx} dy={Math.sin(a) < -0.2 ? '-1.1em' : '0'}>meta</tspan>
+              <tspan x={lx} dy="1.1em">{target}%</tspan>
+            </text>
+          </g>
+        );
+      })()}
     </svg>
   );
 }
