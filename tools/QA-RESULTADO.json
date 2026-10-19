@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-10-19T13:41:32.561Z",
+  "ranAt": "2026-10-19T14:50:07.353Z",
   "base": "http://localhost:5173",
-  "passed": 76,
+  "passed": 77,
   "failed": 0,
   "results": [
     {
@@ -111,6 +111,12 @@
       "name": "Legenda das famílias de estado filtra a frota e volta ao todo",
       "ok": true,
       "detail": "13 → 3 (esperado 3) → 13"
+    },
+    {
+      "id": "DASH-07",
+      "name": "Cada etapa do fluxo tem tooltip \"i\" que explica a etapa no hover",
+      "ok": true,
+      "detail": "6 gatilhos; antes=hidden; depois=visible/1"
     },
     {
       "id": "ROUTE-01",

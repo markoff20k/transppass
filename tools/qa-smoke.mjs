@@ -169,6 +169,15 @@ async function run() {
     const restored = (await page.$$('.bus-grid .bus-card')).length;
     record('DASH-06', 'Legenda das famílias de estado filtra a frota e volta ao todo', items.length === 5 && filtered === expected && restored === before, `${before} → ${filtered} (esperado ${expected}) → ${restored}`);
   }
+  {
+    const triggers = await page.$$('.dash-flow__stage .tp-tip__trigger');
+    const hidden = await page.$eval('.dash-flow__stage:nth-child(4) .tp-tip__panel', (el) => getComputedStyle(el).visibility);
+    await triggers[3].hover();
+    await new Promise((r) => setTimeout(r, 450));
+    const shown = await page.$eval('.dash-flow__stage:nth-child(4) .tp-tip__panel', (el) => ({ vis: getComputedStyle(el).visibility, op: Number(getComputedStyle(el).opacity), text: el.textContent ?? '' }));
+    await page.mouse.move(5, 5);
+    record('DASH-07', 'Cada etapa do fluxo tem tooltip "i" que explica a etapa no hover', triggers.length === 6 && hidden === 'hidden' && shown.vis === 'visible' && shown.op > 0.95 && /Oficina/.test(shown.text) && /Estados/.test(shown.text), `${triggers.length} gatilhos; antes=${hidden}; depois=${shown.vis}/${shown.op}`);
+  }
 
   // ---- Rotas e painéis ------------------------------------------------------
   console.log('\nTelas e painéis laterais');

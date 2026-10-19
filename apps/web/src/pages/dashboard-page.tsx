@@ -15,6 +15,7 @@ import { formatDateTime, formatMinutes, formatNumber } from '@/lib/format';
 import { useI18n } from '@/i18n/i18n.context';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusIllustration } from '@/components/bus/bus-illustration';
+import { InfoTip } from '@/components/ui/info-tip';
 import {
   AvailabilityByHourChart,
   DowntimeDonut,
@@ -334,6 +335,24 @@ function GarageFlow({ byStatus }: { byStatus: Record<VehicleStatus, number> }) {
             <b>{s.n}</b>
           </Link>
           <span className="dash-flow__label">{s.label}</span>
+          <InfoTip
+            label={`${t.dash.whatIs} ${s.label}`}
+            align={i === 0 ? 'start' : i === stages.length - 1 ? 'end' : 'center'}
+            className="dash-flow__info"
+          >
+            <span className="tp-tip__title">
+              <i className="tp-tip__dot" aria-hidden />
+              {s.label}
+              <b className="tp-tip__count">
+                {s.n} {s.n === 1 ? t.dash.carNow : t.dash.carsNow}
+              </b>
+            </span>
+            <span className="tp-tip__body">{t.dash.stageHelp[s.key]}</span>
+            <span className="tp-tip__meta">
+              {t.dash.stageStates}: {s.statuses.map((st) => VEHICLE_STATUS_LABELS[st]).join(' · ')}
+            </span>
+            <span className="tp-tip__foot">{t.dash.stageOpen} {s.label} ↗</span>
+          </InfoTip>
         </li>
       ))}
     </ol>

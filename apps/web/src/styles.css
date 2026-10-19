@@ -1179,6 +1179,8 @@ small.muted {
 /* ---- Painel de cima ---------------------------------------------------- */
 
 .dash-hero {
+  position: relative;
+  z-index: 1; /* os tooltips do fluxo passam por cima dos cards abaixo */
   display: grid;
   grid-template-columns: 232px minmax(0, 1fr) 272px;
   gap: var(--tp-space-5);
@@ -1404,6 +1406,166 @@ small.muted {
 }
 
 .dash-flow__stage.is-active .dash-flow__label { color: var(--color-text-secondary); }
+
+/* Tooltip de informação — gatilho "i" + painel explicativo */
+.tp-tip {
+  position: relative;
+  display: inline-grid;
+  justify-items: center;
+}
+
+.tp-tip__trigger {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: help;
+  transition:
+    color var(--tp-duration-fast),
+    border-color var(--tp-duration-fast),
+    background var(--tp-duration-fast),
+    transform var(--tp-duration-fast) var(--tp-ease);
+}
+
+.tp-tip__trigger:hover:where(:not(:disabled)),
+.tp-tip:focus-within .tp-tip__trigger,
+.tp-tip.is-open .tp-tip__trigger {
+  color: var(--color-surface);
+  border-color: var(--color-text);
+  background: var(--color-text);
+  transform: translateY(-1px);
+}
+
+.tp-tip__trigger:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+.tp-tip__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  z-index: var(--tp-z-dropdown);
+  display: grid;
+  gap: var(--tp-space-2);
+  width: 248px;
+  padding: var(--tp-space-3) var(--tp-space-4);
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--tp-shadow-overlay);
+  font-size: var(--tp-text-xs);
+  line-height: 1.45;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--tp-duration-normal) var(--tp-ease),
+    transform var(--tp-duration-normal) var(--tp-ease),
+    visibility 0s linear var(--tp-duration-normal);
+}
+
+/* Seta: um quadrado girado, com a mesma borda do painel */
+.tp-tip__panel::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  width: 10px;
+  height: 10px;
+  border-top: var(--tp-border-thin) solid var(--color-border);
+  border-left: var(--tp-border-thin) solid var(--color-border);
+  background: var(--color-surface);
+  transform: rotate(45deg);
+}
+
+.tp-tip--center .tp-tip__panel { left: 50%; transform: translate(-50%, -6px); }
+.tp-tip--center .tp-tip__panel::before { left: calc(50% - 5px); }
+.tp-tip--start .tp-tip__panel { left: calc(50% - 20px); transform: translate(0, -6px); }
+.tp-tip--start .tp-tip__panel::before { left: 15px; }
+.tp-tip--end .tp-tip__panel { right: calc(50% - 20px); transform: translate(0, -6px); }
+.tp-tip--end .tp-tip__panel::before { right: 15px; }
+
+.tp-tip:hover .tp-tip__panel,
+.tp-tip:focus-within .tp-tip__panel,
+.tp-tip.is-open .tp-tip__panel {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 80ms, 80ms, 0s;
+}
+
+.tp-tip--center:hover .tp-tip__panel,
+.tp-tip--center:focus-within .tp-tip__panel,
+.tp-tip--center.is-open .tp-tip__panel { transform: translate(-50%, 0); }
+.tp-tip--start:hover .tp-tip__panel,
+.tp-tip--start:focus-within .tp-tip__panel,
+.tp-tip--start.is-open .tp-tip__panel,
+.tp-tip--end:hover .tp-tip__panel,
+.tp-tip--end:focus-within .tp-tip__panel,
+.tp-tip--end.is-open .tp-tip__panel { transform: translate(0, 0); }
+
+.tp-tip__title {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  font-family: var(--tp-font-display);
+  font-size: var(--tp-text-sm);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.tp-tip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--flow-color, var(--color-brand));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--flow-color, var(--color-brand)) 22%, transparent);
+  flex-shrink: 0;
+}
+
+.tp-tip__count {
+  margin-left: auto;
+  font-family: var(--tp-font-mono);
+  font-size: var(--tp-text-2xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.tp-tip__body { color: var(--color-text); }
+
+.tp-tip__meta {
+  color: var(--color-text-secondary);
+  font-size: var(--tp-text-2xs);
+}
+
+.tp-tip__foot {
+  margin-top: var(--tp-space-1);
+  padding-top: var(--tp-space-2);
+  border-top: var(--tp-border-thin) solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--tp-text-2xs);
+  font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* No fluxo da garagem, o gatilho fica sob o rótulo da etapa */
+.dash-flow__info { margin-top: calc(var(--tp-space-1) * -1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-tip__panel { transition: none; }
+}
 
 /* KPIs empilhados à direita do painel */
 .dash-hero__kpis {
@@ -1645,6 +1807,21 @@ small.muted {
   .dash-hero__kpis { grid-template-columns: minmax(0, 1fr); }
   .dash-flow { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--tp-space-4); }
   .dash-flow__rail { display: none; }
+  .dash-flow__stage:nth-child(3n + 1) .tp-tip__panel { left: calc(50% - 20px); right: auto; transform: translate(0, -6px); }
+  .dash-flow__stage:nth-child(3n + 1) .tp-tip__panel::before { left: 15px; right: auto; }
+  .dash-flow__stage:nth-child(3n + 2) .tp-tip__panel { left: 50%; right: auto; transform: translate(-50%, -6px); }
+  .dash-flow__stage:nth-child(3n + 2) .tp-tip__panel::before { left: calc(50% - 5px); right: auto; }
+  .dash-flow__stage:nth-child(3n) .tp-tip__panel { right: calc(50% - 20px); left: auto; transform: translate(0, -6px); }
+  .dash-flow__stage:nth-child(3n) .tp-tip__panel::before { right: 15px; left: auto; }
+  .dash-flow__stage:nth-child(3n + 1) .tp-tip:hover .tp-tip__panel,
+  .dash-flow__stage:nth-child(3n + 1) .tp-tip:focus-within .tp-tip__panel,
+  .dash-flow__stage:nth-child(3n + 1) .tp-tip.is-open .tp-tip__panel,
+  .dash-flow__stage:nth-child(3n) .tp-tip:hover .tp-tip__panel,
+  .dash-flow__stage:nth-child(3n) .tp-tip:focus-within .tp-tip__panel,
+  .dash-flow__stage:nth-child(3n) .tp-tip.is-open .tp-tip__panel { transform: translate(0, 0); }
+  .dash-flow__stage:nth-child(3n + 2) .tp-tip:hover .tp-tip__panel,
+  .dash-flow__stage:nth-child(3n + 2) .tp-tip:focus-within .tp-tip__panel,
+  .dash-flow__stage:nth-child(3n + 2) .tp-tip.is-open .tp-tip__panel { transform: translate(-50%, 0); }
   .dash-gauge__ring { width: 208px; height: 208px; }
   .dash-gauge__value { font-size: 38px; }
 }
@@ -1753,6 +1930,7 @@ small.muted {
   align-items: center;
   gap: var(--tp-space-2);
   height: 26px;
+  min-height: 0;
   padding: 0 var(--tp-space-3) 0 var(--tp-space-2);
   border: 0;
   border-radius: var(--tp-radius-full);
