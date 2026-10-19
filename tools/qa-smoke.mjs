@@ -156,6 +156,19 @@ async function run() {
   record('DASH-02', 'Grade de ônibus com ilustrações', (await page.$$('.bus-grid .bus')).length >= 5);
   record('DASH-03', 'Gráficos Recharts renderizados', (await page.$$('.recharts-surface')).length >= 3);
   record('DASH-04', 'Bloco de atenção com links', (await page.$$('.attention-item a')).length >= 1);
+  {
+    const items = await page.$$('.fleet-legend__item');
+    const before = (await page.$$('.bus-grid .bus-card')).length;
+    const waiting = await page.$('.fleet-legend__item--waiting');
+    const expected = Number(await waiting.$eval('.fleet-legend__count', (el) => el.textContent));
+    await waiting.click();
+    await new Promise((r) => setTimeout(r, 300));
+    const filtered = (await page.$$('.bus-grid .bus-card')).length;
+    await page.click('.fleet-legend__item--all');
+    await new Promise((r) => setTimeout(r, 300));
+    const restored = (await page.$$('.bus-grid .bus-card')).length;
+    record('DASH-06', 'Legenda das famílias de estado filtra a frota e volta ao todo', items.length === 5 && filtered === expected && restored === before, `${before} → ${filtered} (esperado ${expected}) → ${restored}`);
+  }
 
   // ---- Rotas e painéis ------------------------------------------------------
   console.log('\nTelas e painéis laterais');

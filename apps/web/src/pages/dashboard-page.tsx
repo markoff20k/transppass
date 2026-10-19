@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2, Minus } from 'lucide-react';
@@ -182,22 +183,7 @@ export function DashboardPage() {
       </section>
 
       {/* ---- A frota, carro a carro ---- */}
-      <section className="tp-card dash-glass dash-fleet">
-        <div className="tp-card__head">
-          <div>
-            <h3>{t.dash.fleetNow}</h3>
-            <span className="chart__hint">{t.dash.fleetNowHint}</span>
-          </div>
-          <Link to="/frota" className="tp-btn tp-btn--ghost tp-btn--sm">
-            {t.dash.seeAll}
-          </Link>
-        </div>
-        <div className="bus-grid">
-          {data.vehicles.map((v) => (
-            <BusCard key={v.id} vehicle={v} />
-          ))}
-        </div>
-      </section>
+      <FleetNow vehicles={data.vehicles} />
 
       {/* ---- Tendências ---- */}
       <section className="dash-row dash-row--charts">
@@ -391,6 +377,79 @@ function StatusSummary({ byStatus, total }: { byStatus: Record<VehicleStatus, nu
         ))}
       </ul>
     </div>
+  );
+}
+
+const FAMILIES: Family[] = ['running', 'waiting', 'working', 'stopped'];
+
+/**
+ * A frota carro a carro, com a legenda das quatro famílias de estado no
+ * cabeçalho. A legenda é também o filtro: passar o mouse realça a família,
+ * clicar deixa só ela na grade (clicar de novo, ou em "Todos", volta).
+ */
+function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
+  const { t } = useI18n();
+  const [selected, setSelected] = useState<Family | null>(null);
+  const [hovered, setHovered] = useState<Family | null>(null);
+
+  const familyOf = (v: DashboardVehicle): Family => VEHICLE_STATE_FAMILY[v.status] ?? 'waiting';
+  const counts = FAMILIES.map((family) => ({
+    family,
+    label: t.dash[family],
+    help: t.dash.legendHelp[family],
+    n: vehicles.filter((v) => familyOf(v) === family).length,
+  }));
+  const visible = selected ? vehicles.filter((v) => familyOf(v) === selected) : vehicles;
+  const focus = hovered ?? selected;
+
+  return (
+    <section className="tp-card dash-glass dash-fleet">
+      <div className="tp-card__head dash-fleet__head">
+        <div>
+          <h3>{t.dash.fleetNow}</h3>
+          <span className="chart__hint">{t.dash.fleetNowHint}</span>
+        </div>
+        <div className="fleet-legend" role="group" aria-label={t.dash.legendLabel}>
+          <button
+            type="button"
+            className="fleet-legend__item fleet-legend__item--all"
+            aria-pressed={selected === null}
+            onClick={() => setSelected(null)}
+          >
+            <span className="fleet-legend__label">{t.dash.legendAll}</span>
+            <b className="fleet-legend__count">{vehicles.length}</b>
+          </button>
+          {counts.map((c) => (
+            <button
+              key={c.family}
+              type="button"
+              className={`fleet-legend__item fleet-legend__item--${c.family}`}
+              aria-pressed={selected === c.family}
+              disabled={c.n === 0}
+              title={c.help}
+              onMouseEnter={() => setHovered(c.family)}
+              onMouseLeave={() => setHovered(null)}
+              onFocus={() => setHovered(c.family)}
+              onBlur={() => setHovered(null)}
+              onClick={() => setSelected((s) => (s === c.family ? null : c.family))}
+            >
+              <i className="fleet-legend__dot" aria-hidden />
+              <span className="fleet-legend__label">{c.label}</span>
+              <b className="fleet-legend__count">{c.n}</b>
+            </button>
+          ))}
+        </div>
+        <Link to="/frota" className="tp-btn tp-btn--ghost tp-btn--sm">
+          {t.dash.seeAll}
+        </Link>
+      </div>
+      <div className="bus-grid" data-focus={focus ?? undefined}>
+        {visible.map((v) => (
+          <BusCard key={v.id} vehicle={v} />
+        ))}
+      </div>
+      {visible.length === 0 && <p className="tp-muted dash-fleet__empty">{t.dash.legendEmpty}</p>}
+    </section>
   );
 }
 

@@ -1724,6 +1724,115 @@ small.muted {
 
 .status-summary__legend b { font-variant-numeric: tabular-nums; }
 
+/* Legenda das famílias de estado — também é o filtro da grade */
+.dash-fleet { min-width: 0; }
+
+.dash-fleet__head {
+  flex-wrap: wrap;
+  row-gap: var(--tp-space-2);
+}
+
+.fleet-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-full);
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+}
+
+.fleet-legend__item {
+  --legend-color: var(--color-neutral);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  height: 26px;
+  padding: 0 var(--tp-space-3) 0 var(--tp-space-2);
+  border: 0;
+  border-radius: var(--tp-radius-full);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--tp-text-xs);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--tp-duration-fast),
+    color var(--tp-duration-fast),
+    box-shadow var(--tp-duration-fast);
+}
+
+.fleet-legend__item--all { padding-left: var(--tp-space-3); }
+.fleet-legend__item--running { --legend-color: var(--color-state-running); }
+.fleet-legend__item--waiting { --legend-color: var(--color-state-waiting); }
+.fleet-legend__item--working { --legend-color: var(--color-state-working); }
+.fleet-legend__item--stopped { --legend-color: var(--color-state-stopped); }
+
+.fleet-legend__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--tp-radius-full);
+  background: var(--legend-color);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--legend-color) 35%, transparent);
+  transition: box-shadow var(--tp-duration-fast);
+}
+
+.fleet-legend__count {
+  font-family: var(--tp-font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.fleet-legend__item:hover:where(:not(:disabled)),
+.fleet-legend__item:focus-visible {
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  color: var(--color-text);
+  outline: none;
+}
+
+.fleet-legend__item:hover:where(:not(:disabled)) .fleet-legend__dot,
+.fleet-legend__item[aria-pressed='true'] .fleet-legend__dot {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--legend-color) 28%, transparent);
+}
+
+.fleet-legend__item[aria-pressed='true'] {
+  background: var(--color-text);
+  color: var(--color-surface);
+}
+
+.fleet-legend__item[aria-pressed='true'] .fleet-legend__count { color: inherit; }
+
+.fleet-legend__item:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-brand);
+}
+
+.fleet-legend__item:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+/* Realce: ao apontar uma família, as outras recuam */
+.bus-grid .bus-card { transition: opacity var(--tp-duration-normal) var(--tp-ease), border-color var(--tp-duration-fast), transform var(--tp-duration-fast) var(--tp-ease); }
+.bus-grid[data-focus='running'] .bus-card:not(.bus-card--running),
+.bus-grid[data-focus='waiting'] .bus-card:not(.bus-card--waiting),
+.bus-grid[data-focus='working'] .bus-card:not(.bus-card--working),
+.bus-grid[data-focus='stopped'] .bus-card:not(.bus-card--stopped) {
+  opacity: 0.28;
+}
+
+.dash-fleet__empty {
+  margin: var(--tp-space-4) 0 0;
+  text-align: center;
+}
+
 /* Grade de ônibus */
 .bus-grid {
   display: grid;
@@ -1753,6 +1862,7 @@ small.muted {
 
 .bus-card__text {
   display: grid;
+  align-content: start;
   gap: 1px;
   font-size: var(--tp-text-xs);
   min-width: 0;
@@ -1867,6 +1977,8 @@ small.muted {
   .dash-kpi__body .spark { display: none; }
   .dash-kpi__value { font-size: 30px; }
   .bus-grid { grid-template-columns: 1fr; }
+  .fleet-legend { order: 1; flex: 1 1 100%; margin-left: 0; flex-wrap: wrap; overflow: visible; border-radius: var(--tp-radius-lg); }
+  .dash-fleet__head > .tp-btn { order: 2; }
   .status-summary__legend { grid-template-columns: 1fr; }
 }
 
