@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutGrid, List } from 'lucide-react';
+import { LayoutGrid, List, Search } from 'lucide-react';
 import {
   KM_SOURCE_LABELS,
   VEHICLE_STATUS_LABELS,
@@ -11,11 +11,12 @@ import {
   type FleetPanelRow,
   type FleetPanelSummary,
 } from '@app/shared';
-import { VEHICLE_STATE_FAMILY } from '@app/design-kit';
 import { api } from '@/lib/api-client';
 import { formatNumber } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusIllustration } from '@/components/bus/bus-illustration';
+import { FleetLegend } from '@/components/fleet/fleet-legend';
+import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
 
 interface PanelResponse {
   summary: FleetPanelSummary;
@@ -24,12 +25,15 @@ interface PanelResponse {
 
 type View = 'grid' | 'table';
 
+/** Meta de disponibilidade — ARBITRADO em 85% até o PCM fixar (RF-38). */
+const AVAILABILITY_TARGET = 85;
+
 /**
  * RF-37 — painel da frota com estados ao vivo e KPIs no topo.
  *
  * Duas leituras da mesma frota: a grade de ônibus, para bater o olho e ver a
  * garagem; a tabela, para conferir km e leitura carro a carro. A preferência
- * fica no navegador.
+ * fica no navegador. A legenda das famílias é também o filtro rápido.
  */
 export function FleetPanelPage() {
   const [params, setParams] = useSearchParams();
@@ -40,6 +44,8 @@ export function FleetPanelPage() {
       return 'grid';
     }
   });
+  const [family, setFamily] = useState<Family | null>(null);
+  const [hovered, setHovered] = useState<Family | null>(null);
 
   const technology = (params.get('technology') ?? '') as VehicleTechnology | '';
   const status = (params.get('status') ?? '') as VehicleStatus | '';
@@ -107,42 +113,59 @@ export function FleetPanelPage() {
 
   const { summary, rows } = data;
   const availabilityPct = Math.round(summary.availabilityRate * 1000) / 10;
+  const visible = family ? rows.filter((r) => familyOf(r.status) === family) : rows;
+  const focus = hovered ?? family;
+  const degradedTone = summary.degradedKmCount > 0 ? 'tp-kpi--warn' : 'tp-kpi--good';
 
   return (
     <>
       <div className="tp-kpi-row">
-        <div className="tp-kpi">
+        <div className="tp-kpi tp-kpi--brand">
           <span className="tp-kpi__label">Frota</span>
           <strong className="tp-kpi__value">{summary.total}</strong>
+          <span className="tp-kpi__note">carros ativos na garagem</span>
         </div>
         <div className="tp-kpi tp-kpi--good">
           <span className="tp-kpi__label">Disponíveis</span>
           <strong className="tp-kpi__value">{summary.available}</strong>
+          <span className="tp-kpi__note">em linha ou prontos no pátio</span>
         </div>
-        <div className={`tp-kpi ${availabilityPct >= 85 ? 'tp-kpi--good' : 'tp-kpi--warn'}`}>
+        <div className={`tp-kpi ${availabilityPct >= AVAILABILITY_TARGET ? 'tp-kpi--good' : availabilityPct >= AVAILABILITY_TARGET - 10 ? 'tp-kpi--warn' : 'tp-kpi--danger'}`}>
           <span className="tp-kpi__label">Disponibilidade</span>
           <strong className="tp-kpi__value">{availabilityPct.toLocaleString('pt-BR')}%</strong>
+          <span className="tp-kpi__note">meta {AVAILABILITY_TARGET}% · {availabilityPct >= AVAILABILITY_TARGET ? 'dentro da meta' : `faltam ${(AVAILABILITY_TARGET - availabilityPct).toLocaleString('pt-BR')} pp`}</span>
         </div>
-        <div className={`tp-kpi ${summary.degradedKmCount > 0 ? 'tp-kpi--warn' : 'tp-kpi--good'}`}>
+        <div className={`tp-kpi ${degradedTone}`}>
           <span className="tp-kpi__label">Km degradado</span>
           <strong className="tp-kpi__value">{summary.degradedKmCount}</strong>
-          <span className="tp-kpi__note">Sem leitura de odômetro há mais de 2 dias</span>
+          <span className="tp-kpi__note">sem leitura de odômetro há mais de 2 dias</span>
         </div>
       </div>
 
-      <div className="tp-card">
-        <div className="tp-row">
-          <input
-            type="search"
-            className="tp-input"
-            style={{ maxWidth: 220 }}
-            placeholder="Prefixo ou placa"
-            value={search}
-            onChange={(e) => setParam('search', e.target.value)}
-          />
+      <section className="tp-card dash-fleet">
+        <div className="tp-card__head dash-fleet__head">
+          <div>
+            <h3>A frota agora</h3>
+            <span className="chart__hint">cada carro no estado em que está — a legenda filtra por família</span>
+          </div>
+          <FleetLegend statuses={rows.map((r) => r.status)} selected={family} onSelect={setFamily} onHover={setHovered} />
+        </div>
+
+        <div className="tp-toolbar">
+          <label className="tp-search">
+            <Search size={15} aria-hidden />
+            <input
+              type="search"
+              className="tp-input"
+              placeholder="Prefixo ou placa"
+              aria-label="Buscar por prefixo ou placa"
+              value={search}
+              onChange={(e) => setParam('search', e.target.value)}
+            />
+          </label>
           <select
             className="tp-select"
-            style={{ maxWidth: 200 }}
+            aria-label="Tecnologia"
             value={technology}
             onChange={(e) => setParam('technology', e.target.value)}
           >
@@ -155,7 +178,7 @@ export function FleetPanelPage() {
           </select>
           <select
             className="tp-select"
-            style={{ maxWidth: 220 }}
+            aria-label="Estado"
             value={status}
             onChange={(e) => setParam('status', e.target.value)}
           >
@@ -166,37 +189,42 @@ export function FleetPanelPage() {
               </option>
             ))}
           </select>
-          <span className="tp-muted" style={{ marginLeft: 'auto' }}>
-            {rows.length} carro(s)
+          <span className="tp-muted tp-toolbar__count">
+            {visible.length === rows.length ? `${rows.length} carro(s)` : `${visible.length} de ${rows.length} carro(s)`}
           </span>
         </div>
 
-        {rows.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="tp-table__empty">Nenhum carro encontrado com esses filtros.</div>
         ) : view === 'grid' ? (
-          <div className="bus-grid">
-            {rows.map((row) => {
-              const family = VEHICLE_STATE_FAMILY[row.status] ?? 'waiting';
+          <div className="bus-grid bus-grid--panel" data-focus={focus ?? undefined}>
+            {visible.map((row) => {
+              const fam = familyOf(row.status);
               return (
-                <div key={row.id} className={`bus-card bus-card--${family}`}>
+                <div key={row.id} className={`bus-card bus-card--${fam}`}>
                   <BusIllustration status={row.status} code={row.code} width={200} />
                   <div className="bus-card__text">
                     <div className="bus-card__row">
                       <b>{row.code}</b>
                       <span className="tp-muted">{row.plate}</span>
                     </div>
-                    <span className={`tp-state tp-state--${family}`}>
+                    <span className={`tp-state tp-state--${fam}`}>
                       {VEHICLE_STATUS_LABELS[row.status]}
                     </span>
-                    <span className="bus-card__reason">
-                      {formatNumber(row.currentKm)} km ·{' '}
-                      {row.daysSinceLastReading === null
-                        ? 'sem leitura'
-                        : `leitura há ${row.daysSinceLastReading}d`}
-                    </span>
-                    {row.isKmDegraded && (
-                      <span className="tp-badge tp-badge--warning">projeção degradada</span>
-                    )}
+                    <div className="bus-card__facts">
+                      <span><b>{formatNumber(row.currentKm)}</b> km</span>
+                      <span className={row.isKmDegraded ? 'tp-error' : 'tp-muted'}>
+                        {row.daysSinceLastReading === null
+                          ? 'sem leitura'
+                          : row.daysSinceLastReading === 0
+                            ? 'leitura hoje'
+                            : `leitura há ${row.daysSinceLastReading}d`}
+                      </span>
+                    </div>
+                    <div className="bus-card__tags">
+                      <span className="tp-badge">{VEHICLE_TECHNOLOGY_LABELS[row.technology]}</span>
+                      {row.isKmDegraded && <span className="tp-badge tp-badge--warning">projeção degradada</span>}
+                    </div>
                   </div>
                 </div>
               );
@@ -219,15 +247,15 @@ export function FleetPanelPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => {
-                  const family = VEHICLE_STATE_FAMILY[row.status] ?? 'waiting';
+                {visible.map((row) => {
+                  const fam = familyOf(row.status);
                   return (
                     <tr key={row.id} className={row.isKmDegraded ? 'is-warning' : undefined}>
                       <td className="is-strong">{row.code}</td>
-                      <td>{row.plate}</td>
+                      <td className="tp-muted">{row.plate}</td>
                       <td>{VEHICLE_TECHNOLOGY_LABELS[row.technology]}</td>
                       <td>
-                        <span className={`tp-state tp-state--${family}`}>
+                        <span className={`tp-state tp-state--${fam}`}>
                           {VEHICLE_STATUS_LABELS[row.status]}
                         </span>
                       </td>
@@ -255,7 +283,7 @@ export function FleetPanelPage() {
             </table>
           </div>
         )}
-      </div>
+      </section>
     </>
   );
 }

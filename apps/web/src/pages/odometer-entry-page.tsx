@@ -1,6 +1,7 @@
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CalendarDays } from 'lucide-react';
 import {
   classifyOdometerDelta,
   KmSource,
@@ -10,6 +11,7 @@ import {
   type Vehicle,
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
+import { todayLocalIso } from '@/lib/format';
 
 /**
  * RF-14 — lançamento diário de km da frota diesel, em lote.
@@ -22,7 +24,7 @@ export function OdometerEntryPage() {
   usePageHeader({ eyebrow: 'Gestão', title: 'Lançamento de km', description: 'Leitura diária da frota diesel, validada na origem.' });
 
   const queryClient = useQueryClient();
-  const [readAt, setReadAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [readAt, setReadAt] = useState(() => todayLocalIso());
   const [values, setValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState<OdometerBatchResult | null>(null);
 
@@ -53,6 +55,8 @@ export function OdometerEntryPage() {
   );
 
   const blocking = entries.filter((e) => e.status === OdometerStatus.REJECTED);
+  const suspect = entries.filter((e) => e.status === OdometerStatus.SUSPECT);
+  const pending = vehicles.length - entries.length;
 
   const mutation = useMutation({
     mutationFn: (payload: { entries: { vehicleId: string; rawKm: number; readAt: string }[] }) =>
@@ -80,121 +84,165 @@ export function OdometerEntryPage() {
   if (isPending) return <p className="tp-muted">Carregando frota…</p>;
 
   return (
-    <form onSubmit={submit}>
-      <div className="tp-row">
-        <label className="inline">
-          Data da leitura
-          <input
-            type="date"
-            value={readAt}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={(e) => setReadAt(e.target.value)}
-            required
-          />
-        </label>
-        <span className="tp-muted">
-          {entries.length} de {vehicles.length} carros preenchidos
-        </span>
-      </div>
-
-      {vehicles.length === 0 && (
-        <p className="tp-muted">
-          Nenhum carro com fonte de km manual. A frota eBUS é lida por telemetria.
-        </p>
-      )}
-
-      <div className="tp-table-wrap">
-        <table className="tp-table">
-          <thead>
-            <tr>
-              <th>Prefixo</th>
-              <th>Placa</th>
-              <th className="is-num">Km anterior</th>
-              <th className="is-num">Leitura do hodômetro</th>
-              <th className="is-num">Delta</th>
-              <th>Validação</th>
-            </tr>
-          </thead>
-          <tbody>
-            {vehicles.map((vehicle) => {
-              const entry = entries.find((e) => e.vehicle.id === vehicle.id);
-              return (
-                <tr
-                  key={vehicle.id}
-                  className={
-                    entry?.status === OdometerStatus.REJECTED
-                      ? 'is-danger'
-                      : entry?.status === OdometerStatus.SUSPECT
-                        ? 'is-warning'
-                        : undefined
-                  }
-                >
-                  <td className="is-strong">{vehicle.code}</td>
-                  <td>{vehicle.plate}</td>
-                  <td className="is-num">
-                    {vehicle.currentKm > 0 ? vehicle.currentKm.toLocaleString('pt-BR') : '—'}
-                  </td>
-                  <td className="is-num">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      className="km-input"
-                      value={values[vehicle.id] ?? ''}
-                      onChange={(e) =>
-                        setValues((prev) => ({ ...prev, [vehicle.id]: e.target.value }))
-                      }
-                      placeholder="—"
-                    />
-                  </td>
-                  <td className="is-num">
-                    {entry?.deltaKm === null || entry?.deltaKm === undefined
-                      ? '—'
-                      : entry.deltaKm.toLocaleString('pt-BR')}
-                  </td>
-                  <td className="validation">{entry?.message ?? ''}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {mutation.isError && (
-        <p className="tp-error">
-          {mutation.error instanceof ApiError
-            ? mutation.error.message
-            : 'Falha ao enviar os lançamentos'}
-        </p>
-      )}
-
-      {result && (
-        <div className="tp-alert tp-alert--info">
-          <strong>
-            {result.accepted} aceito(s), {result.suspect} com suspeita, {result.rejected} recusado(s).
-          </strong>
-          <ul>
-            {result.items
-              .filter((i) => i.message)
-              .map((i) => (
-                <li key={i.vehicleId}>
-                  <b>{i.vehicleCode}</b>: {i.message}
-                </li>
-              ))}
-          </ul>
+    <form onSubmit={submit} className="tp-stack">
+      <div className="tp-kpi-row">
+        <div className="tp-kpi tp-kpi--brand">
+          <span className="tp-kpi__label">Carros a lançar</span>
+          <strong className="tp-kpi__value">{vehicles.length}</strong>
+          <span className="tp-kpi__note">frota com km manual — eBUS vem por telemetria</span>
         </div>
-      )}
-
-      <div className="tp-row tp-row--end">
-        {blocking.length > 0 && (
-          <span className="tp-error">
-            {blocking.length} leitura(s) serão recusadas — corrija antes de enviar.
-          </span>
-        )}
-        <button type="submit" className="tp-btn tp-btn--primary" disabled={entries.length === 0 || mutation.isPending}>
-          {mutation.isPending ? 'Enviando…' : `Lançar ${entries.length} leitura(s)`}
-        </button>
+        <div className={`tp-kpi ${pending === 0 && vehicles.length > 0 ? 'tp-kpi--good' : ''}`}>
+          <span className="tp-kpi__label">Preenchidos</span>
+          <strong className="tp-kpi__value">
+            {entries.length}<small className="tp-kpi__of"> / {vehicles.length}</small>
+          </strong>
+          <span className="tp-kpi__note">{pending === 0 ? 'dia completo' : `${pending} ainda sem leitura`}</span>
+        </div>
+        <div className={`tp-kpi ${suspect.length > 0 ? 'tp-kpi--warn' : ''}`}>
+          <span className="tp-kpi__label">Com suspeita</span>
+          <strong className="tp-kpi__value">{suspect.length}</strong>
+          <span className="tp-kpi__note">delta fora da média — entra marcado</span>
+        </div>
+        <div className={`tp-kpi ${blocking.length > 0 ? 'tp-kpi--danger' : ''}`}>
+          <span className="tp-kpi__label">Recusadas</span>
+          <strong className="tp-kpi__value">{blocking.length}</strong>
+          <span className="tp-kpi__note">km menor que o anterior ou salto impossível</span>
+        </div>
       </div>
+
+      <section className="tp-card">
+        <div className="tp-card__head">
+          <div>
+            <h3>Leitura do dia</h3>
+            <span className="chart__hint">a validação acontece enquanto você digita, com o mesmo critério da API</span>
+          </div>
+          <label className="km-date">
+            <CalendarDays size={15} aria-hidden />
+            <span>Data da leitura</span>
+            <input
+              type="date"
+              className="tp-input"
+              value={readAt}
+              max={todayLocalIso()}
+              onChange={(e) => setReadAt(e.target.value)}
+              required
+            />
+          </label>
+        </div>
+
+        {vehicles.length === 0 && (
+          <div className="tp-table__empty">
+            Nenhum carro com fonte de km manual. A frota eBUS é lida por telemetria.
+          </div>
+        )}
+
+        {vehicles.length > 0 && (
+          <div className="tp-table-wrap">
+            <table className="tp-table km-table">
+              <thead>
+                <tr>
+                  <th>Prefixo</th>
+                  <th>Placa</th>
+                  <th className="is-num">Km anterior</th>
+                  <th className="is-num">Leitura do hodômetro</th>
+                  <th className="is-num">Delta</th>
+                  <th>Validação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vehicles.map((vehicle) => {
+                  const entry = entries.find((e) => e.vehicle.id === vehicle.id);
+                  const tone =
+                    entry?.status === OdometerStatus.REJECTED
+                      ? 'danger'
+                      : entry?.status === OdometerStatus.SUSPECT
+                        ? 'warning'
+                        : entry
+                          ? 'success'
+                          : null;
+                  return (
+                    <tr
+                      key={vehicle.id}
+                      className={tone === 'danger' ? 'is-danger' : tone === 'warning' ? 'is-warning' : undefined}
+                    >
+                      <td className="is-strong">{vehicle.code}</td>
+                      <td className="tp-muted">{vehicle.plate}</td>
+                      <td className="is-num">
+                        {vehicle.currentKm > 0 ? vehicle.currentKm.toLocaleString('pt-BR') : '—'}
+                      </td>
+                      <td className="is-num">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          className="tp-input km-input"
+                          aria-label={`Leitura do hodômetro do carro ${vehicle.code}`}
+                          value={values[vehicle.id] ?? ''}
+                          onChange={(e) =>
+                            setValues((prev) => ({ ...prev, [vehicle.id]: e.target.value }))
+                          }
+                          placeholder="—"
+                        />
+                      </td>
+                      <td className="is-num">
+                        {entry?.deltaKm === null || entry?.deltaKm === undefined ? (
+                          <span className="tp-muted">—</span>
+                        ) : (
+                          <b>{entry.deltaKm > 0 ? '+' : ''}{entry.deltaKm.toLocaleString('pt-BR')} km</b>
+                        )}
+                      </td>
+                      <td className="validation">
+                        {tone === 'success' && <span className="tp-badge tp-badge--success">ok</span>}
+                        {tone === 'warning' && <span className="tp-badge tp-badge--warning">suspeita</span>}
+                        {tone === 'danger' && <span className="tp-badge tp-badge--danger">recusada</span>}
+                        {entry?.message && <span className="validation__text">{entry.message}</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {mutation.isError && (
+          <p className="tp-error">
+            {mutation.error instanceof ApiError
+              ? mutation.error.message
+              : 'Falha ao enviar os lançamentos'}
+          </p>
+        )}
+
+        {result && (
+          <div className="tp-alert tp-alert--info">
+            <strong>
+              {result.accepted} aceito(s), {result.suspect} com suspeita, {result.rejected} recusado(s).
+            </strong>
+            <ul>
+              {result.items
+                .filter((i) => i.message)
+                .map((i) => (
+                  <li key={i.vehicleId}>
+                    <b>{i.vehicleCode}</b>: {i.message}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="tp-card__foot">
+          <span className={blocking.length > 0 ? 'tp-error' : 'tp-muted'}>
+            {blocking.length > 0
+              ? `${blocking.length} leitura(s) serão recusadas — corrija antes de enviar.`
+              : entries.length === 0
+                ? 'Digite a leitura de pelo menos um carro.'
+                : `${entries.length} de ${vehicles.length} carros preenchidos.`}
+          </span>
+          <button type="submit" className="tp-btn tp-btn--primary" disabled={entries.length === 0 || mutation.isPending}>
+            {mutation.isPending ? 'Enviando…' : `Lançar ${entries.length} leitura(s)`}
+          </button>
+        </div>
+      </section>
     </form>
   );
 }

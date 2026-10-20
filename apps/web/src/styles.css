@@ -91,51 +91,102 @@
   flex-wrap: wrap;
 }
 
-/* --- KPI ----------------------------------------------------------------- */
+/* --- Peças de lista: barra de ferramentas, busca, progresso, rodapé ----- */
 
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: var(--tp-space-3);
-}
-
-.kpi {
+.tp-toolbar {
   display: flex;
-  flex-direction: column;
-  gap: var(--tp-space-1);
-  padding: var(--tp-space-4);
-  background: var(--color-surface);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--tp-space-2);
+  padding: var(--tp-space-2);
   border: var(--tp-border-thin) solid var(--color-border);
-  border-left: var(--tp-border-thick) solid var(--color-border-strong);
-  border-radius: var(--tp-radius-lg);
+  border-radius: var(--tp-radius-md);
+  background: var(--color-surface-sunken);
 }
 
-.kpi-good {
-  border-left-color: var(--color-success);
-}
+.tp-toolbar .tp-select { max-width: 220px; }
+.tp-toolbar__count { margin-left: auto; padding-right: var(--tp-space-2); font-variant-numeric: tabular-nums; }
 
-.kpi-warn {
-  border-left-color: var(--color-warning);
-}
-
-.kpi-label {
-  font-size: var(--tp-text-xs);
-  font-weight: var(--tp-weight-medium);
+.tp-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 200px;
+  max-width: 280px;
   color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
-.kpi-value {
-  font-size: var(--tp-text-2xl);
-  font-weight: var(--tp-weight-bold);
-  line-height: var(--tp-leading-tight);
+.tp-search svg { position: absolute; left: 10px; pointer-events: none; }
+.tp-search input.tp-input[type='search'] { padding-left: 32px; }
+
+.tp-card__tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--tp-space-3);
+  white-space: nowrap;
+}
+
+.tp-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  min-width: 120px;
+}
+
+.tp-progress__bar {
+  display: block;
+  flex: 1 1 72px;
+  height: 6px;
+  border-radius: var(--tp-radius-full);
+  background: var(--color-surface-sunken);
+  overflow: hidden;
+}
+
+.tp-progress__bar b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-brand), color-mix(in srgb, var(--color-brand) 70%, #fff));
+  transition: width var(--tp-duration-normal) var(--tp-ease);
+}
+
+.tp-progress__text {
+  font-family: var(--tp-font-mono);
+  font-size: var(--tp-text-xs);
   font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
 }
 
-.kpi-value.small {
-  font-size: var(--tp-text-md);
+.tp-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--tp-space-3);
+  margin: 0 calc(-1 * var(--tp-space-4)) calc(-1 * var(--tp-space-4));
+  padding: var(--tp-space-3) var(--tp-space-4);
+  border-top: var(--tp-border-thin) solid var(--color-border);
+  background: var(--color-surface-sunken);
+  border-radius: 0 0 var(--tp-radius-lg) var(--tp-radius-lg);
 }
+
+.tp-check--inline { min-height: 0; font-size: var(--tp-text-sm); white-space: nowrap; }
+.tp-check--inline input { width: 16px; height: 16px; }
+
+.km-date {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  font-size: var(--tp-text-sm);
+  color: var(--color-text-secondary);
+}
+
+.km-date .tp-input { width: auto; }
+
+.km-table td { vertical-align: middle; }
+.validation__text { display: block; font-size: var(--tp-text-xs); color: var(--color-text-secondary); white-space: normal; max-width: 320px; }
+td.validation .tp-badge { margin-bottom: 2px; }
 
 /* --- Tabelas ------------------------------------------------------------- */
 
@@ -2069,6 +2120,24 @@ small.muted {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.bus-card__facts {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--tp-space-2);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bus-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: var(--tp-space-1);
+}
+
+.bus-grid--panel { grid-template-columns: repeat(auto-fill, minmax(188px, 1fr)); gap: var(--tp-space-3); }
+.bus-grid--panel .bus-card { padding-bottom: var(--tp-space-3); }
 
 /* Últimos eventos */
 .recent-list {

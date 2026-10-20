@@ -127,9 +127,9 @@
      numa barra empilhada, inclusive para quem tem deficiência de cor. Por
      isso a barra sempre vem acompanhada de legenda com texto — a cor é
      reforço, nunca o único portador da informação. */
-  --color-cause-queue: var(--tp-violet-600);
-  --color-cause-material: var(--tp-amber-600);
-  --color-cause-execution: var(--tp-blue-600);
+  --color-cause-queue: var(--tp-amber-600); /* esperando */
+  --color-cause-material: var(--tp-red-600); /* parado pelo estoque */
+  --color-cause-execution: var(--tp-blue-600); /* em serviço */
   --color-cause-inspection: var(--tp-green-600);
   --color-cause-cleaning: var(--tp-cyan-600);
   --color-cause-release-wait: var(--tp-graphite-400);
@@ -261,8 +261,8 @@
     --color-state-working: var(--tp-blue-400);
     --color-state-stopped: var(--tp-red-400);
 
-    --color-cause-queue: var(--tp-violet-400);
-    --color-cause-material: var(--tp-amber-400);
+    --color-cause-queue: var(--tp-amber-400);
+    --color-cause-material: var(--tp-red-400);
     --color-cause-execution: var(--tp-blue-400);
     --color-cause-inspection: var(--tp-green-400);
     --color-cause-cleaning: var(--tp-cyan-400);

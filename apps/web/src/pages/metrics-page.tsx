@@ -31,28 +31,28 @@ export function MetricsPage() {
     <>
       <section className="tp-card">
         <div className="tp-card__head">
-          <h2>MKBF — métrica norte</h2>
-          <span className="tp-muted">
-            Mês corrente, calculado dos estados do processo
-          </span>
+          <div>
+            <h3>MKBF — métrica norte</h3>
+            <span className="chart__hint">mês corrente, calculado dos estados do processo — ninguém digita</span>
+          </div>
         </div>
 
         <div className="tp-kpi-row">
-          <div className="kpi tp-kpi--good">
+          <div className="tp-kpi tp-kpi--good">
             <span className="tp-kpi__label">MKBF</span>
             <strong className="tp-kpi__value">
               {data.mkbf.mkbf === null ? '—' : `${formatNumber(data.mkbf.mkbf)} km`}
             </strong>
           </div>
-          <div className="kpi">
+          <div className="tp-kpi">
             <span className="tp-kpi__label">Km rodados</span>
             <strong className="tp-kpi__value">{formatNumber(data.mkbf.kmTraveled)}</strong>
           </div>
-          <div className="kpi">
+          <div className="tp-kpi">
             <span className="tp-kpi__label">Retornos não programados</span>
             <strong className="tp-kpi__value">{data.mkbf.unscheduledReturns}</strong>
           </div>
-          <div className="kpi">
+          <div className="tp-kpi">
             <span className="tp-kpi__label">OS liberadas</span>
             <strong className="tp-kpi__value">{data.workOrdersReleased}</strong>
           </div>
@@ -67,7 +67,12 @@ export function MetricsPage() {
       </section>
 
       <section className="tp-card">
-        <h2>Indisponibilidade por causa (RF-39)</h2>
+        <div className="tp-card__head">
+          <div>
+            <h3>Indisponibilidade por causa (RF-39)</h3>
+            <span className="chart__hint">onde o relógio das OS do mês ficou</span>
+          </div>
+        </div>
         {data.downtimeByCause.length === 0 ? (
           <p className="tp-muted">Nenhum tempo de indisponibilidade registrado no período.</p>
         ) : (
@@ -120,17 +125,17 @@ export function MetricsPage() {
 
       <div className="tp-split">
         <section className="tp-card">
-          <h2>SLA de triagem</h2>
+          <h3>SLA de triagem</h3>
           <p className="tp-muted">
             Do registro do evento até a decisão do PCM. Os valores-alvo ainda serão pactuados com
             a Transppass (questão aberta do PRD) — por ora, só se mede.
           </p>
           <div className="tp-kpi-row">
-            <div className="kpi">
+            <div className="tp-kpi">
               <span className="tp-kpi__label">Triagens</span>
               <strong className="tp-kpi__value">{data.triageSla.count}</strong>
             </div>
-            <div className="kpi">
+            <div className="tp-kpi">
               <span className="tp-kpi__label">Mediana</span>
               <strong className="tp-kpi__value tp-kpi__value--sm">
                 {data.triageSla.medianSeconds === null
@@ -138,7 +143,7 @@ export function MetricsPage() {
                   : formatDuration(data.triageSla.medianSeconds)}
               </strong>
             </div>
-            <div className="kpi">
+            <div className="tp-kpi">
               <span className="tp-kpi__label">p90</span>
               <strong className="tp-kpi__value tp-kpi__value--sm">
                 {data.triageSla.p90Seconds === null
@@ -150,12 +155,12 @@ export function MetricsPage() {
         </section>
 
         <section className="tp-card">
-          <h2>Alinhamento origem × diagnóstico</h2>
+          <h3>Alinhamento origem × diagnóstico</h3>
           <p className="tp-muted">
             O código decidido no registro se sustenta frente ao que a manutenção constata? Compara, por evento com constatação, o Sistema e o Subsistema completo (padrão de codificação, seção 8.2).
           </p>
           <div className="tp-kpi-row">
-            <div className="kpi">
+            <div className="tp-kpi">
               <span className="tp-kpi__label">Comparados</span>
               <strong className="tp-kpi__value">{data.codeAlignment.compared}</strong>
             </div>
@@ -164,7 +169,7 @@ export function MetricsPage() {
               <strong className="tp-kpi__value">{data.codeAlignment.systemRate === null ? '—' : `${(data.codeAlignment.systemRate * 100).toFixed(0)}%`}</strong>
               <span className="tp-muted">{data.codeAlignment.systemMatch} de {data.codeAlignment.compared}</span>
             </div>
-            <div className="kpi">
+            <div className="tp-kpi">
               <span className="tp-kpi__label">Subsistema confere</span>
               <strong className="tp-kpi__value">{data.codeAlignment.fullRate === null ? '—' : `${(data.codeAlignment.fullRate * 100).toFixed(0)}%`}</strong>
               <span className="tp-muted">{data.codeAlignment.fullMatch} de {data.codeAlignment.compared}</span>
@@ -173,9 +178,9 @@ export function MetricsPage() {
         </section>
 
         <section className="tp-card">
-          <h2>Resolução em campo e retrabalho</h2>
+          <h3>Resolução em campo e retrabalho</h3>
           <div className="tp-kpi-row">
-            <div className="kpi">
+            <div className="tp-kpi">
               <span className="tp-kpi__label">Resolvido em campo</span>
               <strong className="tp-kpi__value">
                 {data.fieldResolution.rate === null
@@ -198,21 +203,21 @@ export function MetricsPage() {
                 inspeções
               </span>
             </div>
-            <div className="kpi">
+            <div className="tp-kpi">
               <span className="tp-kpi__label">Aderência à preventiva</span>
               <strong className="tp-kpi__value">
                 {data.adherence.preventive.rate === null ? '—' : `${(data.adherence.preventive.rate * 100).toFixed(0)}%`}
               </strong>
               <span className="tp-muted">{data.adherence.preventive.onTime} de {data.adherence.preventive.due} paradas no prazo</span>
             </div>
-            <div className="kpi">
+            <div className="tp-kpi">
               <span className="tp-kpi__label">Adoção do processo</span>
               <strong className="tp-kpi__value">
                 {data.adherence.adoption.rate === null ? '—' : `${(data.adherence.adoption.rate * 100).toFixed(0)}%`}
               </strong>
               <span className="tp-muted">{data.adherence.adoption.complete} de {data.adherence.adoption.released} OS com inspeção e limpeza</span>
             </div>
-            <div className="kpi">
+            <div className="tp-kpi">
               <span className="tp-kpi__label">Indisponibilidade média</span>
               <strong className="tp-kpi__value tp-kpi__value--sm">
                 {data.averageDowntimeMinutes === null
@@ -227,7 +232,7 @@ export function MetricsPage() {
       <section className="tp-card">
         <div className="tp-card__head">
           <div>
-            <h2>Histórico mensal</h2>
+            <h3>Histórico mensal</h3>
             <span className="chart__hint">snapshots gravados toda madrugada (E8); o mês corrente é recalculado ao abrir</span>
           </div>
         </div>

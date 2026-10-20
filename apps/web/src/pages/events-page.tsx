@@ -44,19 +44,51 @@ export function EventsPage() {
   });
 
   const events = useQuery({
-    queryKey: ['events', 'recent', status],
-    queryFn: () => api.get<Paginated<FailureEventSummary>>(`/events?perPage=50${status ? `&status=${status}` : ''}`),
+    queryKey: ['events', 'recent'],
+    queryFn: () => api.get<Paginated<FailureEventSummary>>('/events?perPage=50'),
     refetchInterval: 30_000,
   });
 
-  const rows = events.data?.data ?? [];
+  const all = events.data?.data ?? [];
+  const rows = status ? all.filter((e) => e.status === status) : all;
+  const today = new Date().toDateString();
+  const registeredToday = all.filter((e) => new Date(e.reportedAt).toDateString() === today).length;
+  const awaitingTriage = all.filter((e) => e.status === EventStatus.REGISTERED || e.status === EventStatus.IN_TRIAGE).length;
+  const safetyOpen = all.filter((e) => e.flags.isSafety && e.status !== EventStatus.CLOSED && e.status !== EventStatus.CANCELLED).length;
+  const deferred = all.filter((e) => e.status === EventStatus.DEFERRED).length;
 
   return (
     <>
+      <div className="tp-kpi-row">
+        <div className="tp-kpi tp-kpi--brand">
+          <span className="tp-kpi__label">Registrados hoje</span>
+          <strong className="tp-kpi__value">{registeredToday}</strong>
+          <span className="tp-kpi__note">pelo CCO, socorro e oficina</span>
+        </div>
+        <div className={`tp-kpi ${awaitingTriage > 0 ? 'tp-kpi--warn' : 'tp-kpi--good'}`}>
+          <span className="tp-kpi__label">Aguardando triagem</span>
+          <strong className="tp-kpi__value">{awaitingTriage}</strong>
+          <span className="tp-kpi__note">o SLA de decisão corre sobre estes</span>
+        </div>
+        <div className={`tp-kpi ${safetyOpen > 0 ? 'tp-kpi--danger' : 'tp-kpi--good'}`}>
+          <span className="tp-kpi__label">Segurança em aberto</span>
+          <strong className="tp-kpi__value">{safetyOpen}</strong>
+          <span className="tp-kpi__note">não voltam à linha nem podem ser deferidos</span>
+        </div>
+        <div className="tp-kpi">
+          <span className="tp-kpi__label">Deferidos</span>
+          <strong className="tp-kpi__value">{deferred}</strong>
+          <span className="tp-kpi__note">esperam a próxima parada preventiva</span>
+        </div>
+      </div>
+
       <section className="tp-card">
         <div className="tp-card__head">
-          <h3>Eventos</h3>
-          <div className="tp-row">
+          <div>
+            <h3>Eventos</h3>
+            <span className="chart__hint">últimos 50 registros — o mais recente primeiro</span>
+          </div>
+          <div className="tp-card__tools">
             <select className="tp-select" style={{ maxWidth: 220 }} value={status} onChange={(e) => setStatus(e.target.value as EventStatus | '')}>
               <option value="">Todos os estados</option>
               {Object.entries(EVENT_STATUS_LABELS).map(([value, label]) => (

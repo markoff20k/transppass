@@ -28,6 +28,12 @@ export function formatDuration(seconds: number): string {
   return formatMinutes(Math.round(seconds / 60));
 }
 
+/** Data de hoje no fuso local, no formato do <input type="date"> (AAAA-MM-DD). */
+export function todayLocalIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function formatNumber(value: number): string {
   return value.toLocaleString('pt-BR');
 }

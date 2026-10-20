@@ -16,6 +16,8 @@ import { useI18n } from '@/i18n/i18n.context';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusIllustration } from '@/components/bus/bus-illustration';
 import { InfoTip } from '@/components/ui/info-tip';
+import { FleetLegend } from '@/components/fleet/fleet-legend';
+import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
 import {
   AvailabilityByHourChart,
   DowntimeDonut,
@@ -38,7 +40,6 @@ import {
 const AVAILABILITY_TARGET = 85;
 
 type StageKey = 'triage' | 'field' | 'queue' | 'shop' | 'part' | 'release';
-type Family = 'running' | 'waiting' | 'working' | 'stopped';
 
 /** Etapas do fluxo da garagem, na ordem em que um carro as atravessa. */
 const STAGES: { key: StageKey; statuses: VehicleStatus[]; family: Family; to: string }[] = [
@@ -399,8 +400,6 @@ function StatusSummary({ byStatus, total }: { byStatus: Record<VehicleStatus, nu
   );
 }
 
-const FAMILIES: Family[] = ['running', 'waiting', 'working', 'stopped'];
-
 /**
  * A frota carro a carro, com a legenda das quatro famílias de estado no
  * cabeçalho. A legenda é também o filtro: passar o mouse realça a família,
@@ -411,14 +410,7 @@ function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
   const [selected, setSelected] = useState<Family | null>(null);
   const [hovered, setHovered] = useState<Family | null>(null);
 
-  const familyOf = (v: DashboardVehicle): Family => VEHICLE_STATE_FAMILY[v.status] ?? 'waiting';
-  const counts = FAMILIES.map((family) => ({
-    family,
-    label: t.dash[family],
-    help: t.dash.legendHelp[family],
-    n: vehicles.filter((v) => familyOf(v) === family).length,
-  }));
-  const visible = selected ? vehicles.filter((v) => familyOf(v) === selected) : vehicles;
+  const visible = selected ? vehicles.filter((v) => familyOf(v.status) === selected) : vehicles;
   const focus = hovered ?? selected;
 
   return (
@@ -428,36 +420,7 @@ function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
           <h3>{t.dash.fleetNow}</h3>
           <span className="chart__hint">{t.dash.fleetNowHint}</span>
         </div>
-        <div className="fleet-legend" role="group" aria-label={t.dash.legendLabel}>
-          <button
-            type="button"
-            className="fleet-legend__item fleet-legend__item--all"
-            aria-pressed={selected === null}
-            onClick={() => setSelected(null)}
-          >
-            <span className="fleet-legend__label">{t.dash.legendAll}</span>
-            <b className="fleet-legend__count">{vehicles.length}</b>
-          </button>
-          {counts.map((c) => (
-            <button
-              key={c.family}
-              type="button"
-              className={`fleet-legend__item fleet-legend__item--${c.family}`}
-              aria-pressed={selected === c.family}
-              disabled={c.n === 0}
-              title={c.help}
-              onMouseEnter={() => setHovered(c.family)}
-              onMouseLeave={() => setHovered(null)}
-              onFocus={() => setHovered(c.family)}
-              onBlur={() => setHovered(null)}
-              onClick={() => setSelected((s) => (s === c.family ? null : c.family))}
-            >
-              <i className="fleet-legend__dot" aria-hidden />
-              <span className="fleet-legend__label">{c.label}</span>
-              <b className="fleet-legend__count">{c.n}</b>
-            </button>
-          ))}
-        </div>
+        <FleetLegend statuses={vehicles.map((v) => v.status)} selected={selected} onSelect={setSelected} onHover={setHovered} />
         <Link to="/frota" className="tp-btn tp-btn--ghost tp-btn--sm">
           {t.dash.seeAll}
         </Link>

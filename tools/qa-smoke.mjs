@@ -456,7 +456,7 @@ async function run() {
   record('FC-04', 'Catálogo mostra as regras de criticidade e as tabelas de referência', (await exists(page, '.fcode-rules')) && (await page.$$('.fcode-ref details')).length >= 2);
   await page.goto(`${BASE}/indicadores`, { waitUntil: 'networkidle0' });
   await sleep(600);
-  record('FC-05', 'Indicadores: alinhamento origem × diagnóstico', (await page.$$eval('h2', (hs) => hs.map((h) => h.textContent || '').join('|'))).includes('Alinhamento'));
+  record('FC-05', 'Indicadores: alinhamento origem × diagnóstico', (await page.$$eval('h2, h3', (hs) => hs.map((h) => h.textContent || '').join('|'))).includes('Alinhamento'));
 
   // Erros de console
   record('CONS-01', 'Sem erros de JavaScript em nenhuma tela', consoleErrors.length === 0, consoleErrors.map((e) => e.text).join(' | ').slice(0, 300));
