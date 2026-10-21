@@ -141,18 +141,18 @@ const pool: PoolComponentRow[] = [
 ];
 
 const tools: ToolRow[] = [
-  { id: 'tl-1', code: 'TORQ-01', description: 'Torquímetro 40–200 N·m', calibrationDueAt: new Date(Date.now() + 40 * 24 * H).toISOString(), isCalibrationExpired: false, loanedToName: 'Mecânico de turno', loanedAt: ago(2) },
-  { id: 'tl-2', code: 'TORQ-02', description: 'Torquímetro 200–800 N·m', calibrationDueAt: ago(5 * 24), isCalibrationExpired: true, loanedToName: null, loanedAt: null },
-  { id: 'tl-3', code: 'MAN-01', description: 'Manômetro de ar 0–12 bar', calibrationDueAt: new Date(Date.now() + 120 * 24 * H).toISOString(), isCalibrationExpired: false, loanedToName: null, loanedAt: null },
+  { id: 'tl-1', code: 'TORQ-01', description: 'Torquímetro 40–200 N·m', requiredQty: 2, availableQty: 2, calibrationDueAt: new Date(Date.now() + 40 * 24 * H).toISOString(), isCalibrationExpired: false, loanedToName: 'Mecânico de turno', loanedAt: ago(2) },
+  { id: 'tl-2', code: 'TORQ-02', description: 'Torquímetro 200–800 N·m', requiredQty: 2, availableQty: 2, calibrationDueAt: ago(5 * 24), isCalibrationExpired: true, loanedToName: null, loanedAt: null },
+  { id: 'tl-3', code: 'MAN-01', description: 'Manômetro de ar 0–12 bar', requiredQty: 2, availableQty: 2, calibrationDueAt: new Date(Date.now() + 120 * 24 * H).toISOString(), isCalibrationExpired: false, loanedToName: null, loanedAt: null },
 ];
 
 const materialOptions = [
-  { id: 'm-1', code: 'CUI-FR-DT', description: 'Cuíca de freio dianteira 24"', unit: 'un', isSerialized: true },
-  { id: 'm-2', code: 'FIL-AR-01', description: 'Filtro de ar motor', unit: 'un', isSerialized: false },
-  { id: 'm-3', code: 'VAL-APU-01', description: 'Válvula APU', unit: 'un', isSerialized: true },
-  { id: 'm-4', code: 'ALT-24V', description: 'Alternador 24V 110A', unit: 'un', isSerialized: true },
-  { id: 'm-5', code: 'OLEO-15W40', description: 'Óleo motor 15W40', unit: 'L', isSerialized: false },
-  { id: 'm-6', code: 'CORR-ALT', description: 'Correia do alternador', unit: 'un', isSerialized: false },
+  { id: 'm-1', code: 'CUI-FR-DT', description: 'Cuíca de freio dianteira 24"', unit: 'un', isSerialized: true, manufacturerRef: null, location: null, stockQty: 4 },
+  { id: 'm-2', code: 'FIL-AR-01', description: 'Filtro de ar motor', unit: 'un', isSerialized: false, manufacturerRef: null, location: null, stockQty: 4 },
+  { id: 'm-3', code: 'VAL-APU-01', description: 'Válvula APU', unit: 'un', isSerialized: true, manufacturerRef: null, location: null, stockQty: 4 },
+  { id: 'm-4', code: 'ALT-24V', description: 'Alternador 24V 110A', unit: 'un', isSerialized: true, manufacturerRef: null, location: null, stockQty: 4 },
+  { id: 'm-5', code: 'OLEO-15W40', description: 'Óleo motor 15W40', unit: 'L', isSerialized: false, manufacturerRef: null, location: null, stockQty: 4 },
+  { id: 'm-6', code: 'CORR-ALT', description: 'Correia do alternador', unit: 'un', isSerialized: false, manufacturerRef: null, location: null, stockQty: 4 },
 ];
 
 const catalogVersions = {

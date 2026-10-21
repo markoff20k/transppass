@@ -151,12 +151,19 @@ export interface MaterialOption {
   description: string;
   unit: string;
   isSerialized: boolean;
+  /** Referência do fabricante e saldo, para a valeta escolher sem abrir o almoxarifado. */
+  manufacturerRef: string | null;
+  location: string | null;
+  stockQty: number;
 }
 
 export interface ToolRow {
   id: string;
   code: string;
   description: string;
+  /** FR.168 — suficiência de ferramental: necessária × disponível. */
+  requiredQty: number;
+  availableQty: number;
   calibrationDueAt: string | null;
   /** RF-28 — calibração vencida bloqueia o empréstimo. */
   isCalibrationExpired: boolean;

@@ -194,6 +194,7 @@ export const handlers = [
       available,
       availabilityRate: rows.length ? available / rows.length : 0,
       byStatus,
+      byClass: rows.reduce<Record<string, number>>((acc, r) => (r.vehicleClass ? { ...acc, [r.vehicleClass]: (acc[r.vehicleClass] ?? 0) + 1 } : acc), {}),
       degradedKmCount: rows.filter((r) => r.isKmDegraded).length,
     };
 
@@ -239,6 +240,9 @@ export const handlers = [
       technology: parsed.data.technology,
       kmSource: parsed.data.kmSource,
       odometerOffset: parsed.data.odometerOffset,
+      vehicleClass: parsed.data.vehicleClass ?? null,
+      lot: parsed.data.lot ?? null,
+      fleetRole: parsed.data.fleetRole ?? null,
       manufacturer: parsed.data.manufacturer ?? null,
       model: parsed.data.model ?? null,
       modelYear: parsed.data.modelYear ?? null,

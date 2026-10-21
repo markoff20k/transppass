@@ -102,7 +102,21 @@ export interface OperatorCandidate {
   name: string;
   /** Tecnologias em que está habilitado (matriz consumida, não administrada). */
   technologies: VehicleTechnology[];
+  /** Categoria da CNH (D, AD, E, AE) — é o que define as classes permitidas. */
+  cnhCategory: string | null;
 }
+
+/** Função do operador nas bases da Operação. */
+export const OperatorFunction = {
+  MOTORISTA: 'MOTORISTA',
+  COBRADOR: 'COBRADOR',
+} as const;
+export type OperatorFunction = (typeof OperatorFunction)[keyof typeof OperatorFunction];
+
+export const OPERATOR_FUNCTION_LABELS: Record<OperatorFunction, string> = {
+  MOTORISTA: 'Motorista',
+  COBRADOR: 'Cobrador',
+};
 
 /** RF-31 — o painel do Plantão: retornos previstos ao vivo. */
 export interface ExpectedReturnRow {
@@ -126,4 +140,9 @@ export interface OperatorRow {
   name: string;
   isActive: boolean;
   technologies: VehicleTechnology[];
+  function: OperatorFunction;
+  cnhCategory: string | null;
+  lot: string | null;
+  admittedAt: string | null;
+  vehicleClasses: string[];
 }

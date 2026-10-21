@@ -48,6 +48,14 @@ npm run dev          # API :3000 e web :5173
 
 Login inicial: `admin@transppass.local` / `admin123`. Swagger em `http://localhost:3000/api/docs`.
 
+### Bases da Transppass e demonstração viva
+
+`npm run db:seed` carrega, além do básico, as bases que a Transppass entregou no Kaizen "Projeto MKBF" (`apps/api/prisma/data/*.json`, extraídas dos PDFs): **2.496 materiais** do Almoxarifado com classe, referência, prateleira, saldo e custo (os 380 da lista preventiva marcados), **907 motoristas** com categoria de CNH e classes permitidas, **864 cobradores** por lote, **47 ferramentas** da FR.168 e os **planos preventivos por modelo** (IT.MAN-01 diesel, IT.MAN-54 Scania, IT.MAN-60 VW, IT.MAN-16 Eletra) com gatilhos, tolerância dupla, tarefas e kits cruzados com o inventário. Pode rodar quantas vezes quiser (`npm run db:seed:import` só a carga).
+
+`npm run db:seed:demo` monta a garagem: **453 carros** nas proporções da Escala de Carros (lote E8 com 238, AR9 com 215; prefixos, placas e modelos por classe são mock até a base carro a carro chegar), seis meses de km e de falhas, OS em todas as etapas, preventivas programadas, plantão e notificações. Apaga e recria todo o movimento — rode antes de apresentar.
+
+Com `DEMO_SIMULATOR=true` no `.env` a garagem **anda sozinha** a cada 5 minutos pela própria API de negócio: telemetria dos eBUS, lançamento de km diesel de manhã (alguns atrasam), falhas na proporção do MKBF, triagem, socorro, fila, material, inspeção, limpeza, liberação e reposição com reserva habilitada. `POST /api/demo/pulse` (admin ou PCM) avança um ciclo na hora; `DEMO_SPEED=12` acelera os tempos de espera e `DEMO_ALL_HOURS=true` ignora o horário de operação (só para testes). Nunca ligue o simulador num banco com dados reais.
+
 ## Interface
 
 Shell com **sidebar recolhível** (trilho de 72px no desktop, gaveta abaixo de 1024px), **header** com atalhos de idioma, tema, contraste, notificações e perfil, e **subheader** controlado por cada tela. A tela inicial é o **dashboard**: quatro números que resumem a garagem, o que precisa de atenção, a frota carro a carro e as tendências em gráfico.

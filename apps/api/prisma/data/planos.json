@@ -1,0 +1,167 @@
+{
+  "_nota": "Planos preventivos carregados dos documentos controlados da Transppass (IT.MAN-01 Rev.09 diesel por modelo; IT.MAN-54 Rev.01 eBUS Scania; IT.MAN-60 Rev.04 eBUS Volkswagen; IT.MAN-16 Rev.00 eBUS Eletra/WEG). A estrutura de pacotes, gatilhos e tolerâncias vem dos documentos; a lista de tarefas é a síntese das seções de cada plano e deve ser conferida item a item com a Manutenção antes de virar escopo de parada. Os kits cruzam a tabela de trocas com o inventário do Almoxarifado (códigos reais); as quantidades por carro são estimativa da oficina.",
+  "dieselModels": [
+    { "model": "OF 1721/E5", "manufacturer": "Mercedes-Benz", "classes": ["BASICO_12M"], "engineOilL": 24, "oil": "001666", "oilFilter": "002040", "fuelFilter": "002025", "waterSeparator": "002145", "airFilter": "003504", "airFilterSecondary": null, "cabinFilter": null, "gearboxOil": "000251", "gearboxFilter": null, "diffOil": "001468", "steeringFilter": "000092", "beltMotor": "008545", "beltAlt": null, "hasArla": true, "hasAC": false, "gearbox": "manual G85" },
+    { "model": "O500U/E3", "manufacturer": "Mercedes-Benz", "classes": ["PADRON_13M"], "engineOilL": 28, "oil": "001666", "oilFilter": "006200", "fuelFilter": "002025", "waterSeparator": "002145", "airFilter": "003504", "airFilterSecondary": "006199", "cabinFilter": null, "gearboxOil": "000173", "gearboxFilter": "009257", "diffOil": "001468", "steeringFilter": "000092", "beltMotor": "006454", "beltAlt": null, "hasArla": false, "hasAC": false, "gearbox": "automático Voith DIWA" },
+    { "model": "O500U/E5 AC", "manufacturer": "Mercedes-Benz", "classes": ["PADRON_13M"], "engineOilL": 28, "oil": "001666", "oilFilter": "006200", "fuelFilter": "002025", "waterSeparator": "002145", "airFilter": "003504", "airFilterSecondary": "006199", "cabinFilter": "100592", "gearboxOil": "000916", "gearboxFilter": "122764", "diffOil": "001468", "steeringFilter": "000092", "beltMotor": "006454", "beltAlt": "000326", "hasArla": true, "hasAC": true, "gearbox": "automático ZF Ecolife" },
+    { "model": "O500UA", "manufacturer": "Mercedes-Benz", "classes": ["ARTICULADO_18M"], "engineOilL": 34, "oil": "001666", "oilFilter": "008013", "fuelFilter": "008115", "waterSeparator": "002148", "airFilter": "008114", "airFilterSecondary": null, "cabinFilter": "100144", "gearboxOil": "000173", "gearboxFilter": "009257", "diffOil": "003390", "steeringFilter": "008240", "beltMotor": "007810", "beltAlt": "006642", "hasArla": true, "hasAC": true, "gearbox": "automático Voith DIWA" },
+    { "model": "O500UDA", "manufacturer": "Mercedes-Benz", "classes": ["ARTICULADO_23M"], "engineOilL": 34, "oil": "001666", "oilFilter": "008013", "fuelFilter": "008115", "waterSeparator": "002148", "airFilter": "008114", "airFilterSecondary": null, "cabinFilter": "100144", "gearboxOil": "000173", "gearboxFilter": "009257", "diffOil": "003390", "steeringFilter": "008240", "beltMotor": "007810", "beltAlt": "006642", "hasArla": true, "hasAC": true, "gearbox": "automático Voith DIWA" },
+    { "model": "O500UDA/AR", "manufacturer": "Mercedes-Benz", "classes": ["ARTICULADO_23M"], "engineOilL": 34, "oil": "001666", "oilFilter": "008013", "fuelFilter": "008115", "waterSeparator": "002148", "airFilter": "008114", "airFilterSecondary": null, "cabinFilter": "100144", "gearboxOil": "000916", "gearboxFilter": "122764", "diffOil": "003390", "steeringFilter": "008241", "beltMotor": "007810", "beltAlt": "006642", "hasArla": true, "hasAC": true, "gearbox": "automático ZF Ecolife" },
+    { "model": "VW 18.280", "manufacturer": "Volkswagen", "classes": ["BASICO_12M"], "engineOilL": 25, "oil": "001668", "oilFilter": "003666", "fuelFilter": "003678", "waterSeparator": "003679", "airFilter": null, "airFilterSecondary": null, "cabinFilter": null, "gearboxOil": "000249", "gearboxFilter": null, "diffOil": "001468", "steeringFilter": "000092", "beltMotor": "140026", "beltAlt": "140020", "hasArla": true, "hasAC": false, "gearbox": "manual" }
+  ],
+  "dieselPlan": {
+    "codePrefix": "IT.MAN-01",
+    "controlledDocument": "IT.MAN-01 Rev.09",
+    "toleranceKm": 1000,
+    "toleranceBelowKm": 2000,
+    "packages": [
+      { "code": "I", "name": "Inspeção I — 7.500 km", "intervalKm": 15000, "offsetKm": 7500, "includes": [] },
+      { "code": "A", "name": "Revisão A — 15.000 km", "intervalKm": 30000, "offsetKm": 15000, "includes": ["I"] },
+      { "code": "B", "name": "Revisão B — 30.000 km", "intervalKm": 120000, "offsetKm": 30000, "includes": ["I", "A"] },
+      { "code": "C", "name": "Revisão C — 60.000 km", "intervalKm": 120000, "offsetKm": 60000, "includes": ["I", "A", "B"] },
+      { "code": "D", "name": "Revisão D — 90.000 km", "intervalKm": 120000, "offsetKm": 90000, "includes": ["I", "A", "B"] },
+      { "code": "E", "name": "Revisão E — 120.000 km", "intervalKm": 120000, "offsetKm": 120000, "includes": ["I", "A", "B", "C", "D"] }
+    ],
+    "tasks": [
+      { "pkg": "I", "code": "I01", "section": "Lubrificação", "specialty": "MEC", "minutes": 60, "description": "Trocar o óleo e o filtro lubrificante do motor" },
+      { "pkg": "I", "code": "I02", "section": "Alimentação", "specialty": "MEC", "minutes": 25, "description": "Trocar o filtro de combustível e o filtro separador de água (drenar)" },
+      { "pkg": "I", "code": "I03", "section": "Motor", "specialty": "MEC", "minutes": 15, "description": "Verificar nível e vazamentos do sistema de arrefecimento, mangueiras e abraçadeiras" },
+      { "pkg": "I", "code": "I04", "section": "Freios e Ar", "specialty": "MEC", "minutes": 30, "description": "Drenar os reservatórios de ar; verificar cuícas, válvulas e vazamentos do sistema pneumático" },
+      { "pkg": "I", "code": "I05", "section": "Freios e Ar", "specialty": "MEC", "minutes": 25, "description": "Verificar espessura de lonas/pastilhas e curso das catracas de freio" },
+      { "pkg": "I", "code": "I06", "section": "Rodas e Pneus", "specialty": "PNE", "minutes": 30, "description": "Conferir torque das porcas de roda; calibrar pneus e verificar TWI (IT.MAN-03)" },
+      { "pkg": "I", "code": "I07", "section": "Direção", "specialty": "MEC", "minutes": 15, "description": "Verificar folga do volante, terminais e nível do óleo hidráulico da direção" },
+      { "pkg": "I", "code": "I08", "section": "Suspensão", "specialty": "MEC", "minutes": 20, "description": "Verificar amortecedores, bolsas de ar, válvulas niveladoras e buchas" },
+      { "pkg": "I", "code": "I09", "section": "Elétrica", "specialty": "ELE", "minutes": 20, "description": "Verificar baterias, terminais, tensão de carga e iluminação externa/interna" },
+      { "pkg": "I", "code": "I10", "section": "Lubrificação", "specialty": "MEC", "minutes": 30, "description": "Lubrificar articulações do chassi, pinos-mestre, cardan e cruzetas" },
+      { "pkg": "I", "code": "I11", "section": "Carroceria", "specialty": "FUN", "minutes": 20, "description": "Verificar portas, cilindros, sensores e elevador de acessibilidade", "equipmentCondition": "Veículos equipados com elevador" },
+      { "pkg": "I", "code": "I12", "section": "Arla", "specialty": "MEC", "minutes": 10, "description": "Verificar nível de Arla 32, bomba dosadora e vazamentos", "onlyIf": "hasArla" },
+      { "pkg": "I", "code": "I13", "section": "Ar-condicionado", "specialty": "AC", "minutes": 20, "description": "Limpar filtro anti-pólen e verificar correia e carga do compressor", "onlyIf": "hasAC" },
+      { "pkg": "A", "code": "A01", "section": "Motor", "specialty": "MEC", "minutes": 20, "description": "Trocar o filtro de ar do motor (primário)" },
+      { "pkg": "A", "code": "A02", "section": "Motor", "specialty": "MEC", "minutes": 15, "description": "Trocar o filtro de ar secundário", "onlyIf": "airFilterSecondary" },
+      { "pkg": "A", "code": "A03", "section": "Ar-condicionado", "specialty": "AC", "minutes": 15, "description": "Trocar o filtro anti-pólen do ar-condicionado", "onlyIf": "hasAC" },
+      { "pkg": "A", "code": "A04", "section": "Freios e Ar", "specialty": "MEC", "minutes": 30, "description": "Verificar o secador de ar e trocar o cartucho dessecante" },
+      { "pkg": "A", "code": "A05", "section": "Embreagem", "specialty": "MEC", "minutes": 20, "description": "Verificar curso e folga da embreagem e do servo", "onlyIf": "manual" },
+      { "pkg": "A", "code": "A06", "section": "Transmissão", "specialty": "MEC", "minutes": 15, "description": "Verificar nível do óleo da caixa automática e do retardador", "onlyIf": "automatic" },
+      { "pkg": "A", "code": "A07", "section": "Elétrica", "specialty": "ELE", "minutes": 30, "description": "Verificar sistema de carga, alternador, motor de partida e chicotes" },
+      { "pkg": "B", "code": "B01", "section": "Transmissão", "specialty": "MEC", "minutes": 60, "description": "Trocar óleo e filtro da caixa de câmbio" },
+      { "pkg": "B", "code": "B02", "section": "Transmissão", "specialty": "MEC", "minutes": 40, "description": "Trocar o óleo do diferencial" },
+      { "pkg": "B", "code": "B03", "section": "Direção", "specialty": "MEC", "minutes": 30, "description": "Trocar óleo e filtro do sistema hidráulico da direção" },
+      { "pkg": "B", "code": "B04", "section": "Rodas e Pneus", "specialty": "PNE", "minutes": 90, "description": "Revisar cubos de roda: rolamentos, retentores e graxa" },
+      { "pkg": "B", "code": "B05", "section": "Freios e Ar", "specialty": "MEC", "minutes": 60, "description": "Trocar o cabeçote do compressor de ar e verificar válvula APU" },
+      { "pkg": "B", "code": "B06", "section": "Freios e Ar", "specialty": "MEC", "minutes": 45, "description": "Trocar as catracas de freio", "onlyIf": "catracas" },
+      { "pkg": "C", "code": "C01", "section": "Motor", "specialty": "MEC", "minutes": 60, "description": "Trocar correias do motor, do ventilador e do alternador; verificar tensores" },
+      { "pkg": "C", "code": "C02", "section": "Motor", "specialty": "MEC", "minutes": 45, "description": "Regular folga das válvulas" },
+      { "pkg": "C", "code": "C03", "section": "Alimentação", "specialty": "MEC", "minutes": 60, "description": "Limpar o intercooler e testar o turboalimentador" },
+      { "pkg": "C", "code": "C04", "section": "Suspensão", "specialty": "MEC", "minutes": 60, "description": "Trocar amortecedores telescópicos", "equipmentCondition": "Veículos equipados com amortecedor telescópico" },
+      { "pkg": "D", "code": "D01", "section": "Motor", "specialty": "MEC", "minutes": 60, "description": "Trocar o líquido de arrefecimento e limpar o radiador" },
+      { "pkg": "D", "code": "D02", "section": "Alimentação", "specialty": "MEC", "minutes": 90, "description": "Testar e regular os bicos injetores" },
+      { "pkg": "D", "code": "D03", "section": "Elétrica", "specialty": "ELE", "minutes": 40, "description": "Trocar as baterias conforme teste de capacidade" },
+      { "pkg": "E", "code": "E01", "section": "Motor", "specialty": "MEC", "minutes": 120, "description": "Trocar bomba d’água, termostato e mangueiras do arrefecimento" },
+      { "pkg": "E", "code": "E02", "section": "Transmissão", "specialty": "MEC", "minutes": 120, "description": "Revisar cardan: cruzetas, luvas e balanceamento" },
+      { "pkg": "E", "code": "E03", "section": "Freios e Ar", "specialty": "MEC", "minutes": 120, "description": "Revisar completamente o sistema de freio: câmaras, válvulas e tubulações" },
+      { "pkg": "E", "code": "E04", "section": "Carroceria", "specialty": "FUN", "minutes": 90, "description": "Revisar estrutura, fixações da carroceria e mecanismos de porta" }
+    ],
+    "kits": {
+      "I": [["oil", "engineOilL"], ["oilFilter", 1], ["fuelFilter", 1], ["waterSeparator", 1]],
+      "A": [["airFilter", 1], ["airFilterSecondary", 1], ["cabinFilter", 1]],
+      "B": [["gearboxOil", 20], ["gearboxFilter", 1], ["diffOil", 16], ["steeringFilter", 1], ["001456", 1]],
+      "C": [["beltMotor", 1], ["beltAlt", 1]],
+      "D": [["000910", 20]],
+      "E": []
+    }
+  },
+  "ebusPlans": [
+    {
+      "code": "IT.MAN-54", "name": "Plano preventivo — eBUS Scania", "manufacturer": "Scania", "vehicleModel": "Scania eBUS", "controlledDocument": "IT.MAN-54 Rev.01", "toleranceKm": 1500, "toleranceBelowKm": 1500,
+      "packages": [
+        { "code": "L", "name": "Inspeção leve — 5.000 km", "intervalKm": 5000, "offsetKm": 0, "tasks": [
+          { "code": "L01", "section": "Elétrica AT", "specialty": "ELE", "minutes": 30, "description": "Verificar isolamento, conectores e cabos de alta tensão (visual e medição)" },
+          { "code": "L02", "section": "Baterias", "specialty": "ELE", "minutes": 20, "description": "Verificar nível e vazamentos do líquido BTMS e funcionamento da bomba" },
+          { "code": "L03", "section": "Freios", "specialty": "MEC", "minutes": 30, "description": "Verificar pastilhas, discos e freio regenerativo; drenar reservatórios de ar" },
+          { "code": "L04", "section": "Rodas e Pneus", "specialty": "PNE", "minutes": 30, "description": "Conferir torque das porcas de roda, calibragem e TWI" },
+          { "code": "L05", "section": "Carroceria", "specialty": "FUN", "minutes": 20, "description": "Verificar portas, rampa de acessibilidade e iluminação" },
+          { "code": "L06", "section": "Ar-condicionado", "specialty": "AC", "minutes": 15, "description": "Limpar filtro manta e verificar condensador do ar-condicionado" }
+        ], "kit": [["100626", 1]] },
+        { "code": "M", "name": "Revisão média — 10.000 km", "intervalKm": 10000, "offsetKm": 0, "tasks": [
+          { "code": "M01", "section": "Elétrica AT", "specialty": "ELE", "minutes": 40, "description": "Torque das conexões de alta tensão e teste de isolamento do pack" },
+          { "code": "M02", "section": "Tração", "specialty": "ELE", "minutes": 30, "description": "Verificar motor elétrico, inversor e arrefecimento da eletrônica de potência" },
+          { "code": "M03", "section": "Ar-condicionado", "specialty": "AC", "minutes": 20, "description": "Trocar o filtro anti-pólen do ar-condicionado" },
+          { "code": "M04", "section": "Suspensão", "specialty": "MEC", "minutes": 30, "description": "Verificar bolsas de ar, válvulas niveladoras, amortecedores e buchas" },
+          { "code": "M05", "section": "Lubrificação", "specialty": "MEC", "minutes": 30, "description": "Lubrificar articulações do chassi e pinos-mestre" }
+        ], "kit": [["100626", 1], ["000920", 4]] },
+        { "code": "G", "name": "Geometria — 15.000 km", "intervalKm": 15000, "offsetKm": 0, "tasks": [
+          { "code": "G01", "section": "Direção", "specialty": "MEC", "minutes": 60, "description": "Alinhar e verificar geometria da direção; terminais e barras" },
+          { "code": "G02", "section": "Rodas e Pneus", "specialty": "PNE", "minutes": 45, "description": "Rodízio e balanceamento dos pneus" }
+        ], "kit": [] },
+        { "code": "C", "name": "Carroceria — 20.000 km", "intervalKm": 20000, "offsetKm": 0, "tasks": [
+          { "code": "C01", "section": "Carroceria", "specialty": "FUN", "minutes": 90, "description": "Revisar estrutura, fixações, vedações e mecanismos de porta" },
+          { "code": "C02", "section": "Acessibilidade", "specialty": "FUN", "minutes": 30, "description": "Revisar rampa/elevador: sensores, articulações e lubrificação" },
+          { "code": "C03", "section": "Transmissão", "specialty": "MEC", "minutes": 40, "description": "Verificar óleo do redutor e do diferencial" }
+        ], "kit": [["001468", 12]] },
+        { "code": "T1", "name": "Filtro manta — semanal", "intervalKm": 0, "offsetKm": 0, "periodDays": 7, "tasks": [
+          { "code": "T101", "section": "Ar-condicionado", "specialty": "AC", "minutes": 10, "description": "Limpar o filtro manta do ar-condicionado" }
+        ], "kit": [] },
+        { "code": "T2", "name": "Dedetização — trimestral", "intervalKm": 0, "offsetKm": 0, "periodDays": 90, "tasks": [
+          { "code": "T201", "section": "Limpeza", "specialty": "FUN", "minutes": 30, "description": "Dedetização do salão e do posto do motorista" }
+        ], "kit": [] }
+      ]
+    },
+    {
+      "code": "IT.MAN-60", "name": "Plano preventivo — eBUS Volkswagen", "manufacturer": "Volkswagen", "vehicleModel": "VW e-Volksbus", "controlledDocument": "IT.MAN-60 Rev.04", "toleranceKm": 1500, "toleranceBelowKm": 1500,
+      "packages": [
+        { "code": "I", "name": "Inspeção — 5.000 km", "intervalKm": 5000, "offsetKm": 0, "tasks": [
+          { "code": "I01", "section": "Elétrica AT", "specialty": "ELE", "minutes": 30, "description": "Verificar isolamento, conectores e cabos de alta tensão" },
+          { "code": "I02", "section": "Baterias", "specialty": "ELE", "minutes": 20, "description": "Verificar nível do líquido BTMS e arrefecimento das baterias" },
+          { "code": "I03", "section": "Freios", "specialty": "MEC", "minutes": 30, "description": "Verificar pastilhas, discos e sistema pneumático; drenar reservatórios" },
+          { "code": "I04", "section": "Rodas e Pneus", "specialty": "PNE", "minutes": 30, "description": "Conferir torque das porcas de roda, calibragem e TWI" },
+          { "code": "I05", "section": "Carroceria", "specialty": "FUN", "minutes": 20, "description": "Verificar portas, rampa e iluminação" }
+        ], "kit": [] },
+        { "code": "G", "name": "Geometria — 15.000 km", "intervalKm": 15000, "offsetKm": 0, "tasks": [
+          { "code": "G01", "section": "Direção", "specialty": "MEC", "minutes": 60, "description": "Alinhar e verificar geometria da direção" },
+          { "code": "G02", "section": "Rodas e Pneus", "specialty": "PNE", "minutes": 45, "description": "Rodízio e balanceamento dos pneus" }
+        ], "kit": [] },
+        { "code": "L", "name": "Revisão leve — 20.000 km", "intervalKm": 20000, "offsetKm": 0, "tasks": [
+          { "code": "L01", "section": "Elétrica AT", "specialty": "ELE", "minutes": 40, "description": "Torque das conexões de alta tensão e teste de isolamento" },
+          { "code": "L02", "section": "Ar-condicionado", "specialty": "AC", "minutes": 20, "description": "Trocar o filtro anti-pólen e verificar compressor elétrico" },
+          { "code": "L03", "section": "Carroceria", "specialty": "FUN", "minutes": 60, "description": "Revisar estrutura, fixações e mecanismos de porta" },
+          { "code": "L04", "section": "Lubrificação", "specialty": "MEC", "minutes": 30, "description": "Lubrificar articulações do chassi e pinos-mestre" }
+        ], "kit": [["100626", 1]] },
+        { "code": "M", "name": "Revisão média — 40.000 km", "intervalKm": 40000, "offsetKm": 0, "tasks": [
+          { "code": "M01", "section": "Transmissão", "specialty": "MEC", "minutes": 60, "description": "Trocar o óleo da caixa de redução e revisar cubos das rodas traseiras" },
+          { "code": "M02", "section": "Baterias", "specialty": "ELE", "minutes": 45, "description": "Trocar o líquido BTMS e verificar trocador de calor" },
+          { "code": "M03", "section": "Tração", "specialty": "ELE", "minutes": 30, "description": "Verificar motor elétrico, inversor e lubrificação dos mancais" }
+        ], "kit": [["001468", 10], ["000920", 4]] },
+        { "code": "P", "name": "Revisão pesada — 80.000 km", "intervalKm": 80000, "offsetKm": 0, "tasks": [
+          { "code": "P01", "section": "Freios", "specialty": "MEC", "minutes": 120, "description": "Revisar completamente o sistema de freio: discos, pinças, válvulas e tubulações" },
+          { "code": "P02", "section": "Suspensão", "specialty": "MEC", "minutes": 90, "description": "Trocar amortecedores e revisar bolsas de ar" },
+          { "code": "P03", "section": "Elétrica AT", "specialty": "ELE", "minutes": 90, "description": "Inspeção completa do pack de baterias com relatório de capacidade" }
+        ], "kit": [] }
+      ]
+    },
+    {
+      "code": "IT.MAN-16", "name": "Plano preventivo — eBUS Eletra/WEG 15 m", "manufacturer": "Eletra", "vehicleModel": "Eletra e-Bus", "controlledDocument": "IT.MAN-16 Rev.00", "toleranceKm": 1000, "toleranceBelowKm": 1000,
+      "packages": [
+        { "code": "A", "name": "Revisão A — 10.000 km", "intervalKm": 10000, "offsetKm": 0, "tasks": [
+          { "code": "A01", "section": "Elétrica AT", "specialty": "ELE", "minutes": 30, "description": "Verificar isolamento, conectores e cabos de alta tensão" },
+          { "code": "A02", "section": "Tração", "specialty": "ELE", "minutes": 30, "description": "Verificar motor WEG, inversor e ventilação forçada" },
+          { "code": "A03", "section": "Freios", "specialty": "MEC", "minutes": 30, "description": "Verificar lonas, catracas e sistema pneumático; drenar reservatórios" },
+          { "code": "A04", "section": "Rodas e Pneus", "specialty": "PNE", "minutes": 30, "description": "Conferir torque das porcas de roda, calibragem e TWI" },
+          { "code": "A05", "section": "Lubrificação", "specialty": "MEC", "minutes": 30, "description": "Lubrificar articulações do chassi e engraxar mancais do motor elétrico" }
+        ], "kit": [["009437", 1]] },
+        { "code": "B", "name": "Revisão B — 20.000 km", "intervalKm": 20000, "offsetKm": 0, "tasks": [
+          { "code": "B01", "section": "Ar-condicionado", "specialty": "AC", "minutes": 20, "description": "Trocar o filtro anti-pólen e verificar compressor" },
+          { "code": "B02", "section": "Carroceria", "specialty": "FUN", "minutes": 60, "description": "Revisar estrutura, portas e elevador" },
+          { "code": "B03", "section": "Baterias", "specialty": "ELE", "minutes": 30, "description": "Verificar arrefecimento das baterias e aditivo do radiador" }
+        ], "kit": [["100626", 1], ["000915", 2]] },
+        { "code": "C", "name": "Revisão C — 40.000 km", "intervalKm": 40000, "offsetKm": 0, "tasks": [
+          { "code": "C01", "section": "Transmissão", "specialty": "MEC", "minutes": 60, "description": "Trocar o óleo do diferencial e revisar cardan" },
+          { "code": "C02", "section": "Direção", "specialty": "MEC", "minutes": 45, "description": "Trocar óleo e filtro da direção hidráulica elétrica" }
+        ], "kit": [["001468", 12], ["000092", 1]] },
+        { "code": "D", "name": "Revisão D — 80.000 km", "intervalKm": 80000, "offsetKm": 0, "tasks": [
+          { "code": "D01", "section": "Elétrica AT", "specialty": "ELE", "minutes": 90, "description": "Inspeção completa do pack de baterias com relatório de capacidade" },
+          { "code": "D02", "section": "Freios", "specialty": "MEC", "minutes": 120, "description": "Revisão completa do sistema de freio" }
+        ], "kit": [] }
+      ]
+    }
+  ]
+}

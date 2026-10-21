@@ -1,0 +1,237 @@
+[
+{
+"code": "FER-001",
+"description": "Adaptador 3/4 X 1\"",
+"requiredQty": 1
+},
+{
+"code": "FER-002",
+"description": "Alicate de Corte",
+"requiredQty": 1
+},
+{
+"code": "FER-003",
+"description": "Cabo de Força 3/4\"",
+"requiredQty": 1
+},
+{
+"code": "FER-004",
+"description": "Cabo de Força 1\"",
+"requiredQty": 1
+},
+{
+"code": "FER-005",
+"description": "Chave Combinada 36",
+"requiredQty": 2
+},
+{
+"code": "FER-006",
+"description": "Chave Combinada 46",
+"requiredQty": 1
+},
+{
+"code": "FER-007",
+"description": "Chave de Cubo 2º Eixo Art.",
+"requiredQty": 1
+},
+{
+"code": "FER-008",
+"description": "Chave de Cubo 3º Eixo Art.",
+"requiredQty": 2
+},
+{
+"code": "FER-009",
+"description": "Chave de Cubo Diant. 1721/O500",
+"requiredQty": 2
+},
+{
+"code": "FER-010",
+"description": "Chave de Cubo Tras. O500",
+"requiredQty": 2
+},
+{
+"code": "FER-011",
+"description": "Chave de Grifo 60Mm",
+"requiredQty": 1
+},
+{
+"code": "FER-012",
+"description": "Chave de Grifo 24Mm",
+"requiredQty": 1
+},
+{
+"code": "FER-013",
+"description": "Chave de Impacto 1/2\"",
+"requiredQty": 2
+},
+{
+"code": "FER-014",
+"description": "Chave de Impacto 3/4\"",
+"requiredQty": 2
+},
+{
+"code": "FER-015",
+"description": "Chave Fixa 46/50",
+"requiredQty": 1
+},
+{
+"code": "FER-016",
+"description": "Chave Fixa 55",
+"requiredQty": 2
+},
+{
+"code": "FER-017",
+"description": "Chave Fixa 60",
+"requiredQty": 1
+},
+{
+"code": "FER-018",
+"description": "Chave Tirar Volante",
+"requiredQty": 2
+},
+{
+"code": "FER-019",
+"description": "Chave T60",
+"requiredQty": 2
+},
+{
+"code": "FER-020",
+"description": "Cinta Para Sacar Filtro",
+"requiredQty": 2
+},
+{
+"code": "FER-021",
+"description": "Extensão Longa 1 X 16\"",
+"requiredQty": 1
+},
+{
+"code": "FER-022",
+"description": "Kit Alargador de Tubos",
+"requiredQty": 1
+},
+{
+"code": "FER-023",
+"description": "Kit Alicate Crimpador",
+"requiredQty": 1
+},
+{
+"code": "FER-024",
+"description": "Raster",
+"requiredQty": 2
+},
+{
+"code": "FER-025",
+"description": "Redução 1 X 3/4\"",
+"requiredQty": 1
+},
+{
+"code": "FER-026",
+"description": "Sacador de Terminal",
+"requiredQty": 2
+},
+{
+"code": "FER-027",
+"description": "Soquete Estriado 46 X 3/4\"",
+"requiredQty": 1
+},
+{
+"code": "FER-028",
+"description": "Soquete Estriado 50 X 3/4\"",
+"requiredQty": 3
+},
+{
+"code": "FER-029",
+"description": "Soquete Estriado 55 X 3/4\"",
+"requiredQty": 1
+},
+{
+"code": "FER-030",
+"description": "Soquete Estriado 60 X 3/4\"",
+"requiredQty": 1
+},
+{
+"code": "FER-031",
+"description": "Soquete Estriado 65 X 3/4\"",
+"requiredQty": 1
+},
+{
+"code": "FER-032",
+"description": "Soquete Sextavado 19 3/4\"",
+"requiredQty": 1
+},
+{
+"code": "FER-033",
+"description": "Soquete Sextavado 21 3/4\"",
+"requiredQty": 2
+},
+{
+"code": "FER-034",
+"description": "Soquete Sextavado 24 3/4\"",
+"requiredQty": 2
+},
+{
+"code": "FER-035",
+"description": "Soquete Sextavado 27 3/4\"",
+"requiredQty": 2
+},
+{
+"code": "FER-036",
+"description": "Soquete Sextavado 30 3/4\"",
+"requiredQty": 1
+},
+{
+"code": "FER-037",
+"description": "Soquete Sextavado 33 3/4\"",
+"requiredQty": 2
+},
+{
+"code": "FER-038",
+"description": "Soquete Sextavado 36 3/4\"",
+"requiredQty": 2
+},
+{
+"code": "FER-039",
+"description": "Soquete Sextavado 55 3/4\"",
+"requiredQty": 1
+},
+{
+"code": "FER-040",
+"description": "Soquete Sextavado 60 1\"",
+"requiredQty": 1
+},
+{
+"code": "FER-041",
+"description": "Soquete Sextavado 60 3/4\"",
+"requiredQty": 1
+},
+{
+"code": "FER-042",
+"description": "Soquete Sextavado 70 1\"",
+"requiredQty": 1
+},
+{
+"code": "FER-043",
+"description": "Star Diagnosis Mbb",
+"requiredQty": 1
+},
+{
+"code": "FER-044",
+"description": "Tb Teste de Bateria",
+"requiredQty": 1
+},
+{
+"code": "FER-045",
+"description": "Tbi Teste de Bateria",
+"requiredQty": 2
+},
+{
+"code": "FER-046",
+"description": "Teste de Intercooler",
+"requiredQty": 1
+},
+{
+"code": "FER-047",
+"description": "Teste de Radiador",
+"requiredQty": 1
+}
+]

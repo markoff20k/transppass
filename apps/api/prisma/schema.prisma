@@ -171,6 +171,12 @@ model Vehicle {
   manufacturer   String?           @db.VarChar(60)
   model          String?           @db.VarChar(60)
   modelYear      Int?
+  /// Classe operacional da SPTrans (Básico 12M, Padron 13M, ePadron 13M/15M, Articulado...). Vem da Escala de Carros.
+  vehicleClass   String?           @db.VarChar(24)
+  /// Lote de operação (E8, AR9) — o mesmo da matriz de cobradores.
+  lot            String?           @db.VarChar(8)
+  /// Papel na escala: OPERACIONAL ou RESERVA.
+  fleetRole      String?           @db.VarChar(16)
   garageId       String?           @db.Uuid
   status         VehicleStatus     @default(AVAILABLE)
   currentKm      Int               @default(0)
@@ -193,6 +199,7 @@ model Vehicle {
 
   @@index([status])
   @@index([technology])
+  @@index([vehicleClass])
   @@map("vehicles")
 }
 
@@ -202,6 +209,14 @@ model Operator {
   registration String  @unique @db.VarChar(32)
   name         String  @db.VarChar(120)
   isActive     Boolean @default(true)
+  /// MOTORISTA ou COBRADOR — bases "Motorista por tecnologia" e "Cobrador por lote".
+  function       String    @default("MOTORISTA") @db.VarChar(16)
+  /// Categoria da CNH (D, AD, E, AE): é o que define as classes de carro permitidas.
+  cnhCategory    String?   @db.VarChar(4)
+  lot            String?   @db.VarChar(8)
+  admittedAt     DateTime?
+  /// Classes de carro que pode operar (derivadas da categoria: D/AD até ePadron 15M; E/AE todas).
+  vehicleClasses String[]  @default([])
 
   qualifications     OperatorQualification[]
   reserveAssignments ReserveAssignment[]
@@ -353,6 +368,9 @@ model MaintenancePlan {
   /// Vinculo ao documento controlado do processo FR.116.
   controlledDocument  String?           @db.VarChar(60)
   isActive            Boolean           @default(true)
+  /// Plano por modelo (IT.MAN-01 varia filtros e cubos por modelo). Nulo = vale para toda a tecnologia.
+  manufacturer        String?           @db.VarChar(60)
+  vehicleModel        String?           @db.VarChar(60)
 
   packages MaintenancePackage[]
 
@@ -368,6 +386,12 @@ model MaintenancePackage {
   /// Janelas de 7.500 / 15.000 km citadas na secao 2 do PRD.
   intervalKm  Int
   toleranceKm Int    @default(500)
+  /// Tolerância para baixo quando difere da de cima (IT.MAN-01: 2.000 abaixo, 1.000 acima).
+  toleranceBelowKm Int?
+  /// Primeiro gatilho do pacote; depois repete a cada intervalKm (A: 15.000 + n×30.000).
+  offsetKm    Int    @default(0)
+  /// Pacotes por tempo (AC semanal/mensal, dedetização trimestral) além do km.
+  periodDays  Int?
 
   plan                  MaintenancePlan        @relation(fields: [planId], references: [id], onDelete: Cascade)
   tasks                 MaintenanceTask[]
@@ -385,6 +409,10 @@ model MaintenanceTask {
   description      String  @db.VarChar(255)
   specialtyId      String? @db.Uuid
   estimatedMinutes Int?
+  /// Seção do documento (Motor, Freios e Ar, Elétrica...).
+  section            String? @db.VarChar(40)
+  /// "Veículos equipados com elevador", "câmbio automático Voith"... filtra pela configuração do carro.
+  equipmentCondition String? @db.VarChar(80)
 
   package    MaintenancePackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
   specialty  Specialty?          @relation(fields: [specialtyId], references: [id])
@@ -402,12 +430,24 @@ model Material {
   /// Itens do pool rotativo sao controlados por numero de serie (RF-26).
   isSerialized Boolean @default(false)
   isActive     Boolean @default(true)
+  /// Classe contábil do almoxarifado (6 dígitos: 0101xx mecânica por sistema, 0102xx carroceria, 0302xx lubrificantes, 04xxxx pneus, 10xxxx consumo, 20xxxx recondicionados, 21xxxx montagem interna).
+  classCode       String?  @db.VarChar(8)
+  manufacturerRef String?  @db.VarChar(80)
+  /// Prateleira/caixa no almoxarifado.
+  location        String?  @db.VarChar(24)
+  abcClass        String?  @db.VarChar(1)
+  stockQty        Decimal  @default(0) @db.Decimal(12, 3)
+  avgCost         Decimal? @db.Decimal(12, 2)
+  /// Item da lista "Componentes substituídos na preventiva" (base 10 e 11 do Almoxarifado).
+  isPreventive    Boolean  @default(false)
 
   kitItems             KitItem[]
   materialRequests     MaterialRequest[]
   poolComponents       PoolComponent[]
   fieldServiceMaterial FieldServiceMaterial[]
 
+  @@index([classCode])
+  @@index([isPreventive])
   @@map("materials")
 }
 
@@ -618,6 +658,8 @@ model FailureEvent {
   latitude            Decimal?    @db.Decimal(9, 6)
   longitude           Decimal?    @db.Decimal(9, 6)
   isUnscheduledReturn Boolean     @default(false)
+  /// Gerado pelo simulador de demonstração — nunca por gente.
+  isSimulated         Boolean     @default(false)
   closedAt            DateTime?
 
   /// Padrao de codificacao de falhas: Modo x Sistema/Subsistema (VMRS) x Posicao.
@@ -1155,6 +1197,9 @@ model Tool {
   description       String    @db.VarChar(255)
   calibrationDueAt  DateTime?
   isActive          Boolean   @default(true)
+  /// FR.168 — quantidade necessária e disponível para a suficiência de ferramental.
+  requiredQty       Int       @default(1)
+  availableQty      Int       @default(1)
 
   loans ToolLoan[]
 

@@ -10,6 +10,7 @@ import {
   type Paginated,
   type UpdateVehicleInput,
   type Vehicle,
+  type VehicleClass,
   type VehicleQuery,
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -129,6 +130,11 @@ export class VehiclesService {
 
     for (const row of rows) byStatus[row.status] += 1;
 
+    const byClass: Partial<Record<VehicleClass, number>> = {};
+    for (const row of rows) {
+      if (row.vehicleClass) byClass[row.vehicleClass] = (byClass[row.vehicleClass] ?? 0) + 1;
+    }
+
     const available = rows.filter((r) => AVAILABLE_STATUSES.includes(r.status)).length;
 
     return {
@@ -138,6 +144,7 @@ export class VehiclesService {
         availabilityRate: rows.length ? available / rows.length : 0,
         byStatus,
         degradedKmCount: rows.filter((r) => r.isKmDegraded).length,
+        byClass,
       },
       rows,
     };
@@ -150,6 +157,8 @@ function buildWhere(query: VehicleQuery): Prisma.VehicleWhereInput {
     ...(query.technology ? { technology: query.technology } : {}),
     ...(query.status ? { status: query.status as PrismaVehicleStatus } : {}),
     ...(query.garageId ? { garageId: query.garageId } : {}),
+    ...(query.vehicleClass ? { vehicleClass: query.vehicleClass } : {}),
+    ...(query.lot ? { lot: query.lot } : {}),
     ...(query.search
       ? {
           OR: [
@@ -172,6 +181,9 @@ function toVehicle(v: {
   model: string | null;
   modelYear: number | null;
   garageId: string | null;
+  vehicleClass: string | null;
+  lot: string | null;
+  fleetRole: string | null;
   status: Vehicle['status'];
   currentKm: number;
   lastReadingAt: Date | null;
@@ -188,6 +200,9 @@ function toVehicle(v: {
     model: v.model,
     modelYear: v.modelYear,
     garageId: v.garageId,
+    vehicleClass: (v.vehicleClass as Vehicle['vehicleClass']) ?? null,
+    lot: v.lot,
+    fleetRole: (v.fleetRole as Vehicle['fleetRole']) ?? null,
     status: v.status,
     currentKm: v.currentKm,
     lastReadingAt: v.lastReadingAt?.toISOString() ?? null,

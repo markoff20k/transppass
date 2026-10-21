@@ -216,6 +216,11 @@ export class OperationsService {
       name: o.name,
       isActive: o.isActive,
       technologies: o.qualifications.filter((q) => !q.validUntil || q.validUntil >= now).map((q) => q.technology),
+      function: o.function as OperatorRow['function'],
+      cnhCategory: o.cnhCategory,
+      lot: o.lot,
+      admittedAt: o.admittedAt?.toISOString() ?? null,
+      vehicleClasses: o.vehicleClasses,
     }));
   }
 
@@ -227,7 +232,11 @@ export class OperationsService {
     const rows = await this.prisma.operator.findMany({
       where: {
         isActive: true,
+        // Só motorista dirige; o cobrador está na base por lote, não por habilitação.
+        function: 'MOTORISTA',
         qualifications: { some: { technology: vehicle.technology, OR: [{ validUntil: null }, { validUntil: { gte: now } }] } },
+        // A classe do carro (Básico, Padron, Articulado...) exige a categoria de CNH certa.
+        ...(vehicle.vehicleClass ? { vehicleClasses: { has: vehicle.vehicleClass } } : {}),
       },
       orderBy: { name: 'asc' },
       include: { qualifications: true },
@@ -237,6 +246,7 @@ export class OperationsService {
       registration: o.registration,
       name: o.name,
       technologies: o.qualifications.map((q) => q.technology),
+      cnhCategory: o.cnhCategory,
     }));
   }
 

@@ -25,16 +25,22 @@ import {
 } from '@prisma/client';
 
 /**
- * Seed de DEMONSTRAÇÃO — uma garagem inteira em movimento, como no modo mock.
+ * Seed de DEMONSTRAÇÃO — a garagem da Transppass inteira, em movimento.
  *
- * Roda depois do seed base (`npm run db:seed`) e escreve direto nas tabelas:
- * 13 carros, seis meses de leituras de km e de eventos (para MKBF, eventos
- * por dia e disponibilidade por hora), OS abertas em cada etapa do fluxo,
- * fila com histórico, materiais aguardando peça, preventivas com kit e
- * equipe, plantão com janela correndo, notificações.
+ * Roda depois do seed base (`npm run db:seed`, que já carrega materiais,
+ * operadores, ferramentas e planos reais) e escreve direto nas tabelas:
  *
- * É idempotente do jeito bruto: apaga TODO o movimento (eventos, OS, fila,
- * leituras, paradas, demandas, notificações) e recria. Cadastros ficam.
+ *  - a frota patrimonial da Escala de Carros: 453 carros em duas garagens
+ *    (lote E8 com 238, lote AR9 com 215), por classe e papel (operacional ou
+ *    reserva). A base carro a carro (prefixo, placa, chassi) ainda não veio —
+ *    prefixos, placas, modelos por classe e ano são MOCK, marcados como tal.
+ *  - seis meses de leituras de km e de eventos (MKBF, eventos por dia,
+ *    disponibilidade por hora), OS abertas em cada etapa do fluxo, fila com
+ *    histórico, materiais aguardando peça, preventivas com kit real e equipe,
+ *    plantão com janela correndo, notificações.
+ *
+ * É idempotente do jeito bruto: apaga TODO o movimento e a frota e recria.
+ * Cadastros (usuários, catálogo, materiais, operadores, planos) ficam.
  * Nunca rode em produção com dados reais.
  */
 
@@ -59,7 +65,45 @@ function rnd(...seeds: (number | string)[]): number {
 }
 const pick = <T,>(arr: readonly T[], ...seeds: (number | string)[]): T => arr[Math.floor(rnd(...seeds) * arr.length)]!;
 
-const LINES = ['8012', '2290', '3720', '875A-10', '6262', '4111'] as const;
+const LINES = ['8012', '2290', '3720', '875A-10', '6262', '4111', '8622', '9784', '7021', '8555'] as const;
+
+// ---- A frota da Escala de Carros ---------------------------------------------
+
+type VehicleClass = 'BASICO_12M' | 'PADRON_13M' | 'EPADRON_13M' | 'EPADRON_15M' | 'ARTICULADO_18M' | 'ARTICULADO_23M' | 'EARTICULADO_23M';
+const CLASS_DIGIT: Record<VehicleClass, string> = { BASICO_12M: '1', PADRON_13M: '2', EPADRON_13M: '3', EPADRON_15M: '4', ARTICULADO_18M: '5', ARTICULADO_23M: '6', EARTICULADO_23M: '7' };
+const ELECTRIC: VehicleClass[] = ['EPADRON_13M', 'EPADRON_15M', 'EARTICULADO_23M'];
+
+/**
+ * Patrimonial por lote, [operacional, reserva], como na Escala (07 - Operação):
+ * E8 = 238 carros, AR9 = 215, total 453. A planilha repete a linha "ePadron 15M"
+ * com os mesmos números da "ePadron 13M" (erro de cópia); os 71 + 30 ePadron
+ * foram divididos meio a meio entre as duas classes — ASSUMIDO até a base
+ * carro a carro chegar.
+ */
+const ESCALA: Record<'E8' | 'AR9', Record<VehicleClass, [number, number]>> = {
+  E8: { BASICO_12M: [4, 1], PADRON_13M: [115, 12], EPADRON_13M: [34, 2], EPADRON_15M: [34, 1], ARTICULADO_18M: [2, 0], ARTICULADO_23M: [19, 7], EARTICULADO_23M: [7, 0] },
+  AR9: { BASICO_12M: [70, 17], PADRON_13M: [86, 4], EPADRON_13M: [14, 1], EPADRON_15M: [14, 1], ARTICULADO_18M: [0, 0], ARTICULADO_23M: [8, 0], EARTICULADO_23M: [0, 0] },
+};
+
+/** Modelo por classe — MOCK até a base carro a carro chegar; os nomes batem com os planos IT.MAN. */
+const MODELS: Record<VehicleClass, { manufacturer: string; model: string; share: number; years: [number, number] }[]> = {
+  BASICO_12M: [
+    { manufacturer: 'Mercedes-Benz', model: 'OF 1721/E5', share: 0.7, years: [2016, 2021] },
+    { manufacturer: 'Volkswagen', model: 'VW 18.280', share: 0.3, years: [2017, 2020] },
+  ],
+  PADRON_13M: [
+    { manufacturer: 'Mercedes-Benz', model: 'O500U/E5 AC', share: 0.6, years: [2018, 2023] },
+    { manufacturer: 'Mercedes-Benz', model: 'O500U/E3', share: 0.4, years: [2015, 2018] },
+  ],
+  EPADRON_13M: [{ manufacturer: 'Volkswagen', model: 'VW e-Volksbus', share: 1, years: [2024, 2025] }],
+  EPADRON_15M: [{ manufacturer: 'Scania', model: 'Scania eBUS', share: 1, years: [2024, 2025] }],
+  ARTICULADO_18M: [{ manufacturer: 'Mercedes-Benz', model: 'O500UA', share: 1, years: [2017, 2019] }],
+  ARTICULADO_23M: [
+    { manufacturer: 'Mercedes-Benz', model: 'O500UDA', share: 0.6, years: [2018, 2022] },
+    { manufacturer: 'Mercedes-Benz', model: 'O500UDA/AR', share: 0.4, years: [2020, 2023] },
+  ],
+  EARTICULADO_23M: [{ manufacturer: 'Eletra', model: 'Eletra e-Bus', share: 1, years: [2023, 2024] }],
+};
 
 interface VehicleSpec {
   code: string;
@@ -70,6 +114,9 @@ interface VehicleSpec {
   model: string;
   modelYear: number;
   odometerOffset: number;
+  vehicleClass: VehicleClass;
+  lot: 'E8' | 'AR9';
+  fleetRole: 'OPERACIONAL' | 'RESERVA';
   status: VehicleStatus;
   currentKm: number;
   avgDailyKm: number;
@@ -77,21 +124,55 @@ interface VehicleSpec {
   staleDays: number;
 }
 
-const VEHICLES: VehicleSpec[] = [
-  { code: '10001', plate: 'ABC1D23', technology: 'DIESEL', kmSource: 'MANUAL', manufacturer: 'Mercedes-Benz', model: 'O-500U', modelYear: 2021, odometerOffset: 0, status: 'IN_LINE', currentKm: 184_320, avgDailyKm: 218.4, staleDays: 0 },
-  { code: '10002', plate: 'ABC1D24', technology: 'DIESEL', kmSource: 'MANUAL', manufacturer: 'Mercedes-Benz', model: 'O-500U', modelYear: 2020, odometerOffset: 12_500, status: 'IN_MAINTENANCE', currentKm: 241_870, avgDailyKm: 195.2, staleDays: 0 },
-  { code: '10003', plate: 'ABC1D25', technology: 'DIESEL', kmSource: 'MANUAL', manufacturer: 'Mercedes-Benz', model: 'O-500U', modelYear: 2019, odometerOffset: 0, status: 'AWAITING_PART', currentKm: 312_045, avgDailyKm: 231.7, staleDays: 5 },
-  { code: '10004', plate: 'ABC1D26', technology: 'DIESEL', kmSource: 'MANUAL', manufacturer: 'Mercedes-Benz', model: 'O-500U', modelYear: 2021, odometerOffset: 0, status: 'IN_LINE', currentKm: 176_910, avgDailyKm: 224.0, staleDays: 0 },
-  { code: '10005', plate: 'ABC1D27', technology: 'DIESEL', kmSource: 'MANUAL', manufacturer: 'Scania', model: 'K270', modelYear: 2020, odometerOffset: 0, status: 'AWAITING_TRIAGE', currentKm: 203_455, avgDailyKm: 209.3, staleDays: 0 },
-  { code: '10006', plate: 'ABC1D28', technology: 'DIESEL', kmSource: 'MANUAL', manufacturer: 'Scania', model: 'K270', modelYear: 2020, odometerOffset: 0, status: 'FIELD_SERVICE', currentKm: 198_120, avgDailyKm: 214.8, staleDays: 0 },
-  { code: '10007', plate: 'ABC1D29', technology: 'DIESEL', kmSource: 'MANUAL', manufacturer: 'Mercedes-Benz', model: 'O-500U', modelYear: 2022, odometerOffset: 0, status: 'IN_LINE', currentKm: 121_380, avgDailyKm: 227.5, staleDays: 0 },
-  { code: '10008', plate: 'ABC1D30', technology: 'DIESEL', kmSource: 'MANUAL', manufacturer: 'Mercedes-Benz', model: 'O-500U', modelYear: 2022, odometerOffset: 0, status: 'IN_INSPECTION', currentKm: 118_940, avgDailyKm: 221.1, staleDays: 0 },
-  { code: '20001', plate: 'EBS1A01', technology: 'EBUS', kmSource: 'TELEMETRY', manufacturer: 'VW', model: 'e-Delivery', modelYear: 2025, odometerOffset: 0, status: 'AVAILABLE', currentKm: 42_180, avgDailyKm: 176.5, staleDays: 0 },
-  { code: '20002', plate: 'EBS1A02', technology: 'EBUS', kmSource: 'TELEMETRY', manufacturer: 'VW', model: 'e-Delivery', modelYear: 2025, odometerOffset: 0, status: 'IN_CLEANING', currentKm: 38_902, avgDailyKm: 168.9, staleDays: 0 },
-  { code: '20003', plate: 'EBS1A03', technology: 'EBUS', kmSource: 'TELEMETRY', manufacturer: 'BYD', model: 'D9W', modelYear: 2024, odometerOffset: 0, status: 'IN_LINE', currentKm: 61_240, avgDailyKm: 181.2, staleDays: 0 },
-  { code: '20004', plate: 'EBS1A04', technology: 'EBUS', kmSource: 'TELEMETRY', manufacturer: 'BYD', model: 'D9W', modelYear: 2024, odometerOffset: 0, status: 'AWAITING_MAINTENANCE', currentKm: 57_880, avgDailyKm: 172.6, staleDays: 0 },
-  { code: '20005', plate: 'EBS1A05', technology: 'EBUS', kmSource: 'TELEMETRY', manufacturer: 'BYD', model: 'D9W', modelYear: 2024, odometerOffset: 0, status: 'OUT_OF_SERVICE', currentKm: 49_310, avgDailyKm: 0, staleDays: 3 },
-];
+function buildFleet(): VehicleSpec[] {
+  const out: VehicleSpec[] = [];
+  const letters = 'BCDFGHJKLMNPQRSTVWXZ';
+  // Placa Mercosul (LLL D L DD): as letras vêm do hash, os dígitos do índice — nunca repete.
+  let idx = 0;
+  for (const lot of ['E8', 'AR9'] as const) {
+    for (const cls of Object.keys(ESCALA[lot]) as VehicleClass[]) {
+      const [op, res] = ESCALA[lot][cls];
+      let seq = 0;
+      const electric = ELECTRIC.includes(cls);
+      for (const role of ['OPERACIONAL', 'RESERVA'] as const) {
+        const n = role === 'OPERACIONAL' ? op : res;
+        for (let i = 0; i < n; i += 1) {
+          seq += 1;
+          const code = `${lot === 'E8' ? '8' : '9'}${CLASS_DIGIT[cls]}${String(seq).padStart(3, '0')}`;
+          const r = rnd(code, 'model');
+          let acc = 0;
+          const spec = MODELS[cls].find((m) => (acc += m.share) >= r) ?? MODELS[cls][0]!;
+          const year = spec.years[0] + Math.floor(rnd(code, 'year') * (spec.years[1] - spec.years[0] + 1));
+          const yearsInService = Math.max(0.6, 2026.8 - year);
+          const base = electric ? 150 + rnd(code, 'avg') * 50 : 185 + rnd(code, 'avg') * 55;
+          const avgDailyKm = Math.round((role === 'RESERVA' ? base * 0.5 : base) * 10) / 10;
+          const currentKm = Math.round(yearsInService * avgDailyKm * 330 * (0.85 + rnd(code, 'km') * 0.3));
+          idx += 1;
+          const plate = `${letters[Math.floor(rnd(code, 'p1') * 20)]}${letters[Math.floor(rnd(code, 'p2') * 20)]}${letters[Math.floor(rnd(code, 'p3') * 20)]}${Math.floor(idx / 100) % 10}${letters[Math.floor(rnd(code, 'p5') * 20)]}${String(idx % 100).padStart(2, '0')}`;
+          const stale = !electric && rnd(code, 'stale') < 0.06 ? 3 + Math.floor(rnd(code, 'stale-d') * 4) : 0;
+          out.push({
+            code,
+            plate,
+            technology: electric ? VehicleTechnology.EBUS : VehicleTechnology.DIESEL,
+            kmSource: electric ? KmSource.TELEMETRY : KmSource.MANUAL,
+            manufacturer: spec.manufacturer,
+            model: spec.model,
+            modelYear: year,
+            odometerOffset: rnd(code, 'offset') < 0.05 ? Math.round(rnd(code, 'offset-v') * 40_000) : 0,
+            vehicleClass: cls,
+            lot,
+            fleetRole: role,
+            status: role === 'OPERACIONAL' ? VehicleStatus.IN_LINE : VehicleStatus.AVAILABLE,
+            currentKm,
+            avgDailyKm,
+            staleDays: stale,
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
 
 async function main() {
   console.log('Seed de demonstração — apagando o movimento anterior…');
@@ -122,13 +203,7 @@ async function main() {
     if (!c) throw new Error(`Catálogo sem ${code}`);
     return c;
   };
-  const SPECIALTY_BY_SYSTEM: Record<string, string> = {
-    Elétrica: 'ELE',
-    Pneumático: 'PNE',
-    Motor: 'MEC',
-    Conforto: 'AC',
-    Carroceria: 'FUN',
-  };
+  const SPECIALTY_BY_SYSTEM: Record<string, string> = { Elétrica: 'ELE', Pneumático: 'MEC', Motor: 'MEC', Conforto: 'AC', Carroceria: 'FUN' };
 
   const reasons = await prisma.reasonCode.findMany();
   const reason = (list: ReasonCodeList, code: string) => {
@@ -137,29 +212,19 @@ async function main() {
     return r;
   };
 
-  const materials = await prisma.material.findMany();
-  const mat = (code: string) => {
-    const m = materials.find((x) => x.code === code);
-    if (!m) throw new Error(`Material ${code} não existe`);
-    return m;
+  const materials = await prisma.material.findMany({ where: { isActive: true } });
+  const matLike = (term: string) => materials.find((m) => m.description.includes(term)) ?? materials[0]!;
+
+  const plans = await prisma.maintenancePlan.findMany({ where: { isActive: true }, include: { packages: { include: { tasks: true, kits: { where: { isActive: true } } } } } });
+  const planFor = (model: string) => plans.find((p) => p.vehicleModel?.toUpperCase() === model.toUpperCase());
+
+  const motoristas = await prisma.operator.findMany({ where: { isActive: true, function: 'MOTORISTA' }, orderBy: { registration: 'asc' } });
+  const driverFor = (cls: VehicleClass, seed: string) => {
+    const ok = motoristas.filter((o) => o.vehicleClasses.includes(cls));
+    return pick(ok.length ? ok : motoristas, seed);
   };
-  const cuica = await prisma.material.upsert({
-    where: { code: 'CUI-FR-DT' },
-    update: {},
-    create: { code: 'CUI-FR-DT', description: 'Cuíca de freio dianteira 24"', unit: 'un', isSerialized: true },
-  });
 
-  const dieselPlan = await prisma.maintenancePlan.findFirst({ where: { code: 'PLAN-DIESEL' }, include: { packages: { include: { tasks: true, kits: true } } } });
-  const ebusPlan = await prisma.maintenancePlan.findFirst({ where: { code: 'PLAN-EBUS' }, include: { packages: { include: { tasks: true, kits: true } } } });
-  const p1 = dieselPlan?.packages.find((p) => p.code === 'P1');
-  const e1 = ebusPlan?.packages.find((p) => p.code === 'E1');
-  if (!p1 || !e1) throw new Error('Planos preventivos do seed base não encontrados');
-
-  const operators = await prisma.operator.findMany({ orderBy: { registration: 'asc' } });
-  const opB = operators.find((o) => o.registration === '30877') ?? operators[0]!;
-  const opC = operators.find((o) => o.registration === '31105') ?? operators[0]!;
-
-  // ---- Limpeza do movimento anterior --------------------------------------
+  // ---- Limpeza do movimento anterior e da frota ----------------------------
   await prisma.notification.deleteMany();
   await prisma.replacementDemand.deleteMany();
   await prisma.toolLoan.deleteMany();
@@ -174,30 +239,70 @@ async function main() {
   await prisma.kmProjection.deleteMany();
   await prisma.metricSnapshot.deleteMany();
   await prisma.poolComponent.updateMany({ data: { status: PoolComponentStatus.IN_STOCK, currentVehicleId: null } });
+  await prisma.vehicle.deleteMany();
 
-  // ---- Frota ---------------------------------------------------------------
-  const garage = await prisma.garage.findFirst();
-  const vehicleIds = new Map<string, string>();
-  for (const v of VEHICLES) {
-    const { avgDailyKm: _avg, staleDays: _stale, ...data } = v;
-    void _avg;
-    void _stale;
-    const row = await prisma.vehicle.upsert({
-      where: { code: v.code },
-      update: { ...data, lastReadingAt: ago(v.staleDays * 24 + 2), garageId: garage?.id, isActive: true },
-      create: { ...data, lastReadingAt: ago(v.staleDays * 24 + 2), garageId: garage?.id },
-    });
-    vehicleIds.set(v.code, row.id);
+  // ---- Garagens e frota -------------------------------------------------------
+  const garages = {
+    E8: await prisma.garage.upsert({ where: { code: 'E8' }, update: { name: 'Garagem E8' }, create: { code: 'E8', name: 'Garagem E8' } }),
+    AR9: await prisma.garage.upsert({ where: { code: 'AR9' }, update: { name: 'Garagem AR9' }, create: { code: 'AR9', name: 'Garagem AR9' } }),
+  };
+
+  const VEHICLES = buildFleet();
+  /** n-ésimo carro de uma classe num lote (0 = primeiro operacional). */
+  const carOf = (lot: 'E8' | 'AR9', cls: VehicleClass, n: number) => VEHICLES.filter((v) => v.lot === lot && v.vehicleClass === cls)[n]!;
+
+  // A garagem AGORA — quem está em cada etapa do fluxo (cenários para operar na mão).
+  const S = {
+    off: carOf('E8', 'EPADRON_15M', 5),
+    cuica: carOf('E8', 'PADRON_13M', 7),
+    insp: carOf('AR9', 'BASICO_12M', 3),
+    clean: carOf('E8', 'EPADRON_13M', 4),
+    apu: carOf('E8', 'PADRON_13M', 12),
+    porta: carOf('AR9', 'EPADRON_13M', 2),
+    alt: carOf('AR9', 'BASICO_12M', 9),
+    ac: carOf('E8', 'PADRON_13M', 20),
+    prev1: carOf('E8', 'PADRON_13M', 30),
+    prev2: carOf('E8', 'EPADRON_15M', 9),
+  };
+  S.off.status = VehicleStatus.OUT_OF_SERVICE; S.off.avgDailyKm = 0; S.off.staleDays = 3;
+  S.cuica.status = VehicleStatus.AWAITING_PART; S.cuica.staleDays = 5;
+  S.insp.status = VehicleStatus.IN_INSPECTION;
+  S.clean.status = VehicleStatus.IN_CLEANING;
+  S.apu.status = VehicleStatus.IN_MAINTENANCE;
+  S.porta.status = VehicleStatus.AWAITING_MAINTENANCE;
+  S.alt.status = VehicleStatus.FIELD_SERVICE;
+  S.ac.status = VehicleStatus.AWAITING_TRIAGE;
+
+  // Mais carros na garagem, em etapas genéricas, para a oficina parecer uma oficina.
+  type Stage = 'queue' | 'exec' | 'part' | 'inspection' | 'cleaning' | 'triage' | 'field';
+  const generic: { v: VehicleSpec; stage: Stage; hours: number; code: string }[] = [];
+  const stages: Stage[] = ['queue', 'queue', 'queue', 'queue', 'queue', 'exec', 'exec', 'exec', 'exec', 'exec', 'exec', 'exec', 'exec', 'part', 'part', 'part', 'inspection', 'inspection', 'cleaning', 'cleaning', 'triage', 'triage', 'field', 'field'];
+  const taken = new Set(Object.values(S).map((v) => v.code));
+  const operational = VEHICLES.filter((v) => v.fleetRole === 'OPERACIONAL' && !taken.has(v.code));
+  for (const [i, stage] of stages.entries()) {
+    const v = operational[Math.floor(rnd('generic', i) * operational.length)]!;
+    if (taken.has(v.code)) continue;
+    taken.add(v.code);
+    v.status = { queue: VehicleStatus.AWAITING_MAINTENANCE, exec: VehicleStatus.IN_MAINTENANCE, part: VehicleStatus.AWAITING_PART, inspection: VehicleStatus.IN_INSPECTION, cleaning: VehicleStatus.IN_CLEANING, triage: VehicleStatus.AWAITING_TRIAGE, field: VehicleStatus.FIELD_SERVICE }[stage];
+    generic.push({ v, stage, hours: { queue: 0.5 + rnd('gh', i) * 5, exec: 1 + rnd('gh', i) * 7, part: 10 + rnd('gh', i) * 40, inspection: 3 + rnd('gh', i) * 6, cleaning: 2 + rnd('gh', i) * 5, triage: rnd('gh', i) * 0.4, field: 0.3 + rnd('gh', i) * 1.2 }[stage], code: pick(['ELE-ALT-01', 'PNE-APU-01', 'MEC-MOT-01', 'AC-CLI-01', 'CAR-POR-01', 'PNE-CUI-01'], 'gc', i) });
   }
+
+  const vehicleIds = new Map<string, string>();
+  for (let i = 0; i < VEHICLES.length; i += 100) {
+    const slice = VEHICLES.slice(i, i + 100);
+    await prisma.vehicle.createMany({
+      data: slice.map(({ avgDailyKm: _a, staleDays, lot, ...v }) => ({ ...v, lot, garageId: garages[lot].id, lastReadingAt: ago(staleDays * 24 + 2) })),
+    });
+  }
+  for (const row of await prisma.vehicle.findMany({ select: { id: true, code: true } })) vehicleIds.set(row.code, row.id);
   const vid = (code: string) => vehicleIds.get(code)!;
-  console.log(`  ${VEHICLES.length} carros`);
+  console.log(`  ${VEHICLES.length} carros (E8 ${VEHICLES.filter((v) => v.lot === 'E8').length}, AR9 ${VEHICLES.filter((v) => v.lot === 'AR9').length}; ${VEHICLES.filter((v) => v.fleetRole === 'RESERVA').length} reservas)`);
 
   // ---- Seis meses de leituras de km (a base do MKBF e da projeção) --------
   const DAYS = 185;
   const readings: { vehicleId: string; rawKm: number; adjustedKm: number; deltaKm: number | null; readAt: Date; source: KmSource; enteredById: string }[] = [];
   for (const v of VEHICLES) {
     if (v.avgDailyKm === 0) continue;
-    // Do presente para trás: a leitura de hoje é o km atual.
     let km = v.currentKm;
     const rows: { day: number; km: number }[] = [];
     for (let day = v.staleDays; day < DAYS; day += 1) {
@@ -205,66 +310,46 @@ async function main() {
       const date = new Date(NOW - day * D);
       const weekend = date.getDay() === 0 || date.getDay() === 6;
       const delta = Math.round(v.avgDailyKm * (weekend ? 0.55 : 1) * (0.82 + 0.36 * rnd(v.code, day)));
-      km -= delta;
+      km = Math.max(0, km - delta);
     }
     for (let i = 0; i < rows.length; i += 1) {
       const r = rows[i]!;
       const older = rows[i + 1];
-      readings.push({
-        vehicleId: vid(v.code),
-        rawKm: r.km - v.odometerOffset,
-        adjustedKm: r.km,
-        deltaKm: older ? r.km - older.km : null,
-        readAt: new Date(NOW - r.day * D - 2 * H),
-        source: v.kmSource,
-        enteredById: v.kmSource === KmSource.MANUAL ? pcm.id : admin.id,
-      });
+      readings.push({ vehicleId: vid(v.code), rawKm: Math.max(0, r.km - v.odometerOffset), adjustedKm: r.km, deltaKm: older ? r.km - older.km : null, readAt: new Date(NOW - r.day * D - 2 * H), source: v.kmSource, enteredById: v.kmSource === KmSource.MANUAL ? pcm.id : admin.id });
     }
   }
-  await prisma.odometerReading.createMany({ data: readings });
+  for (let i = 0; i < readings.length; i += 5000) await prisma.odometerReading.createMany({ data: readings.slice(i, i + 5000) });
   console.log(`  ${readings.length} leituras de km`);
 
-  for (const v of VEHICLES) {
-    await prisma.kmProjection.create({
-      data: {
-        vehicleId: vid(v.code),
-        avgDailyKm: v.avgDailyKm,
-        projectedKm: v.currentKm + Math.round(v.avgDailyKm * 1.5),
-        projectedAt: new Date(NOW),
-        lastReadingAt: ago(v.staleDays * 24 + 2),
-        isDegraded: v.staleDays > 2,
-        degradedSince: v.staleDays > 2 ? ago((v.staleDays - 2) * 24) : null,
-        sampleDays: 30,
-      },
-    });
-  }
+  await prisma.kmProjection.createMany({
+    data: VEHICLES.map((v) => ({
+      vehicleId: vid(v.code),
+      avgDailyKm: v.avgDailyKm,
+      projectedKm: v.currentKm + Math.round(v.avgDailyKm * (v.staleDays + 0.1)),
+      projectedAt: new Date(NOW),
+      lastReadingAt: ago(v.staleDays * 24 + 2),
+      isDegraded: v.staleDays > 2,
+      degradedSince: v.staleDays > 2 ? ago((v.staleDays - 2) * 24) : null,
+      sampleDays: 30,
+    })),
+  });
 
   // ---- Seis meses de eventos encerrados (MKBF, eventos por dia, SLA) ------
-  type Hist = {
-    reportedAt: Date;
-    vehicle: VehicleSpec;
-    catalogCode: string;
-    kind: 'deferred' | 'field' | 'shop';
-    line: string;
-  };
+  type Hist = { reportedAt: Date; vehicle: VehicleSpec; catalogCode: string; kind: 'deferred' | 'field' | 'shop'; line: string };
   const history: Hist[] = [];
   const CATALOG_CODES = ['ELE-ALT-01', 'PNE-APU-01', 'PNE-CUI-01', 'MEC-MOT-01', 'AC-CLI-01', 'CAR-POR-01'];
+  const runners = VEHICLES.filter((v) => v.avgDailyKm > 0 && v.fleetRole === 'OPERACIONAL');
   for (let day = 1; day <= DAYS; day += 1) {
-    const r = rnd('events', day);
-    const n = r < 0.3 ? 0 : r < 0.82 ? 1 : 2;
+    // ~15 falhas/dia numa frota de 453 (MKBF perto de 5.500 km), menos no fim de semana.
+    const date = new Date(NOW - day * D);
+    const weekend = date.getDay() === 0 || date.getDay() === 6;
+    const n = Math.round((weekend ? 9 : 15) * (0.7 + rnd('events', day) * 0.6));
     for (let i = 0; i < n; i += 1) {
       const k = rnd('kind', day, i);
       const catalogCode = pick(CATALOG_CODES, 'cat', day, i);
       const safety = cat(catalogCode).isSafety;
-      // Falha de segurança não pode ser deferida (RF-05).
-      const kind: Hist['kind'] = !safety && k < 0.42 ? 'deferred' : k < 0.76 ? 'field' : 'shop';
-      history.push({
-        reportedAt: new Date(NOW - day * D - (5 + Math.floor(rnd('hour', day, i) * 15)) * H),
-        vehicle: pick(VEHICLES.filter((v) => v.avgDailyKm > 0), 'veh', day, i),
-        catalogCode,
-        kind,
-        line: pick(LINES, 'line', day, i),
-      });
+      const kind: Hist['kind'] = !safety && k < 0.38 ? 'deferred' : k < 0.72 ? 'field' : 'shop';
+      history.push({ reportedAt: new Date(NOW - day * D - (5 + Math.floor(rnd('hour', day, i) * 17)) * H - Math.floor(rnd('min', day, i) * 60) * 60_000), vehicle: pick(runners, 'veh', day, i), catalogCode, kind, line: pick(LINES, 'line', day, i) });
     }
   }
   history.sort((a, b) => a.reportedAt.getTime() - b.reportedAt.getTime());
@@ -282,21 +367,18 @@ async function main() {
     const t0 = h.reportedAt.getTime();
     const sla = Math.round((4 + rnd('sla', t0) * 36) * 60);
     const decidedAt = new Date(t0 + sla * 1000);
+    const driver = driverFor(h.vehicle.vehicleClass, `drv${t0}`);
 
     if (h.kind === 'deferred') {
-      const ev = await prisma.failureEvent.create({
+      await prisma.failureEvent.create({
         data: {
-          code: eventCode(), vehicleId: vid(h.vehicle.code), catalogItemId: item.id, origin: EventOrigin.CCO,
+          code: eventCode(), vehicleId: vid(h.vehicle.code), catalogItemId: item.id, origin: EventOrigin.CCO, operatorId: driver.id,
           status: EventStatus.DEFERRED, reportedById: cco.id, reportedAt: h.reportedAt, lineCode: h.line,
           isUnscheduledReturn: false, closedAt: decidedAt,
           triage: { create: { destination: TriageDestination.DEFER, decidedById: pcm.id, decidedAt, slaSeconds: sla, reasonCodeId: reason(ReasonCodeList.EVENT_DEFERRAL, rnd('def', t0) < 0.5 ? 'BAIXO' : 'JANELA').id } },
         },
       });
-      // Deferido vira backlog; os antigos já foram resolvidos numa preventiva.
-      await prisma.vehicleBacklogItem.create({
-        data: { vehicleId: vid(h.vehicle.code), description: `${item.description} (deferido na triagem)`, source: BacklogSource.DEFERRED_EVENT, catalogItemId: item.id, createdAt: decidedAt, resolvedAt: t0 < NOW - 20 * D ? new Date(t0 + 12 * D) : null },
-      });
-      void ev;
+      await prisma.vehicleBacklogItem.create({ data: { vehicleId: vid(h.vehicle.code), description: `${item.description} (deferido na triagem)`, source: BacklogSource.DEFERRED_EVENT, catalogItemId: item.id, createdAt: decidedAt, resolvedAt: t0 < NOW - 12 * D ? new Date(t0 + 9 * D) : null } });
       continue;
     }
 
@@ -307,12 +389,12 @@ async function main() {
       const finished = new Date(started.getTime() + (25 + rnd('fin', t0) * 70) * 60_000);
       await prisma.failureEvent.create({
         data: {
-          code: eventCode(), vehicleId: vid(h.vehicle.code), catalogItemId: item.id, origin: EventOrigin.OPERATOR,
+          code: eventCode(), vehicleId: vid(h.vehicle.code), catalogItemId: item.id, origin: EventOrigin.OPERATOR, operatorId: driver.id,
           status: EventStatus.CLOSED, reportedById: cco.id, reportedAt: h.reportedAt, lineCode: h.line,
-          locationDescription: pick(['Terminal Barra Funda', 'Av. Marginal, km 12', 'Ponto final da linha', 'Av. Paulista, 1500'], 'loc', t0),
+          locationDescription: pick(['Terminal Barra Funda', 'Av. Marginal, km 12', 'Ponto final da linha', 'Av. Paulista, 1500', 'Terminal Lapa', 'Terminal Pirituba'], 'loc', t0),
           isUnscheduledReturn: true, closedAt: finished,
           triage: { create: { destination: TriageDestination.FIELD, decidedById: cco.id, decidedAt, slaSeconds: sla } },
-          fieldService: { create: { dispatchedAt: dispatched, arrivedAt: arrived, startedAt: started, finishedAt: finished, supportVehicleCode: pick(['APOIO-1', 'APOIO-2'], 'apoio', t0), confirmedCatalogItemId: item.id, outcome: rnd('out', t0) < 0.8 ? FieldOutcome.RESOLVED_IN_FIELD : FieldOutcome.RETURNED_UNDER_OWN_POWER } },
+          fieldService: { create: { dispatchedAt: dispatched, arrivedAt: arrived, startedAt: started, finishedAt: finished, supportVehicleCode: pick(['APOIO-1', 'APOIO-2', 'APOIO-3'], 'apoio', t0), confirmedCatalogItemId: item.id, outcome: rnd('out', t0) < 0.78 ? FieldOutcome.RESOLVED_IN_FIELD : FieldOutcome.RETURNED_UNDER_OWN_POWER } },
         },
       });
       continue;
@@ -353,13 +435,13 @@ async function main() {
 
     const ev = await prisma.failureEvent.create({
       data: {
-        code: eventCode(), vehicleId: vid(h.vehicle.code), catalogItemId: item.id, origin: EventOrigin.CCO,
+        code: eventCode(), vehicleId: vid(h.vehicle.code), catalogItemId: item.id, origin: EventOrigin.CCO, operatorId: driver.id,
         status: EventStatus.CLOSED, reportedById: cco.id, reportedAt: h.reportedAt, lineCode: h.line,
         isUnscheduledReturn: true, closedAt: released,
         triage: { create: { destination: TriageDestination.RECALL, decidedById: pcm.id, decidedAt, slaSeconds: sla } },
       },
     });
-    const wo = await prisma.workOrder.create({
+    await prisma.workOrder.create({
       data: {
         code: woCode(), vehicleId: vid(h.vehicle.code), type: WorkOrderType.CORRECTIVE, status: WorkOrderStatus.RELEASED,
         eventId: ev.id, openedAt: opened, estimatedCompletionAt: new Date(opened.getTime() + (queueMin + execMin + 90) * 60_000),
@@ -386,28 +468,27 @@ async function main() {
       },
     });
     inspections += rejected ? 2 : 1;
-    void wo;
   }
   console.log(`  ${history.length} eventos históricos (${shopCount} OS liberadas, ${inspections} inspeções)`);
 
-  // ---- A garagem AGORA ------------------------------------------------------
-  // Ordem cronológica dos eventos abertos, para os códigos seguirem a sequência.
-  const openEvents: { key: string; hoursAgo: number; vehicle: string; catalogCode: string; line: string; origin: EventOrigin }[] = [
-    { key: 'off', hoursAgo: 72, vehicle: '20005', catalogCode: 'MEC-MOT-01', line: '6262', origin: EventOrigin.GARAGE },
-    { key: 'cuica', hoursAgo: 31.5, vehicle: '10003', catalogCode: 'PNE-CUI-01', line: '8012', origin: EventOrigin.CCO },
-    { key: 'insp', hoursAgo: 9.5, vehicle: '10008', catalogCode: 'MEC-MOT-01', line: '4111', origin: EventOrigin.OPERATOR },
-    { key: 'clean', hoursAgo: 7.4, vehicle: '20002', catalogCode: 'AC-CLI-01', line: '2290', origin: EventOrigin.OPERATOR },
-    { key: 'apu', hoursAgo: 4.6, vehicle: '10002', catalogCode: 'PNE-APU-01', line: '2290', origin: EventOrigin.CCO },
-    { key: 'porta', hoursAgo: 3.4, vehicle: '20004', catalogCode: 'CAR-POR-01', line: '3720', origin: EventOrigin.OPERATOR },
-    { key: 'alt', hoursAgo: 1.3, vehicle: '10006', catalogCode: 'ELE-ALT-01', line: '8012', origin: EventOrigin.OPERATOR },
-    { key: 'ac', hoursAgo: 0.4, vehicle: '10005', catalogCode: 'AC-CLI-01', line: '875A-10', origin: EventOrigin.OPERATOR },
+  // ---- A garagem AGORA: cenários para operar na mão ---------------------------
+  const openEvents: { key: keyof typeof S; hoursAgo: number; catalogCode: string; line: string; origin: EventOrigin }[] = [
+    { key: 'off', hoursAgo: 72, catalogCode: 'MEC-MOT-01', line: '6262', origin: EventOrigin.GARAGE },
+    { key: 'cuica', hoursAgo: 31.5, catalogCode: 'PNE-CUI-01', line: '8012', origin: EventOrigin.CCO },
+    { key: 'insp', hoursAgo: 9.5, catalogCode: 'MEC-MOT-01', line: '4111', origin: EventOrigin.OPERATOR },
+    { key: 'clean', hoursAgo: 7.4, catalogCode: 'AC-CLI-01', line: '2290', origin: EventOrigin.OPERATOR },
+    { key: 'apu', hoursAgo: 4.6, catalogCode: 'PNE-APU-01', line: '2290', origin: EventOrigin.CCO },
+    { key: 'porta', hoursAgo: 3.4, catalogCode: 'CAR-POR-01', line: '3720', origin: EventOrigin.OPERATOR },
+    { key: 'alt', hoursAgo: 1.3, catalogCode: 'ELE-ALT-01', line: '8012', origin: EventOrigin.OPERATOR },
+    { key: 'ac', hoursAgo: 0.4, catalogCode: 'AC-CLI-01', line: '875A-10', origin: EventOrigin.OPERATOR },
   ];
   const ev: Record<string, { id: string; vehicleId: string; reportedAt: Date }> = {};
   for (const o of openEvents) {
     const item = cat(o.catalogCode);
+    const v = S[o.key];
     const row = await prisma.failureEvent.create({
       data: {
-        code: eventCode(), vehicleId: vid(o.vehicle), catalogItemId: item.id, origin: o.origin,
+        code: eventCode(), vehicleId: vid(v.code), catalogItemId: item.id, origin: o.origin, operatorId: o.origin === EventOrigin.OPERATOR ? driverFor(v.vehicleClass, o.key).id : null,
         status: EventStatus.REGISTERED, reportedById: o.origin === EventOrigin.CCO ? cco.id : admin.id,
         reportedAt: ago(o.hoursAgo), lineCode: o.line,
         locationDescription: o.key === 'alt' ? 'Av. Marginal Tietê, altura da ponte da Casa Verde' : null,
@@ -419,19 +500,18 @@ async function main() {
   }
   const E = (k: string) => ev[k]!;
 
-  // 20005 — fora de operação: evento deferido (aguarda vistoria), vira backlog.
+  // off — fora de operação: evento deferido (aguarda vistoria), vira backlog.
   await prisma.failureEvent.update({ where: { id: E('off').id }, data: { status: EventStatus.DEFERRED, closedAt: ago(71), triage: { create: { destination: TriageDestination.DEFER, decidedById: pcm.id, decidedAt: ago(71), slaSeconds: 3600, reasonCodeId: reason(ReasonCodeList.EVENT_DEFERRAL, 'BAIXO').id, note: 'Carro fora de operação até a vistoria da seguradora' } } } });
-  await prisma.vehicleBacklogItem.create({ data: { vehicleId: vid('20005'), description: 'Vistoria da seguradora e reparo de funilaria (lateral esquerda)', source: BacklogSource.MANUAL, createdAt: ago(71) } });
+  await prisma.vehicleBacklogItem.create({ data: { vehicleId: vid(S.off.code), description: 'Vistoria da seguradora e reparo de funilaria (lateral esquerda)', source: BacklogSource.MANUAL, createdAt: ago(71) } });
 
-  // 10005 — aguardando triagem: só o registro, há 25 minutos.
+  // alt — socorro em campo: chegou, ainda não começou o reparo.
+  await prisma.failureEvent.update({ where: { id: E('alt').id }, data: { status: EventStatus.FIELD_SERVICE, triage: { create: { destination: TriageDestination.FIELD, decidedById: cco.id, decidedAt: ago(1.2), slaSeconds: 6 * 60 } }, fieldService: { create: { dispatchedAt: ago(1.1), arrivedAt: ago(0.7), supportVehicleCode: 'APOIO-2', technicianId: manut.id } } } });
 
-  // 10006 — socorro em campo: chegou, ainda não começou o reparo.
-  await prisma.failureEvent.update({ where: { id: E('alt').id }, data: { status: EventStatus.FIELD_SERVICE, triage: { create: { destination: TriageDestination.FIELD, decidedById: cco.id, decidedAt: ago(1.2), slaSeconds: 6 * 60 } }, fieldService: { create: { dispatchedAt: ago(1.1), arrivedAt: ago(0.7), supportVehicleCode: 'APOIO-2' } } } });
-
-  // 10003 — aguardando peça há 31,5h: OS parada por material, fila em 1º com histórico.
+  // cuica — aguardando peça há 31,5h: OS parada por material, fila em 1º com histórico.
+  const cuicaMat = matLike('CUICA FREIO DIANT');
   const woCuica = await prisma.workOrder.create({
     data: {
-      code: woCode(), vehicleId: vid('10003'), type: WorkOrderType.CORRECTIVE, status: WorkOrderStatus.WAITING_PART, eventId: E('cuica').id,
+      code: woCode(), vehicleId: vid(S.cuica.code), type: WorkOrderType.CORRECTIVE, status: WorkOrderStatus.WAITING_PART, eventId: E('cuica').id,
       openedAt: ago(31.2), estimatedCompletionAt: ago(6), createdById: pcm.id,
       downtimeSegments: { create: [
         { cause: DowntimeCause.QUEUE, startedAt: ago(31.2), endedAt: ago(29.7), minutes: 90 },
@@ -439,7 +519,7 @@ async function main() {
         { cause: DowntimeCause.MATERIAL, startedAt: ago(27.9) },
       ] },
       tasks: { create: [{
-        code: 'S01', specialtyId: spec('PNE').id, description: 'Substituir cuíca de freio dianteira', status: TaskStatus.BLOCKED_BY_MATERIAL, assignedToId: manut.id, startedAt: ago(29.7),
+        code: 'S01', specialtyId: spec('MEC').id, description: 'Substituir cuíca de freio dianteira', status: TaskStatus.BLOCKED_BY_MATERIAL, assignedToId: manut.id, startedAt: ago(29.7),
         checklistItems: { create: [
           { sequence: 1, description: 'Despressurizar o sistema', isChecked: true, checkedAt: ago(29.5), checkedById: manut.id },
           { sequence: 2, description: 'Substituir o componente', isChecked: false },
@@ -451,21 +531,20 @@ async function main() {
     include: { tasks: true },
   });
   await prisma.failureEvent.update({ where: { id: E('cuica').id }, data: { status: EventStatus.IN_MAINTENANCE, triage: { create: { destination: TriageDestination.RECALL, decidedById: pcm.id, decidedAt: ago(31.3), slaSeconds: 12 * 60 } } } });
-  const mrCuica = await prisma.materialRequest.create({
-    data: { workOrderId: woCuica.id, workOrderTaskId: woCuica.tasks[0]!.id, materialId: cuica.id, quantity: 1, status: MaterialRequestStatus.WAITING_PART, requestedById: manut.id, requestedAt: ago(28.5),
+  await prisma.materialRequest.create({
+    data: { workOrderId: woCuica.id, workOrderTaskId: woCuica.tasks[0]!.id, materialId: cuicaMat.id, quantity: 1, status: MaterialRequestStatus.WAITING_PART, requestedById: manut.id, requestedAt: ago(28.5),
       partWaiting: { create: { reasonCodeId: reason(ReasonCodeList.PART_WAITING, 'COMPRA').id, expectedAt: ago(20), escalatedAt: ago(2), createdAt: ago(27.9) } } },
   });
-  void mrCuica;
-  const qCuica = await prisma.queueEntry.create({ data: { vehicleId: vid('10003'), eventId: E('cuica').id, workOrderId: woCuica.id, position: 1, criticality: 100, isFastTrack: true, status: QueueStatus.WAITING, enteredAt: ago(31.5), estimatedCompletionAt: inHours(4) } });
+  const qCuica = await prisma.queueEntry.create({ data: { vehicleId: vid(S.cuica.code), eventId: E('cuica').id, workOrderId: woCuica.id, position: 1, criticality: 100, isFastTrack: true, status: QueueStatus.WAITING, enteredAt: ago(31.5), estimatedCompletionAt: inHours(4) } });
   await prisma.queueChangeLog.createMany({ data: [
     { queueEntryId: qCuica.id, fromPosition: null, toPosition: 1, reasonCodeId: reason(ReasonCodeList.QUEUE_PRIORITY, 'SEG').id, isSystemGenerated: true, note: 'Fast-track automático por flag do catálogo', createdAt: ago(31.5) },
     { queueEntryId: qCuica.id, fromPosition: 2, toPosition: 1, reasonCodeId: reason(ReasonCodeList.QUEUE_PRIORITY, 'SEG').id, actorId: pcm.id, note: 'Falha de freio — não pode esperar', createdAt: ago(20) },
   ] });
 
-  // 10008 — em inspeção: sub-OS concluída, inspetor no carro.
-  const woInsp = await prisma.workOrder.create({
+  // insp — em inspeção: sub-OS concluída, inspetor no carro.
+  await prisma.workOrder.create({
     data: {
-      code: woCode(), vehicleId: vid('10008'), type: WorkOrderType.CORRECTIVE, status: WorkOrderStatus.IN_INSPECTION, eventId: E('insp').id,
+      code: woCode(), vehicleId: vid(S.insp.code), type: WorkOrderType.CORRECTIVE, status: WorkOrderStatus.IN_INSPECTION, eventId: E('insp').id,
       openedAt: ago(9.1), estimatedCompletionAt: inHours(1), createdById: pcm.id, techClosedAt: ago(0.9), jbWorkOrderNumber: 'JB-88201',
       downtimeSegments: { create: [
         { cause: DowntimeCause.QUEUE, startedAt: ago(9.1), endedAt: ago(8.3), minutes: 48 },
@@ -479,16 +558,15 @@ async function main() {
           { sequence: 3, description: 'Sangria e teste de temperatura', isChecked: true, checkedAt: ago(1), checkedById: manut.id, measurement: 88, unit: '°C' },
         ] } }] },
       cleaning: { create: { status: CleaningStatus.PENDING } },
-      queueEntry: { create: { vehicleId: vid('10008'), eventId: E('insp').id, position: 1, criticality: 100, isFastTrack: false, status: QueueStatus.DONE, enteredAt: ago(9.1), startedAt: ago(8.3), finishedAt: ago(0.9) } },
+      queueEntry: { create: { vehicleId: vid(S.insp.code), eventId: E('insp').id, position: 1, criticality: 100, isFastTrack: false, status: QueueStatus.DONE, enteredAt: ago(9.1), startedAt: ago(8.3), finishedAt: ago(0.9) } },
     },
   });
   await prisma.failureEvent.update({ where: { id: E('insp').id }, data: { status: EventStatus.IN_MAINTENANCE, triage: { create: { destination: TriageDestination.RECALL, decidedById: cco.id, decidedAt: ago(9.3), slaSeconds: 11 * 60 } } } });
-  void woInsp;
 
-  // 20002 — em limpeza: tudo aprovado, checklist da limpeza pela metade.
+  // clean — em limpeza: tudo aprovado, checklist da limpeza pela metade.
   const woClean = await prisma.workOrder.create({
     data: {
-      code: woCode(), vehicleId: vid('20002'), type: WorkOrderType.CORRECTIVE, status: WorkOrderStatus.IN_CLEANING, eventId: E('clean').id,
+      code: woCode(), vehicleId: vid(S.clean.code), type: WorkOrderType.CORRECTIVE, status: WorkOrderStatus.IN_CLEANING, eventId: E('clean').id,
       openedAt: ago(7), estimatedCompletionAt: inHours(0.5), createdById: pcm.id, techClosedAt: ago(1.4),
       downtimeSegments: { create: [
         { cause: DowntimeCause.QUEUE, startedAt: ago(7), endedAt: ago(6.4), minutes: 36 },
@@ -504,24 +582,26 @@ async function main() {
         { sequence: 3, description: 'Lavagem do piso', isChecked: false },
         { sequence: 4, description: 'Conferência de bancos e avarias', isChecked: false },
       ] }, damageReports: { create: [{ description: 'Banco 12 com estofado rasgado', createdAt: ago(0.3) }] } } },
-      queueEntry: { create: { vehicleId: vid('20002'), eventId: E('clean').id, position: 1, criticality: 40, isFastTrack: false, status: QueueStatus.DONE, enteredAt: ago(7), startedAt: ago(6.4), finishedAt: ago(1.4) } },
+      queueEntry: { create: { vehicleId: vid(S.clean.code), eventId: E('clean').id, position: 1, criticality: 40, isFastTrack: false, status: QueueStatus.DONE, enteredAt: ago(7), startedAt: ago(6.4), finishedAt: ago(1.4) } },
     },
     include: { cleaning: { include: { damageReports: true } } },
   });
   await prisma.failureEvent.update({ where: { id: E('clean').id }, data: { status: EventStatus.IN_MAINTENANCE, triage: { create: { destination: TriageDestination.RECALL, decidedById: cco.id, decidedAt: ago(7.2), slaSeconds: 9 * 60 } } } });
-  await prisma.vehicleBacklogItem.create({ data: { vehicleId: vid('20002'), description: 'Banco 12 com estofado rasgado (avaria da limpeza)', source: BacklogSource.CLEANING, cleaningDamageReportId: woClean.cleaning!.damageReports[0]!.id, createdAt: ago(0.3) } });
+  await prisma.vehicleBacklogItem.create({ data: { vehicleId: vid(S.clean.code), description: 'Banco 12 com estofado rasgado (avaria da limpeza)', source: BacklogSource.CLEANING, cleaningDamageReportId: woClean.cleaning!.damageReports[0]!.id, createdAt: ago(0.3) } });
 
-  // 10002 — em manutenção há 4,2h: S01 em andamento, S02 aprovada; material separado e outro pedido.
+  // apu — em manutenção há 4,2h: S01 em andamento, S02 aprovada; material separado e outro pedido.
+  const apuMat = matLike('VALVULA APU');
+  const filtroAr = matLike('FILTRO AR OF 1721/O500');
   const woApu = await prisma.workOrder.create({
     data: {
-      code: woCode(), vehicleId: vid('10002'), type: WorkOrderType.CORRECTIVE, status: WorkOrderStatus.IN_PROGRESS, eventId: E('apu').id,
+      code: woCode(), vehicleId: vid(S.apu.code), type: WorkOrderType.CORRECTIVE, status: WorkOrderStatus.IN_PROGRESS, eventId: E('apu').id,
       openedAt: ago(4.2), estimatedCompletionAt: inHours(1.5), createdById: pcm.id, jbWorkOrderNumber: 'JB-88213',
       downtimeSegments: { create: [
         { cause: DowntimeCause.QUEUE, startedAt: ago(4.2), endedAt: ago(3.8), minutes: 24 },
         { cause: DowntimeCause.EXECUTION, startedAt: ago(3.8) },
       ] },
       tasks: { create: [
-        { code: 'S01', specialtyId: spec('PNE').id, description: 'Substituir válvula APU', status: TaskStatus.IN_PROGRESS, assignedToId: manut.id, startedAt: ago(3.5),
+        { code: 'S01', specialtyId: spec('MEC').id, description: 'Substituir válvula APU', status: TaskStatus.IN_PROGRESS, assignedToId: manut.id, startedAt: ago(3.5),
           checklistItems: { create: [
             { sequence: 1, description: 'Despressurizar o sistema', isChecked: true, checkedAt: ago(3), checkedById: manut.id },
             { sequence: 2, description: 'Substituir o componente', isChecked: true, checkedAt: ago(1), checkedById: manut.id },
@@ -540,15 +620,15 @@ async function main() {
   await prisma.failureEvent.update({ where: { id: E('apu').id }, data: { status: EventStatus.IN_MAINTENANCE, triage: { create: { destination: TriageDestination.RECALL, decidedById: cco.id, decidedAt: ago(4.4), slaSeconds: 10 * 60 } } } });
   const s01 = woApu.tasks.find((t) => t.code === 'S01')!;
   await prisma.materialRequest.createMany({ data: [
-    { workOrderId: woApu.id, workOrderTaskId: s01.id, materialId: mat('VAL-APU-01').id, quantity: 1, status: MaterialRequestStatus.SEPARATED, requestedById: manut.id, requestedAt: ago(3.9), separatedById: estoque.id, separatedAt: ago(2.5), serialNumber: 'APU-77812' },
-    { workOrderId: woApu.id, workOrderTaskId: s01.id, materialId: mat('FIL-AR-01').id, quantity: 2, status: MaterialRequestStatus.REQUESTED, requestedById: manut.id, requestedAt: ago(1.2) },
+    { workOrderId: woApu.id, workOrderTaskId: s01.id, materialId: apuMat.id, quantity: 1, status: MaterialRequestStatus.SEPARATED, requestedById: manut.id, requestedAt: ago(3.9), separatedById: estoque.id, separatedAt: ago(2.5), serialNumber: apuMat.isSerialized ? 'APU-77812' : null },
+    { workOrderId: woApu.id, workOrderTaskId: s01.id, materialId: filtroAr.id, quantity: 2, status: MaterialRequestStatus.REQUESTED, requestedById: manut.id, requestedAt: ago(1.2) },
   ] });
-  await prisma.queueEntry.create({ data: { vehicleId: vid('10002'), eventId: E('apu').id, workOrderId: woApu.id, position: 1, criticality: 100, isFastTrack: true, status: QueueStatus.IN_SERVICE, enteredAt: ago(4.2), startedAt: ago(3.8), estimatedCompletionAt: inHours(1.5) } });
+  await prisma.queueEntry.create({ data: { vehicleId: vid(S.apu.code), eventId: E('apu').id, workOrderId: woApu.id, position: 1, criticality: 100, isFastTrack: true, status: QueueStatus.IN_SERVICE, enteredAt: ago(4.2), startedAt: ago(3.8), estimatedCompletionAt: inHours(1.5) } });
 
-  // 20004 — na fila há 3,1h: OS aberta, esperando valeta.
+  // porta — na fila há 3,1h: OS aberta, esperando valeta.
   const woPorta = await prisma.workOrder.create({
     data: {
-      code: woCode(), vehicleId: vid('20004'), type: WorkOrderType.CORRECTIVE, status: WorkOrderStatus.OPEN, eventId: E('porta').id,
+      code: woCode(), vehicleId: vid(S.porta.code), type: WorkOrderType.CORRECTIVE, status: WorkOrderStatus.OPEN, eventId: E('porta').id,
       openedAt: ago(3.1), estimatedCompletionAt: inHours(5.5), createdById: pcm.id,
       downtimeSegments: { create: [{ cause: DowntimeCause.QUEUE, startedAt: ago(3.1) }] },
       tasks: { create: [{ code: 'S01', specialtyId: spec('FUN').id, description: 'Regular cilindro e sensor da porta 2', status: TaskStatus.PENDING }] },
@@ -556,17 +636,79 @@ async function main() {
     },
   });
   await prisma.failureEvent.update({ where: { id: E('porta').id }, data: { status: EventStatus.IN_MAINTENANCE, triage: { create: { destination: TriageDestination.RECALL, decidedById: cco.id, decidedAt: ago(3.2), slaSeconds: 14 * 60 } } } });
-  const qPorta = await prisma.queueEntry.create({ data: { vehicleId: vid('20004'), eventId: E('porta').id, workOrderId: woPorta.id, position: 2, criticality: 60, isFastTrack: false, status: QueueStatus.WAITING, enteredAt: ago(3.1), estimatedCompletionAt: inHours(5.5) } });
+  const qPorta = await prisma.queueEntry.create({ data: { vehicleId: vid(S.porta.code), eventId: E('porta').id, workOrderId: woPorta.id, position: 2, criticality: 60, isFastTrack: false, status: QueueStatus.WAITING, enteredAt: ago(3.1), estimatedCompletionAt: inHours(5.5) } });
   await prisma.queueChangeLog.create({ data: { queueEntryId: qPorta.id, fromPosition: null, toPosition: 2, reasonCodeId: reason(ReasonCodeList.QUEUE_PRIORITY, 'SEG').id, isSystemGenerated: true, note: 'Posição inicial por criticidade', createdAt: ago(3.1) } });
 
-  console.log('  garagem atual: 1 socorro, 1 triagem, 2 na fila, 1 em execução, 1 aguardando peça, 1 em inspeção, 1 em limpeza');
+  // ---- Garagem genérica: mais carros em cada etapa ---------------------------
+  let queuePos = 3;
+  for (const g of generic) {
+    const item = cat(g.code);
+    const specialty = spec(SPECIALTY_BY_SYSTEM[item.system ?? ''] ?? 'MEC');
+    const t = g.hours;
+    const line = pick(LINES, 'gl', g.v.code);
+    const driver = driverFor(g.v.vehicleClass, `gd${g.v.code}`);
+    const base = { code: eventCode(), vehicleId: vid(g.v.code), catalogItemId: item.id, origin: rnd('go', g.v.code) < 0.6 ? EventOrigin.OPERATOR : EventOrigin.CCO, operatorId: driver.id, reportedById: cco.id, reportedAt: ago(t + 0.3), lineCode: line, isUnscheduledReturn: true };
+
+    if (g.stage === 'triage') {
+      await prisma.failureEvent.create({ data: { ...base, status: EventStatus.REGISTERED } });
+      continue;
+    }
+    if (g.stage === 'field') {
+      await prisma.failureEvent.create({ data: { ...base, status: EventStatus.FIELD_SERVICE, locationDescription: pick(['Terminal Lapa', 'Av. Francisco Matarazzo, 1000', 'Rod. Anhanguera, km 18'], 'gloc', g.v.code), triage: { create: { destination: TriageDestination.FIELD, decidedById: cco.id, decidedAt: ago(t + 0.1), slaSeconds: 12 * 60 } }, fieldService: { create: { dispatchedAt: ago(t), supportVehicleCode: pick(['APOIO-1', 'APOIO-3'], 'ga', g.v.code), technicianId: manut.id, ...(t > 0.8 ? { arrivedAt: ago(t - 0.5) } : {}) } } } });
+      continue;
+    }
+
+    const evRow = await prisma.failureEvent.create({ data: { ...base, status: EventStatus.IN_MAINTENANCE, triage: { create: { destination: TriageDestination.RECALL, decidedById: pcm.id, decidedAt: ago(t + 0.1), slaSeconds: 9 * 60 } } } });
+    const execMin = Math.round((item.estimatedRepairMinutes ?? 120) * (0.8 + rnd('ge', g.v.code) * 0.6));
+    const status = { queue: WorkOrderStatus.OPEN, exec: WorkOrderStatus.IN_PROGRESS, part: WorkOrderStatus.WAITING_PART, inspection: WorkOrderStatus.IN_INSPECTION, cleaning: WorkOrderStatus.IN_CLEANING }[g.stage as Exclude<Stage, 'triage' | 'field'>];
+    const taskStatus = { queue: TaskStatus.PENDING, exec: TaskStatus.IN_PROGRESS, part: TaskStatus.BLOCKED_BY_MATERIAL, inspection: TaskStatus.IN_INSPECTION, cleaning: TaskStatus.APPROVED }[g.stage as Exclude<Stage, 'triage' | 'field'>];
+    const started = g.stage === 'queue' ? null : ago(Math.max(0.2, t - 0.5));
+    const finished = g.stage === 'inspection' || g.stage === 'cleaning' ? ago(Math.max(0.1, t - 0.5 - execMin / 60)) : null;
+    const segments: { cause: DowntimeCause; startedAt: Date; endedAt?: Date; minutes?: number }[] = [{ cause: DowntimeCause.QUEUE, startedAt: ago(t), ...(started ? { endedAt: started, minutes: 30 } : {}) }];
+    if (started) segments.push({ cause: DowntimeCause.EXECUTION, startedAt: started, ...(g.stage === 'part' ? { endedAt: ago(t - 1), minutes: 60 } : finished ? { endedAt: finished, minutes: execMin } : {}) });
+    if (g.stage === 'part') segments.push({ cause: DowntimeCause.MATERIAL, startedAt: ago(t - 1) });
+    if (finished) segments.push({ cause: DowntimeCause.INSPECTION, startedAt: finished, ...(g.stage === 'cleaning' ? { endedAt: ago(0.4), minutes: 40 } : {}) });
+    if (g.stage === 'cleaning') segments.push({ cause: DowntimeCause.CLEANING, startedAt: ago(0.4) });
+
+    const wo = await prisma.workOrder.create({
+      data: {
+        code: woCode(), vehicleId: vid(g.v.code), type: WorkOrderType.CORRECTIVE, status, eventId: evRow.id,
+        openedAt: ago(t), estimatedCompletionAt: inHours(Math.max(0.5, execMin / 60 + 2 - t)), createdById: pcm.id,
+        techClosedAt: finished, jbWorkOrderNumber: rnd('gjb', g.v.code) < 0.5 ? `JB-${88_300 + Math.floor(rnd('gjbn', g.v.code) * 500)}` : null,
+        downtimeSegments: { create: segments },
+        tasks: { create: [{
+          code: 'S01', specialtyId: specialty.id, description: `Corrigir: ${item.description.toLowerCase()}`, status: taskStatus, assignedToId: started ? manut.id : null, startedAt: started, finishedAt: finished,
+          confirmedCatalogItemId: finished ? item.id : null,
+          checklistItems: { create: [
+            { sequence: 1, description: 'Diagnóstico confirmado', isChecked: Boolean(started), checkedAt: started, checkedById: started ? manut.id : null },
+            { sequence: 2, description: 'Componente substituído/reparado', isChecked: Boolean(finished), checkedAt: finished, checkedById: finished ? manut.id : null },
+            { sequence: 3, description: 'Teste funcional', isChecked: Boolean(finished), checkedAt: finished, checkedById: finished ? manut.id : null },
+          ] },
+          ...(g.stage === 'cleaning' ? { inspections: { create: [{ inspectorId: admin.id, inspectedAt: ago(0.4), result: InspectionResult.APPROVED }] } } : {}),
+        }] },
+        cleaning: { create: g.stage === 'cleaning'
+          ? { status: CleaningStatus.IN_PROGRESS, startedAt: ago(0.4), performedById: admin.id, checklistItems: { create: ['Varrição e recolhimento de resíduos', 'Limpeza de vidros e corrimãos', 'Lavagem do piso', 'Conferência de bancos e avarias'].map((d, i) => ({ sequence: i + 1, description: d, isChecked: i < 2, checkedAt: i < 2 ? ago(0.2) : null })) } }
+          : { status: CleaningStatus.PENDING } },
+        queueEntry: { create: { vehicleId: vid(g.v.code), eventId: evRow.id, position: g.stage === 'queue' ? queuePos++ : 1, criticality: item.isSafety ? 100 : 50, isFastTrack: item.isFastTrack, status: g.stage === 'queue' ? QueueStatus.WAITING : QueueStatus.IN_SERVICE, enteredAt: ago(t), startedAt: started, estimatedCompletionAt: inHours(Math.max(0.5, execMin / 60 + 2 - t)) } },
+      },
+      include: { tasks: true },
+    });
+    if (g.stage === 'part') {
+      const m = pick(materials.filter((x) => x.isPreventive && !x.isSerialized), 'gm', g.v.code);
+      await prisma.materialRequest.create({ data: { workOrderId: wo.id, workOrderTaskId: wo.tasks[0]!.id, materialId: m.id, quantity: 1, status: MaterialRequestStatus.WAITING_PART, requestedById: manut.id, requestedAt: ago(t - 0.9), partWaiting: { create: { reasonCodeId: reason(ReasonCodeList.PART_WAITING, pick(['SEMEST', 'COMPRA', 'OFIC'], 'gpw', g.v.code)).id, expectedAt: t > 24 ? ago(t - 24) : inHours(8), escalatedAt: t > 24 ? ago(1) : null, createdAt: ago(t - 1) } } } });
+    } else if (g.stage === 'exec' && rnd('greq', g.v.code) < 0.5) {
+      const m = pick(materials.filter((x) => x.isPreventive && !x.isSerialized), 'gm2', g.v.code);
+      await prisma.materialRequest.create({ data: { workOrderId: wo.id, workOrderTaskId: wo.tasks[0]!.id, materialId: m.id, quantity: 1, status: rnd('gst', g.v.code) < 0.5 ? MaterialRequestStatus.REQUESTED : MaterialRequestStatus.SEPARATED, requestedById: manut.id, requestedAt: ago(Math.max(0.1, t - 0.8)), ...(rnd('gst', g.v.code) >= 0.5 ? { separatedById: estoque.id, separatedAt: ago(Math.max(0.05, t - 1)) } : {}) } });
+    }
+  }
+  console.log(`  garagem atual: ${Object.keys(S).length - 2} cenários + ${generic.length} carros em etapas genéricas`);
 
   // ---- Pool, ferramentas ---------------------------------------------------
   const alt2 = await prisma.poolComponent.findUnique({ where: { serialNumber: 'ALT-20432' } });
   const alt3 = await prisma.poolComponent.findUnique({ where: { serialNumber: 'ALT-20433' } });
   if (alt2) {
-    await prisma.poolComponent.update({ where: { id: alt2.id }, data: { status: PoolComponentStatus.IN_USE, currentVehicleId: vid('10001') } });
-    await prisma.poolMovement.create({ data: { componentId: alt2.id, fromStatus: PoolComponentStatus.IN_STOCK, toStatus: PoolComponentStatus.IN_USE, actorId: manut.id, occurredAt: ago(60), note: 'Instalado no 10001' } });
+    await prisma.poolComponent.update({ where: { id: alt2.id }, data: { status: PoolComponentStatus.IN_USE, currentVehicleId: vid(S.prev1.code) } });
+    await prisma.poolMovement.create({ data: { componentId: alt2.id, fromStatus: PoolComponentStatus.IN_STOCK, toStatus: PoolComponentStatus.IN_USE, actorId: manut.id, occurredAt: ago(60), note: `Instalado no ${S.prev1.code}` } });
   }
   if (alt3) {
     await prisma.poolComponent.update({ where: { id: alt3.id }, data: { status: PoolComponentStatus.IN_WORKSHOP } });
@@ -575,49 +717,64 @@ async function main() {
   const torq = await prisma.tool.findUnique({ where: { code: 'TORQ-01' } });
   if (torq) await prisma.toolLoan.create({ data: { toolId: torq.id, borrowerId: manut.id, workOrderTaskId: s01.id, loanedAt: ago(2) } });
 
-  // ---- Preventiva: backlog do 10001, duas paradas ---------------------------
-  const bl1 = await prisma.vehicleBacklogItem.create({ data: { vehicleId: vid('10001'), description: 'Ar-condicionado sem refrigeração (deferido na triagem)', source: BacklogSource.DEFERRED_EVENT, catalogItemId: cat('AC-CLI-01').id, createdAt: ago(5 * 24) } });
-  const bl2 = await prisma.vehicleBacklogItem.create({ data: { vehicleId: vid('10001'), description: 'Banco 7 com estofado rasgado (avaria da limpeza)', source: BacklogSource.CLEANING, createdAt: ago(9 * 24) } });
-  await prisma.vehicleBacklogItem.create({ data: { vehicleId: vid('10003'), description: 'Espelho retrovisor direito trincado', source: BacklogSource.INSPECTION, createdAt: ago(12 * 24) } });
+  // ---- Preventiva: backlog e paradas com os planos reais ---------------------
+  const bl1 = await prisma.vehicleBacklogItem.create({ data: { vehicleId: vid(S.prev1.code), description: 'Ar-condicionado sem refrigeração (deferido na triagem)', source: BacklogSource.DEFERRED_EVENT, catalogItemId: cat('AC-CLI-01').id, createdAt: ago(5 * 24) } });
+  const bl2 = await prisma.vehicleBacklogItem.create({ data: { vehicleId: vid(S.prev1.code), description: 'Banco 7 com estofado rasgado (avaria da limpeza)', source: BacklogSource.CLEANING, createdAt: ago(9 * 24) } });
+  await prisma.vehicleBacklogItem.create({ data: { vehicleId: vid(S.cuica.code), description: 'Espelho retrovisor direito trincado', source: BacklogSource.INSPECTION, createdAt: ago(12 * 24) } });
 
-  const kitP1 = p1.kits[0];
-  const kitE1 = e1.kits[0];
-  await prisma.scheduledMaintenance.create({
-    data: {
-      vehicleId: vid('10001'), packageId: p1.id, targetKm: 187_500, projectedDate: inHours(4 * 24), plannedDate: inHours(3 * 24), status: ScheduleStatus.PLANNED, createdAt: ago(3 * 24),
-      scopeItems: { create: [...p1.tasks.map((t) => ({ maintenanceTaskId: t.id })), { backlogItemId: bl1.id }, { backlogItemId: bl2.id }] },
-      reschedules: { create: [{ fromDate: ago(24), toDate: inHours(3 * 24), reasonCodeId: reason(ReasonCodeList.SCHEDULE_RESCHEDULE, 'MAT').id, actorId: pcm.id, note: 'Filtro de combustível em falta no estoque', createdAt: ago(2 * 24) }] },
-      ...(kitP1 ? { kitSeparation: { create: { kitId: kitP1.id, status: KitSeparationStatus.PENDING } } } : {}),
-    },
-  });
-  await prisma.scheduledMaintenance.create({
-    data: {
-      vehicleId: vid('20002'), packageId: e1.id, targetKm: 40_000, projectedDate: inHours(6 * 24), plannedDate: inHours(2 * 24), status: ScheduleStatus.CONFIRMED, kitReady: true, teamReserved: true, createdAt: ago(4 * 24),
-      scopeItems: { create: e1.tasks.map((t) => ({ maintenanceTaskId: t.id })) },
-      reservations: { create: [{ specialtyId: spec('ELE').id, headcount: 2, reservedById: manut.id, reservedAt: ago(20) }] },
-      ...(kitE1 ? { kitSeparation: { create: { kitId: kitE1.id, status: KitSeparationStatus.SEPARATED, separatedById: estoque.id, separatedAt: ago(6) } } } : {}),
-    },
-  });
+  const nextTrigger = (km: number, pkg: { intervalKm: number; offsetKm: number }) => pkg.offsetKm + (Math.floor(Math.max(0, km - pkg.offsetKm) / pkg.intervalKm) + 1) * pkg.intervalKm;
+  const scheduleFor = async (v: VehicleSpec, pkgCode: string, opts: { status: ScheduleStatus; plannedInDays: number; kit: KitSeparationStatus | null; team?: string; reschedule?: boolean; backlog?: string[] }) => {
+    const plan = planFor(v.model);
+    const pkg = plan?.packages.find((p) => p.code === pkgCode) ?? plan?.packages[0];
+    if (!plan || !pkg) return;
+    const targetKm = nextTrigger(v.currentKm, pkg);
+    const days = Math.max(1, Math.round((targetKm - v.currentKm) / Math.max(50, v.avgDailyKm)));
+    const kit = pkg.kits[0];
+    await prisma.scheduledMaintenance.create({
+      data: {
+        vehicleId: vid(v.code), packageId: pkg.id, targetKm, projectedDate: inHours(days * 24), plannedDate: inHours(opts.plannedInDays * 24), status: opts.status,
+        kitReady: opts.kit === KitSeparationStatus.SEPARATED, teamReserved: Boolean(opts.team), createdAt: ago(3 * 24),
+        scopeItems: { create: [...pkg.tasks.map((t) => ({ maintenanceTaskId: t.id })), ...(opts.backlog ?? []).map((id) => ({ backlogItemId: id }))] },
+        ...(opts.reschedule ? { reschedules: { create: [{ fromDate: ago(24), toDate: inHours(opts.plannedInDays * 24), reasonCodeId: reason(ReasonCodeList.SCHEDULE_RESCHEDULE, 'MAT').id, actorId: pcm.id, note: 'Filtro de combustível em falta no estoque', createdAt: ago(2 * 24) }] } } : {}),
+        ...(opts.team ? { reservations: { create: [{ specialtyId: spec(opts.team).id, headcount: 2, reservedById: manut.id, reservedAt: ago(20) }] } } : {}),
+        ...(kit && opts.kit ? { kitSeparation: { create: { kitId: kit.id, status: opts.kit, ...(opts.kit === KitSeparationStatus.SEPARATED ? { separatedById: estoque.id, separatedAt: ago(6) } : {}) } } } : {}),
+      },
+    });
+  };
+  await scheduleFor(S.prev1, 'A', { status: ScheduleStatus.PLANNED, plannedInDays: 3, kit: KitSeparationStatus.PENDING, reschedule: true, backlog: [bl1.id, bl2.id] });
+  await scheduleFor(S.prev2, 'M', { status: ScheduleStatus.CONFIRMED, plannedInDays: 2, kit: KitSeparationStatus.SEPARATED, team: 'ELE' });
+  await scheduleFor(carOf('AR9', 'PADRON_13M', 11), 'I', { status: ScheduleStatus.PLANNED, plannedInDays: 1, kit: KitSeparationStatus.PENDING });
+  await scheduleFor(carOf('AR9', 'BASICO_12M', 22), 'B', { status: ScheduleStatus.CONFIRMED, plannedInDays: 4, kit: KitSeparationStatus.SEPARATED, team: 'MEC' });
+  await scheduleFor(carOf('E8', 'ARTICULADO_23M', 3), 'I', { status: ScheduleStatus.PLANNED, plannedInDays: 6, kit: null });
+  await scheduleFor(carOf('E8', 'EPADRON_13M', 15), 'L', { status: ScheduleStatus.PLANNED, plannedInDays: 2, kit: KitSeparationStatus.PENDING });
+  console.log('  6 paradas preventivas programadas com os pacotes dos planos IT.MAN');
 
   // ---- Plantão: três demandas de reposição ---------------------------------
-  await prisma.replacementDemand.create({ data: { lineCode: '8012', originVehicleId: vid('10003'), status: ReplacementDemandStatus.OPEN, requestedById: cco.id, requestedAt: ago(0.2), windowEndsAt: inHours(0.47) } });
-  await prisma.replacementDemand.create({ data: { lineCode: '2290', originVehicleId: vid('10002'), status: ReplacementDemandStatus.MET, requestedById: cco.id, requestedAt: ago(4.1), windowEndsAt: ago(3.4), metAt: ago(3.9),
-    assignments: { create: [{ vehicleId: vid('10004'), operatorId: opB.id, assignedById: cco.id, assignedAt: ago(3.9) }] } } });
+  const reserveOf = (cls: VehicleClass, lot: 'E8' | 'AR9', n: number) => VEHICLES.filter((v) => v.lot === lot && v.vehicleClass === cls && v.fleetRole === 'RESERVA')[n]!;
+  const resB = reserveOf('PADRON_13M', 'E8', 0);
+  const resC = reserveOf('EPADRON_13M', 'AR9', 0);
+  resB.status = VehicleStatus.IN_LINE;
+  await prisma.vehicle.update({ where: { id: vid(resB.code) }, data: { status: VehicleStatus.IN_LINE } });
+  await prisma.replacementDemand.create({ data: { lineCode: '8012', originVehicleId: vid(S.cuica.code), status: ReplacementDemandStatus.OPEN, requestedById: cco.id, requestedAt: ago(0.08), windowEndsAt: inHours(0.58) } });
+  await prisma.replacementDemand.create({ data: { lineCode: '2290', originVehicleId: vid(S.apu.code), status: ReplacementDemandStatus.ASSIGNED, requestedById: cco.id, requestedAt: ago(4.1), windowEndsAt: ago(3.4), metAt: ago(3.9),
+    assignments: { create: [{ vehicleId: vid(resB.code), operatorId: driverFor('PADRON_13M', 'resB').id, assignedById: cco.id, assignedAt: ago(3.9) }] } } });
   await prisma.replacementDemand.create({ data: { lineCode: '3720', status: ReplacementDemandStatus.MISSED, requestedById: cco.id, requestedAt: ago(26), windowEndsAt: ago(25.3),
-    assignments: { create: [{ vehicleId: vid('20003'), operatorId: opC.id, assignedById: cco.id, assignedAt: ago(25.1), returnedAt: ago(18) }] } } });
+    assignments: { create: [{ vehicleId: vid(resC.code), operatorId: driverFor('EPADRON_13M', 'resC').id, assignedById: cco.id, assignedAt: ago(25.1), returnedAt: ago(18) }] } } });
 
   // ---- Notificações -----------------------------------------------------
   await prisma.notification.createMany({ data: [
-    { role: UserRole.PCM, title: 'Peça com prazo vencido escalonada', body: 'Cuíca de freio dianteira (OS do carro 10003) passou do prazo previsto e foi escalonada ao PCM.', entity: 'MaterialRequest', createdAt: ago(2) },
-    { role: UserRole.PCM, title: 'Previsão de conclusão estourada', body: 'A OS do carro 10003 passou da previsão de conclusão. Carro aguardando peça há mais de 24h.', entity: 'WorkOrder', createdAt: ago(6) },
+    { role: UserRole.PCM, title: 'Peça com prazo vencido escalonada', body: `Cuíca de freio dianteira (OS do carro ${S.cuica.code}) passou do prazo previsto e foi escalonada ao PCM.`, entity: 'MaterialRequest', createdAt: ago(2) },
+    { role: UserRole.PCM, title: 'Previsão de conclusão estourada', body: `A OS do carro ${S.cuica.code} passou da previsão de conclusão. Carro aguardando peça há mais de 24h.`, entity: 'WorkOrder', createdAt: ago(6) },
     { role: UserRole.CCO, title: 'Janela de reposição estourada', body: 'Linha 3720 ficou 12 minutos sem reserva designada na janela de 40 min.', entity: 'ReplacementDemand', createdAt: ago(25.3) },
-    { role: UserRole.PCM, title: 'Projeção de km degradada', body: 'Carro 10003 está sem leitura de km há 5 dias; a projeção da preventiva está degradada.', entity: 'KmProjection', createdAt: ago(3 * 24) },
-    { role: UserRole.ESTOQUE, title: 'Kit para separar em D-1', body: 'Kit 7.500 km diesel do carro 10001: separar até amanhã para a parada programada.', entity: 'KitSeparation', createdAt: ago(1) },
-    { role: UserRole.ADMIN, title: 'Inspeção reprovada e sub-OS reaberta', body: 'S02 da OS do carro 10002 reprovada (tensão de correia fora da faixa) e reaberta.', entity: 'Inspection', createdAt: ago(2.6) },
+    { role: UserRole.PCM, title: 'Odômetro atrasado', body: `Carro ${S.cuica.code} está sem leitura de km há 5 dias; a projeção da preventiva está desatualizada.`, entity: 'KmProjection', createdAt: ago(3 * 24) },
+    { role: UserRole.ESTOQUE, title: 'Kit para separar em D-1', body: `Kit da revisão A do carro ${S.prev1.code}: separar até amanhã para a parada programada.`, entity: 'KitSeparation', createdAt: ago(1) },
+    { role: UserRole.ADMIN, title: 'Inspeção reprovada e sub-OS reaberta', body: `S02 da OS do carro ${S.apu.code} reprovada (tensão de correia fora da faixa) e reaberta.`, entity: 'Inspection', createdAt: ago(2.6) },
   ] });
 
+  const byStatus = await prisma.vehicle.groupBy({ by: ['status'], _count: { _all: true } });
   console.log('Seed de demonstração concluído.');
-  console.log('  dashboard: 13 carros, fila, OS em todas as etapas, preventiva, plantão, 6 meses de histórico');
+  console.log('  frota agora: ' + byStatus.map((s) => `${s.status} ${s._count._all}`).join(', '));
+  console.log(`  cenários: fora ${S.off.code} · peça ${S.cuica.code} · inspeção ${S.insp.code} · limpeza ${S.clean.code} · execução ${S.apu.code} · fila ${S.porta.code} · socorro ${S.alt.code} · triagem ${S.ac.code} · preventiva ${S.prev1.code}/${S.prev2.code}`);
 }
 
 main()

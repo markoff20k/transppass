@@ -129,7 +129,7 @@ export function SchedulingPage() {
                     <td className="is-num">{formatNumber(r.currentKm)}</td>
                     <td className="is-num">
                       {r.projectedKm === null ? '—' : formatNumber(r.projectedKm)}
-                      {r.isKmDegraded && <span className="tp-badge tp-badge--warning" style={{ marginLeft: 6 }}>degradado</span>}
+                      {r.isKmDegraded && <span className="tp-badge tp-badge--warning" style={{ marginLeft: 6 }} title="Sem leitura de odômetro há mais de 2 dias — projeção desatualizada">odômetro atrasado</span>}
                     </td>
                     <td>
                       {r.nextPackageName ?? '—'}
@@ -358,7 +358,7 @@ function CreateScheduleDrawer({ open, row, onClose, onCreated }: { open: boolean
               <option key={p.id} value={p.id}>{p.name} · {p.planName} v{p.planVersion}{p.controlledDocument ? ` · ${p.controlledDocument}` : ''}</option>
             ))}
           </select>
-          {pkg && <span className="tp-help">{pkg.taskCount} tarefa(s) do pacote{pkg.kitName ? ` · kit ${pkg.kitName}` : ''} · tolerância ±{formatNumber(pkg.toleranceKm)} km</span>}
+          {pkg && <span className="tp-help">{pkg.taskCount} tarefa(s) do pacote{pkg.kitName ? ` · kit ${pkg.kitName}` : ''} · tolerância {pkg.toleranceBelowKm !== null && pkg.toleranceBelowKm !== pkg.toleranceKm ? `−${formatNumber(pkg.toleranceBelowKm)} / +${formatNumber(pkg.toleranceKm)}` : `±${formatNumber(pkg.toleranceKm)}`} km</span>}
         </div>
         <div className="tp-field">
           <label className="tp-label" htmlFor="sc-km">Km da janela</label>

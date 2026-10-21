@@ -212,6 +212,9 @@ export interface PlanPackageRow {
   name: string;
   intervalKm: number;
   toleranceKm: number;
+  toleranceBelowKm: number | null;
+  offsetKm: number;
+  vehicleModel: string | null;
   taskCount: number;
   kitId: string | null;
   kitName: string | null;

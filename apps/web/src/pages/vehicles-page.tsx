@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil, Plus, Search } from 'lucide-react';
 import {
   createVehicleSchema,
+  FLEET_ROLE_LABELS,
   KM_SOURCE_LABELS,
   KmSource,
+  VEHICLE_CLASS_LABELS,
   VEHICLE_STATUS_LABELS,
   VEHICLE_TECHNOLOGY_LABELS,
   VehicleTechnology,
@@ -27,11 +29,14 @@ type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; vehicle: V
 export function VehiclesPage() {
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>({ kind: 'closed' });
+  const [search, setSearch] = useState('');
+  const [cls, setCls] = useState('');
+  const [lot, setLot] = useState('');
 
   usePageHeader({
     eyebrow: 'Cadastros',
     title: 'Frota',
-    description: 'Tecnologia, fonte de km e offset de hodômetro por carro.',
+    description: 'Prefixo, placa, classe, lote, tecnologia e fonte de km por carro.',
     actions: (
       <button type="button" className="tp-btn tp-btn--primary tp-btn--sm" onClick={() => setMode({ kind: 'create' })}>
         <Plus size={14} /> Novo carro
@@ -41,11 +46,17 @@ export function VehiclesPage() {
 
   const { data, isPending } = useQuery({
     queryKey: ['vehicles', 'all'],
-    queryFn: () => api.get<Paginated<Vehicle>>('/vehicles?perPage=100&onlyActive=false'),
+    queryFn: () => api.get<Paginated<Vehicle>>('/vehicles?perPage=500&onlyActive=false'),
   });
 
-  const rows = data?.data ?? [];
-  const active = rows.filter((v) => v.isActive);
+  const all = data?.data ?? [];
+  const lots = [...new Set(all.map((v) => v.lot).filter((l): l is string => Boolean(l)))].sort();
+  const q = search.trim().toLowerCase();
+  const rows = all
+    .filter((v) => (q ? `${v.code} ${v.plate} ${v.model ?? ''}`.toLowerCase().includes(q) : true))
+    .filter((v) => (cls ? v.vehicleClass === cls : true))
+    .filter((v) => (lot ? v.lot === lot : true));
+  const active = all.filter((v) => v.isActive);
   const diesel = active.filter((v) => v.technology === VehicleTechnology.DIESEL).length;
   const ebus = active.filter((v) => v.technology === VehicleTechnology.EBUS).length;
   const telemetry = active.filter((v) => v.kmSource === KmSource.TELEMETRY).length;
@@ -56,7 +67,7 @@ export function VehiclesPage() {
         <div className="tp-kpi tp-kpi--brand">
           <span className="tp-kpi__label">Carros ativos</span>
           <strong className="tp-kpi__value">{active.length}</strong>
-          <span className="tp-kpi__note">{rows.length - active.length > 0 ? `${rows.length - active.length} desativado(s) fora do painel` : 'nenhum desativado'}</span>
+          <span className="tp-kpi__note">{all.length - active.length > 0 ? `${all.length - active.length} desativado(s) fora do painel` : `${active.filter((v) => v.fleetRole === 'RESERVA').length} reservas · ${lots.length} lote(s)`}</span>
         </div>
         <div className="tp-kpi">
           <span className="tp-kpi__label">Diesel</span>
@@ -81,9 +92,23 @@ export function VehiclesPage() {
         <div className="tp-card__head">
           <div>
             <h3>Frota cadastrada</h3>
-            <span className="chart__hint">prefixo, placa, tecnologia e a fonte de km — clique na linha para editar</span>
+            <span className="chart__hint">prefixo, placa, classe, lote e a fonte de km — clique na linha para editar</span>
           </div>
-          <span className="tp-muted">{rows.length} carro(s)</span>
+          <span className="tp-muted">{rows.length === all.length ? `${all.length} carro(s)` : `${rows.length} de ${all.length} carro(s)`}</span>
+        </div>
+        <div className="tp-toolbar">
+          <label className="tp-search">
+            <Search size={15} aria-hidden />
+            <input type="search" className="tp-input" placeholder="Prefixo, placa ou modelo" aria-label="Buscar carro" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </label>
+          <select className="tp-select" aria-label="Classe" value={cls} onChange={(e) => setCls(e.target.value)}>
+            <option value="">Todas as classes</option>
+            {Object.entries(VEHICLE_CLASS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+          <select className="tp-select" aria-label="Lote" value={lot} onChange={(e) => setLot(e.target.value)}>
+            <option value="">Todos os lotes</option>
+            {lots.map((l) => <option key={l} value={l}>Lote {l}</option>)}
+          </select>
         </div>
         {isPending ? (
           <BrandLoader size={44} label="Carregando" />
@@ -94,6 +119,9 @@ export function VehiclesPage() {
                 <tr>
                   <th>Prefixo</th>
                   <th>Placa</th>
+                  <th>Classe</th>
+                  <th>Lote</th>
+                  <th>Modelo</th>
                   <th>Tecnologia</th>
                   <th>Fonte de km</th>
                   <th className="is-num">Offset</th>
@@ -114,7 +142,10 @@ export function VehiclesPage() {
                       onKeyDown={(e) => e.key === 'Enter' && setMode({ kind: 'edit', vehicle: v })}
                     >
                       <td className="is-strong">{v.code}</td>
-                      <td>{v.plate}</td>
+                      <td className="tp-mono">{v.plate}</td>
+                      <td>{v.vehicleClass ? VEHICLE_CLASS_LABELS[v.vehicleClass] : '—'}{v.fleetRole === 'RESERVA' && <span className="tp-badge tp-badge--status" style={{ marginLeft: 6 }}>reserva</span>}</td>
+                      <td className="tp-muted">{v.lot ?? '—'}</td>
+                      <td className="tp-muted">{v.model ?? '—'}{v.modelYear ? ` · ${v.modelYear}` : ''}</td>
                       <td>{VEHICLE_TECHNOLOGY_LABELS[v.technology]}</td>
                       <td>{KM_SOURCE_LABELS[v.kmSource]}</td>
                       <td className="is-num">{formatNumber(v.odometerOffset)}</td>
@@ -173,6 +204,9 @@ function VehicleDrawer({ mode, onClose, onSaved }: { mode: Mode; onClose: () => 
         manufacturer: mode.vehicle.manufacturer ?? undefined,
         model: mode.vehicle.model ?? undefined,
         modelYear: mode.vehicle.modelYear ?? undefined,
+        vehicleClass: mode.vehicle.vehicleClass ?? undefined,
+        lot: mode.vehicle.lot ?? undefined,
+        fleetRole: mode.vehicle.fleetRole ?? undefined,
       });
     } else if (mode.kind === 'create') {
       reset({ technology: VehicleTechnology.DIESEL, kmSource: KmSource.MANUAL, odometerOffset: 0 });
@@ -203,7 +237,7 @@ function VehicleDrawer({ mode, onClose, onSaved }: { mode: Mode; onClose: () => 
       onClose={onClose}
       eyebrow={editing ? 'Editar carro' : 'Novo carro'}
       title={editing ? `${editing.code} · ${editing.plate}` : 'Cadastrar carro'}
-      description="Tecnologia, fonte de km e offset de hodômetro (RF-35)."
+      description="Classe e lote vêm da Escala de Carros; tecnologia, fonte de km e offset são do RF-35."
       footer={
         <>
           {editing && (
@@ -242,6 +276,28 @@ function VehicleDrawer({ mode, onClose, onSaved }: { mode: Mode; onClose: () => 
             <label className="tp-label" htmlFor="vf-plate">Placa</label>
             <input id="vf-plate" className="tp-input" placeholder="ABC1D23" aria-invalid={errors.plate ? 'true' : undefined} {...register('plate')} />
             {errors.plate && <span className="tp-error">{errors.plate.message}</span>}
+          </div>
+          <div className="tp-field">
+            <label className="tp-label" htmlFor="vf-class">Classe</label>
+            <select id="vf-class" className="tp-select" {...register('vehicleClass')}>
+              <option value="">—</option>
+              {Object.entries(VEHICLE_CLASS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="tp-field">
+            <label className="tp-label" htmlFor="vf-role">Papel na escala</label>
+            <select id="vf-role" className="tp-select" {...register('fleetRole')}>
+              <option value="">—</option>
+              {Object.entries(FLEET_ROLE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="tp-field">
+            <label className="tp-label" htmlFor="vf-lot">Lote</label>
+            <input id="vf-lot" className="tp-input" placeholder="E8" maxLength={8} {...register('lot')} />
           </div>
           <div className="tp-field">
             <label className="tp-label" htmlFor="vf-tech">Tecnologia</label>

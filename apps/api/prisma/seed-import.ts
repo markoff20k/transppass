@@ -1,0 +1,319 @@
+import { PrismaClient, VehicleTechnology } from '@prisma/client';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+/**
+ * Carga das bases que a Transppass entregou no Kaizen "Projeto MKBF":
+ *
+ *  - 10 e 11 Almoxarifado + "Peças para manutenção corretiva" → materiais
+ *    (2.496 itens com classe, referência, prateleira, saldo e custo; os 380
+ *    da lista preventiva marcados como tal)
+ *  - 08 Motorista por tecnologia + 09 Cobrador por lote → operadores
+ *    (907 motoristas com categoria de CNH e classes permitidas; 864 cobradores
+ *    com lote e admissão)
+ *  - 12 Inspeção de ferramentas (FR.168) → ferramentas com quantidade necessária
+ *  - IT.MAN-01 / -54 / -60 / -16 → planos preventivos por modelo, com pacotes,
+ *    gatilhos (offset + intervalo), tolerância dupla, tarefas e kits
+ *
+ * Idempotente: tudo é upsert pela chave natural (código, matrícula, código do
+ * plano). Pode rodar quantas vezes for preciso; ele nunca apaga nada.
+ */
+
+const DATA = resolve(__dirname, 'data');
+const readJson = <T>(file: string): T => JSON.parse(readFileSync(resolve(DATA, file), 'utf8')) as T;
+
+interface MaterialJson {
+  code: string;
+  classCode: string | null;
+  description: string;
+  manufacturerRef: string | null;
+  abcClass: string | null;
+  location: string | null;
+  stockQty: number | null;
+  avgCost: number | null;
+  totalValue: number | null;
+  isPreventive: boolean;
+}
+
+interface OperatorJson {
+  registration: string;
+  name: string;
+  function: 'MOTORISTA' | 'COBRADOR';
+  cnhCategory: string | null;
+  lot: string | null;
+  admittedAt: string | null;
+  vehicleClasses: string[];
+}
+
+interface ToolJson {
+  code: string;
+  description: string;
+  requiredQty: number;
+}
+
+interface DieselModel {
+  model: string;
+  manufacturer: string;
+  classes: string[];
+  engineOilL: number;
+  oil: string;
+  oilFilter: string;
+  fuelFilter: string;
+  waterSeparator: string;
+  airFilter: string | null;
+  airFilterSecondary: string | null;
+  cabinFilter: string | null;
+  gearboxOil: string | null;
+  gearboxFilter: string | null;
+  diffOil: string | null;
+  steeringFilter: string | null;
+  beltMotor: string | null;
+  beltAlt: string | null;
+  hasArla: boolean;
+  hasAC: boolean;
+  gearbox: string;
+}
+
+interface TaskJson {
+  pkg?: string;
+  code: string;
+  section: string;
+  specialty: string;
+  minutes: number;
+  description: string;
+  equipmentCondition?: string;
+  onlyIf?: string;
+}
+
+interface PlansJson {
+  dieselModels: DieselModel[];
+  dieselPlan: {
+    codePrefix: string;
+    controlledDocument: string;
+    toleranceKm: number;
+    toleranceBelowKm: number;
+    packages: { code: string; name: string; intervalKm: number; offsetKm: number; includes: string[] }[];
+    tasks: TaskJson[];
+    kits: Record<string, [string, number | string][]>;
+  };
+  ebusPlans: {
+    code: string;
+    name: string;
+    manufacturer: string;
+    vehicleModel: string;
+    controlledDocument: string;
+    toleranceKm: number;
+    toleranceBelowKm: number;
+    packages: { code: string; name: string; intervalKm: number; offsetKm: number; periodDays?: number; tasks: TaskJson[]; kit: [string, number][] }[];
+  }[];
+}
+
+const ELECTRIC = new Set(['EPADRON_13M', 'EPADRON_15M', 'EARTICULADO_23M']);
+
+/** Código curto do modelo para compor códigos de plano e kit (máx. 24 chars). */
+export const modelCode = (model: string): string => model.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+function unitFor(m: MaterialJson): string {
+  const d = m.description.toUpperCase();
+  if (/^(FILTRO|BOMBA|SENSOR|VALVULA|RESERV|TAMPA|BUJAO|JUNTA|MANG)/.test(d)) return 'un';
+  if (m.classCode?.startsWith('0302') || /OLEO|ADITIVO|LIQUIDO|FLUIDO|DILUENTE|DESENGRAX/.test(d)) return 'L';
+  if (/GRAXA|MASSA|COLA|TINTA|PRIMER/.test(d)) return 'kg';
+  if (/\bM\b|METRO|MANG |CABO |FITA/.test(d) && !/MANG FILTRO/.test(d)) return 'm';
+  return 'un';
+}
+
+export async function importBases(prisma: PrismaClient): Promise<void> {
+  // ---- Materiais ------------------------------------------------------------
+  const materials = readJson<MaterialJson[]>('materiais.json');
+  const CHUNK = 150;
+  for (let i = 0; i < materials.length; i += CHUNK) {
+    const slice = materials.slice(i, i + CHUNK);
+    await prisma.$transaction(
+      slice.map((m) => {
+        const data = {
+          description: m.description.slice(0, 255),
+          unit: unitFor(m),
+          // Recondicionados (classe 2001xx) circulam no pool rotativo por número de série (RF-26).
+          isSerialized: Boolean(m.classCode?.startsWith('2001')),
+          manufacturerRef: m.manufacturerRef?.slice(0, 80) ?? null,
+          location: m.location?.slice(0, 24) ?? null,
+          abcClass: m.abcClass && /^[ABC]$/.test(m.abcClass) ? m.abcClass : null,
+          classCode: m.classCode?.slice(0, 8) ?? null,
+          stockQty: m.stockQty ?? 0,
+          avgCost: m.avgCost,
+          isPreventive: m.isPreventive,
+        };
+        return prisma.material.upsert({ where: { code: m.code }, update: data, create: { code: m.code, ...data } });
+      }),
+    );
+  }
+  console.log(`  ${materials.length} materiais (${materials.filter((m) => m.isPreventive).length} da lista preventiva)`);
+
+  // ---- Operadores -----------------------------------------------------------
+  const operators = readJson<OperatorJson[]>('operadores.json');
+  for (let i = 0; i < operators.length; i += CHUNK) {
+    const slice = operators.slice(i, i + CHUNK);
+    await prisma.$transaction(
+      slice.map((o) => {
+        const data = {
+          name: o.name.slice(0, 120),
+          function: o.function,
+          cnhCategory: o.cnhCategory,
+          lot: o.lot,
+          admittedAt: o.admittedAt ? new Date(o.admittedAt) : null,
+          vehicleClasses: o.vehicleClasses,
+          isActive: true,
+        };
+        return prisma.operator.upsert({ where: { registration: o.registration }, update: data, create: { registration: o.registration, ...data } });
+      }),
+    );
+  }
+  // Habilitação por tecnologia derivada das classes permitidas (RF-30 consome; não administra).
+  const rows = await prisma.operator.findMany({ where: { function: 'MOTORISTA' }, select: { id: true, vehicleClasses: true } });
+  const quals: { operatorId: string; technology: VehicleTechnology }[] = [];
+  for (const r of rows) {
+    if (r.vehicleClasses.some((c) => !ELECTRIC.has(c))) quals.push({ operatorId: r.id, technology: VehicleTechnology.DIESEL });
+    if (r.vehicleClasses.some((c) => ELECTRIC.has(c))) quals.push({ operatorId: r.id, technology: VehicleTechnology.EBUS });
+  }
+  await prisma.operatorQualification.createMany({ data: quals, skipDuplicates: true });
+  // Os quatro operadores de exemplo do seed inicial saem de cena.
+  await prisma.operator.updateMany({ where: { registration: { in: ['30412', '30877', '31105', '29980'] } }, data: { isActive: false } });
+  console.log(`  ${operators.length} operadores (${operators.filter((o) => o.function === 'MOTORISTA').length} motoristas, ${operators.filter((o) => o.function === 'COBRADOR').length} cobradores)`);
+
+  // ---- Ferramentas (FR.168) -------------------------------------------------
+  const tools = readJson<ToolJson[]>('ferramentas.json');
+  for (const t of tools) {
+    const needsCalibration = /TESTE|STAR DIAGNOSIS|TORQU/i.test(t.description);
+    await prisma.tool.upsert({
+      where: { code: t.code },
+      update: { description: t.description, requiredQty: t.requiredQty, availableQty: t.requiredQty },
+      create: {
+        code: t.code,
+        description: t.description,
+        requiredQty: t.requiredQty,
+        availableQty: t.requiredQty,
+        calibrationDueAt: needsCalibration ? new Date(Date.now() + (90 + (t.code.charCodeAt(5) % 7) * 30) * 86_400_000) : null,
+      },
+    });
+  }
+  console.log(`  ${tools.length} ferramentas (${tools.reduce((s, t) => s + t.requiredQty, 0)} unidades necessárias)`);
+
+  // ---- Planos preventivos ---------------------------------------------------
+  const plans = readJson<PlansJson>('planos.json');
+  const specialties = Object.fromEntries((await prisma.specialty.findMany()).map((s) => [s.code, s.id])) as Record<string, string>;
+  const materialIdByCode = new Map((await prisma.material.findMany({ select: { id: true, code: true } })).map((m) => [m.code, m.id]));
+
+  const effectiveFrom = new Date('2026-01-01');
+
+  async function upsertPlan(input: {
+    code: string;
+    name: string;
+    technology: VehicleTechnology;
+    manufacturer: string;
+    vehicleModel: string;
+    controlledDocument: string;
+  }) {
+    return prisma.maintenancePlan.upsert({
+      where: { code_version: { code: input.code, version: 1 } },
+      update: { name: input.name, manufacturer: input.manufacturer, vehicleModel: input.vehicleModel, controlledDocument: input.controlledDocument, isActive: true },
+      create: { ...input, version: 1, effectiveFrom },
+    });
+  }
+
+  async function upsertPackage(planId: string, pkg: { code: string; name: string; intervalKm: number; offsetKm: number; periodDays?: number | null; toleranceKm: number; toleranceBelowKm: number }, tasks: TaskJson[], kit: [string, number][], kitCode: string) {
+    const row = await prisma.maintenancePackage.upsert({
+      where: { planId_code: { planId, code: pkg.code } },
+      update: { name: pkg.name, intervalKm: pkg.intervalKm, offsetKm: pkg.offsetKm, periodDays: pkg.periodDays ?? null, toleranceKm: pkg.toleranceKm, toleranceBelowKm: pkg.toleranceBelowKm },
+      create: { planId, code: pkg.code, name: pkg.name, intervalKm: pkg.intervalKm, offsetKm: pkg.offsetKm, periodDays: pkg.periodDays ?? null, toleranceKm: pkg.toleranceKm, toleranceBelowKm: pkg.toleranceBelowKm },
+    });
+    for (const t of tasks) {
+      const data = { description: t.description, specialtyId: specialties[t.specialty] ?? null, estimatedMinutes: t.minutes, section: t.section, equipmentCondition: t.equipmentCondition ?? null };
+      await prisma.maintenanceTask.upsert({ where: { packageId_code: { packageId: row.id, code: t.code } }, update: data, create: { packageId: row.id, code: t.code, ...data } });
+    }
+    const items = kit
+      .map(([code, qty]) => ({ materialId: materialIdByCode.get(code), quantity: qty }))
+      .filter((i): i is { materialId: string; quantity: number } => Boolean(i.materialId) && i.quantity > 0);
+    if (items.length) {
+      const kitRow = await prisma.kit.upsert({
+        where: { code_version: { code: kitCode, version: 1 } },
+        update: { name: `Kit ${pkg.name}`, packageId: row.id, isActive: true },
+        create: { code: kitCode, name: `Kit ${pkg.name}`, packageId: row.id, version: 1, effectiveFrom },
+      });
+      for (const it of items) {
+        await prisma.kitItem.upsert({ where: { kitId_materialId: { kitId: kitRow.id, materialId: it.materialId } }, update: { quantity: it.quantity }, create: { kitId: kitRow.id, materialId: it.materialId, quantity: it.quantity } });
+      }
+    }
+    return row;
+  }
+
+  // Diesel: um plano por modelo, a partir do gabarito do IT.MAN-01.
+  const d = plans.dieselPlan;
+  const tasksByPkg = (code: string) => d.tasks.filter((t) => t.pkg === code);
+  for (const m of plans.dieselModels) {
+    const mc = modelCode(m.model);
+    const plan = await upsertPlan({
+      code: `ITMAN01-${mc}`.slice(0, 24),
+      name: `Preventiva diesel — ${m.model}`,
+      technology: VehicleTechnology.DIESEL,
+      manufacturer: m.manufacturer,
+      vehicleModel: m.model,
+      controlledDocument: d.controlledDocument,
+    });
+    const applies = (t: TaskJson): boolean => {
+      switch (t.onlyIf) {
+        case undefined: return true;
+        case 'hasArla': return m.hasArla;
+        case 'hasAC': return m.hasAC;
+        case 'airFilterSecondary': return Boolean(m.airFilterSecondary);
+        case 'manual': return /manual/i.test(m.gearbox);
+        case 'automatic': return /autom/i.test(m.gearbox);
+        case 'catracas': return /1721|18\.280/.test(m.model);
+        default: return true;
+      }
+    };
+    const resolveKit = (code: string): [string, number][] =>
+      (d.kits[code] ?? []).flatMap(([key, qty]) => {
+        const materialCode = key in m ? (m[key as keyof DieselModel] as string | null) : key;
+        if (!materialCode) return [];
+        const quantity = typeof qty === 'number' ? qty : Number(m[qty as keyof DieselModel]);
+        return [[materialCode, quantity]];
+      });
+    for (const pkg of d.packages) {
+      // A revisão maior inclui tudo o que a menor faria (A = I + A; E = tudo).
+      const codes = [...pkg.includes, pkg.code];
+      const tasks = codes.flatMap(tasksByPkg).filter(applies);
+      const kit = codes.flatMap(resolveKit);
+      await upsertPackage(plan.id, { ...pkg, toleranceKm: d.toleranceKm, toleranceBelowKm: d.toleranceBelowKm }, tasks, kit, `KIT-${mc}-${pkg.code}`.slice(0, 24));
+    }
+  }
+  console.log(`  ${plans.dieselModels.length} planos diesel (IT.MAN-01) com ${d.packages.length} pacotes cada`);
+
+  for (const p of plans.ebusPlans) {
+    const plan = await upsertPlan({
+      code: p.code.replace('.', ''),
+      name: p.name,
+      technology: VehicleTechnology.EBUS,
+      manufacturer: p.manufacturer,
+      vehicleModel: p.vehicleModel,
+      controlledDocument: p.controlledDocument,
+    });
+    for (const pkg of p.packages) {
+      await upsertPackage(plan.id, { ...pkg, toleranceKm: p.toleranceKm, toleranceBelowKm: p.toleranceBelowKm }, pkg.tasks, pkg.kit, `KIT-${modelCode(p.vehicleModel)}-${pkg.code}`.slice(0, 24));
+    }
+  }
+  console.log(`  ${plans.ebusPlans.length} planos eBUS (IT.MAN-54, -60, -16)`);
+
+  // Os planos genéricos de exemplo do R0 saem de cena: os reais são por modelo.
+  await prisma.maintenancePlan.updateMany({ where: { code: { in: ['PLAN-DIESEL', 'PLAN-EBUS'] } }, data: { isActive: false } });
+}
+
+if (require.main === module) {
+  const prisma = new PrismaClient();
+  importBases(prisma)
+    .then(() => console.log('Carga das bases concluída.'))
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    })
+    .finally(() => prisma.$disconnect());
+}

@@ -414,12 +414,20 @@ function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
   const visible = selected ? vehicles.filter((v) => familyOf(v.status) === selected) : vehicles;
   const focus = hovered ?? selected;
 
+  // Numa frota de centenas de carros, 400 ônibus iguais rodando não dizem nada:
+  // eles viram um cartão com a soma, e a grade mostra quem está na garagem.
+  const big = vehicles.length > 60;
+  const collapseRunning = big && selected !== 'running';
+  const running = vehicles.filter((v) => familyOf(v.status) === 'running');
+  const shown = collapseRunning ? visible.filter((v) => familyOf(v.status) !== 'running') : visible;
+  const inLine = running.filter((v) => v.status === 'IN_LINE').length;
+
   return (
     <section className="tp-card dash-glass dash-fleet">
       <div className="tp-card__head dash-fleet__head">
         <div>
           <h3>{t.dash.fleetNow}</h3>
-          <span className="chart__hint">{t.dash.fleetNowHint}</span>
+          <span className="chart__hint">{big ? t.dash.fleetNowHintBig : t.dash.fleetNowHint}</span>
         </div>
         <FleetLegend statuses={vehicles.map((v) => v.status)} selected={selected} onSelect={setSelected} onHover={setHovered} />
         <Link to="/frota" className="tp-btn tp-btn--ghost tp-btn--sm">
@@ -427,11 +435,23 @@ function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
         </Link>
       </div>
       <div className="bus-grid" data-focus={focus ?? undefined}>
-        {visible.map((v) => (
+        {collapseRunning && running.length > 0 && (
+          <Link to="/frota?status=IN_LINE" className="bus-card bus-card--running bus-card--summary">
+            <BusIllustration status="IN_LINE" code="" width={200} />
+            <div className="bus-card__text">
+              <div className="bus-card__row">
+                <b className="bus-card__big">{running.length}</b>
+                <span className={`tp-state tp-state--running`}>{t.dash.runningSummary}</span>
+              </div>
+              <span className="tp-muted">{inLine} {t.dash.inLineShort} · {running.length - inLine} {t.dash.inYardShort}</span>
+            </div>
+          </Link>
+        )}
+        {shown.map((v) => (
           <BusCard key={v.id} vehicle={v} />
         ))}
       </div>
-      {visible.length === 0 && <p className="tp-muted dash-fleet__empty">{t.dash.legendEmpty}</p>}
+      {shown.length === 0 && !collapseRunning && <p className="tp-muted dash-fleet__empty">{t.dash.legendEmpty}</p>}
     </section>
   );
 }

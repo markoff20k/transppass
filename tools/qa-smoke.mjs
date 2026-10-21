@@ -10,6 +10,32 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const BASE = process.env.QA_BASE_URL ?? 'http://localhost:5173';
+/** QA_API=1: o front fala com a API real (localhost:3000) em vez do mock. */
+const API_MODE = process.env.QA_API === '1';
+/** Carro criado pelo QA: único por execução, para a API real não devolver 409 na segunda rodada. */
+const RUN = String(Date.now()).slice(-5);
+const QA_VEHICLE = { code: `9${RUN}`, plate: `QAZ${RUN.slice(0, 1)}X${RUN.slice(1, 3)}` };
+let apiToken = null;
+async function apiFetch(path, init = {}) {
+  if (!apiToken) {
+    const login = await fetch(`${API_URL}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'admin@transppass.local', password: 'admin123' }) }).then((r) => r.json());
+    apiToken = login.tokens?.accessToken;
+  }
+  return fetch(`${API_URL}${path}`, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiToken}`, ...(init.headers ?? {}) } });
+}
+const API_URL = process.env.QA_API_URL ?? 'http://localhost:3000/api';
+
+/** Na API real o link de redefinição chega por e-mail; o admin gera um pela API. */
+async function realResetPath() {
+  return realResetPathWith('admin123');
+}
+async function realResetPathWith(password) {
+  const login = await fetch(`${API_URL}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'admin@transppass.local', password }) }).then((r) => r.json());
+  const token = login.tokens?.accessToken;
+  const link = await fetch(`${API_URL}/users/${login.user.id}/reset-link`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json());
+  const u = new URL(link.url);
+  return `${u.pathname}${u.search}`;
+}
 const OUT = 'tools/qa-shots';
 mkdirSync(OUT, { recursive: true });
 
@@ -75,7 +101,10 @@ async function run() {
   page.on('response', (r) => {
     const url = r.url();
     // 401 no login com senha errada é o comportamento testado em AUTH-02.
-    if (r.status() >= 400 && !url.includes('/auth/login')) consoleErrors.push({ type: 'http', text: `${r.status()} ${url}` });
+    // Na API real, o QA troca a senha do admin por um link e depois devolve a original;
+    // o 400 de link já usado faz parte dessa dança e não é defeito do sistema.
+    const expected = url.includes('/auth/login') || (API_MODE && url.includes('/auth/reset-password'));
+    if (r.status() >= 400 && !expected) consoleErrors.push({ type: 'http', text: `${r.status()} ${url}` });
   });
   page.on('console', (m) => {
     // "Failed to update a ServiceWorker" é o navegador rechecando o worker do
@@ -83,7 +112,9 @@ async function run() {
     if (m.type() === 'error' && !m.text().includes('Failed to load resource') && !m.text().includes('Failed to update a ServiceWorker')) consoleErrors.push({ type: 'console', text: m.text().slice(0, 200), at: page.url() });
   });
 
-  console.log('\n=== QA funcional — Transppass PCM (modo mock) ===\n');
+  console.log(`
+=== QA funcional — Transppass PCM (${API_MODE ? 'API real' : 'modo mock'}) ===
+`);
 
   // ---- Autenticação -------------------------------------------------------
   console.log('Autenticação');
@@ -158,15 +189,15 @@ async function run() {
   record('DASH-04', 'Bloco de atenção com links', (await page.$$('.attention-item a')).length >= 1);
   {
     const items = await page.$$('.fleet-legend__item');
-    const before = (await page.$$('.bus-grid .bus-card')).length;
+    const before = (await page.$$('.bus-grid .bus-card:not(.bus-card--summary)')).length;
     const waiting = await page.$('.fleet-legend__item--waiting');
     const expected = Number(await waiting.$eval('.fleet-legend__count', (el) => el.textContent));
     await waiting.click();
     await new Promise((r) => setTimeout(r, 300));
-    const filtered = (await page.$$('.bus-grid .bus-card')).length;
+    const filtered = (await page.$$('.bus-grid .bus-card:not(.bus-card--summary)')).length;
     await page.click('.fleet-legend__item--all');
     await new Promise((r) => setTimeout(r, 300));
-    const restored = (await page.$$('.bus-grid .bus-card')).length;
+    const restored = (await page.$$('.bus-grid .bus-card:not(.bus-card--summary)')).length;
     record('DASH-06', 'Legenda das famílias de estado filtra a frota e volta ao todo', items.length === 5 && filtered === expected && restored === before, `${before} → ${filtered} (esperado ${expected}) → ${restored}`);
   }
   {
@@ -182,7 +213,7 @@ async function run() {
   // ---- Rotas e painéis ------------------------------------------------------
   console.log('\nTelas e painéis laterais');
   const routes = [
-    { path: '/frota', name: 'Painel da frota', check: '.bus-grid, .tp-table' },
+    { path: '/frota', name: 'Painel da frota', check: '.fleet-grid, .tp-table' },
     { path: '/eventos', name: 'Eventos', check: '.tp-table' },
     { path: '/triagem', name: 'Triagem', check: '.tp-table' },
     { path: '/fila', name: 'Fila', check: '.tp-table' },
@@ -268,6 +299,11 @@ async function run() {
   }
 
   // Plantão: demanda com contagem
+  let qaDemandId = null;
+  if (API_MODE) {
+    const d = await apiFetch('/operations/demands', { method: 'POST', body: JSON.stringify({ lineCode: `QA-${RUN}`, windowMinutes: 40 }) }).then((r) => r.json()).catch(() => null);
+    qaDemandId = d?.id ?? null;
+  }
   await page.goto(`${BASE}/plantao`, { waitUntil: 'networkidle0' });
   await sleep(400);
   record('PLT-01', 'Janela em contagem visível', await exists(page, '.countdown'));
@@ -275,11 +311,19 @@ async function run() {
   record('PLT-02', 'Painel da demanda abre', await drawerOpen(page));
   await shot(page, 'plantao-demanda');
   await closeDrawer(page);
+  if (qaDemandId) await apiFetch(`/operations/demands/${qaDemandId}/cancel`, { method: 'POST' }).catch(() => {});
 
   // OS: painéis de sub-OS
   await page.goto(`${BASE}/os`, { waitUntil: 'networkidle0' });
   await sleep(400);
-  await page.click('.tp-table tbody tr a');
+  // Uma OS em execução tem sub-OS; uma recém-aberta pela triagem ainda não.
+  const osRows = await page.$$('.tp-table tbody tr');
+  let osLink = null;
+  for (const row of osRows) {
+    const txt = await row.evaluate((tr) => tr.textContent ?? '');
+    if (/Em execução|Em manutenção|Em inspeção|Em limpeza|Aguardando peça/.test(txt)) { osLink = await row.$('a'); if (osLink) break; }
+  }
+  if (osLink) await osLink.click(); else await page.click('.tp-table tbody tr a');
   await page.waitForSelector('.tp-gates', { timeout: 20000 }).catch(() => {});
   record('OS-01', 'Detalhe da OS com portões e relógio', await exists(page, '.wo-gates') && (await page.$$('.wo-gate')).length === 4 && await exists(page, '.wo-task') && await exists(page, '.tp-kpi'));
   await shot(page, 'os-detalhe');
@@ -294,24 +338,36 @@ async function run() {
   await sleep(400);
   await clickText(page, '.subheader__actions button', 'Novo carro');
   record('VEH-01', 'Painel de novo carro abre', await drawerOpen(page));
-  await page.type('#vf-code', '10099');
+  await page.type('#vf-code', QA_VEHICLE.code);
   await page.type('#vf-plate', 'PLACA-INVALIDA');
   await page.click('.tp-drawer__foot button[type="submit"]');
   await sleep(400);
   record('VEH-02', 'Placa inválida é recusada na origem (Zod compartilhado)', await exists(page, '.tp-drawer .tp-error'));
   await page.$eval('#vf-plate', (el) => (el.value = ''));
-  await page.type('#vf-plate', 'XYZ9A88');
+  await page.type('#vf-plate', QA_VEHICLE.plate);
   await page.click('.tp-drawer__foot button[type="submit"]');
   await sleep(700);
   record('VEH-03', 'Carro válido é criado e o painel fecha', !(await exists(page, '.tp-drawer')));
+  if (API_MODE) {
+    // O carro de teste não pode ficar na frota da demonstração: sai de cena.
+    const list = await apiFetch(`/vehicles?search=${QA_VEHICLE.code}&onlyActive=true&perPage=5`).then((r) => r.json()).catch(() => null);
+    const created = list?.data?.find((v) => v.code === QA_VEHICLE.code);
+    if (created) await apiFetch(`/vehicles/${created.id}`, { method: 'PATCH', body: JSON.stringify({ isActive: false }) });
+  }
   await shot(page, 'frota-cadastro');
 
   // Km: validação de delta na tela
   await page.goto(`${BASE}/km`, { waitUntil: 'networkidle0' });
   await sleep(400);
-  const kmInputs = await page.$$('.km-input');
-  if (kmInputs.length) {
-    await kmInputs[0].type('999999');
+  const kmInputs = await page.$$('tbody tr');
+  let kmTarget = null;
+  for (const row of kmInputs) {
+    const hasKm = await row.evaluate((tr) => /\d{2,}\.\d{3}|\d{4,}/.test(tr.children[2]?.textContent ?? ''));
+    const input = await row.$('.km-input');
+    if (hasKm && input) { kmTarget = input; break; }
+  }
+  if (kmTarget) {
+    await kmTarget.type('999999');
     await sleep(200);
     record('KM-01', 'Delta absurdo é sinalizado antes do envio', await exists(page, 'tr.is-danger, tr.row-error'));
     await shot(page, 'km-validacao');
@@ -418,23 +474,43 @@ async function run() {
   await page.click('button[type="submit"]');
   await sleep(500);
   record('PWD-02', 'Pedido de link responde sem revelar se a conta existe', await page.$$eval('h1', (hs) => hs.some((h) => /Verifique seu e-mail/.test(h.textContent || ''))));
-  await page.goto(`${BASE}/redefinir-senha?token=mock-reset-token-2026-valid`, { waitUntil: 'networkidle0' });
+  const resetPath = API_MODE ? await realResetPath() : '/redefinir-senha?token=mock-reset-token-2026-valid';
+  await page.goto(`${BASE}${resetPath}`, { waitUntil: 'networkidle0' });
   await sleep(300);
   await page.type('#reset-password', 'novaSenha123');
   await page.type('#reset-confirm', 'novaSenha123');
   await page.click('button[type="submit"]');
   await sleep(500);
   record('PWD-03', 'Redefinição com token válido conclui', await page.$$eval('h1', (hs) => hs.some((h) => /Senha redefinida/.test(h.textContent || ''))));
+  if (API_MODE) {
+    // Devolve a senha padrão do admin para a demonstração (e para o próximo QA).
+    const again = await realResetPathWith('novaSenha123');
+    await page.goto(`${BASE}${again}`, { waitUntil: 'networkidle0' });
+    await sleep(300);
+    await page.type('#reset-password', 'admin123');
+    await page.type('#reset-confirm', 'admin123');
+    await page.click('button[type="submit"]');
+    await sleep(500);
+  }
   // volta a senha do mock para o restante do roteiro não depender da ordem
-  await page.goto(`${BASE}/redefinir-senha?token=mock-reset-token-2026-valid`, { waitUntil: 'networkidle0' });
-  await sleep(300);
-  await page.type('#reset-password', 'admin123');
-  await page.type('#reset-confirm', 'admin123');
-  await page.click('button[type="submit"]');
-  await sleep(500);
-  // o roteiro continua autenticado? o token ficou no storage; recarrega o app
+  if (!API_MODE) {
+    await page.goto(`${BASE}/redefinir-senha?token=mock-reset-token-2026-valid`, { waitUntil: 'networkidle0' });
+    await sleep(300);
+    await page.type('#reset-password', 'admin123');
+    await page.type('#reset-confirm', 'admin123');
+    await page.click('button[type="submit"]');
+    await sleep(500);
+  }
+  // A troca de senha derruba a sessão na API real: entra de novo antes de seguir.
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle0' });
   await sleep(400);
+  if (await exists(page, '#login-email')) {
+    await page.type('#login-email', 'admin@transppass.local');
+    await page.type('#login-password', 'admin123');
+    await page.click('button[type="submit"]');
+    await page.waitForFunction(() => location.pathname === '/', { timeout: 30000 }).catch(() => {});
+    await sleep(600);
+  }
 
   // Padrão de codificação de falhas: picker em cascata, regras no catálogo
   await page.goto(`${BASE}/eventos`, { waitUntil: 'networkidle0' });

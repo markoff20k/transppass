@@ -20,6 +20,7 @@ import { SchedulingModule } from './scheduling/scheduling.module';
 import { OperationsModule } from './operations/operations.module';
 import { PlansModule } from './plans/plans.module';
 import { JobsModule } from './jobs/jobs.module';
+import { DemoModule } from './demo/demo.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { envSchema } from './config/env.validation';
 
@@ -53,6 +54,8 @@ import { envSchema } from './config/env.validation';
     // Cadastro do plano preventivo (RF-34) e rotinas agendadas
     PlansModule,
     JobsModule,
+    // Simulador de demonstração — só age com DEMO_SIMULATOR=true
+    DemoModule,
   ],
   providers: [
     // Tudo é protegido por padrão; rotas abertas usam @Public().

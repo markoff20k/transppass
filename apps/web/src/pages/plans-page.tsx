@@ -22,6 +22,7 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatDate, formatMinutes, formatNumber } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { SearchSelect } from '@/components/ui/search-select';
 import { BrandLoader } from '@/components/brand/brand-loader';
 
 type Panel =
@@ -80,6 +81,7 @@ export function PlansPage() {
               <h3>{plan.name}</h3>
               <span className="tp-muted">
                 {plan.code} v{plan.version} · {VEHICLE_TECHNOLOGY_LABELS[plan.technology]}
+                {plan.vehicleModel && ` · ${plan.manufacturer ? `${plan.manufacturer} ` : ''}${plan.vehicleModel}`}
                 {plan.controlledDocument && ` · ${plan.controlledDocument}`} · vigente desde {formatDate(plan.effectiveFrom)}
               </span>
             </div>
@@ -102,7 +104,7 @@ export function PlansPage() {
                   {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   <b>{pkg.code}</b>
                   <span>{pkg.name}</span>
-                  <span className="plan-pkg__km">a cada {formatNumber(pkg.intervalKm)} km <small>± {formatNumber(pkg.toleranceKm)}</small></span>
+                  <span className="plan-pkg__km">{packageWindow(pkg)}</span>
                   <span className="plan-pkg__meta">
                     {pkg.tasks.length} tarefa(s) · {formatMinutes(pkg.estimatedMinutes)} · {pkg.kit ? `${pkg.kit.items.length} item(ns) no kit` : 'sem kit'}
                   </span>
@@ -120,13 +122,14 @@ export function PlansPage() {
                       {pkg.tasks.length === 0 ? (
                         <p className="tp-muted">Nenhuma tarefa.</p>
                       ) : (
-                        <table className="tp-table tp-table--compact">
-                          <thead><tr><th>Cód.</th><th>Tarefa</th><th>Especialidade</th><th className="is-num">Min</th></tr></thead>
+                        <table className="tp-table tp-table--compact plan-tasks">
+                          <thead><tr><th>Cód.</th><th>Seção</th><th>Tarefa</th><th>Especialidade</th><th className="is-num">Min</th></tr></thead>
                           <tbody>
                             {pkg.tasks.map((t) => (
                               <tr key={t.id} className="is-clickable" tabIndex={0} onClick={() => setPanel({ kind: 'task', pkg, task: t })} onKeyDown={(e) => e.key === 'Enter' && setPanel({ kind: 'task', pkg, task: t })}>
                                 <td className="is-strong">{t.code}</td>
-                                <td>{t.description}</td>
+                                <td className="tp-muted">{t.section ?? '—'}</td>
+                                <td>{t.description}{t.equipmentCondition && <span className="plan-task__cond">{t.equipmentCondition}</span>}</td>
                                 <td className="tp-muted">{t.specialtyName ?? '—'}</td>
                                 <td className="is-num">{t.estimatedMinutes ?? '—'}</td>
                               </tr>
@@ -146,7 +149,7 @@ export function PlansPage() {
                       {!pkg.kit || pkg.kit.items.length === 0 ? (
                         <p className="tp-muted">Sem kit — o Estoque não tem o que separar em D-1 (RF-25).</p>
                       ) : (
-                        <table className="tp-table tp-table--compact">
+                        <table className="tp-table tp-table--compact plan-kit">
                           <thead><tr><th>Material</th><th className="is-num">Qtd</th></tr></thead>
                           <tbody>
                             {pkg.kit.items.map((i) => (
@@ -177,6 +180,19 @@ export function PlansPage() {
 
 // ---------------------------------------------------------------------------
 
+/** Como o pacote dispara: "15.000 km, depois a cada 30.000" com a tolerância de cada lado. */
+function packageWindow(pkg: { intervalKm: number; offsetKm: number; toleranceKm: number; toleranceBelowKm: number | null; periodDays: number | null }) {
+  if (pkg.periodDays) return `a cada ${pkg.periodDays} dias`;
+  const below = pkg.toleranceBelowKm ?? pkg.toleranceKm;
+  const tol = below === pkg.toleranceKm ? `± ${formatNumber(pkg.toleranceKm)}` : `−${formatNumber(below)} / +${formatNumber(pkg.toleranceKm)}`;
+  const first = pkg.offsetKm > 0 && pkg.offsetKm !== pkg.intervalKm ? `${formatNumber(pkg.offsetKm)} km, depois ` : '';
+  return (
+    <>
+      {first}a cada {formatNumber(pkg.intervalKm)} km <small>{tol}</small>
+    </>
+  );
+}
+
 function PlanToggle({ plan, onDone }: { plan: PlanTree; onDone: () => void }) {
   const mutation = useMutation({
     mutationFn: () => api.patch(`/plans/${plan.id}`, { isActive: !plan.isActive }),
@@ -198,7 +214,7 @@ function useFormState<T extends Record<string, unknown>>(initial: T, deps: unkno
 }
 
 function PlanDrawer({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
-  const [form, set] = useFormState({ code: '', name: '', technology: VehicleTechnology.DIESEL as VehicleTechnology, controlledDocument: '' }, [open]);
+  const [form, set] = useFormState({ code: '', name: '', technology: VehicleTechnology.DIESEL as VehicleTechnology, controlledDocument: '', manufacturer: '', vehicleModel: '' }, [open]);
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: (input: CreatePlanInput) => api.post('/plans', input),
@@ -206,13 +222,13 @@ function PlanDrawer({ open, onClose, onDone }: { open: boolean; onClose: () => v
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível criar o plano'),
   });
   const submit = () => {
-    const parsed = createPlanSchema.safeParse({ ...form, controlledDocument: form.controlledDocument || undefined });
+    const parsed = createPlanSchema.safeParse({ ...form, controlledDocument: form.controlledDocument || undefined, manufacturer: form.manufacturer || undefined, vehicleModel: form.vehicleModel || undefined });
     if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
     setError(null);
     mutation.mutate(parsed.data);
   };
   return (
-    <Drawer open={open} onClose={onClose} eyebrow="Plano preventivo" title="Novo plano" description="Um plano por tecnologia e documento controlado (FR.116)."
+    <Drawer open={open} onClose={onClose} eyebrow="Plano preventivo" title="Novo plano" description="Um plano por modelo (ou por tecnologia, quando vale para todos) e documento controlado (FR.116)."
       footer={<><button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button><button type="button" className="tp-btn tp-btn--primary" disabled={mutation.isPending} onClick={submit}>Criar plano</button></>}>
       <div className="tp-stack">
         <div className="tp-grid-2">
@@ -224,7 +240,11 @@ function PlanDrawer({ open, onClose, onDone }: { open: boolean; onClose: () => v
           </label>
         </div>
         <label className="tp-field"><span className="tp-label">Nome</span><input className="tp-input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Plano preventivo — frota diesel" /></label>
-        <label className="tp-field"><span className="tp-label">Documento controlado</span><input className="tp-input" value={form.controlledDocument} onChange={(e) => set('controlledDocument', e.target.value)} placeholder="IT.MAN-01" /><span className="tp-help">Opcional — o código do procedimento no sistema da qualidade.</span></label>
+        <div className="tp-grid-2">
+          <label className="tp-field"><span className="tp-label">Fabricante</span><input className="tp-input" value={form.manufacturer} onChange={(e) => set('manufacturer', e.target.value)} placeholder="Mercedes-Benz" /></label>
+          <label className="tp-field"><span className="tp-label">Modelo</span><input className="tp-input" value={form.vehicleModel} onChange={(e) => set('vehicleModel', e.target.value)} placeholder="O500U/E5 AC" /><span className="tp-help">Igual ao modelo do cadastro do carro. Vazio = vale para toda a tecnologia.</span></label>
+        </div>
+        <label className="tp-field"><span className="tp-label">Documento controlado</span><input className="tp-input" value={form.controlledDocument} onChange={(e) => set('controlledDocument', e.target.value)} placeholder="IT.MAN-01 Rev.09" /><span className="tp-help">Opcional — o código do procedimento no sistema da qualidade.</span></label>
         {error && <p className="tp-error">{error}</p>}
       </div>
     </Drawer>
@@ -232,7 +252,7 @@ function PlanDrawer({ open, onClose, onDone }: { open: boolean; onClose: () => v
 }
 
 function PackageDrawer({ plan, onClose, onDone }: { plan: PlanTree | null; onClose: () => void; onDone: () => void }) {
-  const [form, set] = useFormState({ code: '', name: '', intervalKm: '', toleranceKm: '500' }, [plan?.id]);
+  const [form, set] = useFormState({ code: '', name: '', intervalKm: '', toleranceKm: '1000', toleranceBelowKm: '', offsetKm: '0', periodDays: '' }, [plan?.id]);
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: (input: CreatePackageInput) => api.post(`/plans/${plan?.id}/packages`, input),
@@ -246,7 +266,7 @@ function PackageDrawer({ plan, onClose, onDone }: { plan: PlanTree | null; onClo
     mutation.mutate(parsed.data);
   };
   return (
-    <Drawer open={Boolean(plan)} onClose={onClose} eyebrow={plan?.name} title="Novo pacote" description="Uma janela de km: a cada quantos km o carro para, e com que tolerância."
+    <Drawer open={Boolean(plan)} onClose={onClose} eyebrow={plan?.name} title="Novo pacote" description="Um gatilho de km: o primeiro disparo, a repetição e a tolerância para cada lado. Pacotes por tempo usam dias."
       footer={<><button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button><button type="button" className="tp-btn tp-btn--primary" disabled={mutation.isPending} onClick={submit}>Criar pacote</button></>}>
       <div className="tp-stack">
         <div className="tp-grid-2">
@@ -254,9 +274,14 @@ function PackageDrawer({ plan, onClose, onDone }: { plan: PlanTree | null; onClo
           <label className="tp-field"><span className="tp-label">Nome</span><input className="tp-input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Revisão de 7.500 km" /></label>
         </div>
         <div className="tp-grid-2">
-          <label className="tp-field"><span className="tp-label">Janela (km)</span><input className="tp-input" type="number" min={1} value={form.intervalKm} onChange={(e) => set('intervalKm', e.target.value)} placeholder="7500" /></label>
-          <label className="tp-field"><span className="tp-label">Tolerância (km)</span><input className="tp-input" type="number" min={0} value={form.toleranceKm} onChange={(e) => set('toleranceKm', e.target.value)} /></label>
+          <label className="tp-field"><span className="tp-label">Repete a cada (km)</span><input className="tp-input" type="number" min={1} value={form.intervalKm} onChange={(e) => set('intervalKm', e.target.value)} placeholder="30000" /></label>
+          <label className="tp-field"><span className="tp-label">Primeiro gatilho (km)</span><input className="tp-input" type="number" min={0} value={form.offsetKm} onChange={(e) => set('offsetKm', e.target.value)} placeholder="15000" /><span className="tp-help">Ex.: revisão A em 15.000 e depois a cada 30.000.</span></label>
         </div>
+        <div className="tp-grid-2">
+          <label className="tp-field"><span className="tp-label">Tolerância acima (km)</span><input className="tp-input" type="number" min={0} value={form.toleranceKm} onChange={(e) => set('toleranceKm', e.target.value)} /></label>
+          <label className="tp-field"><span className="tp-label">Tolerância abaixo (km)</span><input className="tp-input" type="number" min={0} value={form.toleranceBelowKm} onChange={(e) => set('toleranceBelowKm', e.target.value)} placeholder="igual à de cima" /></label>
+        </div>
+        <label className="tp-field"><span className="tp-label">Periodicidade em dias (pacotes por tempo)</span><input className="tp-input" type="number" min={1} value={form.periodDays} onChange={(e) => set('periodDays', e.target.value)} placeholder="7, 30, 90…" /></label>
         {error && <p className="tp-error">{error}</p>}
       </div>
     </Drawer>
@@ -266,7 +291,7 @@ function PackageDrawer({ plan, onClose, onDone }: { plan: PlanTree | null; onClo
 function TaskDrawer({ target, onClose, onDone }: { target: { pkg: PlanPackageTree; task?: PlanTaskRow } | null; onClose: () => void; onDone: () => void }) {
   const task = target?.task;
   const [form, set] = useFormState(
-    { code: task?.code ?? '', description: task?.description ?? '', specialtyId: task?.specialtyId ?? '', estimatedMinutes: task?.estimatedMinutes ? String(task.estimatedMinutes) : '' },
+    { code: task?.code ?? '', description: task?.description ?? '', specialtyId: task?.specialtyId ?? '', estimatedMinutes: task?.estimatedMinutes ? String(task.estimatedMinutes) : '', section: task?.section ?? '', equipmentCondition: task?.equipmentCondition ?? '' },
     [target?.pkg.id, task?.id],
   );
   const [error, setError] = useState<string | null>(null);
@@ -282,7 +307,7 @@ function TaskDrawer({ target, onClose, onDone }: { target: { pkg: PlanPackageTre
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível excluir'),
   });
   const submit = () => {
-    const parsed = createPlanTaskSchema.safeParse({ ...form, specialtyId: form.specialtyId || undefined, estimatedMinutes: form.estimatedMinutes || undefined });
+    const parsed = createPlanTaskSchema.safeParse({ ...form, specialtyId: form.specialtyId || undefined, estimatedMinutes: form.estimatedMinutes || undefined, section: form.section || undefined, equipmentCondition: form.equipmentCondition || undefined });
     if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
     setError(null);
     save.mutate(parsed.data);
@@ -301,6 +326,10 @@ function TaskDrawer({ target, onClose, onDone }: { target: { pkg: PlanPackageTre
           <label className="tp-field"><span className="tp-label">Tempo estimado (min)</span><input className="tp-input" type="number" min={1} value={form.estimatedMinutes} onChange={(e) => set('estimatedMinutes', e.target.value)} /></label>
         </div>
         <label className="tp-field"><span className="tp-label">Descrição</span><input className="tp-input" value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Troca de óleo e filtro do motor" /></label>
+        <div className="tp-grid-2">
+          <label className="tp-field"><span className="tp-label">Seção do documento</span><input className="tp-input" value={form.section} onChange={(e) => set('section', e.target.value)} placeholder="Motor, Freios e Ar, Elétrica…" /></label>
+          <label className="tp-field"><span className="tp-label">Só em carros equipados com</span><input className="tp-input" value={form.equipmentCondition} onChange={(e) => set('equipmentCondition', e.target.value)} placeholder="elevador, câmbio Voith…" /></label>
+        </div>
         <label className="tp-field"><span className="tp-label">Especialidade</span>
           <select className="tp-select" value={form.specialtyId} onChange={(e) => set('specialtyId', e.target.value)}>
             <option value="">—</option>
@@ -348,10 +377,8 @@ function KitDrawer({ target, onClose, onDone }: { target: { pkg: PlanPackageTree
           {form.items.length === 0 && <span className="tp-help">Nenhum item ainda.</span>}
           {form.items.map((it, i) => (
             <div key={i} className="field-materials__row field-materials__row--kit">
-              <select className="tp-select" value={it.materialId} onChange={(e) => setItem(i, { materialId: e.target.value })}>
-                <option value="">Material…</option>
-                {(materials.data ?? []).map((m) => <option key={m.id} value={m.id}>{m.code} — {m.description}</option>)}
-              </select>
+              <SearchSelect value={it.materialId} onChange={(id) => setItem(i, { materialId: id })} placeholder="Código, descrição ou referência"
+                options={(materials.data ?? []).map((m) => ({ id: m.id, label: m.description, hint: `${m.code}${m.manufacturerRef ? ` · ${m.manufacturerRef}` : ''} · saldo ${formatNumber(m.stockQty)}` }))} />
               <input className="tp-input" type="number" min={0} step="any" value={it.quantity} placeholder={byId.get(it.materialId)?.unit ?? 'qtd'} onChange={(e) => setItem(i, { quantity: e.target.value })} />
               <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" aria-label="Remover" onClick={() => set('items', form.items.filter((_, j) => j !== i))}><Trash2 size={14} /></button>
             </div>

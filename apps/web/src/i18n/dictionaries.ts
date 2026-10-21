@@ -116,6 +116,10 @@ const ptBR = {
     availByHourHint: 'média dos últimos 7 dias',
     fleetNow: 'A frota agora',
     fleetNowHint: 'cada carro no estado em que está',
+    fleetNowHintBig: 'a garagem carro a carro; quem está rodando, somado num cartão',
+    runningSummary: 'rodando agora',
+    inLineShort: 'em linha',
+    inYardShort: 'prontos no pátio',
     legendLabel: 'Legenda e filtro por família de estado',
     legendAll: 'Todos',
     legendHelp: {
@@ -275,6 +279,10 @@ const en: Dictionary = {
     availByHourHint: '7-day average',
     fleetNow: 'The fleet right now',
     fleetNowHint: 'every bus in its current state',
+    fleetNowHintBig: 'the garage bus by bus; buses on the road summed up in one card',
+    runningSummary: 'on the road now',
+    inLineShort: 'in service',
+    inYardShort: 'ready in the yard',
     legendLabel: 'Legend and filter by state family',
     legendAll: 'All',
     legendHelp: {

@@ -4,6 +4,8 @@ import {
   UserRole,
   VehicleStatus,
   VehicleTechnology,
+  VehicleClass,
+  FleetRole,
   type FailureCatalogItem,
   type PublicUser,
   type ReasonCode,
@@ -59,11 +61,11 @@ const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString
  * de projeção degradada do RF-14, que a tela precisa saber destacar.
  */
 export const vehicles: Vehicle[] = [
-  { id: uuid(101), code: '10001', plate: 'ABC1D23', technology: VehicleTechnology.DIESEL, kmSource: KmSource.MANUAL, odometerOffset: 0, manufacturer: 'Scania', model: 'K270', modelYear: 2021, garageId: null, status: VehicleStatus.IN_LINE, currentKm: 184_320, lastReadingAt: daysAgo(1), isActive: true },
-  { id: uuid(102), code: '10002', plate: 'ABC1D24', technology: VehicleTechnology.DIESEL, kmSource: KmSource.MANUAL, odometerOffset: 12_500, manufacturer: 'Scania', model: 'K270', modelYear: 2020, garageId: null, status: VehicleStatus.IN_MAINTENANCE, currentKm: 241_870, lastReadingAt: daysAgo(1), isActive: true },
-  { id: uuid(103), code: '10003', plate: 'ABC1D25', technology: VehicleTechnology.DIESEL, kmSource: KmSource.MANUAL, odometerOffset: 0, manufacturer: 'Mercedes-Benz', model: 'O500U', modelYear: 2019, garageId: null, status: VehicleStatus.AWAITING_PART, currentKm: 312_045, lastReadingAt: daysAgo(5), isActive: true },
-  { id: uuid(104), code: '20001', plate: 'EBS1A01', technology: VehicleTechnology.EBUS, kmSource: KmSource.TELEMETRY, odometerOffset: 0, manufacturer: 'VW', model: 'e-Delivery', modelYear: 2025, garageId: null, status: VehicleStatus.AVAILABLE, currentKm: 42_180, lastReadingAt: daysAgo(0), isActive: true },
-  { id: uuid(105), code: '20002', plate: 'EBS1A02', technology: VehicleTechnology.EBUS, kmSource: KmSource.TELEMETRY, odometerOffset: 0, manufacturer: 'VW', model: 'e-Delivery', modelYear: 2025, garageId: null, status: VehicleStatus.IN_CLEANING, currentKm: 38_902, lastReadingAt: daysAgo(0), isActive: true },
+  { id: uuid(101), code: '10001', plate: 'ABC1D23', technology: VehicleTechnology.DIESEL, kmSource: KmSource.MANUAL, odometerOffset: 0, manufacturer: 'Scania', model: 'K270', modelYear: 2021, garageId: null, vehicleClass: VehicleClass.PADRON_13M, lot: 'E8', fleetRole: FleetRole.OPERACIONAL, status: VehicleStatus.IN_LINE, currentKm: 184_320, lastReadingAt: daysAgo(1), isActive: true },
+  { id: uuid(102), code: '10002', plate: 'ABC1D24', technology: VehicleTechnology.DIESEL, kmSource: KmSource.MANUAL, odometerOffset: 12_500, manufacturer: 'Scania', model: 'K270', modelYear: 2020, garageId: null, vehicleClass: VehicleClass.PADRON_13M, lot: 'E8', fleetRole: FleetRole.OPERACIONAL, status: VehicleStatus.IN_MAINTENANCE, currentKm: 241_870, lastReadingAt: daysAgo(1), isActive: true },
+  { id: uuid(103), code: '10003', plate: 'ABC1D25', technology: VehicleTechnology.DIESEL, kmSource: KmSource.MANUAL, odometerOffset: 0, manufacturer: 'Mercedes-Benz', model: 'O500U', modelYear: 2019, garageId: null, vehicleClass: VehicleClass.PADRON_13M, lot: 'E8', fleetRole: FleetRole.OPERACIONAL, status: VehicleStatus.AWAITING_PART, currentKm: 312_045, lastReadingAt: daysAgo(5), isActive: true },
+  { id: uuid(104), code: '20001', plate: 'EBS1A01', technology: VehicleTechnology.EBUS, kmSource: KmSource.TELEMETRY, odometerOffset: 0, manufacturer: 'VW', model: 'e-Delivery', modelYear: 2025, garageId: null, vehicleClass: VehicleClass.EPADRON_13M, lot: 'E8', fleetRole: FleetRole.RESERVA, status: VehicleStatus.AVAILABLE, currentKm: 42_180, lastReadingAt: daysAgo(0), isActive: true },
+  { id: uuid(105), code: '20002', plate: 'EBS1A02', technology: VehicleTechnology.EBUS, kmSource: KmSource.TELEMETRY, odometerOffset: 0, manufacturer: 'VW', model: 'e-Delivery', modelYear: 2025, garageId: null, vehicleClass: VehicleClass.EPADRON_13M, lot: 'AR9', fleetRole: FleetRole.OPERACIONAL, status: VehicleStatus.IN_CLEANING, currentKm: 38_902, lastReadingAt: daysAgo(0), isActive: true },
 ];
 
 /** Média diária por carro, base da projeção mostrada no painel. */

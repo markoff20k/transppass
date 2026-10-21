@@ -1,6 +1,6 @@
 # Relatório de QA — Transppass PCM (MVP: R0 + R1 + R2)
 
-**Rodada:** 19/10/2026 · **Ambiente:** modo mock (MSW) no Microsoft Edge, sem banco · **Resultado:** 78 verificações funcionais de UI, 78 aprovadas · typecheck, lint e build do monorepo limpos.
+**Rodada:** 20/10/2026 (madrugada da apresentação) · **Ambiente:** Microsoft Edge dirigido por puppeteer **contra a API real** no Postgres local — frota de 453 carros, bases da Transppass carregadas e simulador de demonstração ligado · **Resultado:** 78 verificações funcionais de UI, 78 aprovadas (`QA_API=1 node tools/qa-smoke.mjs`); teste e2e da API 78/78 com a nova base; typecheck, lint e build de produção limpos. A rodada anterior (19/10, modo mock) continua válida e o roteiro ainda roda nos dois modos.
 
 Este relatório é o que um analista de QA entregaria ao fim da sprint: o que foi testado, como, o que passou, o que foi corrigido no caminho e — mais importante — **o que ainda não foi exercitado** e por quê.
 
@@ -53,11 +53,31 @@ Este relatório é o que um analista de QA entregaria ao fim da sprint: o que fo
 
 Defeitos de UI corrigidos antes desta rodada (já em commits anteriores): layout do shell sobrescrito por CSS antigo, header no rodapé, rodas do ônibus orbitando, pneus invisíveis no escuro, badges de larguras diferentes, edição inline em vez de painel lateral.
 
+## 4b. Rodada 20/10 — carga real, frota de 453 carros e simulador
+
+O que mudou desde a rodada de 19/10 e foi exercitado nesta:
+
+- **Carga das bases da Transppass** (`npm run db:seed`): 2.496 materiais com classe, referência, prateleira, saldo e custo; 907 motoristas (CNH e classes permitidas); 864 cobradores por lote; 47 ferramentas da FR.168; planos preventivos por modelo (IT.MAN-01, -54, -60, -16) com gatilho offset+intervalo, tolerância dupla, tarefas por seção e kits cruzados com o inventário.
+- **Frota mock de 453 carros** (`npm run db:seed:demo`) nas proporções da Escala de Carros, com classe, lote e papel (operacional/reserva). Dashboard e painel da frota foram redesenhados para essa escala: os que rodam viram um cartão-resumo; a grade pagina de 60 em 60; filtros por classe e lote; seleção com busca para carros, operadores e materiais.
+- **Simulador vivo** (`DEMO_SIMULATOR=true`): a cada 5 min, pela própria API de negócio, lança telemetria e km manual, abre falhas, tria, despacha socorro, tira OS da fila, pede material, inspeciona, limpa, libera e designa reserva. Validado em modo acelerado (`DEMO_SPEED=12`): o ciclo falha → triagem → socorro/oficina → liberação fechou ponta a ponta no log, sem exceções.
+
+| # | Onde | Defeito | Correção |
+| --- | --- | --- | --- |
+| 8 | Painel da frota | "Projeção degradada" sem explicação; 13 carros em alerta porque o seed envelhecia. | Conceito renomeado para **odômetro atrasado**, tooltip "i" com a regra do RF-14, rodapé do card com a idade da leitura e atalho "lançar km"; o simulador mantém as leituras vivas. |
+| 9 | `scheduling.service.ts` | Pacotes por tempo (intervalo 0) geravam `Invalid time value` e o `/scheduling/timeline` respondia 500. | Pacotes por dias ficam fora da linha do km; `daysToWindow` só quando finito. |
+| 10 | KPI (`design-kit`) | `overflow: hidden` cortava o balão do "i" nos cartões de KPI. | Foco de cor passou a gradiente interno; card sem overflow. |
+| 11 | Planos | Tabela de tarefas invadia a coluna do kit com descrições longas. | `table-layout: fixed` com larguras por coluna nas duas tabelas do pacote. |
+| 12 | Seed de demonstração | Placas geradas por hash colidiam; a Escala repete a linha "ePadron 15M" e o total dava 554. | Placa única por índice; 71 + 30 ePadron divididos entre 13M e 15M (assumido) — total 238 + 215 = 453. |
+| 13 | Importador | Filtros entravam como "L" por conter "OLEO" na descrição; classe grudada na descrição em 3 itens. | Unidade por prefixo (FILTRO, BOMBA…) e separação da classe no parse por coordenadas do PDF. |
+| 14 | `tools/qa-smoke.mjs` | Roteiro assumia dados do mock (carro 10099, token de redefinição fixo, fila com a 1ª linha em espera, demanda aberta do seed). | Modo `QA_API=1`: prefixo/placa únicos e carro desativado ao final, link de redefinição real gerado pelo admin e senha devolvida, OS escolhida pelo estado, demanda criada e cancelada pelo próprio roteiro. |
+
 ## 5. O que NÃO foi testado (e o risco)
 
 | Lacuna | Risco | Como fechar |
 | --- | --- | --- |
-| Mock ≠ API | Baixo agora: o e2e exercita a lógica de estado no servidor. Resta a camada tela → API real (o QA de UI roda no mock). | Rodar o roteiro de UI contra a API real (`VITE_API_URL`) numa próxima rodada. |
+| Mock ≠ API | **Fechado em 20/10:** o roteiro de UI roda contra a API real (`QA_API=1`) e passa 78/78. | — |
+| Base carro a carro | Prefixos, placas, modelos por classe e ano da frota são mock (a Escala só traz totais). Planos por modelo só casam com o campo "modelo" do carro. | Carregar a base real de veículos quando a Operação enviar. |
+| Tarefas dos planos | Estrutura (pacotes, gatilhos, tolerâncias, kits) vem dos IT.MAN; a lista de tarefas é síntese das seções e precisa ser conferida item a item com a Manutenção. | Revisão conjunta com Manutenção antes de virar escopo de parada. |
 | Valores de SLA e fórmula de criticidade | Médio. Marcados como ARBITRADO no código; o PRD não os fixa. | Definição com PCM + Manutenção. |
 | Especificação MVP v1.1 (RN-01…16, P-01…10) | Médio. Não está no repositório; as regras RN foram implementadas pelo resumo do PRD. | Anexar o documento e revisar regra a regra. |
 | Integração com telemetria / API do JB (km) | Baixo no MVP. Só o lançamento manual está exercitado. | Fase seguinte. |

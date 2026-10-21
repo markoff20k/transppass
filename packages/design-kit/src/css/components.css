@@ -329,7 +329,8 @@
   gap: var(--tp-space-1);
   min-width: 0;
   padding: var(--tp-space-3) var(--tp-space-4) var(--tp-space-4);
-  overflow: hidden;
+  /* Sem overflow hidden: o balão "i" do rótulo precisa sair do card. O foco de
+     cor do canto é um gradiente radial dentro da própria caixa. */
   background: linear-gradient(160deg, var(--color-surface), color-mix(in srgb, var(--color-surface) 90%, var(--color-surface-sunken)));
   border: var(--tp-border-thin) solid var(--color-border);
   border-radius: var(--tp-radius-lg);
@@ -347,14 +348,13 @@
 .tp-kpi::after {
   content: '';
   position: absolute;
-  top: -90px;
-  right: -70px;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--kpi-color) 10%, transparent) 0%, transparent 65%);
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(140px circle at calc(100% + 40px) -40px, color-mix(in srgb, var(--kpi-color) 10%, transparent) 0%, transparent 70%);
   pointer-events: none;
 }
+
+.tp-kpi > * { position: relative; z-index: 1; }
 
 .tp-kpi--good { --kpi-color: var(--color-success); }
 .tp-kpi--warn { --kpi-color: var(--color-warning); }

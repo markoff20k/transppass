@@ -204,7 +204,7 @@ export function StockPage() {
         <section className="tp-card stock-tools">
           <div className="tp-card__head">
             <h3>Ferramentas</h3>
-            <span className="tp-muted">calibração vencida bloqueia o empréstimo (RF-28)</span>
+            <span className="tp-muted">FR.168 — disponível × necessária; calibração vencida bloqueia o empréstimo (RF-28)</span>
           </div>
           <div className="tp-table-wrap">
             <table className="tp-table">
@@ -212,6 +212,7 @@ export function StockPage() {
                 <tr>
                   <th>Código</th>
                   <th>Ferramenta</th>
+                  <th className="is-num" title="Disponível / necessária (FR.168)">Qtd</th>
                   <th>Calibração</th>
                   <th>Com quem</th>
                   <th />
@@ -222,6 +223,7 @@ export function StockPage() {
                   <tr key={t.id} className={t.isCalibrationExpired ? 'is-danger' : undefined}>
                     <td className="is-strong">{t.code}</td>
                     <td>{t.description}</td>
+                    <td className={`is-num${t.availableQty < t.requiredQty ? ' tp-error' : ''}`}>{t.availableQty} / {t.requiredQty}</td>
                     <td className="tp-muted">
                       {t.calibrationDueAt ? formatDate(t.calibrationDueAt) : '—'}
                       {t.isCalibrationExpired && (
@@ -244,7 +246,7 @@ export function StockPage() {
                 ))}
                 {(tools.data ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={5} className="tp-table__empty">Nenhuma ferramenta cadastrada.</td>
+                    <td colSpan={6} className="tp-table__empty">Nenhuma ferramenta cadastrada.</td>
                   </tr>
                 )}
               </tbody>

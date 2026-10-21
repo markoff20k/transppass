@@ -2295,8 +2295,241 @@ small.muted {
   margin-top: var(--tp-space-1);
 }
 
+/* Frota grande: os que rodam viram um cartão só, largo, no começo da grade */
+.bus-card--summary {
+  grid-column: span 2;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-state-running) 10%, var(--color-surface)), var(--color-surface));
+}
+.bus-card--summary .bus { width: 100%; height: auto; }
+.bus-card__big {
+  font-family: var(--tp-font-display);
+  font-size: var(--tp-text-2xl);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+@media (max-width: 480px) {
+  .bus-card--summary { grid-column: span 1; grid-template-columns: 1fr; }
+}
+
 .bus-grid--panel { grid-template-columns: repeat(auto-fill, minmax(188px, 1fr)); gap: var(--tp-space-3); }
 .bus-grid--panel .bus-card { padding-bottom: var(--tp-space-3); }
+
+/* --- Painel da frota: cards de carro ------------------------------------- */
+
+.fleet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--tp-space-3);
+}
+
+.fleet-grid__more {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: var(--tp-space-3);
+  border: var(--tp-border-thin) dashed var(--color-border-strong);
+  border-radius: var(--tp-radius-md);
+  background: transparent;
+  color: var(--color-brand);
+  font: inherit;
+  font-weight: var(--tp-weight-semibold);
+  cursor: pointer;
+}
+.fleet-grid__more small { font-weight: 400; color: var(--color-text-muted); font-size: var(--tp-text-xs); }
+.fleet-grid__more:hover { background: var(--color-surface-sunken); }
+
+.fleet-grid[data-focus='running'] .fleet-card:not(.fleet-card--running),
+.fleet-grid[data-focus='waiting'] .fleet-card:not(.fleet-card--waiting),
+.fleet-grid[data-focus='working'] .fleet-card:not(.fleet-card--working),
+.fleet-grid[data-focus='stopped'] .fleet-card:not(.fleet-card--stopped) {
+  opacity: 0.28;
+}
+
+.fleet-card {
+  --fleet-color: var(--color-border-strong);
+  position: relative;
+  display: grid;
+  gap: var(--tp-space-2);
+  padding: var(--tp-space-3) var(--tp-space-3) 0;
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-left: 3px solid var(--fleet-color);
+  border-radius: var(--tp-radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  min-width: 0;
+  overflow: hidden;
+  transition:
+    opacity var(--tp-duration-normal) var(--tp-ease),
+    border-color var(--tp-duration-fast),
+    transform var(--tp-duration-fast) var(--tp-ease),
+    box-shadow var(--tp-duration-fast);
+}
+
+.fleet-card--running { --fleet-color: var(--color-state-running); }
+.fleet-card--waiting { --fleet-color: var(--color-state-waiting); }
+.fleet-card--working { --fleet-color: var(--color-state-working); }
+.fleet-card--stopped { --fleet-color: var(--color-state-stopped); }
+
+.fleet-card:hover {
+  border-color: var(--color-border-strong);
+  border-left-color: var(--fleet-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card);
+}
+
+.fleet-card.is-stale { border-color: var(--color-warning-border); border-left-color: var(--fleet-color); }
+
+.fleet-card__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--tp-space-2);
+  min-width: 0;
+}
+
+.fleet-card__code {
+  font-family: var(--tp-font-display);
+  font-size: var(--tp-text-md);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.fleet-card__plate {
+  font-family: var(--tp-font-mono);
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-muted);
+}
+
+.fleet-card__class {
+  margin-top: -4px;
+  font-size: var(--tp-text-2xs);
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fleet-tech {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--tp-radius-full);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.fleet-card__head .fleet-tech { margin-left: auto; align-self: center; }
+.fleet-tech--ebus { background: var(--color-success-soft); color: var(--color-success-text); }
+.fleet-tech-cell { display: inline-flex; align-items: center; gap: 6px; }
+.fleet-tech-cell .fleet-tech { width: 20px; height: 20px; }
+
+.fleet-card__bus { margin: 0 calc(-1 * var(--tp-space-1)); }
+.fleet-card__bus .bus { width: 100%; height: auto; }
+
+.fleet-card__state { font-size: var(--tp-text-xs); justify-self: start; }
+
+.fleet-card__facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--tp-space-2);
+  margin: 0;
+}
+
+.fleet-card__facts > div { display: grid; gap: 2px; min-width: 0; }
+
+.fleet-card__facts dt {
+  font-size: var(--tp-text-2xs);
+  font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.fleet-card__facts dd {
+  margin: 0;
+  font-size: var(--tp-text-sm);
+  font-weight: var(--tp-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.fleet-card__reading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: var(--tp-space-1) calc(-1 * var(--tp-space-3)) 0;
+  padding: 7px var(--tp-space-3);
+  border-top: var(--tp-border-thin) solid var(--color-border-subtle);
+  background: var(--color-surface-sunken);
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-secondary);
+}
+
+.fleet-card__reading--fresh { color: var(--color-success-text); }
+.fleet-card__reading--stale {
+  color: var(--color-warning-text);
+  background: var(--color-warning-soft);
+  border-top-color: var(--color-warning-border);
+  font-weight: var(--tp-weight-medium);
+}
+
+.fleet-card__cta {
+  margin-left: auto;
+  font-weight: var(--tp-weight-semibold);
+  color: var(--color-brand);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.fleet-card__cta:hover { text-decoration: underline; }
+
+/* Guia de leitura dos cards: uma linha, discreta, sempre visível */
+.fleet-guide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tp-space-2) var(--tp-space-5);
+  margin: 0 0 var(--tp-space-3);
+  padding: 0;
+  list-style: none;
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-muted);
+}
+
+.fleet-guide li { display: inline-flex; align-items: center; gap: 6px; }
+.fleet-guide .fleet-tech { width: 18px; height: 18px; }
+
+.fleet-guide__swatch {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--color-state-running) 0 25%, var(--color-state-waiting) 25% 50%, var(--color-state-working) 50% 75%, var(--color-state-stopped) 75%);
+}
+
+/* Leitura do odômetro na tabela */
+.fleet-reading {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px 2px 6px;
+  border-radius: var(--tp-radius-full);
+  font-size: var(--tp-text-xs);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.fleet-reading--fresh { background: var(--color-success-soft); color: var(--color-success-text); }
+.fleet-reading--stale { background: var(--color-warning-soft); color: var(--color-warning-text); }
+
+/* Tooltip dentro de rótulos de KPI e cabeçalhos de tabela */
+.fleet-tip { vertical-align: middle; margin-left: 2px; }
+.fleet-tip .tp-tip__trigger { width: 15px; height: 15px; }
+.tp-kpi__link { color: var(--color-brand); font-weight: var(--tp-weight-semibold); text-decoration: none; }
+.tp-kpi__link:hover { text-decoration: underline; }
 
 /* Últimos eventos */
 .recent-list {
@@ -3070,6 +3303,14 @@ small.muted {
 .plan-pkg__col-head { display: flex; align-items: center; justify-content: space-between; gap: var(--tp-space-2); }
 .plan-pkg__col-head h4 { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: var(--tp-text-xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); }
 .tp-table--compact td, .tp-table--compact th { padding-top: 6px; padding-bottom: 6px; }
+/* As tabelas do pacote cabem na própria coluna: texto longo quebra, nunca invade a coluna ao lado */
+.plan-tasks, .plan-kit { width: 100%; table-layout: fixed; }
+.plan-tasks td, .plan-kit td { white-space: normal; overflow-wrap: anywhere; }
+.plan-tasks th:nth-child(1) { width: 44px; }
+.plan-tasks th:nth-child(2) { width: 96px; }
+.plan-tasks th:nth-child(4) { width: 104px; }
+.plan-tasks th:nth-child(5) { width: 44px; }
+.plan-kit th:last-child { width: 64px; }
 .field-materials__row--kit { grid-template-columns: minmax(0, 1fr) 84px auto; }
 
 /* Indicadores: histórico mensal */
@@ -3108,3 +3349,80 @@ small.muted {
 .fcode-ref .tp-table { margin-bottom: var(--tp-space-2); }
 @media (max-width: 1000px) { .fcode-rules__grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 520px) { .fcode__grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* --- Seleção com busca (listas grandes) --------------------------------- */
+
+.tp-combo { position: relative; min-width: 0; }
+.tp-combo__field { position: relative; display: flex; align-items: center; }
+.tp-combo__field > svg:first-child { position: absolute; left: 10px; pointer-events: none; color: var(--color-text-muted); }
+.tp-combo__field .tp-input { padding-left: 30px; padding-right: 30px; width: 100%; text-overflow: ellipsis; }
+.tp-combo__chevron { position: absolute; right: 10px; pointer-events: none; color: var(--color-text-muted); }
+.tp-combo__clear {
+  position: absolute;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: var(--tp-radius-full);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.tp-combo__clear:hover { background: var(--color-surface-sunken); color: var(--color-text); }
+.tp-combo.is-disabled .tp-combo__field { opacity: 0.6; }
+
+.tp-combo__list {
+  position: absolute;
+  z-index: var(--tp-z-dropdown);
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-md);
+  box-shadow: var(--tp-shadow-overlay);
+}
+.tp-combo__item {
+  display: grid;
+  gap: 1px;
+  padding: 7px 10px;
+  border-radius: var(--tp-radius-sm);
+  cursor: pointer;
+}
+.tp-combo__item.is-active { background: var(--color-surface-sunken); }
+.tp-combo__item.is-selected .tp-combo__label { color: var(--color-brand); font-weight: var(--tp-weight-semibold); }
+.tp-combo__label { font-size: var(--tp-text-sm); line-height: 1.25; }
+.tp-combo__hint { font-size: var(--tp-text-2xs); color: var(--color-text-muted); font-family: var(--tp-font-mono); }
+.tp-combo__empty, .tp-combo__more { padding: 8px 10px; font-size: var(--tp-text-xs); color: var(--color-text-muted); }
+.tp-combo__more { border-top: var(--tp-border-thin) solid var(--color-border-subtle); }
+
+/* --- Materiais: inventário ------------------------------------------------ */
+
+.tp-mono { font-family: var(--tp-font-mono); font-size: 0.95em; }
+.mat-abc {
+  display: inline-grid;
+  place-items: center;
+  margin-left: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--tp-font-sans);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+  vertical-align: 1px;
+}
+.mat-abc--a { background: var(--color-warning-soft); color: var(--color-warning-text); }
+.mat-abc--b { background: var(--color-info-soft); color: var(--color-text-secondary); }
+.mat-desc { display: block; }
+.mat-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; font-size: var(--tp-text-2xs); color: var(--color-text-muted); font-family: var(--tp-font-mono); }
+.tp-table__more { text-align: center; padding: var(--tp-space-2) !important; }
+.plan-task__cond { display: block; font-size: var(--tp-text-2xs); color: var(--color-text-muted); }

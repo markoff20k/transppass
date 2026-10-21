@@ -6,6 +6,7 @@ import {
   VehicleTechnology,
 } from '@prisma/client';
 import * as argon2 from 'argon2';
+import { importBases } from './seed-import';
 
 /**
  * Seed do R0.
@@ -400,6 +401,10 @@ async function main() {
       });
     }
   }
+
+  // ---- Bases reais da Transppass (Kaizen MKBF) ----------------------------
+  console.log('Carga das bases da Transppass…');
+  await importBases(prisma);
 
   console.log('Seed do R0/R1/R2 concluído.');
   console.log(`  admin: admin@transppass.local / admin123 (id ${admin.id})`);

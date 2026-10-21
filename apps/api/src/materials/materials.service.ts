@@ -437,8 +437,17 @@ export class MaterialsService {
 
   /** Cadastro de materiais ativos — a lista de onde a valeta e o socorro escolhem. */
   async listMaterials(): Promise<MaterialOption[]> {
-    const rows = await this.prisma.material.findMany({ where: { isActive: true }, orderBy: { code: 'asc' } });
-    return rows.map((m) => ({ id: m.id, code: m.code, description: m.description, unit: m.unit, isSerialized: m.isSerialized }));
+    const rows = await this.prisma.material.findMany({ where: { isActive: true }, orderBy: { description: 'asc' } });
+    return rows.map((m) => ({
+      id: m.id,
+      code: m.code,
+      description: m.description,
+      unit: m.unit,
+      isSerialized: m.isSerialized,
+      manufacturerRef: m.manufacturerRef,
+      location: m.location,
+      stockQty: Number(m.stockQty),
+    }));
   }
 
   async listTools(): Promise<ToolRow[]> {
@@ -462,6 +471,8 @@ export class MaterialsService {
       id: t.id,
       code: t.code,
       description: t.description,
+      requiredQty: t.requiredQty,
+      availableQty: t.availableQty,
       calibrationDueAt: t.calibrationDueAt?.toISOString() ?? null,
       isCalibrationExpired: Boolean(t.calibrationDueAt && t.calibrationDueAt < now),
       loanedToName: t.loans[0] ? (nameById.get(t.loans[0].borrowerId) ?? null) : null,

@@ -1,13 +1,17 @@
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutGrid, List, Search } from 'lucide-react';
+import { Clock3, Fuel, LayoutGrid, List, Search, Zap } from 'lucide-react';
 import {
+  KM_DEGRADATION_DAYS,
   KM_SOURCE_LABELS,
+  KmSource,
+  VEHICLE_CLASS_LABELS,
   VEHICLE_STATUS_LABELS,
   VEHICLE_TECHNOLOGY_LABELS,
+  VehicleTechnology,
+  type VehicleClass,
   type VehicleStatus,
-  type VehicleTechnology,
   type FleetPanelRow,
   type FleetPanelSummary,
 } from '@app/shared';
@@ -18,6 +22,7 @@ import { BusIllustration } from '@/components/bus/bus-illustration';
 import { FleetLegend } from '@/components/fleet/fleet-legend';
 import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { InfoTip } from '@/components/ui/info-tip';
 
 interface PanelResponse {
   summary: FleetPanelSummary;
@@ -29,10 +34,53 @@ type View = 'grid' | 'table';
 /** Meta de disponibilidade — ARBITRADO em 85% até o PCM fixar (RF-38). */
 const AVAILABILITY_TARGET = 85;
 
+type ReadingTone = 'fresh' | 'aging' | 'stale';
+
+const PAGE = 60;
+
+/**
+ * Como o carro está de odômetro. É o que o operador precisa ler de relance:
+ * "lido hoje" está em dia; "ontem" ainda vale; acima do limite do RF-14 a
+ * projeção de km fica desatualizada e o carro pede um lançamento.
+ */
+function readingOf(row: FleetPanelRow): { tone: ReadingTone; text: string } {
+  const d = row.daysSinceLastReading;
+  if (d === null) return { tone: 'stale', text: 'sem leitura de km' };
+  if (row.isKmDegraded) return { tone: 'stale', text: `odômetro há ${d} dias` };
+  if (d === 0) return { tone: 'fresh', text: 'odômetro lido hoje' };
+  if (d === 1) return { tone: 'aging', text: 'odômetro lido ontem' };
+  return { tone: 'aging', text: `odômetro há ${d} dias` };
+}
+
+function TechIcon({ technology }: { technology: VehicleTechnology }) {
+  const label = VEHICLE_TECHNOLOGY_LABELS[technology];
+  return (
+    <span className={`fleet-tech fleet-tech--${technology.toLowerCase()}`} title={label} aria-label={label}>
+      {technology === VehicleTechnology.EBUS ? <Zap size={12} aria-hidden /> : <Fuel size={12} aria-hidden />}
+    </span>
+  );
+}
+
+function ProjectionTip({ align = 'end' }: { align?: 'start' | 'center' | 'end' }) {
+  return (
+    <InfoTip label="O que é a projeção de km" align={align} className="fleet-tip">
+      <b>Projeção de km</b>
+      <span>
+        A partir da média diária de cada carro, o sistema estima o km de hoje e em que dia ele chega à
+        próxima preventiva (RF-14). É o que alimenta a programação.
+      </span>
+      <span>
+        Sem leitura de odômetro há mais de {KM_DEGRADATION_DAYS} dias a estimativa fica desatualizada e o
+        carro entra em alerta até alguém lançar o km. Carros com telemetria atualizam sozinhos.
+      </span>
+    </InfoTip>
+  );
+}
+
 /**
  * RF-37 — painel da frota com estados ao vivo e KPIs no topo.
  *
- * Duas leituras da mesma frota: a grade de ônibus, para bater o olho e ver a
+ * Duas leituras da mesma frota: a grade de cards, para bater o olho e ver a
  * garagem; a tabela, para conferir km e leitura carro a carro. A preferência
  * fica no navegador. A legenda das famílias é também o filtro rápido.
  */
@@ -47,12 +95,18 @@ export function FleetPanelPage() {
   });
   const [family, setFamily] = useState<Family | null>(null);
   const [hovered, setHovered] = useState<Family | null>(null);
+  // Centenas de carros ilustrados pesam no navegador: a grade mostra 60 por vez.
+  const [limit, setLimit] = useState(PAGE);
 
   const technology = (params.get('technology') ?? '') as VehicleTechnology | '';
   const status = (params.get('status') ?? '') as VehicleStatus | '';
   const search = params.get('search') ?? '';
+  const vehicleClass = (params.get('class') ?? '') as VehicleClass | '';
+  const lot = params.get('lot') ?? '';
+  const onlyStale = params.get('stale') === '1';
 
   const setParam = (key: string, value: string) => {
+    setLimit(PAGE);
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
@@ -71,7 +125,7 @@ export function FleetPanelPage() {
   usePageHeader({
     eyebrow: 'Operação',
     title: 'Painel da frota',
-    description: 'Estado ao vivo de cada carro e a saúde da projeção de km.',
+    description: 'Onde está cada carro agora e se o km dele está em dia.',
     actions: (
       <div className="tp-btn-group" role="group" aria-label="Modo de visualização">
         <button
@@ -99,8 +153,10 @@ export function FleetPanelPage() {
     if (technology) p.set('technology', technology);
     if (status) p.set('status', status);
     if (search.trim()) p.set('search', search.trim());
+    if (vehicleClass) p.set('vehicleClass', vehicleClass);
+    if (lot) p.set('lot', lot);
     return p.toString();
-  }, [technology, status, search]);
+  }, [technology, status, search, vehicleClass, lot]);
 
   const { data, isPending, isError, error } = useQuery({
     queryKey: ['fleet-panel', query],
@@ -114,9 +170,17 @@ export function FleetPanelPage() {
 
   const { summary, rows } = data;
   const availabilityPct = Math.round(summary.availabilityRate * 1000) / 10;
-  const visible = family ? rows.filter((r) => familyOf(r.status) === family) : rows;
+  const diesel = rows.filter((r) => r.technology === VehicleTechnology.DIESEL).length;
+  const ebus = rows.length - diesel;
+  const manualStale = rows.filter((r) => r.isKmDegraded && r.kmSource === KmSource.MANUAL).length;
+
+  const visible = rows
+    .filter((r) => (family ? familyOf(r.status) === family : true))
+    .filter((r) => (onlyStale ? r.isKmDegraded : true));
+  const paged = view === 'grid' ? visible.slice(0, limit) : visible;
   const focus = hovered ?? family;
-  const degradedTone = summary.degradedKmCount > 0 ? 'tp-kpi--warn' : 'tp-kpi--good';
+  const stale = summary.degradedKmCount;
+  const staleTone = stale === 0 ? 'tp-kpi--good' : stale >= Math.max(3, rows.length * 0.25) ? 'tp-kpi--danger' : 'tp-kpi--warn';
 
   return (
     <>
@@ -124,22 +188,40 @@ export function FleetPanelPage() {
         <div className="tp-kpi tp-kpi--brand">
           <span className="tp-kpi__label">Frota</span>
           <strong className="tp-kpi__value">{summary.total}</strong>
-          <span className="tp-kpi__note">carros ativos na garagem</span>
+          <span className="tp-kpi__note">
+            {diesel} diesel · {ebus} {ebus === 1 ? 'elétrico' : 'elétricos'}
+          </span>
         </div>
         <div className="tp-kpi tp-kpi--good">
           <span className="tp-kpi__label">Disponíveis</span>
-          <strong className="tp-kpi__value">{summary.available}</strong>
+          <strong className="tp-kpi__value">
+            {summary.available}
+            <small className="tp-kpi__of"> / {summary.total}</small>
+          </strong>
           <span className="tp-kpi__note">em linha ou prontos no pátio</span>
         </div>
         <div className={`tp-kpi ${availabilityPct >= AVAILABILITY_TARGET ? 'tp-kpi--good' : availabilityPct >= AVAILABILITY_TARGET - 10 ? 'tp-kpi--warn' : 'tp-kpi--danger'}`}>
           <span className="tp-kpi__label">Disponibilidade</span>
           <strong className="tp-kpi__value">{availabilityPct.toLocaleString('pt-BR')}%</strong>
-          <span className="tp-kpi__note">meta {AVAILABILITY_TARGET}% · {availabilityPct >= AVAILABILITY_TARGET ? 'dentro da meta' : `faltam ${(AVAILABILITY_TARGET - availabilityPct).toLocaleString('pt-BR')} pp`}</span>
+          <span className="tp-kpi__note">
+            meta {AVAILABILITY_TARGET}% · {availabilityPct >= AVAILABILITY_TARGET ? 'dentro da meta' : `faltam ${(AVAILABILITY_TARGET - availabilityPct).toLocaleString('pt-BR')} pp`}
+          </span>
         </div>
-        <div className={`tp-kpi ${degradedTone}`}>
-          <span className="tp-kpi__label">Km degradado</span>
-          <strong className="tp-kpi__value">{summary.degradedKmCount}</strong>
-          <span className="tp-kpi__note">sem leitura de odômetro há mais de 2 dias</span>
+        <div className={`tp-kpi ${staleTone}`}>
+          <span className="tp-kpi__label">
+            Odômetro atrasado <ProjectionTip />
+          </span>
+          <strong className="tp-kpi__value">
+            {stale}
+            <small className="tp-kpi__of"> / {summary.total}</small>
+          </strong>
+          <span className="tp-kpi__note">
+            {stale === 0
+              ? `todos os carros com km lido nos últimos ${KM_DEGRADATION_DAYS} dias`
+              : manualStale > 0
+                ? <>sem leitura há mais de {KM_DEGRADATION_DAYS} dias · <Link to="/km" className="tp-kpi__link">lançar km</Link></>
+                : `sem leitura há mais de ${KM_DEGRADATION_DAYS} dias`}
+          </span>
         </div>
       </div>
 
@@ -177,6 +259,19 @@ export function FleetPanelPage() {
               </option>
             ))}
           </select>
+          <select className="tp-select" aria-label="Classe" value={vehicleClass} onChange={(e) => setParam('class', e.target.value)}>
+            <option value="">Todas as classes</option>
+            {Object.entries(VEHICLE_CLASS_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <select className="tp-select" aria-label="Lote" value={lot} onChange={(e) => setParam('lot', e.target.value)}>
+            <option value="">Todos os lotes</option>
+            <option value="E8">Lote E8</option>
+            <option value="AR9">Lote AR9</option>
+          </select>
           <select
             className="tp-select"
             aria-label="Estado"
@@ -190,46 +285,72 @@ export function FleetPanelPage() {
               </option>
             ))}
           </select>
+          <label className="tp-check tp-check--inline">
+            <input type="checkbox" checked={onlyStale} onChange={(e) => setParam('stale', e.target.checked ? '1' : '')} />
+            só odômetro atrasado
+          </label>
           <span className="tp-muted tp-toolbar__count">
             {visible.length === rows.length ? `${rows.length} carro(s)` : `${visible.length} de ${rows.length} carro(s)`}
           </span>
         </div>
 
+        <ul className="fleet-guide" aria-label="Como ler os cards">
+          <li><span className="fleet-guide__swatch" aria-hidden /> cor da borda = família do estado</li>
+          <li><Clock3 size={12} aria-hidden /> odômetro = quando o km foi lido pela última vez</li>
+          <li><TechIcon technology={VehicleTechnology.DIESEL} /> diesel · <TechIcon technology={VehicleTechnology.EBUS} /> elétrico</li>
+        </ul>
+
         {visible.length === 0 ? (
           <div className="tp-table__empty">Nenhum carro encontrado com esses filtros.</div>
         ) : view === 'grid' ? (
-          <div className="bus-grid bus-grid--panel" data-focus={focus ?? undefined}>
-            {visible.map((row) => {
+          <div className="fleet-grid" data-focus={focus ?? undefined}>
+            {paged.map((row) => {
               const fam = familyOf(row.status);
+              const reading = readingOf(row);
               return (
-                <div key={row.id} className={`bus-card bus-card--${fam}`}>
-                  <BusIllustration status={row.status} code={row.code} width={200} />
-                  <div className="bus-card__text">
-                    <div className="bus-card__row">
-                      <b>{row.code}</b>
-                      <span className="tp-muted">{row.plate}</span>
-                    </div>
-                    <span className={`tp-state tp-state--${fam}`}>
-                      {VEHICLE_STATUS_LABELS[row.status]}
-                    </span>
-                    <div className="bus-card__facts">
-                      <span><b>{formatNumber(row.currentKm)}</b> km</span>
-                      <span className={row.isKmDegraded ? 'tp-error' : 'tp-muted'}>
-                        {row.daysSinceLastReading === null
-                          ? 'sem leitura'
-                          : row.daysSinceLastReading === 0
-                            ? 'leitura hoje'
-                            : `leitura há ${row.daysSinceLastReading}d`}
-                      </span>
-                    </div>
-                    <div className="bus-card__tags">
-                      <span className="tp-badge">{VEHICLE_TECHNOLOGY_LABELS[row.technology]}</span>
-                      {row.isKmDegraded && <span className="tp-badge tp-badge--warning">projeção degradada</span>}
-                    </div>
+                <article key={row.id} className={`fleet-card fleet-card--${fam}${row.isKmDegraded ? ' is-stale' : ''}`}>
+                  <header className="fleet-card__head">
+                    <span className="fleet-card__code">{row.code}</span>
+                    <span className="fleet-card__plate">{row.plate}</span>
+                    <TechIcon technology={row.technology} />
+                  </header>
+                  <span className="fleet-card__class">
+                    {row.vehicleClass ? VEHICLE_CLASS_LABELS[row.vehicleClass] : row.model ?? '—'}
+                    {row.lot ? ` · ${row.lot}` : ''}
+                    {row.fleetRole === 'RESERVA' ? ' · reserva' : ''}
+                  </span>
+                  <div className="fleet-card__bus">
+                    <BusIllustration status={row.status} code={row.code} width={200} />
                   </div>
-                </div>
+                  <span className={`tp-state tp-state--${fam} fleet-card__state`}>{VEHICLE_STATUS_LABELS[row.status]}</span>
+                  <dl className="fleet-card__facts">
+                    <div>
+                      <dt>Km atual</dt>
+                      <dd>{formatNumber(row.currentKm)}</dd>
+                    </div>
+                    <div>
+                      <dt>Média/dia</dt>
+                      <dd>{row.avgDailyKm === null ? '—' : `${formatNumber(Math.round(row.avgDailyKm))} km`}</dd>
+                    </div>
+                  </dl>
+                  <footer className={`fleet-card__reading fleet-card__reading--${reading.tone}`}>
+                    <Clock3 size={12} aria-hidden />
+                    <span>{reading.text}</span>
+                    {row.isKmDegraded && row.kmSource === KmSource.MANUAL && (
+                      <Link to="/km" className="fleet-card__cta">
+                        lançar km
+                      </Link>
+                    )}
+                  </footer>
+                </article>
               );
             })}
+            {visible.length > paged.length && (
+              <button type="button" className="fleet-grid__more" onClick={() => setLimit((l) => l + PAGE)}>
+                Mostrar mais {Math.min(PAGE, visible.length - paged.length)} carros
+                <small>{paged.length} de {visible.length} na grade — use a busca e os filtros para chegar mais rápido</small>
+              </button>
+            )}
           </div>
         ) : (
           <div className="tp-table-wrap">
@@ -238,43 +359,42 @@ export function FleetPanelPage() {
                 <tr>
                   <th>Prefixo</th>
                   <th>Placa</th>
+                  <th>Classe</th>
                   <th>Tecnologia</th>
                   <th>Estado</th>
                   <th className="is-num">Km atual</th>
-                  <th className="is-num">Km projetado</th>
                   <th className="is-num">Média/dia</th>
-                  <th>Última leitura</th>
+                  <th className="is-num">
+                    Km projetado hoje <ProjectionTip align="center" />
+                  </th>
+                  <th>Odômetro</th>
                   <th>Fonte de km</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((row) => {
                   const fam = familyOf(row.status);
+                  const reading = readingOf(row);
                   return (
                     <tr key={row.id} className={row.isKmDegraded ? 'is-warning' : undefined}>
                       <td className="is-strong">{row.code}</td>
                       <td className="tp-muted">{row.plate}</td>
-                      <td>{VEHICLE_TECHNOLOGY_LABELS[row.technology]}</td>
+                      <td className="tp-muted">{row.vehicleClass ? VEHICLE_CLASS_LABELS[row.vehicleClass] : '—'}{row.lot ? ` · ${row.lot}` : ''}</td>
                       <td>
-                        <span className={`tp-state tp-state--${fam}`}>
-                          {VEHICLE_STATUS_LABELS[row.status]}
+                        <span className="fleet-tech-cell">
+                          <TechIcon technology={row.technology} /> {VEHICLE_TECHNOLOGY_LABELS[row.technology]}
                         </span>
                       </td>
-                      <td className="is-num">{formatNumber(row.currentKm)}</td>
-                      <td className="is-num">
-                        {row.projectedKm === null ? '—' : formatNumber(row.projectedKm)}
-                      </td>
-                      <td className="is-num">
-                        {row.avgDailyKm === null ? '—' : formatNumber(row.avgDailyKm)}
-                      </td>
                       <td>
-                        {row.daysSinceLastReading === null ? (
-                          <span className="tp-muted">sem leitura</span>
-                        ) : (
-                          <span className={row.isKmDegraded ? 'tp-error' : undefined}>
-                            há {row.daysSinceLastReading} {row.daysSinceLastReading === 1 ? 'dia' : 'dias'}
-                          </span>
-                        )}
+                        <span className={`tp-state tp-state--${fam}`}>{VEHICLE_STATUS_LABELS[row.status]}</span>
+                      </td>
+                      <td className="is-num">{formatNumber(row.currentKm)}</td>
+                      <td className="is-num">{row.avgDailyKm === null ? '—' : formatNumber(Math.round(row.avgDailyKm))}</td>
+                      <td className="is-num">{row.projectedKm === null ? '—' : formatNumber(row.projectedKm)}</td>
+                      <td>
+                        <span className={`fleet-reading fleet-reading--${reading.tone}`}>
+                          <Clock3 size={12} aria-hidden /> {reading.text.replace('odômetro ', '')}
+                        </span>
                       </td>
                       <td className="tp-muted">{KM_SOURCE_LABELS[row.kmSource]}</td>
                     </tr>

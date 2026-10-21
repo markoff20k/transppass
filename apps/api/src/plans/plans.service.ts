@@ -57,6 +57,8 @@ export class PlansService {
       code: p.code,
       name: p.name,
       technology: p.technology,
+      manufacturer: p.manufacturer,
+      vehicleModel: p.vehicleModel,
       version: p.version,
       controlledDocument: p.controlledDocument,
       effectiveFrom: p.effectiveFrom.toISOString(),
@@ -67,6 +69,9 @@ export class PlansService {
         name: pkg.name,
         intervalKm: pkg.intervalKm,
         toleranceKm: pkg.toleranceKm,
+        toleranceBelowKm: pkg.toleranceBelowKm,
+        offsetKm: pkg.offsetKm,
+        periodDays: pkg.periodDays,
         tasks: pkg.tasks.map((t) => ({
           id: t.id,
           code: t.code,
@@ -74,6 +79,8 @@ export class PlansService {
           specialtyId: t.specialtyId,
           specialtyName: t.specialty?.name ?? null,
           estimatedMinutes: t.estimatedMinutes,
+          section: t.section,
+          equipmentCondition: t.equipmentCondition,
         })),
         kit: pkg.kits[0] ? toKitRow(pkg.kits[0]) : null,
         estimatedMinutes: pkg.tasks.reduce((sum, t) => sum + (t.estimatedMinutes ?? 0), 0),
@@ -93,6 +100,8 @@ export class PlansService {
         technology: input.technology,
         controlledDocument: input.controlledDocument,
         effectiveFrom: input.effectiveFrom ?? new Date(),
+        manufacturer: input.manufacturer,
+        vehicleModel: input.vehicleModel,
       },
     });
     await this.audit.write({ actorId, action: 'plan.create', entity: 'MaintenancePlan', entityId: plan.id, after: { code: plan.code, technology: plan.technology } });
@@ -241,6 +250,13 @@ export class PlansService {
       isSerialized: m.isSerialized,
       isActive: m.isActive,
       kitCount: m._count.kitItems,
+      classCode: m.classCode,
+      manufacturerRef: m.manufacturerRef,
+      location: m.location,
+      abcClass: m.abcClass,
+      stockQty: Number(m.stockQty),
+      avgCost: m.avgCost === null ? null : Number(m.avgCost),
+      isPreventive: m.isPreventive,
     }));
   }
 

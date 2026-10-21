@@ -16,6 +16,7 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { SearchSelect } from '@/components/ui/search-select';
 import { FailureCodePicker } from '@/components/failure-code/failure-code-picker';
 import { toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
@@ -425,12 +426,8 @@ function OutcomeDrawer({
             const opt = materialOptions.data?.find((o) => o.id === m.materialId);
             return (
               <div key={i} className="field-materials__row">
-                <select className="tp-select" value={m.materialId} onChange={(e) => setMaterials((rows) => rows.map((r, j) => (j === i ? { ...r, materialId: e.target.value } : r)))}>
-                  <option value="">Material…</option>
-                  {(materialOptions.data ?? []).map((o) => (
-                    <option key={o.id} value={o.id}>{o.code} — {o.description}</option>
-                  ))}
-                </select>
+                <SearchSelect value={m.materialId} onChange={(id) => setMaterials((rows) => rows.map((r, j) => (j === i ? { ...r, materialId: id } : r)))} placeholder="Código, descrição ou referência"
+                  options={(materialOptions.data ?? []).map((o) => ({ id: o.id, label: o.description, hint: `${o.code}${o.manufacturerRef ? ` · ${o.manufacturerRef}` : ''}` }))} />
                 <input className="tp-input" type="number" min={0} step="any" placeholder={opt ? opt.unit : 'qtd'} value={m.quantity} onChange={(e) => setMaterials((rows) => rows.map((r, j) => (j === i ? { ...r, quantity: e.target.value } : r)))} />
                 {opt?.isSerialized && (
                   <input className="tp-input" placeholder="nº de série" value={m.serialNumber} onChange={(e) => setMaterials((rows) => rows.map((r, j) => (j === i ? { ...r, serialNumber: e.target.value } : r)))} />

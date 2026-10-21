@@ -29,6 +29,47 @@ export const VehicleStatus = {
 } as const;
 export type VehicleStatus = (typeof VehicleStatus)[keyof typeof VehicleStatus];
 
+/** Classes operacionais da SPTrans, como vêm na Escala de Carros da Transppass. */
+export const VehicleClass = {
+  BASICO_12M: 'BASICO_12M',
+  PADRON_13M: 'PADRON_13M',
+  EPADRON_13M: 'EPADRON_13M',
+  EPADRON_15M: 'EPADRON_15M',
+  ARTICULADO_18M: 'ARTICULADO_18M',
+  ARTICULADO_23M: 'ARTICULADO_23M',
+  EARTICULADO_23M: 'EARTICULADO_23M',
+} as const;
+export type VehicleClass = (typeof VehicleClass)[keyof typeof VehicleClass];
+
+export const VEHICLE_CLASS_LABELS: Record<VehicleClass, string> = {
+  BASICO_12M: 'Básico 12M',
+  PADRON_13M: 'Padron 13M',
+  EPADRON_13M: 'ePadron 13M',
+  EPADRON_15M: 'ePadron 15M',
+  ARTICULADO_18M: 'Articulado 18M',
+  ARTICULADO_23M: 'Articulado 23M',
+  EARTICULADO_23M: 'eArticulado 23M',
+};
+
+/** Classes elétricas: a tecnologia do carro decorre da classe. */
+export const ELECTRIC_CLASSES: readonly VehicleClass[] = [
+  VehicleClass.EPADRON_13M,
+  VehicleClass.EPADRON_15M,
+  VehicleClass.EARTICULADO_23M,
+];
+
+/** Papel do carro na escala da operação. */
+export const FleetRole = {
+  OPERACIONAL: 'OPERACIONAL',
+  RESERVA: 'RESERVA',
+} as const;
+export type FleetRole = (typeof FleetRole)[keyof typeof FleetRole];
+
+export const FLEET_ROLE_LABELS: Record<FleetRole, string> = {
+  OPERACIONAL: 'Operacional',
+  RESERVA: 'Reserva',
+};
+
 export const VEHICLE_TECHNOLOGY_LABELS: Record<VehicleTechnology, string> = {
   DIESEL: 'Diesel',
   EBUS: 'eBUS',
@@ -86,6 +127,9 @@ export const createVehicleSchema = z.object({
   model: z.string().trim().max(60).optional(),
   modelYear: optionalNumber(z.coerce.number().int().min(1980).max(2100)),
   garageId: z.string().uuid().optional(),
+  vehicleClass: z.preprocess((v) => (v === '' ? undefined : v), z.nativeEnum(VehicleClass).optional()),
+  lot: z.string().trim().toUpperCase().max(8).optional(),
+  fleetRole: z.preprocess((v) => (v === '' ? undefined : v), z.nativeEnum(FleetRole).optional()),
 });
 
 export const updateVehicleSchema = createVehicleSchema.partial().extend({
@@ -94,11 +138,13 @@ export const updateVehicleSchema = createVehicleSchema.partial().extend({
 
 export const vehicleQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  perPage: z.coerce.number().int().min(1).max(100).default(20),
+  perPage: z.coerce.number().int().min(1).max(500).default(20),
   search: z.string().trim().max(60).optional(),
   technology: z.nativeEnum(VehicleTechnology).optional(),
   status: z.nativeEnum(VehicleStatus).optional(),
   garageId: z.string().uuid().optional(),
+  vehicleClass: z.nativeEnum(VehicleClass).optional(),
+  lot: z.string().trim().max(8).optional(),
   onlyActive: z.coerce.boolean().default(true),
 });
 
@@ -113,6 +159,9 @@ export const vehicleSchema = z.object({
   model: z.string().nullable(),
   modelYear: z.number().int().nullable(),
   garageId: z.string().uuid().nullable(),
+  vehicleClass: z.nativeEnum(VehicleClass).nullable(),
+  lot: z.string().nullable(),
+  fleetRole: z.nativeEnum(FleetRole).nullable(),
   status: z.nativeEnum(VehicleStatus),
   currentKm: z.number().int(),
   lastReadingAt: z.string().datetime().nullable(),
@@ -140,4 +189,6 @@ export interface FleetPanelSummary {
   availabilityRate: number;
   byStatus: Record<VehicleStatus, number>;
   degradedKmCount: number;
+  /** Carros por classe operacional, para o painel ler a frota como a Escala lê. */
+  byClass: Partial<Record<VehicleClass, number>>;
 }

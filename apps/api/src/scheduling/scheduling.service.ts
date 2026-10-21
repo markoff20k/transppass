@@ -42,6 +42,26 @@ const DAY_MS = 86_400_000;
  * sai da escala com tudo confirmado (RN-10). Da entrada na garagem em diante
  * o caminho é o mesmo fluxo de execução do corretivo — a OS-mãe.
  */
+/** Próximo km em que o pacote dispara: offset + n×intervalo, acima do km atual. */
+function nextTrigger(currentKm: number, pkg: { intervalKm: number; offsetKm: number }): number {
+  const base = Math.max(0, currentKm - pkg.offsetKm);
+  return pkg.offsetKm + (Math.floor(base / pkg.intervalKm) + 1) * pkg.intervalKm;
+}
+
+/**
+ * Pacotes que valem para o carro: o plano do modelo dele, se existir; senão o
+ * plano genérico da tecnologia (IT.MAN-01 é por modelo, IT.MAN-54/60 por eBUS).
+ */
+function packagesFor<T extends { intervalKm: number; plan: { technology: string; vehicleModel: string | null } }>(
+  packages: T[],
+  vehicle: { technology: string; model: string | null },
+): T[] {
+  // Pacotes por tempo (intervalKm 0) vivem no calendário, não na linha do km.
+  const ofTech = packages.filter((p) => p.plan.technology === vehicle.technology && p.intervalKm > 0);
+  const ofModel = vehicle.model ? ofTech.filter((p) => p.plan.vehicleModel && p.plan.vehicleModel.toUpperCase() === vehicle.model!.toUpperCase()) : [];
+  return ofModel.length ? ofModel : ofTech.filter((p) => !p.plan.vehicleModel);
+}
+
 @Injectable()
 export class SchedulingService {
   constructor(
@@ -81,22 +101,27 @@ export class SchedulingService {
     const scheduleByVehicle = new Map(openSchedules.map((s) => [s.vehicleId, s]));
 
     return vehicles.map((v) => {
-      const plan = packages.filter((p) => p.plan.technology === v.technology);
+      const plan = packagesFor(packages, v);
       const projected = v.kmProjection?.projectedKm ?? v.currentKm;
       const avg = v.kmProjection ? Number(v.kmProjection.avgDailyKm) : null;
 
-      // A próxima janela é o menor múltiplo do intervalo acima do km atual,
-      // entre todos os pacotes do plano — o de 7.500 vence antes do de 15.000.
+      // A próxima janela é o menor gatilho acima do km atual entre os pacotes
+      // do plano. Cada pacote dispara em offset + n×intervalo (A: 15.000 e a
+      // cada 30.000). Quando dois caem no mesmo km, o pacote maior absorve o
+      // menor — a revisão A inclui tudo o que a I faria.
       let next: { pkg: (typeof plan)[number]; windowKm: number } | null = null;
       for (const pkg of plan) {
-        const windowKm = (Math.floor(v.currentKm / pkg.intervalKm) + 1) * pkg.intervalKm;
-        if (!next || windowKm < next.windowKm) next = { pkg, windowKm };
+        const windowKm = nextTrigger(v.currentKm, pkg);
+        if (!next || windowKm < next.windowKm || (windowKm === next.windowKm && pkg.intervalKm > next.pkg.intervalKm)) {
+          next = { pkg, windowKm };
+        }
       }
 
       const schedule = scheduleByVehicle.get(v.id);
       const windowKm = schedule?.targetKm ?? next?.windowKm ?? null;
       const kmToWindow = windowKm === null ? null : windowKm - projected;
-      const daysToWindow = kmToWindow === null || !avg || avg <= 0 ? null : Math.round(kmToWindow / avg);
+      const daysToWindowRaw = kmToWindow === null || !avg || avg <= 0 ? null : Math.round(kmToWindow / avg);
+      const daysToWindow = daysToWindowRaw !== null && Number.isFinite(daysToWindowRaw) ? daysToWindowRaw : null;
       const projectedWindowDate =
         daysToWindow === null ? null : new Date(now.getTime() + daysToWindow * DAY_MS).toISOString();
 
@@ -507,6 +532,9 @@ export class SchedulingService {
       name: p.name,
       intervalKm: p.intervalKm,
       toleranceKm: p.toleranceKm,
+      toleranceBelowKm: p.toleranceBelowKm,
+      offsetKm: p.offsetKm,
+      vehicleModel: p.plan.vehicleModel,
       taskCount: p._count.tasks,
       kitId: p.kits[0]?.id ?? null,
       kitName: p.kits[0]?.name ?? null,

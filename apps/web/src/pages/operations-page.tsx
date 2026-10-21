@@ -6,6 +6,7 @@ import {
   DEFAULT_REPLACEMENT_WINDOW_MINUTES,
   DEMAND_STATUS_LABELS,
   ReplacementDemandStatus,
+  VEHICLE_CLASS_LABELS,
   VEHICLE_TECHNOLOGY_LABELS,
   WORK_ORDER_STATUS_LABELS,
   type CreateDemandInput,
@@ -21,6 +22,7 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { SearchSelect } from '@/components/ui/search-select';
 import { BrandLoader } from '@/components/brand/brand-loader';
 
 type Panel = { kind: 'closed' } | { kind: 'create'; originVehicleId?: string } | { kind: 'demand'; id: string };
@@ -255,7 +257,7 @@ function CreateDemandDrawer({ open, originVehicleId, onClose, onCreated }: { ope
     if (open) setVehicleId(originVehicleId ?? '');
   }, [open, originVehicleId]);
 
-  const vehicles = useQuery({ queryKey: ['vehicles', 'select'], queryFn: () => api.get<Paginated<Vehicle>>('/vehicles?perPage=100'), enabled: open });
+  const vehicles = useQuery({ queryKey: ['vehicles', 'select'], queryFn: () => api.get<Paginated<Vehicle>>('/vehicles?perPage=500'), enabled: open });
 
   const mutation = useMutation({
     mutationFn: (body: CreateDemandInput) => api.post<DemandRow>('/operations/demands', body),
@@ -295,10 +297,8 @@ function CreateDemandDrawer({ open, originVehicleId, onClose, onCreated }: { ope
         </div>
         <div className="tp-field is-full">
           <label className="tp-label" htmlFor="dm-vehicle">Carro que saiu da linha</label>
-          <select id="dm-vehicle" className="tp-select" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
-            <option value="">Não informado</option>
-            {(vehicles.data?.data ?? []).map((v) => <option key={v.id} value={v.id}>{v.code} — {v.plate}</option>)}
-          </select>
+          <SearchSelect id="dm-vehicle" placeholder="Prefixo ou placa (opcional)" value={vehicleId} onChange={setVehicleId}
+            options={(vehicles.data?.data ?? []).map((v) => ({ id: v.id, label: v.code, hint: `${v.plate}${v.vehicleClass ? ` · ${VEHICLE_CLASS_LABELS[v.vehicleClass]}` : ''}` }))} />
           <span className="tp-help">Com o carro informado, a previsão de retorno do titular aparece ao vivo da OS (RF-31).</span>
         </div>
         <div className="tp-field is-full">
@@ -415,11 +415,9 @@ function DemandDrawer({ id, onClose, onChanged }: { id: string | null; onClose: 
               </div>
               <div className="tp-field">
                 <label className="tp-label" htmlFor="as-op">Operador habilitado{reserve ? ` em ${VEHICLE_TECHNOLOGY_LABELS[reserve.technology]}` : ''}</label>
-                <select id="as-op" className="tp-select" value={operatorId} disabled={!vehicleId} onChange={(e) => setOperatorId(e.target.value)}>
-                  <option value="">{vehicleId ? 'Selecione…' : 'Escolha o carro primeiro'}</option>
-                  {(operators.data ?? []).map((o) => <option key={o.operatorId} value={o.operatorId}>{o.name} · {o.registration}</option>)}
-                </select>
-                <span className="tp-help">A lista só traz quem tem habilitação vigente na tecnologia do carro escolhido. A matriz é consumida do RH, não administrada aqui.</span>
+                <SearchSelect id="as-op" value={operatorId} onChange={setOperatorId} disabled={!vehicleId} placeholder={vehicleId ? 'Nome ou matrícula' : 'Escolha o carro primeiro'}
+                  options={(operators.data ?? []).map((o) => ({ id: o.operatorId, label: o.name, hint: `${o.registration}${o.cnhCategory ? ` · CNH ${o.cnhCategory}` : ''}` }))} />
+                <span className="tp-help">{operators.data ? `${operators.data.length} motorista(s) habilitado(s)` : 'Só motoristas'} na tecnologia e na classe do carro escolhido (categoria da CNH). A matriz é consumida do RH, não administrada aqui.</span>
               </div>
             </div>
           )}
