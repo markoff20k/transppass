@@ -22,6 +22,7 @@ import { formatDate, formatDateTime, formatNumber } from '@/lib/format';
 import { useAuth } from '@/features/auth/use-auth';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 type Panel =
   | { kind: 'closed' }
@@ -94,7 +95,7 @@ export function SchedulingPage() {
           <span className="tp-muted">clique num carro para programar a parada</span>
         </div>
         {timeline.isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : (
           <div className="tp-table-wrap">
             <table className="tp-table">
@@ -491,7 +492,7 @@ function ScheduleDrawer({ id, onClose, onChanged }: { id: string | null; onClose
       }
     >
       {!d ? (
-        <p className="tp-muted">Carregando…</p>
+        <BrandLoader size={44} label="Carregando" />
       ) : (
         <>
           <div className="tp-row">

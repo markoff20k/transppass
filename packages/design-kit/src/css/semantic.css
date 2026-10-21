@@ -376,8 +376,8 @@
   --color-state-working: var(--tp-blue-400);
   --color-state-stopped: var(--tp-red-400);
 
-  --color-cause-queue: var(--tp-violet-400);
-  --color-cause-material: var(--tp-amber-400);
+  --color-cause-queue: var(--tp-amber-400);
+  --color-cause-material: var(--tp-red-400);
   --color-cause-execution: var(--tp-blue-400);
   --color-cause-inspection: var(--tp-green-400);
   --color-cause-cleaning: var(--tp-cyan-400);

@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-10-20T00:15:18.960Z",
+  "ranAt": "2026-10-21T01:08:34.254Z",
   "base": "http://localhost:5173",
-  "passed": 77,
+  "passed": 78,
   "failed": 0,
   "results": [
     {
@@ -453,6 +453,12 @@
       "name": "Catálogo mostra as regras de criticidade e as tabelas de referência",
       "ok": true,
       "detail": ""
+    },
+    {
+      "id": "LOAD-01",
+      "name": "Loader da marca (símbolo animado) disponível no kit e com animação ativa",
+      "ok": true,
+      "detail": "3 loaders; animação=brand-comet"
     },
     {
       "id": "FC-05",

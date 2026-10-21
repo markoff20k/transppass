@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 import {
   createVehicleSchema,
   KM_SOURCE_LABELS,
@@ -19,6 +19,7 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatNumber } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; vehicle: Vehicle };
 
@@ -44,16 +45,48 @@ export function VehiclesPage() {
   });
 
   const rows = data?.data ?? [];
+  const active = rows.filter((v) => v.isActive);
+  const diesel = active.filter((v) => v.technology === VehicleTechnology.DIESEL).length;
+  const ebus = active.filter((v) => v.technology === VehicleTechnology.EBUS).length;
+  const telemetry = active.filter((v) => v.kmSource === KmSource.TELEMETRY).length;
 
   return (
     <>
+      <div className="tp-kpi-row">
+        <div className="tp-kpi tp-kpi--brand">
+          <span className="tp-kpi__label">Carros ativos</span>
+          <strong className="tp-kpi__value">{active.length}</strong>
+          <span className="tp-kpi__note">{rows.length - active.length > 0 ? `${rows.length - active.length} desativado(s) fora do painel` : 'nenhum desativado'}</span>
+        </div>
+        <div className="tp-kpi">
+          <span className="tp-kpi__label">Diesel</span>
+          <strong className="tp-kpi__value">{diesel}</strong>
+          <span className="tp-kpi__note">km por lançamento manual diário</span>
+        </div>
+        <div className="tp-kpi">
+          <span className="tp-kpi__label">eBUS</span>
+          <strong className="tp-kpi__value">{ebus}</strong>
+          <span className="tp-kpi__note">km por telemetria</span>
+        </div>
+        <div className={`tp-kpi ${telemetry === active.length && active.length > 0 ? 'tp-kpi--good' : ''}`}>
+          <span className="tp-kpi__label">Com telemetria</span>
+          <strong className="tp-kpi__value">
+            {telemetry}<small className="tp-kpi__of"> / {active.length}</small>
+          </strong>
+          <span className="tp-kpi__note">o restante depende da disciplina do lançamento</span>
+        </div>
+      </div>
+
       <section className="tp-card">
         <div className="tp-card__head">
-          <h3>Frota cadastrada</h3>
-          <span className="tp-muted">{rows.length} carro(s) · clique para editar</span>
+          <div>
+            <h3>Frota cadastrada</h3>
+            <span className="chart__hint">prefixo, placa, tecnologia e a fonte de km — clique na linha para editar</span>
+          </div>
+          <span className="tp-muted">{rows.length} carro(s)</span>
         </div>
         {isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : (
           <div className="tp-table-wrap">
             <table className="tp-table">
@@ -66,6 +99,7 @@ export function VehiclesPage() {
                   <th className="is-num">Offset</th>
                   <th className="is-num">Km atual</th>
                   <th>Estado</th>
+                  <th className="is-action" aria-label="Ações" />
                 </tr>
               </thead>
               <tbody>
@@ -87,6 +121,9 @@ export function VehiclesPage() {
                       <td className="is-num">{formatNumber(v.currentKm)}</td>
                       <td>
                         <span className={`tp-state tp-state--${family}`}>{VEHICLE_STATUS_LABELS[v.status]}</span>
+                      </td>
+                      <td className="is-action">
+                        <span className="tp-row-action"><Pencil size={13} /> Editar</span>
                       </td>
                     </tr>
                   );

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, KeyRound, Plus } from 'lucide-react';
+import { Copy, KeyRound, Pencil, Plus } from 'lucide-react';
 import {
   createUserSchema,
   USER_ROLE_LABELS,
@@ -18,6 +18,7 @@ import { formatDate } from '@/lib/format';
 import { useAuth } from '@/features/auth/use-auth';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; user: PublicUser };
 
@@ -52,19 +53,49 @@ export function UsersPage() {
 
   const rows = data?.data ?? [];
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['users'] });
+  const activeRows = rows.filter((u) => u.isActive);
+  const roles = new Set(activeRows.map((u) => u.role)).size;
+  const admins = activeRows.filter((u) => u.role === 'ADMIN').length;
+  const operational = activeRows.filter((u) => u.role !== 'ADMIN' && u.role !== 'GESTAO').length;
 
   return (
     <>
+      <div className="tp-kpi-row">
+        <div className="tp-kpi tp-kpi--brand">
+          <span className="tp-kpi__label">Contas ativas</span>
+          <strong className="tp-kpi__value">{activeRows.length}</strong>
+          <span className="tp-kpi__note">{showInactive ? `${rows.length - activeRows.length} desativada(s) na lista` : 'desativadas ficam fora da lista'}</span>
+        </div>
+        <div className="tp-kpi">
+          <span className="tp-kpi__label">Perfis em uso</span>
+          <strong className="tp-kpi__value">{roles}<small className="tp-kpi__of"> / {Object.keys(USER_ROLE_LABELS).length}</small></strong>
+          <span className="tp-kpi__note">cada área enxerga só a sua tela</span>
+        </div>
+        <div className="tp-kpi">
+          <span className="tp-kpi__label">Operação e oficina</span>
+          <strong className="tp-kpi__value">{operational}</strong>
+          <span className="tp-kpi__note">CCO, plantão, socorro, mecânicos, estoque…</span>
+        </div>
+        <div className={`tp-kpi ${admins > 2 ? 'tp-kpi--warn' : ''}`}>
+          <span className="tp-kpi__label">Administradores</span>
+          <strong className="tp-kpi__value">{admins}</strong>
+          <span className="tp-kpi__note">quanto menos, melhor — tudo passa por eles</span>
+        </div>
+      </div>
+
       <section className="tp-card">
         <div className="tp-card__head">
-          <h3>Contas</h3>
-          <label className="tp-check" style={{ fontSize: 'var(--tp-text-sm)' }}>
+          <div>
+            <h3>Contas</h3>
+            <span className="chart__hint">clique na linha para editar nome, matrícula, perfil ou gerar link de nova senha</span>
+          </div>
+          <label className="tp-check tp-check--inline">
             <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
             mostrar desativadas
           </label>
         </div>
         {isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : (
           <div className="tp-table-wrap">
             <table className="tp-table">
@@ -76,6 +107,7 @@ export function UsersPage() {
                   <th>Perfil</th>
                   <th>Situação</th>
                   <th>Desde</th>
+                  <th className="is-action" aria-label="Ações" />
                 </tr>
               </thead>
               <tbody>
@@ -97,11 +129,14 @@ export function UsersPage() {
                       <span className={`tp-badge tp-badge--status ${u.isActive ? 'tp-badge--success' : ''}`}>{u.isActive ? 'Ativa' : 'Desativada'}</span>
                     </td>
                     <td className="tp-muted">{formatDate(u.createdAt)}</td>
+                    <td className="is-action">
+                      <span className="tp-row-action"><Pencil size={13} /> Editar</span>
+                    </td>
                   </tr>
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="tp-table__empty">Nenhuma conta.</td>
+                    <td colSpan={7} className="tp-table__empty">Nenhuma conta.</td>
                   </tr>
                 )}
               </tbody>

@@ -19,6 +19,7 @@ import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { FailureCodePicker } from '@/components/failure-code/failure-code-picker';
 import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 /**
  * RF-01/RF-02 — registro do evento pelo CCO.
@@ -100,7 +101,7 @@ export function EventsPage() {
         </div>
 
         {events.isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : rows.length === 0 ? (
           <div className="tp-table__empty">Nenhum evento registrado.</div>
         ) : (

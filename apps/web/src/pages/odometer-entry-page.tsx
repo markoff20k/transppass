@@ -12,6 +12,7 @@ import {
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { todayLocalIso } from '@/lib/format';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 /**
  * RF-14 — lançamento diário de km da frota diesel, em lote.
@@ -81,7 +82,7 @@ export function OdometerEntryPage() {
     });
   };
 
-  if (isPending) return <p className="tp-muted">Carregando frota…</p>;
+  if (isPending) return <BrandLoader size={44} label="Carregando frota" />;
 
   return (
     <form onSubmit={submit} className="tp-stack">

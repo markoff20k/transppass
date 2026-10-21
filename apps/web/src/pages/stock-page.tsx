@@ -16,6 +16,7 @@ import { formatDate, formatDateTime } from '@/lib/format';
 import { useAuth } from '@/features/auth/use-auth';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 /**
  * E5 — a tela do Estoque.
@@ -94,7 +95,7 @@ export function StockPage() {
         </div>
 
         {requests.isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : rows.length === 0 ? (
           <div className="tp-table__empty">Nenhuma solicitação pendente.</div>
         ) : (

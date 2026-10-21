@@ -18,6 +18,7 @@ import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { FailureCodePicker } from '@/components/failure-code/failure-code-picker';
 import { toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 /**
  * RF-04 — tela do socorro.
@@ -91,7 +92,7 @@ export function FieldServicePage() {
         </div>
 
         {events.isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : rows.length === 0 ? (
           <div className="field-empty">
             <LifeBuoy size={28} />

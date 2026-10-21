@@ -4,6 +4,7 @@ import { DOWNTIME_CAUSE_LABELS, METRIC_KEY_LABELS, MetricKey, type MetricHistory
 import { MetricHistoryChart } from '@/components/charts/charts';
 import { api } from '@/lib/api-client';
 import { formatDuration, formatMinutes, formatNumber } from '@/lib/format';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 /**
  * Indicadores do R1 (RF-38/RF-39).
@@ -24,7 +25,7 @@ export function MetricsPage() {
     queryFn: () => api.get<MetricHistoryPoint[]>('/metrics/history?months=12'),
   });
 
-  if (isPending) return <p className="tp-muted">Calculando indicadores…</p>;
+  if (isPending) return <BrandLoader size={44} label="Calculando indicadores" />;
   if (isError || !data) return <p className="tp-error">Falha ao carregar os indicadores.</p>;
 
   return (
@@ -237,7 +238,7 @@ export function MetricsPage() {
           </div>
         </div>
         {history.isPending ? (
-          <p className="tp-muted">Carregando histórico…</p>
+          <BrandLoader size={44} label="Carregando histórico" />
         ) : (
           <div className="metrics-history">
             <MetricHistoryChart data={history.data ?? []} metric={MetricKey.MKBF} title={METRIC_KEY_LABELS.MKBF} color="var(--chart-1)" />

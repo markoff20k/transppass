@@ -12,6 +12,7 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 /**
  * RF-07/08/09 — a fila de manutenção.
@@ -70,7 +71,7 @@ export function QueuePage() {
         </div>
 
         {queue.isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : rows.length === 0 ? (
           <div className="tp-table__empty">Fila vazia.</div>
         ) : (
@@ -316,7 +317,7 @@ function QueueDrawer({
         <div className="tp-stack">
           <h3>Histórico de posição</h3>
           {history.isPending ? (
-            <p className="tp-muted">Carregando…</p>
+            <BrandLoader size={44} label="Carregando" />
           ) : changes.length === 0 ? (
             <p className="tp-muted">Nenhuma mudança de posição registrada.</p>
           ) : (

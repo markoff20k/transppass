@@ -19,6 +19,7 @@ import { formatDateTime } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { FailureCodeRules } from '@/components/failure-code/failure-code-rules';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 type Panel = { kind: 'closed' } | { kind: 'item' } | { kind: 'reason'; list: ReasonCodeList };
 
@@ -71,7 +72,7 @@ export function CatalogPage() {
         </div>
 
         {items.isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : (
           <div className="tp-table-wrap">
             <table className="tp-table">
@@ -316,15 +317,15 @@ function CatalogVersions({ items, onPublished }: { items: FailureCatalogItem[]; 
   const draftItems = draft.data ? items.filter((i) => i.versionId === draft.data!.id).length : 0;
   return (
     <section className="catalog-versions">
-      <div className="catalog-versions__card">
+      <div className={`tp-kpi ${published.data ? 'tp-kpi--good' : ''}`}>
         <span className="tp-kpi__label">Versão em uso</span>
-        <strong className="catalog-versions__value">{published.data ? `v${published.data.version}` : '—'}</strong>
-        <span className="tp-muted">{published.data?.publishedAt ? `publicada em ${formatDateTime(published.data.publishedAt)}` : 'nenhuma versão publicada'}</span>
+        <strong className="tp-kpi__value">{published.data ? `v${published.data.version}` : '—'}</strong>
+        <span className="tp-kpi__note">{published.data?.publishedAt ? `publicada em ${formatDateTime(published.data.publishedAt)}` : 'nenhuma versão publicada'}</span>
       </div>
-      <div className="catalog-versions__card is-draft">
+      <div className={`tp-kpi ${draftItems > 0 ? 'tp-kpi--warn' : ''}`}>
         <span className="tp-kpi__label">Rascunho</span>
-        <strong className="catalog-versions__value">{draft.data ? `v${draft.data.version}` : '—'}</strong>
-        <span className="tp-muted">{draftItems} item(ns) aguardando publicação</span>
+        <strong className="tp-kpi__value">{draft.data ? `v${draft.data.version}` : '—'}</strong>
+        <span className="tp-kpi__note">{draftItems} item(ns) aguardando publicação</span>
       </div>
       <div className="catalog-versions__action">
         <p className="tp-muted">Itens novos entram no rascunho. Publicar põe a versão em uso para triagem, socorro e OS; eventos antigos continuam na versão em que foram registrados.</p>

@@ -17,6 +17,7 @@ import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusIllustration } from '@/components/bus/bus-illustration';
 import { FleetLegend } from '@/components/fleet/fleet-legend';
 import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 interface PanelResponse {
   summary: FleetPanelSummary;
@@ -108,7 +109,7 @@ export function FleetPanelPage() {
     refetchInterval: 30_000,
   });
 
-  if (isPending) return <p className="tp-muted">Carregando painel…</p>;
+  if (isPending) return <BrandLoader size={44} label="Carregando painel" />;
   if (isError) return <div className="tp-alert tp-alert--danger">{(error as Error).message}</div>;
 
   const { summary, rows } = data;

@@ -21,6 +21,7 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 type Panel = { kind: 'closed' } | { kind: 'create'; originVehicleId?: string } | { kind: 'demand'; id: string };
 
@@ -96,7 +97,7 @@ export function OperationsPage() {
           <span className="tp-muted">clique para designar reserva ou recolher</span>
         </div>
         {demands.isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : rows.length === 0 ? (
           <div className="tp-table__empty">Nenhuma demanda ativa. A rua está coberta.</div>
         ) : (
@@ -373,7 +374,7 @@ function DemandDrawer({ id, onClose, onChanged }: { id: string | null; onClose: 
       }
     >
       {!d ? (
-        <p className="tp-muted">Carregando…</p>
+        <BrandLoader size={44} label="Carregando" />
       ) : (
         <>
           <dl className="tp-facts">

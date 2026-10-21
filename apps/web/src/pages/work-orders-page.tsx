@@ -11,6 +11,7 @@ import {
 } from '@app/shared';
 import { api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes } from '@/lib/format';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 const FINISHED: string[] = [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED];
 
@@ -88,7 +89,7 @@ export function WorkOrdersPage() {
         </div>
 
         {isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : rows.length === 0 ? (
           <div className="tp-table__empty">Nenhuma OS com esses filtros.</div>
         ) : (

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
-import { CalendarClock, Plus } from 'lucide-react';
+import { CalendarClock, Check, Lock, Plus, Unlock } from 'lucide-react';
 import {
   DOWNTIME_CAUSE_LABELS,
   InspectionResult,
@@ -23,6 +23,7 @@ import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { FailureCodePicker } from '@/components/failure-code/failure-code-picker';
 import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 type Panel =
   | { kind: 'closed' }
@@ -103,7 +104,7 @@ export function WorkOrderPage() {
     ) : undefined,
   });
 
-  if (isPending) return <p className="tp-muted">Carregando OS…</p>;
+  if (isPending) return <BrandLoader size={44} label="Carregando OS" />;
   if (!data) return <div className="tp-alert tp-alert--danger">OS não encontrada.</div>;
 
   return (
@@ -140,7 +141,10 @@ export function WorkOrderPage() {
         <div className="tp-stack">
           <section className="tp-card">
             <div className="tp-card__head">
-              <h3>Sub-OS por especialidade (RF-18)</h3>
+              <div>
+                <h3>Sub-OS por especialidade (RF-18)</h3>
+                <span className="chart__hint">cada especialidade executa a sua; a OS só fecha quando todas passam pela inspeção</span>
+              </div>
               {isOpen && data.status !== WorkOrderStatus.TECH_CLOSED && (
                 <button type="button" className="tp-btn tp-btn--sm" onClick={() => setPanel({ kind: 'add-task' })}>
                   <Plus size={14} /> Sub-OS
@@ -221,12 +225,52 @@ export function WorkOrderPage() {
 
         <div className="tp-stack">
           <section className="tp-card">
-            <h3>Portões antes de liberar</h3>
-            <ul className="tp-gates">
-              <li className={`tp-gate${data.gates.allTasksSettled ? ' tp-gate--open' : ''}`}>Todas as sub-OS concluídas (RF-19)</li>
-              <li className={`tp-gate${data.gates.allInspectionsApproved ? ' tp-gate--open' : ''}`}>Todas as inspeções aprovadas (RF-20)</li>
-              <li className={`tp-gate${data.gates.cleaningDone ? ' tp-gate--open' : ''}`}>Limpeza concluída (RF-21)</li>
-            </ul>
+            <div className="tp-card__head">
+              <div>
+                <h3>Portões antes de liberar</h3>
+                <span className="chart__hint">o carro só volta à operação com os três abertos (RN-04)</span>
+              </div>
+            </div>
+            <ol className="wo-gates">
+              {[
+                {
+                  open: data.gates.allTasksSettled,
+                  label: 'Todas as sub-OS concluídas',
+                  hint: `RF-19 · ${data.tasks.filter((t) => t.status === TaskStatus.DONE || t.status === TaskStatus.IN_INSPECTION || t.status === TaskStatus.APPROVED).length} de ${data.tasks.length} concluída(s)`,
+                },
+                {
+                  open: data.gates.allInspectionsApproved,
+                  label: 'Todas as inspeções aprovadas',
+                  hint: `RF-20 · ${data.tasks.filter((t) => t.status === TaskStatus.APPROVED).length} de ${data.tasks.length} aprovada(s)`,
+                },
+                {
+                  open: data.gates.cleaningDone,
+                  label: 'Limpeza concluída',
+                  hint: `RF-21 · ${data.cleaning ? (data.cleaning.status === 'DONE' ? 'checklist fechado' : data.cleaning.status === 'IN_PROGRESS' ? 'em andamento' : 'ainda não iniciada') : 'sem checklist'}`,
+                },
+              ].map((g, i) => (
+                <li key={g.label} className={`wo-gate${g.open ? ' wo-gate--open' : ''}`}>
+                  <span className="wo-gate__dot" aria-hidden>{g.open ? <Check size={14} strokeWidth={3} /> : i + 1}</span>
+                  <div className="wo-gate__text">
+                    <span className="wo-gate__label">{g.label}</span>
+                    <span className="wo-gate__hint">{g.hint}</span>
+                  </div>
+                </li>
+              ))}
+              <li className={`wo-gate wo-gate--final${data.releasedAt ? ' wo-gate--open' : ''}`}>
+                <span className="wo-gate__dot" aria-hidden>{data.releasedAt ? <Unlock size={14} strokeWidth={2.5} /> : <Lock size={13} strokeWidth={2.5} />}</span>
+                <div className="wo-gate__text">
+                  <span className="wo-gate__label">{data.releasedAt ? 'Carro liberado' : 'Liberar o carro'}</span>
+                  <span className="wo-gate__hint">
+                    {data.releasedAt
+                      ? `${formatDateTime(data.releasedAt)} · ${data.releasedByName ?? '—'}`
+                      : data.gates.canRelease
+                        ? 'portões abertos — a Manutenção pode liberar'
+                        : `${[data.gates.allTasksSettled, data.gates.allInspectionsApproved, data.gates.cleaningDone].filter(Boolean).length} de 3 portões abertos`}
+                  </span>
+                </div>
+              </li>
+            </ol>
             {data.gates.blockingReasons.length > 0 && (
               <div className="tp-alert tp-alert--warning">
                 <strong>Falta para liberar</strong>
@@ -382,25 +426,26 @@ function TaskCard({
   const isInspector = user?.role === 'INSPETOR' || user?.role === 'ADMIN';
   const tone =
     task.status === TaskStatus.BLOCKED_BY_MATERIAL || task.status === TaskStatus.REJECTED
-      ? 'tp-card--danger'
-      : task.status === TaskStatus.APPROVED
-        ? 'tp-card--success'
-        : task.status === TaskStatus.IN_PROGRESS
-          ? 'tp-card--accent'
+      ? 'wo-task--danger'
+      : task.status === TaskStatus.APPROVED || task.status === TaskStatus.DONE
+        ? 'wo-task--done'
+        : task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.IN_INSPECTION
+          ? 'wo-task--progress'
           : '';
 
+  const checked = task.checklist.filter((c) => c.isChecked).length;
+  const pct = task.checklist.length ? Math.round((checked / task.checklist.length) * 100) : 0;
+
   return (
-    <article className={`tp-card ${tone}`} style={{ padding: 'var(--tp-space-3) var(--tp-space-4)' }}>
-      <div className="tp-card__head">
-        <div className="tp-row">
-          <strong>{task.code}</strong>
-          <span className="tp-muted">{task.specialtyName}</span>
-          {task.reopenedCount > 0 && <span className="tp-badge tp-badge--danger">reaberta {task.reopenedCount}×</span>}
-        </div>
-        <span className={`tp-badge tp-badge--status ${taskBadge(task.status)}`}>{TASK_STATUS_LABELS[task.status]}</span>
+    <article className={`wo-task ${tone}`}>
+      <div className="wo-task__head">
+        <span className="wo-task__code">{task.code}</span>
+        <span className="tp-badge">{task.specialtyName}</span>
+        {task.reopenedCount > 0 && <span className="tp-badge tp-badge--danger">reaberta {task.reopenedCount}×</span>}
+        <span className={`tp-badge tp-badge--status ${taskBadge(task.status)}`} style={{ marginLeft: 'auto' }}>{TASK_STATUS_LABELS[task.status]}</span>
       </div>
 
-      <p>{task.description}</p>
+      <p className="wo-task__title">{task.description}</p>
 
       {task.openMaterialRequests > 0 && (
         <div className="tp-alert tp-alert--danger">
@@ -409,7 +454,14 @@ function TaskCard({
       )}
 
       {task.checklist.length > 0 && (
-        <div className="tp-stack tp-stack--tight">
+        <div className="wo-task__check">
+          <div className="wo-task__progress">
+            <span className="tp-progress">
+              <i className="tp-progress__bar" aria-hidden><b style={{ width: `${pct}%` }} /></i>
+              <span className="tp-progress__text">{checked}/{task.checklist.length}</span>
+            </span>
+            <span className="tp-muted">checklist</span>
+          </div>
           {task.checklist.map((item) => (
             <label key={item.id} className={`tp-check${item.isChecked ? ' tp-check--done' : ''}`}>
               <input
@@ -442,7 +494,7 @@ function TaskCard({
 
       {error && <div className="tp-alert tp-alert--danger">{error}</div>}
 
-      <div className="tp-row tp-row--end">
+      <div className="wo-task__foot">
         {task.status === TaskStatus.PENDING && (
           <button type="button" className="tp-btn tp-btn--sm" disabled={start.isPending} onClick={() => start.mutate()}>
             Iniciar

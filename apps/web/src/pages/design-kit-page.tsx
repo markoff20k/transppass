@@ -3,6 +3,7 @@ import { DOWNTIME_CAUSE_LABELS, DowntimeCause, VEHICLE_STATUS_LABELS, VehicleSta
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusIllustration } from '@/components/bus/bus-illustration';
 import { TransppassLogo, TransppassMark } from '@/components/brand/transppass-logo';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 /**
  * Referência viva do design kit.
@@ -201,6 +202,23 @@ export function DesignKitPage() {
             <h3>Checklist</h3>
             <label className="tp-check"><input type="checkbox" defaultChecked /> Conferir tensão de carga</label>
             <label className="tp-check"><input type="checkbox" /> Testar acionamento</label>
+          </div>
+        </div>
+      </section>
+
+      {/* ---- Loader da marca ---- */}
+      <section className="tp-card">
+        <h2>Loader da marca</h2>
+        <p className="tp-muted">
+          Toda espera do sistema mostra o símbolo da Transppass em movimento: o cometa laranja corre o
+          contorno do P, a esfera respira e solta um halo. Tela cheia no boot e na troca de sessão;
+          compacto dentro de páginas e cards. Com movimento reduzido, fica parado.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--tp-space-4)', alignItems: 'center' }}>
+          <BrandLoader size={84} wordmark label="Preparando a garagem" />
+          <BrandLoader size={44} label="Carregando" />
+          <div style={{ padding: 'var(--tp-space-4)', borderRadius: 'var(--tp-radius-lg)', background: 'var(--tp-graphite-900)', color: '#f4f4f2' }}>
+            <BrandLoader size={56} />
           </div>
         </div>
       </section>

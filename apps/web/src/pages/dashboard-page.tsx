@@ -16,6 +16,7 @@ import { useI18n } from '@/i18n/i18n.context';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusIllustration } from '@/components/bus/bus-illustration';
 import { InfoTip } from '@/components/ui/info-tip';
+import { BrandLoader } from '@/components/brand/brand-loader';
 import { FleetLegend } from '@/components/fleet/fleet-legend';
 import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
 import {
@@ -474,9 +475,10 @@ function DashboardSkeleton() {
   const { t } = useI18n();
   return (
     <div className="dash">
-      <section className="dash-hero dash-glass skeleton" style={{ minHeight: 280 }} />
+      <section className="dash-hero dash-glass skeleton" style={{ minHeight: 280, display: 'grid', placeItems: 'center' }}>
+        <BrandLoader size={64} label={t.dash.loading.replace(/…$/, '')} />
+      </section>
       <section className="tp-card skeleton" style={{ minHeight: 260 }} />
-      <p className="tp-muted">{t.dash.loading}</p>
     </div>
   );
 }

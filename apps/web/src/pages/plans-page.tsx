@@ -22,6 +22,7 @@ import { ApiError, api } from '@/lib/api-client';
 import { formatDate, formatMinutes, formatNumber } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 type Panel =
   | { kind: 'closed' }
@@ -61,7 +62,7 @@ export function PlansPage() {
   const done = () => { close(); invalidate(); };
   const toggle = (id: string) => setOpen((o) => ({ ...o, [id]: !(o[id] ?? true) }));
 
-  if (plans.isPending) return <p className="tp-muted">Carregando planos…</p>;
+  if (plans.isPending) return <BrandLoader size={44} label="Carregando planos" />;
   const rows = plans.data ?? [];
 
   return (

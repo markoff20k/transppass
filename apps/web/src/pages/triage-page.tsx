@@ -16,6 +16,7 @@ import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { FailureCodePicker, FlagBadges } from '@/components/failure-code/failure-code-picker';
 import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 /**
  * RF-03 — fila de triagem com os três destinos e SLA medido.
@@ -72,7 +73,7 @@ export function TriagePage() {
         </div>
 
         {events.isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : rows.length === 0 ? (
           <div className="tp-table__empty">Nenhum evento aguardando triagem.</div>
         ) : (

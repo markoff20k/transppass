@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus, Search } from 'lucide-react';
 import { createMaterialSchema, type CreateMaterialInput, type MaterialRow } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
+import { BrandLoader } from '@/components/brand/brand-loader';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; material: MaterialRow };
 
@@ -36,20 +37,54 @@ export function MaterialsPage() {
     void queryClient.invalidateQueries({ queryKey: ['materials'] });
   };
 
+  const all = data ?? [];
+  const activeAll = all.filter((m) => m.isActive);
+  const serialized = activeAll.filter((m) => m.isSerialized).length;
+  const inKits = activeAll.filter((m) => m.kitCount > 0).length;
+
   return (
     <>
+      <div className="tp-kpi-row">
+        <div className="tp-kpi tp-kpi--brand">
+          <span className="tp-kpi__label">Materiais ativos</span>
+          <strong className="tp-kpi__value">{activeAll.length}</strong>
+          <span className="tp-kpi__note">{all.length - activeAll.length > 0 ? `${all.length - activeAll.length} desativado(s)` : 'nenhum desativado'}</span>
+        </div>
+        <div className="tp-kpi">
+          <span className="tp-kpi__label">Por número de série</span>
+          <strong className="tp-kpi__value">{serialized}</strong>
+          <span className="tp-kpi__note">pool rotativo — cada unidade tem vida própria</span>
+        </div>
+        <div className="tp-kpi">
+          <span className="tp-kpi__label">Em kits vigentes</span>
+          <strong className="tp-kpi__value">{inKits}</strong>
+          <span className="tp-kpi__note">o Estoque separa em D-1 (RF-25)</span>
+        </div>
+        <div className="tp-kpi">
+          <span className="tp-kpi__label">Por quantidade</span>
+          <strong className="tp-kpi__value">{activeAll.length - serialized}</strong>
+          <span className="tp-kpi__note">filtros, óleo, consumíveis</span>
+        </div>
+      </div>
+
       <section className="tp-card">
         <div className="tp-card__head">
-          <h3>Materiais cadastrados</h3>
-          <input type="search" className="tp-input" style={{ maxWidth: 260 }} placeholder="Código ou descrição" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div>
+            <h3>Materiais cadastrados</h3>
+            <span className="chart__hint">o que kits, solicitações da valeta e o socorro escolhem — clique na linha para editar</span>
+          </div>
+          <label className="tp-search">
+            <Search size={15} aria-hidden />
+            <input type="search" className="tp-input" placeholder="Código ou descrição" aria-label="Buscar material" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </label>
         </div>
         {isPending ? (
-          <p className="tp-muted">Carregando…</p>
+          <BrandLoader size={44} label="Carregando" />
         ) : (
           <div className="tp-table-wrap">
             <table className="tp-table">
               <thead>
-                <tr><th>Código</th><th>Descrição</th><th>Unidade</th><th>Controle</th><th className="is-num">Em kits</th><th>Situação</th></tr>
+                <tr><th>Código</th><th>Descrição</th><th>Unidade</th><th>Controle</th><th className="is-num">Em kits</th><th>Situação</th><th className="is-action" aria-label="Ações" /></tr>
               </thead>
               <tbody>
                 {rows.map((m) => (
@@ -60,9 +95,10 @@ export function MaterialsPage() {
                     <td>{m.isSerialized ? <span className="tp-badge tp-badge--status tp-badge--info">por série</span> : <span className="tp-badge tp-badge--status">por quantidade</span>}</td>
                     <td className="is-num">{m.kitCount}</td>
                     <td><span className={`tp-badge tp-badge--status ${m.isActive ? 'tp-badge--success' : ''}`}>{m.isActive ? 'Ativo' : 'Desativado'}</span></td>
+                    <td className="is-action"><span className="tp-row-action"><Pencil size={13} /> Editar</span></td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={6} className="tp-table__empty">Nenhum material.</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={7} className="tp-table__empty">Nenhum material.</td></tr>}
               </tbody>
             </table>
           </div>

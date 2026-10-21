@@ -281,7 +281,7 @@ async function run() {
   await sleep(400);
   await page.click('.tp-table tbody tr a');
   await page.waitForSelector('.tp-gates', { timeout: 20000 }).catch(() => {});
-  record('OS-01', 'Detalhe da OS com portões e relógio', await exists(page, '.tp-gates') && await exists(page, '.tp-kpi'));
+  record('OS-01', 'Detalhe da OS com portões e relógio', await exists(page, '.wo-gates') && (await page.$$('.wo-gate')).length === 4 && await exists(page, '.wo-task') && await exists(page, '.tp-kpi'));
   await shot(page, 'os-detalhe');
   const addTask = await clickText(page, '.tp-card__head button', 'Sub-OS');
   if (addTask) {
@@ -454,6 +454,15 @@ async function run() {
   await page.goto(`${BASE}/cadastros/catalogo`, { waitUntil: 'networkidle0' });
   await sleep(400);
   record('FC-04', 'Catálogo mostra as regras de criticidade e as tabelas de referência', (await exists(page, '.fcode-rules')) && (await page.$$('.fcode-ref details')).length >= 2);
+  await page.goto(`${BASE}/indicadores`, { waitUntil: 'networkidle0' });
+  await sleep(600);
+  await page.goto(`${BASE}/design`, { waitUntil: 'networkidle0' });
+  await sleep(400);
+  {
+    const loaders = await page.$$('.brand-loader');
+    const anim = loaders.length ? await page.$eval('.brand-loader__comet', (el) => getComputedStyle(el).animationName) : '';
+    record('LOAD-01', 'Loader da marca (símbolo animado) disponível no kit e com animação ativa', loaders.length >= 3 && anim === 'brand-comet', `${loaders.length} loaders; animação=${anim}`);
+  }
   await page.goto(`${BASE}/indicadores`, { waitUntil: 'networkidle0' });
   await sleep(600);
   record('FC-05', 'Indicadores: alinhamento origem × diagnóstico', (await page.$$eval('h2, h3', (hs) => hs.map((h) => h.textContent || '').join('|'))).includes('Alinhamento'));
