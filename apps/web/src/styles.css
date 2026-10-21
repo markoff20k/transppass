@@ -244,6 +244,47 @@
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-success) 18%, transparent);
 }
 
+.wo-gate--current .wo-gate__dot {
+  border-color: var(--color-brand);
+  color: var(--color-brand-text);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-brand) 16%, transparent);
+}
+.wo-gate--current .wo-gate__label { color: var(--color-brand-text); }
+.wo-blocking { margin-top: var(--tp-space-3); font-size: var(--tp-text-xs); color: var(--color-text-secondary); }
+.wo-blocking summary { cursor: pointer; color: var(--color-text-muted); }
+.wo-blocking ul { margin: var(--tp-space-2) 0 0; padding-left: 18px; }
+
+/* "Próximo passo": a OS responde o que fazer agora, com um botão só */
+.wo-next {
+  --next-color: var(--color-brand);
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-4);
+  margin-bottom: var(--tp-space-4);
+  padding: var(--tp-space-4) var(--tp-space-5);
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-left: 4px solid var(--next-color);
+  border-radius: var(--tp-radius-lg);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--next-color) 7%, var(--color-surface)), var(--color-surface) 60%);
+  box-shadow: var(--shadow-card);
+}
+.wo-next--success { --next-color: var(--color-success); }
+.wo-next--warning { --next-color: var(--color-warning); }
+.wo-next--danger { --next-color: var(--color-danger); }
+.wo-next__body { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.wo-next__eyebrow {
+  font-size: var(--tp-text-2xs);
+  font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--next-color);
+}
+.wo-next--brand .wo-next__eyebrow, .wo-next--warning .wo-next__eyebrow { color: color-mix(in srgb, var(--next-color) 80%, var(--color-text)); }
+.wo-next__title { margin: 0; font-family: var(--tp-font-display); font-size: var(--tp-text-xl); font-weight: 700; line-height: 1.15; }
+.wo-next__text { margin: 0; color: var(--color-text-secondary); max-width: 70ch; }
+.wo-next__btn { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 640px) { .wo-next { flex-direction: column; align-items: stretch; } }
+
 .wo-gate--final .wo-gate__dot { border-style: dashed; }
 .wo-gate--final.wo-gate--open .wo-gate__dot { border-style: solid; }
 

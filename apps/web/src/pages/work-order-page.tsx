@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
-import { CalendarClock, Check, Lock, Plus, Unlock } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
+import { ArrowRight, CalendarClock, Check, Lock, Plus, Unlock } from 'lucide-react';
 import {
   DOWNTIME_CAUSE_LABELS,
   InspectionResult,
@@ -32,6 +32,88 @@ type Panel =
   | { kind: 'damage' }
   | { kind: 'finish-task'; task: TaskRow }
   | { kind: 'inspect'; task: TaskRow };
+
+interface NextStep {
+  tone: 'brand' | 'success' | 'warning' | 'danger';
+  title: string;
+  text: string;
+  /** Botão principal: ou executa, ou abre o painel, ou leva a um ponto da tela. */
+  action?: { label: string; run: () => void };
+  link?: { label: string; to: string };
+}
+
+const settledStatuses: TaskStatus[] = [TaskStatus.DONE, TaskStatus.IN_INSPECTION, TaskStatus.APPROVED];
+
+function scrollTo(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+/**
+ * O que a pessoa precisa fazer agora nesta OS, em uma frase, com um botão.
+ * Segue a ordem real do processo: serviço → encerramento técnico → inspeção
+ * → limpeza → liberação. O servidor continua sendo quem bloqueia; aqui só se
+ * aponta o caminho.
+ */
+function nextStepFor(
+  d: WorkOrderDetail,
+  ctx: { isInspector: boolean; canRelease: boolean; post: (path: string) => void; open: (p: Panel) => void },
+): NextStep {
+  if (d.releasedAt) {
+    return { tone: 'success', title: 'Carro liberado', text: `Liberado em ${formatDateTime(d.releasedAt)} por ${d.releasedByName ?? '—'}. Indisponibilidade total de ${formatMinutes(d.downtimeMinutes)}.` };
+  }
+  if (d.status === WorkOrderStatus.CANCELLED) return { tone: 'warning', title: 'OS cancelada', text: 'Esta OS foi cancelada e não prende mais o carro.' };
+
+  const tasks = d.tasks.filter((t) => t.status !== TaskStatus.CANCELLED);
+  if (tasks.length === 0) {
+    return { tone: 'brand', title: 'Acrescente o serviço a executar', text: 'A OS ainda não tem sub-OS. Cada especialidade (mecânica, elétrica, funilaria…) recebe a sua, com checklist.', action: { label: 'Adicionar sub-OS', run: () => ctx.open({ kind: 'add-task' }) } };
+  }
+  const blocked = tasks.find((t) => t.status === TaskStatus.BLOCKED_BY_MATERIAL);
+  if (blocked) {
+    return { tone: 'danger', title: `${blocked.code} está parada aguardando material`, text: 'O Estoque precisa separar e entregar a peça. Quando o material chega, a sub-OS volta a ficar liberada para o mecânico.', link: { label: 'Ver no Estoque', to: '/estoque' } };
+  }
+  const reopened = tasks.find((t) => t.status === TaskStatus.PENDING && t.reopenedCount > 0);
+  if (reopened) {
+    return { tone: 'danger', title: `${reopened.code} foi reprovada na inspeção: refaça o serviço`, text: `${reopened.lastInspection?.reasonDescription ?? 'A inspeção reprovou o serviço'}. Reinicie a sub-OS, corrija e conclua de novo.`, action: { label: `Reiniciar ${reopened.code}`, run: () => ctx.post(`tasks/${reopened.id}/start`) } };
+  }
+  const pending = tasks.find((t) => t.status === TaskStatus.PENDING);
+  if (pending) {
+    return { tone: 'brand', title: `Inicie a sub-OS ${pending.code} (${pending.specialtyName})`, text: 'O mecânico começa o serviço e o relógio passa a contar como execução.', action: { label: `Iniciar ${pending.code}`, run: () => ctx.post(`tasks/${pending.id}/start`) } };
+  }
+  const inProgress = tasks.find((t) => t.status === TaskStatus.IN_PROGRESS);
+  if (inProgress) {
+    const missing = inProgress.checklist.filter((c) => !c.isChecked).length;
+    if (missing > 0) {
+      return { tone: 'brand', title: `Marque o checklist da ${inProgress.code}`, text: `${missing} item(ns) ainda não marcado(s). Com o checklist completo, a sub-OS pode ser concluída com a causa constatada.`, action: { label: `Ir para a ${inProgress.code}`, run: () => scrollTo(`task-${inProgress.id}`) } };
+    }
+    return { tone: 'brand', title: `Conclua a sub-OS ${inProgress.code}`, text: 'Checklist completo. Informe a causa constatada e o serviço fica pronto para a inspeção.', action: { label: `Concluir ${inProgress.code}`, run: () => ctx.open({ kind: 'finish-task', task: inProgress }) } };
+  }
+  if (!d.techClosedAt) {
+    return { tone: 'brand', title: 'Encerre tecnicamente a OS', text: 'Todo o serviço terminou. O encerramento manda o carro para a inspeção e abre o checklist de limpeza.', action: { label: 'Encerrar tecnicamente', run: () => ctx.post(`${d.id}/tech-close`) } };
+  }
+  const toInspect = tasks.find((t) => settledStatuses.includes(t.status) && t.status !== TaskStatus.APPROVED);
+  if (toInspect) {
+    return ctx.isInspector
+      ? { tone: 'brand', title: `Inspecione a ${toInspect.code}`, text: 'Aprove ou reprove o serviço feito. Reprovar reabre a sub-OS automaticamente para o mecânico corrigir.', action: { label: `Inspecionar ${toInspect.code}`, run: () => ctx.open({ kind: 'inspect', task: toInspect }) } }
+      : { tone: 'warning', title: `Aguardando a inspeção da ${toInspect.code}`, text: 'Um inspetor precisa aprovar o serviço antes de o carro seguir. Seu perfil acompanha, não inspeciona.' };
+  }
+  const cleaning = d.cleaning;
+  if (cleaning && cleaning.status !== 'DONE') {
+    if (cleaning.status === 'PENDING') {
+      return { tone: 'brand', title: 'Inicie a limpeza do carro', text: 'Serviço aprovado. Falta a limpeza no padrão do contrato antes de o carro voltar à operação.', action: { label: 'Iniciar limpeza', run: () => ctx.post(`${d.id}/cleaning/start`) } };
+    }
+    const missing = cleaning.checklist.filter((c) => !c.isChecked).length;
+    if (missing > 0) {
+      return { tone: 'brand', title: 'Marque o checklist da limpeza', text: `${missing} item(ns) ainda não marcado(s). Avarias encontradas na limpeza viram backlog do carro.`, action: { label: 'Ir para a limpeza', run: () => scrollTo('limpeza') } };
+    }
+    return { tone: 'brand', title: 'Conclua a limpeza', text: 'Checklist da limpeza completo. Concluir abre o último portão.', action: { label: 'Concluir limpeza', run: () => ctx.post(`${d.id}/cleaning/finish`) } };
+  }
+  if (d.gates.canRelease) {
+    return ctx.canRelease
+      ? { tone: 'success', title: 'Tudo pronto: libere o carro', text: 'Sub-OS aprovadas e limpeza concluída. Liberar devolve o carro à operação e trava o relógio de indisponibilidade.', action: { label: 'Liberar carro', run: () => ctx.post(`${d.id}/release`) } }
+      : { tone: 'warning', title: 'Aguardando a Manutenção liberar', text: 'Os três portões estão abertos. Só a Manutenção libera o carro (RN-04).' };
+  }
+  return { tone: 'warning', title: 'Ainda falta algo para liberar', text: d.gates.blockingReasons.join('; ') || 'Confira os portões ao lado.' };
+}
 
 /**
  * RF-17 a RF-22 — a OS-mãe e seus portões.
@@ -79,36 +161,49 @@ export function WorkOrderPage() {
     description: data ? `${data.vehiclePlate} · relógio único de indisponibilidade (RN-02)` : undefined,
     crumbs: [{ label: 'Ordens de serviço', to: '/os' }],
     actions: data && isOpen ? (
-      <>
-        <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setPanel({ kind: 'estimate' })}>
-          <CalendarClock size={14} /> Ajustar previsão
-        </button>
-        <button
-          type="button"
-          className="tp-btn tp-btn--secondary tp-btn--sm"
-          disabled={!data.gates.canTechClose || action.isPending}
-          onClick={() => action.mutate(`${id}/tech-close`)}
-        >
-          Encerrar tecnicamente
-        </button>
-        <button
-          type="button"
-          className="tp-btn tp-btn--primary tp-btn--sm"
-          disabled={!data.gates.canRelease || !canRelease || action.isPending}
-          title={canRelease ? undefined : 'A liberação é exclusiva da Manutenção (RN-04)'}
-          onClick={() => action.mutate(`${id}/release`)}
-        >
-          Liberar carro
-        </button>
-      </>
+      <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setPanel({ kind: 'estimate' })}>
+        <CalendarClock size={14} /> Ajustar previsão
+      </button>
     ) : undefined,
   });
 
   if (isPending) return <BrandLoader size={44} label="Carregando OS" />;
   if (!data) return <div className="tp-alert tp-alert--danger">OS não encontrada.</div>;
 
+  const isInspector = user?.role === 'INSPETOR' || user?.role === 'ADMIN';
+  const step = nextStepFor(data, { isInspector, canRelease, post: (path) => action.mutate(path), open: setPanel });
+  const settledCount = data.tasks.filter((t) => settledStatuses.includes(t.status)).length;
+  const approvedCount = data.tasks.filter((t) => t.status === TaskStatus.APPROVED).length;
+  const path = [
+    { label: 'Serviço', done: data.tasks.length > 0 && data.gates.allTasksSettled, hint: data.tasks.length ? `${settledCount} de ${data.tasks.length} sub-OS concluída(s)` : 'nenhuma sub-OS ainda' },
+    { label: 'Encerramento técnico', done: Boolean(data.techClosedAt), hint: data.techClosedAt ? formatDateTime(data.techClosedAt) : 'manda o carro para a inspeção' },
+    { label: 'Inspeção', done: data.tasks.length > 0 && data.gates.allInspectionsApproved, hint: `${approvedCount} de ${data.tasks.length} aprovada(s)` },
+    { label: 'Limpeza', done: data.gates.cleaningDone, hint: data.cleaning ? (data.cleaning.status === 'DONE' ? 'checklist fechado' : data.cleaning.status === 'IN_PROGRESS' ? 'em andamento' : 'ainda não iniciada') : 'abre com o encerramento técnico' },
+    { label: 'Liberação', done: Boolean(data.releasedAt), hint: data.releasedAt ? `${formatDateTime(data.releasedAt)} · ${data.releasedByName ?? '—'}` : canRelease ? 'a Manutenção libera' : 'só a Manutenção libera (RN-04)' },
+  ];
+  const currentIndex = path.findIndex((p) => !p.done);
+
   return (
     <>
+      <section className={`wo-next wo-next--${step.tone}`} aria-live="polite">
+        <div className="wo-next__body">
+          <span className="wo-next__eyebrow">{data.releasedAt ? 'Situação' : 'Próximo passo'}</span>
+          <h2 className="wo-next__title">{step.title}</h2>
+          <p className="wo-next__text">{step.text}</p>
+          {error && <div className="tp-alert tp-alert--danger">{error}</div>}
+        </div>
+        {step.action && (
+          <button type="button" className="tp-btn tp-btn--primary wo-next__btn" disabled={action.isPending} onClick={step.action.run}>
+            {step.action.label} <ArrowRight size={16} />
+          </button>
+        )}
+        {step.link && (
+          <Link to={step.link.to} className="tp-btn tp-btn--secondary wo-next__btn">
+            {step.link.label} <ArrowRight size={16} />
+          </Link>
+        )}
+      </section>
+
       <div className="tp-kpi-row">
         <div className={`tp-kpi ${data.isOverdue ? 'tp-kpi--danger' : 'tp-kpi--brand'}`}>
           <span className="tp-kpi__label">Relógio de indisponibilidade</span>
@@ -142,8 +237,8 @@ export function WorkOrderPage() {
           <section className="tp-card">
             <div className="tp-card__head">
               <div>
-                <h3>Sub-OS por especialidade (RF-18)</h3>
-                <span className="chart__hint">cada especialidade executa a sua; a OS só fecha quando todas passam pela inspeção</span>
+                <h3>Serviços desta OS</h3>
+                <span className="chart__hint">cada especialidade faz a sua sub-OS com checklist; tudo passa pela inspeção antes de liberar</span>
               </div>
               {isOpen && data.status !== WorkOrderStatus.TECH_CLOSED && (
                 <button type="button" className="tp-btn tp-btn--sm" onClick={() => setPanel({ kind: 'add-task' })}>
@@ -170,9 +265,9 @@ export function WorkOrderPage() {
           </section>
 
           {data.cleaning && (
-            <section className="tp-card">
+            <section className="tp-card" id="limpeza">
               <div className="tp-card__head">
-                <h3>Limpeza — padrão do contrato (RF-21)</h3>
+                <h3>Limpeza antes de liberar</h3>
                 <span className={`tp-badge tp-badge--status ${data.cleaning.status === 'DONE' ? 'tp-badge--success' : ''}`}>
                   {data.cleaning.status === 'DONE' ? 'Concluída' : data.cleaning.status === 'IN_PROGRESS' ? 'Em andamento' : 'Pendente'}
                 </span>
@@ -214,9 +309,11 @@ export function WorkOrderPage() {
                       Iniciar limpeza
                     </button>
                   )}
-                  <button type="button" className="tp-btn tp-btn--sm" onClick={() => action.mutate(`${id}/cleaning/finish`)}>
-                    Concluir limpeza
-                  </button>
+                  {data.cleaning.status === 'IN_PROGRESS' && (
+                    <button type="button" className="tp-btn tp-btn--primary tp-btn--sm" onClick={() => action.mutate(`${id}/cleaning/finish`)}>
+                      Concluir limpeza
+                    </button>
+                  )}
                 </div>
               )}
             </section>
@@ -227,75 +324,42 @@ export function WorkOrderPage() {
           <section className="tp-card">
             <div className="tp-card__head">
               <div>
-                <h3>Portões antes de liberar</h3>
-                <span className="chart__hint">o carro só volta à operação com os três abertos (RN-04)</span>
+                <h3>Caminho até liberar o carro</h3>
+                <span className="chart__hint">na ordem em que acontece — o passo atual está em laranja</span>
               </div>
             </div>
             <ol className="wo-gates">
-              {[
-                {
-                  open: data.gates.allTasksSettled,
-                  label: 'Todas as sub-OS concluídas',
-                  hint: `RF-19 · ${data.tasks.filter((t) => t.status === TaskStatus.DONE || t.status === TaskStatus.IN_INSPECTION || t.status === TaskStatus.APPROVED).length} de ${data.tasks.length} concluída(s)`,
-                },
-                {
-                  open: data.gates.allInspectionsApproved,
-                  label: 'Todas as inspeções aprovadas',
-                  hint: `RF-20 · ${data.tasks.filter((t) => t.status === TaskStatus.APPROVED).length} de ${data.tasks.length} aprovada(s)`,
-                },
-                {
-                  open: data.gates.cleaningDone,
-                  label: 'Limpeza concluída',
-                  hint: `RF-21 · ${data.cleaning ? (data.cleaning.status === 'DONE' ? 'checklist fechado' : data.cleaning.status === 'IN_PROGRESS' ? 'em andamento' : 'ainda não iniciada') : 'sem checklist'}`,
-                },
-              ].map((g, i) => (
-                <li key={g.label} className={`wo-gate${g.open ? ' wo-gate--open' : ''}`}>
-                  <span className="wo-gate__dot" aria-hidden>{g.open ? <Check size={14} strokeWidth={3} /> : i + 1}</span>
-                  <div className="wo-gate__text">
-                    <span className="wo-gate__label">{g.label}</span>
-                    <span className="wo-gate__hint">{g.hint}</span>
-                  </div>
-                </li>
-              ))}
-              <li className={`wo-gate wo-gate--final${data.releasedAt ? ' wo-gate--open' : ''}`}>
-                <span className="wo-gate__dot" aria-hidden>{data.releasedAt ? <Unlock size={14} strokeWidth={2.5} /> : <Lock size={13} strokeWidth={2.5} />}</span>
-                <div className="wo-gate__text">
-                  <span className="wo-gate__label">{data.releasedAt ? 'Carro liberado' : 'Liberar o carro'}</span>
-                  <span className="wo-gate__hint">
-                    {data.releasedAt
-                      ? `${formatDateTime(data.releasedAt)} · ${data.releasedByName ?? '—'}`
-                      : data.gates.canRelease
-                        ? 'portões abertos — a Manutenção pode liberar'
-                        : `${[data.gates.allTasksSettled, data.gates.allInspectionsApproved, data.gates.cleaningDone].filter(Boolean).length} de 3 portões abertos`}
-                  </span>
-                </div>
-              </li>
+              {path.map((g, i) => {
+                const current = i === currentIndex;
+                const last = i === path.length - 1;
+                return (
+                  <li key={g.label} className={`wo-gate${g.done ? ' wo-gate--open' : ''}${current ? ' wo-gate--current' : ''}${last ? ' wo-gate--final' : ''}`}>
+                    <span className="wo-gate__dot" aria-hidden>
+                      {g.done ? (last ? <Unlock size={14} strokeWidth={2.5} /> : <Check size={14} strokeWidth={3} />) : last ? <Lock size={13} strokeWidth={2.5} /> : i + 1}
+                    </span>
+                    <div className="wo-gate__text">
+                      <span className="wo-gate__label">{g.label}</span>
+                      <span className="wo-gate__hint">{g.hint}</span>
+                    </div>
+                  </li>
+                );
+              })}
             </ol>
-            {data.gates.blockingReasons.length > 0 && (
-              <div className="tp-alert tp-alert--warning">
-                <strong>Falta para liberar</strong>
+            {!data.releasedAt && data.gates.blockingReasons.length > 0 && (
+              <details className="wo-blocking">
+                <summary>O que ainda falta, em detalhe</summary>
                 <ul>
                   {data.gates.blockingReasons.map((r) => (
                     <li key={r}>{r}</li>
                   ))}
                 </ul>
-              </div>
+              </details>
             )}
-            {!canRelease && isOpen && (
-              <p className="tp-muted">Só a Manutenção libera o carro (RN-04). Seu perfil acompanha, não libera.</p>
-            )}
-            {data.releasedAt && (
-              <div className="tp-alert tp-alert--success">
-                Liberado em {formatDateTime(data.releasedAt)} por {data.releasedByName ?? '—'} · indisponibilidade total de{' '}
-                {formatMinutes(data.downtimeMinutes)}.
-              </div>
-            )}
-            {error && <div className="tp-alert tp-alert--danger">{error}</div>}
           </section>
 
           {data.breakdown.length > 0 && (
             <section className="tp-card">
-              <h3>Onde o tempo foi (RF-39)</h3>
+              <h3>Onde o tempo foi</h3>
               <div className="tp-bar">
                 {data.breakdown.map((b) => (
                   <div
@@ -437,7 +501,7 @@ function TaskCard({
   const pct = task.checklist.length ? Math.round((checked / task.checklist.length) * 100) : 0;
 
   return (
-    <article className={`wo-task ${tone}`}>
+    <article className={`wo-task ${tone}`} id={`task-${task.id}`}>
       <div className="wo-task__head">
         <span className="wo-task__code">{task.code}</span>
         <span className="tp-badge">{task.specialtyName}</span>

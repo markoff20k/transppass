@@ -325,7 +325,7 @@ async function run() {
   }
   if (osLink) await osLink.click(); else await page.click('.tp-table tbody tr a');
   await page.waitForSelector('.tp-gates', { timeout: 20000 }).catch(() => {});
-  record('OS-01', 'Detalhe da OS com portões e relógio', await exists(page, '.wo-gates') && (await page.$$('.wo-gate')).length === 4 && await exists(page, '.wo-task') && await exists(page, '.tp-kpi'));
+  record('OS-01', 'Detalhe da OS com próximo passo, caminho de 5 etapas e relógio', await exists(page, '.wo-gates') && (await page.$$('.wo-gate')).length === 5 && await exists(page, '.wo-next') && await exists(page, '.wo-task') && await exists(page, '.tp-kpi'));
   await shot(page, 'os-detalhe');
   const addTask = await clickText(page, '.tp-card__head button', 'Sub-OS');
   if (addTask) {
