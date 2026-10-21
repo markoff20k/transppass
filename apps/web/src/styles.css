@@ -1646,9 +1646,11 @@ small.muted {
 .tp-tip__trigger:hover:where(:not(:disabled)),
 .tp-tip:focus-within .tp-tip__trigger,
 .tp-tip.is-open .tp-tip__trigger {
-  color: var(--color-surface);
-  border-color: var(--color-text);
-  background: var(--color-text);
+  /* Laranja da marca no hover — com texto grafite, que é o que passa em AA sobre o laranja. */
+  color: var(--color-brand-contrast);
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 22%, transparent);
   transform: translateY(-1px);
 }
 
