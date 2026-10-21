@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-10-21T02:32:12.949Z",
+  "ranAt": "2026-10-21T14:47:08.028Z",
   "base": "http://localhost:5173",
   "passed": 78,
   "failed": 0,
@@ -110,7 +110,7 @@
       "id": "DASH-06",
       "name": "Legenda das famílias de estado filtra a frota e volta ao todo",
       "ok": true,
-      "detail": "44 → 22 (esperado 22) → 44"
+      "detail": "34 → 11 (esperado 11) → 34"
     },
     {
       "id": "DASH-07",
@@ -288,7 +288,7 @@
     },
     {
       "id": "OS-01",
-      "name": "Detalhe da OS com portões e relógio",
+      "name": "Detalhe da OS com próximo passo, caminho de 5 etapas e relógio",
       "ok": true,
       "detail": ""
     },
