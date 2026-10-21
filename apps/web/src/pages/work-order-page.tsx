@@ -505,10 +505,13 @@ function TaskCard({
             Concluir sub-OS
           </button>
         )}
-        {task.status === TaskStatus.DONE && isInspector && (
-          <button type="button" className="tp-btn tp-btn--sm" onClick={onInspect}>
+        {(task.status === TaskStatus.DONE || task.status === TaskStatus.IN_INSPECTION) && isInspector && (
+          <button type="button" className="tp-btn tp-btn--primary tp-btn--sm" onClick={onInspect}>
             Inspecionar
           </button>
+        )}
+        {(task.status === TaskStatus.DONE || task.status === TaskStatus.IN_INSPECTION) && !isInspector && (
+          <span className="tp-muted" style={{ fontSize: 'var(--tp-text-xs)' }}>aguardando inspetor (RF-20)</span>
         )}
       </div>
     </article>
