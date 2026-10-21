@@ -47,9 +47,9 @@ const STAGES: { key: StageKey; statuses: VehicleStatus[]; family: Family; to: st
   { key: 'triage', statuses: ['AWAITING_TRIAGE'], family: 'waiting', to: '/triagem' },
   { key: 'field', statuses: ['FIELD_SERVICE'], family: 'waiting', to: '/socorro' },
   { key: 'queue', statuses: ['AWAITING_MAINTENANCE'], family: 'waiting', to: '/fila' },
-  { key: 'shop', statuses: ['IN_MAINTENANCE'], family: 'working', to: '/os' },
+  { key: 'shop', statuses: ['IN_MAINTENANCE'], family: 'working', to: '/os?status=IN_PROGRESS' },
   { key: 'part', statuses: ['AWAITING_PART'], family: 'stopped', to: '/estoque' },
-  { key: 'release', statuses: ['IN_INSPECTION', 'IN_CLEANING'], family: 'working', to: '/os' },
+  { key: 'release', statuses: ['IN_INSPECTION', 'IN_CLEANING'], family: 'working', to: '/os?status=RELEASING' },
 ];
 
 export function DashboardPage() {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -15,10 +16,22 @@ import { BrandLoader } from '@/components/brand/brand-loader';
 
 const FINISHED: string[] = [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED];
 
+/** Filtro virtual: os três portões antes de liberar o carro (RN-04). */
+const RELEASING = 'RELEASING';
+const RELEASING_STATUSES: string[] = [WorkOrderStatus.TECH_CLOSED, WorkOrderStatus.IN_INSPECTION, WorkOrderStatus.IN_CLEANING];
+
 /** Lista das OS-mãe: o que está prendendo carro na garagem agora. */
 export function WorkOrdersPage() {
   usePageHeader({ eyebrow: 'Execução', title: 'Ordens de serviço', description: 'O que está prendendo carro na garagem agora.' });
-  const [status, setStatus] = useState<string>('');
+  // O dashboard chega aqui com ?status=IN_PROGRESS (Oficina) ou ?status=RELEASING (Liberação).
+  const [params, setParams] = useSearchParams();
+  const status = params.get('status') ?? '';
+  const setStatus = (value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set('status', value);
+    else next.delete('status');
+    setParams(next, { replace: true });
+  };
   const [onlyOverdue, setOnlyOverdue] = useState(false);
 
   const { data, isPending } = useQuery({
@@ -35,7 +48,7 @@ export function WorkOrdersPage() {
   const clock = open.reduce((sum, r) => sum + r.downtimeMinutes, 0);
 
   const rows = all
-    .filter((r) => (status ? r.status === status : true))
+    .filter((r) => (status === RELEASING ? RELEASING_STATUSES.includes(r.status) : status ? r.status === status : true))
     .filter((r) => (onlyOverdue ? r.isOverdue : true));
 
   return (
@@ -80,6 +93,7 @@ export function WorkOrdersPage() {
             </label>
             <select className="tp-select" style={{ maxWidth: 220 }} value={status} onChange={(e) => setStatus(e.target.value)}>
               <option value="">Todos os estados</option>
+              <option value={RELEASING}>Na liberação (encerrada, inspeção, limpeza)</option>
               {Object.entries(WORK_ORDER_STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
