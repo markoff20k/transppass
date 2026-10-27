@@ -23,7 +23,6 @@ import { ProfilePage } from '@/pages/profile-page';
 import { UsersPage } from '@/pages/users-page';
 import { PlansPage } from '@/pages/plans-page';
 import { MaterialsPage } from '@/pages/materials-page';
-import { KaizenPage } from '@/pages/kaizen-page';
 import { TechniciansPage } from '@/pages/technicians-page';
 import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-pages';
 
@@ -47,7 +46,6 @@ export const router = createBrowserRouter([
           { path: '/cadastros/planos', element: <PlansPage /> },
           { path: '/cadastros/materiais', element: <MaterialsPage /> },
           { path: '/cadastros/tecnicos', element: <TechniciansPage /> },
-          { path: '/kaizen', element: <KaizenPage /> },
           // R1 — Corretivo e execucao
           { path: '/eventos', element: <EventsPage /> },
           { path: '/triagem', element: <TriagePage /> },

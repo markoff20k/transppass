@@ -54,9 +54,9 @@ Login inicial: `admin@transppass.local` / `admin123`. Swagger em `http://localho
 
 `npm run db:seed:demo` monta a garagem: **453 carros** nas proporções da Escala de Carros (lote E8 com 238, AR9 com 215; prefixos, placas e modelos por classe são mock até a base carro a carro chegar), seis meses de km e de falhas, OS em todas as etapas, preventivas programadas, plantão e notificações. Apaga e recria todo o movimento — rode antes de apresentar.
 
-### Kaizen MKBF: o sistema como base das decisões
+### O que o Kaizen MKBF exige do sistema
 
-A meta final é o MKBF; o Kaizen "Software — Projeto MKBF" (25/08/2026) define os 17 entregáveis que alimentam o sistema. A tela **Gestão › Kaizen MKBF** (`/kaizen`) lista cada entregável com o status do tracker do cliente, se o sistema o sustenta (só marca "suportado" com estrutura **e** carga no banco, com a contagem como prova) e onde ele vive. Para os itens em lacuna o modelo já recebe a base quando ela vier: **kit corretivo por falha do catálogo** (item 2, pedido inteiro ao Estoque a partir da sub-OS), **ferramental por tarefa** (item 3, FR.168 × plano), **OS executada por terceiro** com fornecedor (item 6) e **técnicos e inspetores** por especialidade, tecnologia e nível 1–3 (itens 15–17, em Cadastros › Técnicos; a sub-OS é atribuída ao técnico).
+A meta final é o MKBF; o Kaizen "Software — Projeto MKBF" (25/08/2026) define os entregáveis que alimentam o sistema. Além das bases já carregadas, o modelo recebe: **kit corretivo por falha do catálogo** (montado no Catálogo, pedido inteiro ao Estoque a partir da sub-OS), **ferramental por tarefa** (FR.168 × plano), **OS executada por terceiro** com fornecedor e **técnicos e inspetores** por especialidade, tecnologia e nível 1–3 (Cadastros › Técnicos; a sub-OS é atribuída ao técnico).
 
 Com `DEMO_SIMULATOR=true` no `.env` a garagem **anda sozinha** a cada 5 minutos pela própria API de negócio: telemetria dos eBUS, lançamento de km diesel de manhã (alguns atrasam), falhas na proporção do MKBF, triagem, socorro, fila, material, inspeção, limpeza, liberação e reposição com reserva habilitada. `POST /api/demo/pulse` (admin ou PCM) avança um ciclo na hora; `DEMO_SPEED=12` acelera os tempos de espera e `DEMO_ALL_HOURS=true` ignora o horário de operação (só para testes). Nunca ligue o simulador num banco com dados reais.
 

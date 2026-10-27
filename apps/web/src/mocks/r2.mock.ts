@@ -9,7 +9,6 @@ import {
   type ExpectedReturnRow,
   type KitSeparationRow,
   type KmTimelineRow,
-  type KaizenReadiness,
   type OperatorCandidate,
   type TechnicianRow,
   type OperatorRow,
@@ -286,10 +285,8 @@ const technicians: TechnicianRow[] = [
   { id: 'tec-1', registration: '04521', name: 'Carlos Henrique Souza', specialtyId: 'sp-1', specialtyCode: 'MEC', specialtyName: 'Mecânica', technologies: ['DIESEL'], level: 3, isInspector: true, isActive: true, userId: null, openTasks: 1 },
   { id: 'tec-2', registration: '05110', name: 'Edson Luiz Ferreira', specialtyId: 'sp-2', specialtyCode: 'ELE', specialtyName: 'Elétrica', technologies: ['DIESEL', 'EBUS'], level: 2, isInspector: false, isActive: true, userId: null, openTasks: 0 },
 ];
-const readiness: KaizenReadiness = { vehicles: 5, vehiclesWithClass: 5, drivers: 4, conductors: 0, materials: 8, preventiveMaterials: 4, reconditionedMaterials: 2, tools: 3, toolUnits: 3, plans: 2, packages: 3, planTasks: 14, preventiveKits: 2, correctiveKits: 0, catalogItems: 6, taskTools: 0, tasksWithTools: 0, technicians: 2, inspectors: 1, serializedComponents: 4, thirdPartyWorkOrders: 0, inspections: 3, computedAt: new Date().toISOString() };
 
 export const r2Handlers = [
-  http.get('*/api/kaizen/readiness', () => HttpResponse.json(readiness)),
   http.get('*/api/technicians', () => HttpResponse.json(technicians)),
   http.post('*/api/technicians', async ({ request }) => {
     const body = (await request.json()) as Partial<TechnicianRow>;

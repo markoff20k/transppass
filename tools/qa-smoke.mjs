@@ -230,7 +230,6 @@ async function run() {
     { path: '/cadastros/planos', name: 'Planos preventivos', check: '.plan-pkg' },
     { path: '/cadastros/materiais', name: 'Materiais', check: '.tp-table' },
     { path: '/cadastros/tecnicos', name: 'Técnicos', check: '.tp-table' },
-    { path: '/kaizen', name: 'Kaizen MKBF', check: '.kz-table' },
     { path: '/design', name: 'Design kit', check: '.bus-gallery' },
   ];
   let i = 0;

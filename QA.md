@@ -1,6 +1,6 @@
 # Relatório de QA — Transppass PCM (MVP: R0 + R1 + R2)
 
-**Rodada:** 20/10/2026 (madrugada da apresentação) · **Ambiente:** Microsoft Edge dirigido por puppeteer **contra a API real** no Postgres local — frota de 453 carros, bases da Transppass carregadas e simulador de demonstração ligado · **Resultado:** 80 verificações funcionais de UI, 80 aprovadas (`QA_API=1 node tools/qa-smoke.mjs`; rodada de 27/10 inclui Kaizen MKBF e Técnicos); teste e2e da API 78/78 com a nova base; typecheck, lint e build de produção limpos. A rodada anterior (19/10, modo mock) continua válida e o roteiro ainda roda nos dois modos.
+**Rodada:** 20/10/2026 (madrugada da apresentação) · **Ambiente:** Microsoft Edge dirigido por puppeteer **contra a API real** no Postgres local — frota de 453 carros, bases da Transppass carregadas e simulador de demonstração ligado · **Resultado:** 79 verificações funcionais de UI, 79 aprovadas (`QA_API=1 node tools/qa-smoke.mjs`; rodada de 27/10 inclui Técnicos); teste e2e da API 78/78 com a nova base; typecheck, lint e build de produção limpos. A rodada anterior (19/10, modo mock) continua válida e o roteiro ainda roda nos dois modos.
 
 Este relatório é o que um analista de QA entregaria ao fim da sprint: o que foi testado, como, o que passou, o que foi corrigido no caminho e — mais importante — **o que ainda não foi exercitado** e por quê.
 
@@ -73,7 +73,6 @@ O que mudou desde a rodada de 19/10 e foi exercitado nesta:
 
 ## 4c. Rodada 27/10 — Kaizen MKBF como base do sistema
 
-- **Tela Gestão › Kaizen MKBF**: os 17 entregáveis do tracker do cliente, o suporte do sistema a cada um (só "suportado" com estrutura e carga, contagem do banco como prova) e o link de onde vive. Resultado atual: 13 suportados, 4 parciais, 0 lacunas.
 - **Modelo para os itens que estavam em lacuna**: kit corretivo por falha do catálogo (pedido inteiro ao Estoque a partir da sub-OS), ferramental por tarefa do plano (FR.168), OS executada por terceiro com fornecedor, técnicos e inspetores por especialidade, tecnologia e nível 1–3 com atribuição na sub-OS.
 - **Carga**: 357 vínculos tarefa × ferramenta no diesel, 6 kits corretivos cruzados com o inventário, 16 técnicos (mock até a lista da Manutenção) e uma OS de terceiro de exemplo.
 - **Tela da OS guiada** (20/10, noite): "próximo passo" com um botão e caminho de cinco etapas; o botão "Inspecionar" passou a aparecer também na sub-OS já encaminhada à inspeção.
