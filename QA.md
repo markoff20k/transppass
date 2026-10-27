@@ -92,6 +92,7 @@ Base: A3 "Kaizen Estruturante" (03/06/2026) e "Fluxos de Processo PCM" Rev. 00 (
 - **Treinamentos**: `POST /technicians/:id/trainings` (NR-10 + alta tensão) tirou o técnico 70093 da sinalização "sem alta tensão"; listagem de técnicos passa a trazer treinamentos, vencimentos em 30 dias e a lacuna de alta tensão.
 - **Checklist diário no seed**: 292 dos 453 carros com checklist de hoje, para a Daily nascer preenchida.
 - Capturas conferidas em 1440 px: laboratório (tabela em largura cheia, motivo com quebra de linha), fornecedores, auditorias (card por área com tendência, última e próxima data), técnicos e Daily.
+- **Kanban** (`GET /materials/kanban`): ponto de pedido e lote no cadastro do material (ASSUMIDOS a partir do saldo); lista "Kanban — repor" no Estoque com fornecedor, SLA e pedidos abertos; contagem na Daily. **Carregadores eBUS** entram no ferramental (34 baias necessárias × 32 disponíveis, ASSUMIDO) e aparecem em vermelho na suficiência.
 
 ## 5. O que NÃO foi testado (e o risco)
 

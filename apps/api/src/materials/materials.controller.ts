@@ -20,6 +20,7 @@ import {
   type PoolMovementInput,
   type RequestMaterialInput,
   type SeparateMaterialInput,
+  type KanbanRow,
   type ToolRow,
   type WaitForPartInput,
 } from '@app/shared';
@@ -137,6 +138,11 @@ export class MaterialsController {
   @Get('tools')
   listTools(): Promise<ToolRow[]> {
     return this.materials.listTools();
+  }
+
+  @Get('kanban')
+  listKanban(): Promise<KanbanRow[]> {
+    return this.materials.listKanban();
   }
 
   @Post('tools/loan')

@@ -124,7 +124,7 @@ export function MaterialsPage() {
                     </td>
                     <td className="tp-muted">{materialGroupLabel(m.classCode)}{m.supplierName && <span className="mat-sub">{m.supplierName}{m.warrantyMonths ? ` · garantia ${m.warrantyMonths} m` : ''}{m.warrantyKm ? ` / ${formatNumber(m.warrantyKm)} km` : ''}</span>}</td>
                     <td className="tp-muted tp-mono">{m.location ?? '—'}</td>
-                    <td className={`is-num${m.stockQty <= 0 ? ' tp-error' : ''}`}>{formatNumber(m.stockQty)} <small className="tp-muted">{m.unit}</small></td>
+                    <td className={`is-num${m.stockQty <= 0 ? ' tp-error' : ''}`}>{formatNumber(m.stockQty)} <small className="tp-muted">{m.unit}</small>{m.reorderPoint !== null && m.stockQty <= m.reorderPoint && <span className="mat-sub"><span className="tp-badge tp-badge--status tp-badge--warning">repor</span></span>}</td>
                     <td className="is-num tp-muted">{m.avgCost === null ? '—' : m.avgCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                     <td className="is-num">{m.kitCount}</td>
                     <td><span className={`tp-badge tp-badge--status ${m.isActive ? 'tp-badge--success' : ''}`}>{m.isActive ? 'Ativo' : 'Desativado'}</span></td>
@@ -146,7 +146,7 @@ export function MaterialsPage() {
   );
 }
 
-const EMPTY_MATERIAL = { code: '', description: '', unit: 'un', isSerialized: false, classCode: '', manufacturerRef: '', location: '', stockQty: '', isPreventive: false, supplierId: '', warrantyMonths: '', warrantyKm: '' };
+const EMPTY_MATERIAL = { code: '', description: '', unit: 'un', isSerialized: false, classCode: '', manufacturerRef: '', location: '', stockQty: '', isPreventive: false, supplierId: '', warrantyMonths: '', warrantyKm: '', reorderPoint: '', reorderQty: '' };
 
 function MaterialDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => void; onDone: () => void }) {
   const editing = mode.kind === 'edit' ? mode.material : null;
@@ -157,7 +157,7 @@ function MaterialDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => 
   useEffect(() => {
     setError(null);
     setForm(editing
-      ? { code: editing.code, description: editing.description, unit: editing.unit, isSerialized: editing.isSerialized, classCode: editing.classCode ?? '', manufacturerRef: editing.manufacturerRef ?? '', location: editing.location ?? '', stockQty: String(editing.stockQty), isPreventive: editing.isPreventive, supplierId: editing.supplierId ?? '', warrantyMonths: editing.warrantyMonths === null ? '' : String(editing.warrantyMonths), warrantyKm: editing.warrantyKm === null ? '' : String(editing.warrantyKm) }
+      ? { code: editing.code, description: editing.description, unit: editing.unit, isSerialized: editing.isSerialized, classCode: editing.classCode ?? '', manufacturerRef: editing.manufacturerRef ?? '', location: editing.location ?? '', stockQty: String(editing.stockQty), isPreventive: editing.isPreventive, supplierId: editing.supplierId ?? '', warrantyMonths: editing.warrantyMonths === null ? '' : String(editing.warrantyMonths), warrantyKm: editing.warrantyKm === null ? '' : String(editing.warrantyKm), reorderPoint: editing.reorderPoint === null ? '' : String(editing.reorderPoint), reorderQty: editing.reorderQty === null ? '' : String(editing.reorderQty) }
       : EMPTY_MATERIAL);
   }, [editing, mode.kind]);
 
@@ -173,7 +173,7 @@ function MaterialDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => 
   });
 
   const submit = () => {
-    const parsed = createMaterialSchema.safeParse({ ...form, classCode: form.classCode || undefined, manufacturerRef: form.manufacturerRef || undefined, location: form.location || undefined, stockQty: form.stockQty === '' ? undefined : form.stockQty, supplierId: form.supplierId || undefined, warrantyMonths: form.warrantyMonths === '' ? undefined : form.warrantyMonths, warrantyKm: form.warrantyKm === '' ? undefined : form.warrantyKm });
+    const parsed = createMaterialSchema.safeParse({ ...form, classCode: form.classCode || undefined, manufacturerRef: form.manufacturerRef || undefined, location: form.location || undefined, stockQty: form.stockQty === '' ? undefined : form.stockQty, supplierId: form.supplierId || undefined, warrantyMonths: form.warrantyMonths === '' ? undefined : form.warrantyMonths, warrantyKm: form.warrantyKm === '' ? undefined : form.warrantyKm, reorderPoint: form.reorderPoint === '' ? undefined : form.reorderPoint, reorderQty: form.reorderQty === '' ? undefined : form.reorderQty });
     if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
     setError(null);
     save.mutate(parsed.data);
@@ -212,6 +212,10 @@ function MaterialDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => 
           <div className="tp-grid-2">
             <label className="tp-field"><span className="tp-label">Garantia (meses)</span><input className="tp-input tp-input--num" type="number" min={0} value={form.warrantyMonths} onChange={(e) => setForm((f) => ({ ...f, warrantyMonths: e.target.value }))} /></label>
             <label className="tp-field"><span className="tp-label">Garantia (km)</span><input className="tp-input tp-input--num" type="number" min={0} value={form.warrantyKm} onChange={(e) => setForm((f) => ({ ...f, warrantyKm: e.target.value }))} /></label>
+          </div>
+          <div className="tp-grid-2">
+            <label className="tp-field"><span className="tp-label">Ponto de pedido <span className="tp-label__hint">kanban</span></span><input className="tp-input tp-input--num" type="number" min={0} value={form.reorderPoint} onChange={(e) => setForm((f) => ({ ...f, reorderPoint: e.target.value }))} /></label>
+            <label className="tp-field"><span className="tp-label">Lote de reposição</span><input className="tp-input tp-input--num" type="number" min={0} value={form.reorderQty} onChange={(e) => setForm((f) => ({ ...f, reorderQty: e.target.value }))} /></label>
           </div>
         </div>
         <label className="tp-check">

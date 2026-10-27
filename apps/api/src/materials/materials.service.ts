@@ -21,6 +21,7 @@ import {
   type PoolMovementInput,
   type RequestMaterialInput,
   type SeparateMaterialInput,
+  type KanbanRow,
   type ToolRow,
   type WaitForPartInput,
 } from '@app/shared';
@@ -478,6 +479,39 @@ export class MaterialsService {
       loanedToName: t.loans[0] ? (nameById.get(t.loans[0].borrowerId) ?? null) : null,
       loanedAt: t.loans[0]?.loanedAt.toISOString() ?? null,
     }));
+  }
+
+  // --- Kanban (A3): ponto de pedido ------------------------------------------
+
+  /** Materiais no ponto de pedido ou abaixo, os mais críticos primeiro. */
+  async listKanban(): Promise<KanbanRow[]> {
+    const rows = await this.prisma.material.findMany({
+      where: { isActive: true, reorderPoint: { not: null } },
+      include: { supplier: { select: { name: true, claimSlaDays: true } } },
+    });
+    const below = rows.filter((m) => Number(m.stockQty) <= (m.reorderPoint ?? 0));
+    const ids = below.map((m) => m.id);
+    const pending = ids.length
+      ? await this.prisma.materialRequest.groupBy({ by: ['materialId'], where: { materialId: { in: ids }, status: { in: [MaterialRequestStatus.REQUESTED, MaterialRequestStatus.WAITING_PART] } }, _count: { _all: true } })
+      : [];
+    const pendingById = new Map(pending.map((p) => [p.materialId, p._count._all]));
+    return below
+      .map((m) => ({
+        id: m.id,
+        code: m.code,
+        description: m.description,
+        unit: m.unit,
+        stockQty: Number(m.stockQty),
+        reorderPoint: m.reorderPoint ?? 0,
+        reorderQty: m.reorderQty,
+        location: m.location,
+        abcClass: m.abcClass,
+        isPreventive: m.isPreventive,
+        supplierName: m.supplier?.name ?? null,
+        supplierSlaDays: m.supplier?.claimSlaDays ?? null,
+        pendingRequests: pendingById.get(m.id) ?? 0,
+      }))
+      .sort((a, b) => a.stockQty / Math.max(1, a.reorderPoint) - b.stockQty / Math.max(1, b.reorderPoint) || b.pendingRequests - a.pendingRequests);
   }
 
   // --- Consultas ------------------------------------------------------------

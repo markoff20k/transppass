@@ -102,6 +102,8 @@ export const createMaterialSchema = z.object({
   supplierId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
   warrantyMonths: optionalInt(),
   warrantyKm: optionalInt(),
+  reorderPoint: optionalInt(),
+  reorderQty: optionalInt(),
 });
 
 export const updateMaterialSchema = createMaterialSchema.partial().extend({
@@ -205,6 +207,9 @@ export interface MaterialRow {
   supplierName: string | null;
   warrantyMonths: number | null;
   warrantyKm: number | null;
+  /** Kanban: ponto de pedido e lote de reposição. */
+  reorderPoint: number | null;
+  reorderQty: number | null;
 }
 
 /** Classes contábeis do almoxarifado (4 primeiros dígitos = grupo). */

@@ -614,6 +614,9 @@ model Material {
   location        String?  @db.VarChar(24)
   abcClass        String?  @db.VarChar(1)
   stockQty        Decimal  @default(0) @db.Decimal(12, 3)
+  /// Kanban (A3): ponto de pedido e lote de reposição; abaixo do ponto entra na lista de reposição.
+  reorderPoint    Int?
+  reorderQty      Int?
   avgCost         Decimal? @db.Decimal(12, 2)
   /// Item da lista "Componentes substituídos na preventiva" (base 10 e 11 do Almoxarifado).
   isPreventive    Boolean  @default(false)

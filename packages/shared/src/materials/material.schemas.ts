@@ -170,3 +170,22 @@ export interface ToolRow {
   loanedToName: string | null;
   loanedAt: string | null;
 }
+
+/** Kanban do almoxarifado (A3): material no ponto de pedido ou abaixo dele. */
+export interface KanbanRow {
+  id: string;
+  code: string;
+  description: string;
+  unit: string;
+  stockQty: number;
+  reorderPoint: number;
+  reorderQty: number | null;
+  location: string | null;
+  abcClass: string | null;
+  isPreventive: boolean;
+  supplierName: string | null;
+  /** SLA de resposta do fornecedor, em dias. */
+  supplierSlaDays: number | null;
+  /** Solicitações pendentes que pedem o material agora. */
+  pendingRequests: number;
+}

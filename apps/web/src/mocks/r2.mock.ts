@@ -308,6 +308,7 @@ const dailyBoard: DailyBoard = {
   repeatVehicles30d: [{ vehicleId: 'v-1', vehicleCode: '10003', count: 3, lastAt: new Date().toISOString() }],
   staleOdometer: 1,
   auditsOverdue: 3,
+  kanbanBelow: 2,
 };
 const dailyChecks: DailyCheckRow[] = [];
 

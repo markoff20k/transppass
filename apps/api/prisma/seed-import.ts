@@ -149,6 +149,21 @@ export async function importBases(prisma: PrismaClient): Promise<void> {
   }
   console.log(`  ${materials.length} materiais (${materials.filter((m) => m.isPreventive).length} da lista preventiva)`);
 
+  // ---- Kanban (A3): ponto de pedido e lote — ASSUMIDOS a partir do saldo até Suprimentos definir ----
+  // Entram no kanban os itens da lista preventiva e os de classe A. Uma parte nasce abaixo do ponto
+  // para a lista de reposição ter o que mostrar; o restante fica com ponto em ~45% do saldo atual.
+  const kanbanTargets = await prisma.material.findMany({ where: { OR: [{ isPreventive: true }, { abcClass: 'A' }], reorderPoint: null, stockQty: { gt: 0 } }, select: { id: true, code: true, stockQty: true } });
+  let kanbanBelow = 0;
+  for (const m of kanbanTargets) {
+    const qty = Number(m.stockQty);
+    const h = [...m.code].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % 100;
+    // Saldo pequeno: repõe quando zerar. Saldo maior: ponto em ~45% do saldo; 10% nascem abaixo do ponto.
+    const point = qty < 4 ? 0 : h < 10 ? Math.ceil(qty * 1.2) : Math.floor(qty * 0.45);
+    if (point >= qty) kanbanBelow += 1;
+    await prisma.material.update({ where: { id: m.id }, data: { reorderPoint: point, reorderQty: Math.max(2, Math.ceil(point * 1.5)) } });
+  }
+  console.log(`  ${kanbanTargets.length} materiais com ponto de pedido (kanban) · ${kanbanBelow} abaixo do ponto`);
+
   // ---- Operadores -----------------------------------------------------------
   const operators = readJson<OperatorJson[]>('operadores.json');
   for (let i = 0; i < operators.length; i += CHUNK) {
@@ -197,6 +212,16 @@ export async function importBases(prisma: PrismaClient): Promise<void> {
     });
   }
   console.log(`  ${tools.length} ferramentas (${tools.reduce((s, t) => s + t.requiredQty, 0)} unidades necessárias)`);
+
+  // ---- Carregadores eBUS como recurso (Fluxos p.8: carregamento de 2–3 h e liberação dos carregadores) ----
+  // Quantidade ASSUMIDA: 101 eBUS em três ciclos de 2–3 h na madrugada pedem ~34 baias; duas estão fora.
+  for (const c of [
+    { code: 'CAR-EBUS', description: 'Carregadores eBUS — baias de recarga (ciclo 2–3 h)', requiredQty: 34, availableQty: 32 },
+    { code: 'CAR-MOVEL', description: 'Carregador móvel eBUS (socorro no pátio)', requiredQty: 2, availableQty: 2 },
+  ]) {
+    await prisma.tool.upsert({ where: { code: c.code }, update: c, create: c });
+  }
+  console.log('  2 recursos de recarga eBUS (carregadores) no ferramental');
 
   // ---- Planos preventivos ---------------------------------------------------
   const plans = readJson<PlansJson>('planos.json');

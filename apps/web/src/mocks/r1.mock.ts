@@ -14,6 +14,7 @@ import {
   type QueueChangeRow,
   type QueueEntryRow,
   type R1Metrics,
+  type KanbanRow,
   type ToolRow,
   type WorkOrderDetail,
   type WorkOrderSummary,
@@ -143,6 +144,11 @@ const pool: PoolComponentRow[] = [
   { id: 'pc-4', serialNumber: 'APU-77812', status: PoolComponentStatus.IN_STOCK, materialCode: 'VAL-APU-01', materialDescription: 'Válvula APU', currentVehicleCode: null },
 ];
 
+const kanbanRows: KanbanRow[] = [
+  { id: 'kb-1', code: 'FIL-OL-01', description: 'Filtro de óleo', unit: 'un', stockQty: 4, reorderPoint: 12, reorderQty: 24, location: 'A-03-2', abcClass: 'A', isPreventive: true, supplierName: 'Mann Filter', supplierSlaDays: 15, pendingRequests: 1 },
+  { id: 'kb-2', code: 'PAST-FR-01', description: 'Pastilha de freio (jogo)', unit: 'jg', stockQty: 0, reorderPoint: 6, reorderQty: 12, location: 'B-01-4', abcClass: 'A', isPreventive: false, supplierName: null, supplierSlaDays: null, pendingRequests: 2 },
+];
+
 const tools: ToolRow[] = [
   { id: 'tl-1', code: 'TORQ-01', description: 'Torquímetro 40–200 N·m', requiredQty: 2, availableQty: 2, calibrationDueAt: new Date(Date.now() + 40 * 24 * H).toISOString(), isCalibrationExpired: false, loanedToName: 'Mecânico de turno', loanedAt: ago(2) },
   { id: 'tl-2', code: 'TORQ-02', description: 'Torquímetro 200–800 N·m', requiredQty: 2, availableQty: 2, calibrationDueAt: ago(5 * 24), isCalibrationExpired: true, loanedToName: null, loanedAt: null },
@@ -227,6 +233,7 @@ export const r1Handlers = [
   http.get('*/api/materials/requests', () => HttpResponse.json(materialRequests)),
   http.get('*/api/materials/pool', () => HttpResponse.json(pool)),
   http.get('*/api/materials/tools', () => HttpResponse.json(tools)),
+  http.get('*/api/materials/kanban', () => HttpResponse.json(kanbanRows)),
   http.post('*/api/materials/escalate-overdue', () => HttpResponse.json({ escalated: 1 }, { status: 201 })),
   http.post('*/api/materials/requests/:id/*', () => HttpResponse.json(materialRequests[0], { status: 201 })),
 

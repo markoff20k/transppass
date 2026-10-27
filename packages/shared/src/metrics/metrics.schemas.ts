@@ -118,4 +118,6 @@ export interface DailyBoard {
   staleOdometer: number;
   /** Áreas sem auditoria 5S/conformidade ou com a próxima data vencida. */
   auditsOverdue: number;
+  /** Materiais no ponto de pedido ou abaixo (kanban). */
+  kanbanBelow: number;
 }

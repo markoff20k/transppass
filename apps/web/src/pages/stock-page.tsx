@@ -9,10 +9,11 @@ import {
   type MaterialRequestRow,
   type PoolComponentRow,
   type ReasonCode,
+  type KanbanRow,
   type ToolRow,
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
-import { formatDate, formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime, formatNumber } from '@/lib/format';
 import { useAuth } from '@/features/auth/use-auth';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
@@ -65,6 +66,8 @@ export function StockPage() {
   });
 
   const [tool, setTool] = useState<ToolRow | null>(null);
+  const [showAllKanban, setShowAllKanban] = useState(false);
+  const KANBAN_PREVIEW = 10;
   const [component, setComponent] = useState<PoolComponentRow | null>(null);
 
   const pool = useQuery({
@@ -75,6 +78,11 @@ export function StockPage() {
   const tools = useQuery({
     queryKey: ['materials', 'tools'],
     queryFn: () => api.get<ToolRow[]>('/materials/tools'),
+  });
+
+  const kanban = useQuery({
+    queryKey: ['materials', 'kanban'],
+    queryFn: () => api.get<KanbanRow[]>('/materials/kanban'),
   });
 
   const invalidate = () => {
@@ -150,6 +158,50 @@ export function StockPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </section>
+
+      <section className="tp-card stock-kanban">
+        <div className="tp-card__head">
+          <div><h3>Kanban — repor</h3><span className="chart__hint">materiais no ponto de pedido ou abaixo; o ponto e o lote ficam no cadastro do material</span></div>
+          <span className={`tp-muted${(kanban.data?.length ?? 0) > 0 ? ' tp-error' : ''}`}>{kanban.data?.length ?? 0} item(ns)</span>
+        </div>
+        {kanban.isPending ? (
+          <BrandLoader size={40} label="Carregando" />
+        ) : (kanban.data ?? []).length === 0 ? (
+          <div className="tp-table__empty">Nenhum material abaixo do ponto de pedido.</div>
+        ) : (
+          <div className="tp-table-wrap">
+            <table className="tp-table tp-table--compact">
+              <thead>
+                <tr><th>Código</th><th>Material</th><th>Local</th><th className="is-num">Saldo</th><th className="is-num">Ponto</th><th className="is-num">Repor</th><th>Fornecedor</th><th className="is-num">Pedidos abertos</th></tr>
+              </thead>
+              <tbody>
+                {(showAllKanban ? (kanban.data ?? []) : (kanban.data ?? []).slice(0, KANBAN_PREVIEW)).map((k) => (
+                  <tr key={k.id} className={k.stockQty <= 0 ? 'is-danger' : undefined}>
+                    <td className="is-strong tp-mono">{k.code}</td>
+                    <td style={{ whiteSpace: 'normal', minWidth: 220 }}>
+                      <span className="mat-desc">{k.description}</span>
+                      <span className="mat-sub">{k.abcClass ? `ABC ${k.abcClass}` : 'sem classe ABC'}{k.isPreventive ? ' · preventiva' : ''}</span>
+                    </td>
+                    <td className="tp-muted tp-mono">{k.location ?? '—'}</td>
+                    <td className={`is-num${k.stockQty <= 0 ? ' tp-error' : ''}`}>{formatNumber(k.stockQty)} <small className="tp-muted">{k.unit}</small></td>
+                    <td className="is-num tp-muted">{formatNumber(k.reorderPoint)}</td>
+                    <td className="is-num is-strong">{k.reorderQty === null ? '—' : formatNumber(k.reorderQty)}</td>
+                    <td className="tp-muted">{k.supplierName ?? '—'}{k.supplierSlaDays ? <span className="mat-sub">SLA {k.supplierSlaDays} dias</span> : null}</td>
+                    <td className={`is-num${k.pendingRequests ? ' tp-error' : ' tp-muted'}`}>{k.pendingRequests}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {(kanban.data ?? []).length > KANBAN_PREVIEW && (
+              <div className="tp-row tp-row--end" style={{ paddingTop: 8 }}>
+                <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setShowAllKanban((v) => !v)}>
+                  {showAllKanban ? 'Mostrar só os mais críticos' : `Mostrar todos (${kanban.data?.length})`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>

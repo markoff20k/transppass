@@ -265,6 +265,8 @@ export class PlansService {
       supplierName: m.supplier?.name ?? null,
       warrantyMonths: m.warrantyMonths,
       warrantyKm: m.warrantyKm,
+      reorderPoint: m.reorderPoint,
+      reorderQty: m.reorderQty,
     }));
   }
 
