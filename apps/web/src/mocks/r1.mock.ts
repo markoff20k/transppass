@@ -69,12 +69,15 @@ function workOrder(id: string): WorkOrderDetail {
     releasedAt: null,
     releasedByName: null,
     jbWorkOrderNumber: isFirst ? 'JB-88213' : null,
+    execution: 'INTERNAL',
+    supplierName: null,
+    correctiveKit: null,
     downtimeMinutes: isFirst ? 252 : 1_890,
     isOverdue: !isFirst,
     tasks: [
       {
         id: `${id}-t1`, code: 'S01', description: isFirst ? 'Substituir válvula APU' : 'Substituir cuíca de freio dianteira', specialtyId: 'sp-3', specialtyName: 'Pneus',
-        status: isFirst ? TaskStatus.IN_PROGRESS : TaskStatus.BLOCKED_BY_MATERIAL, assignedToId: null, assignedToName: 'Mecânico de turno',
+        status: isFirst ? TaskStatus.IN_PROGRESS : TaskStatus.BLOCKED_BY_MATERIAL, assignedToId: null, assignedToName: 'Mecânico de turno', technicianId: null, technicianName: null,
         startedAt: ago(isFirst ? 3.5 : 30), finishedAt: null, confirmedCatalogItemId: null, confirmedCause: null, confirmedFailureCode: null, confirmedFailureLabel: null, reopenedCount: 0,
         checklist: [
           { id: `${id}-c1`, sequence: 1, description: 'Despressurizar o sistema', isChecked: true, checkedAt: ago(3), measurement: null, unit: null },
@@ -87,7 +90,7 @@ function workOrder(id: string): WorkOrderDetail {
       ...(isFirst
         ? [{
             id: `${id}-t2`, code: 'S02', description: 'Verificar sistema de carga', specialtyId: 'sp-2', specialtyName: 'Elétrica',
-            status: TaskStatus.APPROVED, assignedToId: null, assignedToName: 'Eletricista', startedAt: ago(4), finishedAt: ago(2.2),
+            status: TaskStatus.APPROVED, assignedToId: null, assignedToName: 'Eletricista', technicianId: null, technicianName: null, startedAt: ago(4), finishedAt: ago(2.2),
             confirmedCatalogItemId: catalogItems[0]!.id, confirmedCause: `${catalogItems[0]!.code} — ${catalogItems[0]!.description}`, confirmedFailureCode: 'NC-030-001', confirmedFailureLabel: 'Não carrega / não pressuriza · Geração e partida', reopenedCount: 1,
             checklist: [], openMaterialRequests: 0,
             lastInspection: { result: 'APPROVED' as const, inspectedAt: ago(1.8), note: null, reasonDescription: null },
@@ -123,7 +126,7 @@ const workOrderList: WorkOrderSummary[] = ['wo-1', 'wo-2'].map((id) => {
   return {
     id: w.id, code: w.code, type: w.type, status: w.status, vehicleCode: w.vehicleCode, vehiclePlate: w.vehiclePlate,
     openedAt: w.openedAt, estimatedCompletionAt: w.estimatedCompletionAt, downtimeMinutes: w.downtimeMinutes,
-    isOverdue: w.isOverdue, taskCount: w.tasks.length, tasksDone: w.tasks.filter((t) => t.status === TaskStatus.APPROVED).length,
+    isOverdue: w.isOverdue, execution: w.execution, supplierName: w.supplierName, taskCount: w.tasks.length, tasksDone: w.tasks.filter((t) => t.status === TaskStatus.APPROVED).length,
   };
 });
 

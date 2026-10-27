@@ -34,6 +34,7 @@ import { AuditService } from '../common/audit.service';
 import { DowntimeService } from '../common/downtime.service';
 import { NotificationsService } from '../common/notifications.service';
 import { QueueService } from '../queue/queue.service';
+import { MaterialsService } from '../materials/materials.service';
 import { nextSequentialCode } from '../common/sequence';
 
 /** Checklist mínimo de limpeza, conforme o padrão do contrato (RF-21). */
@@ -64,6 +65,7 @@ export class WorkOrdersService {
     private readonly downtime: DowntimeService,
     private readonly notifications: NotificationsService,
     private readonly queue: QueueService,
+    private readonly materials: MaterialsService,
   ) {}
 
   /** RF-17 — abertura manual (a triagem abre sozinha no caminho do recolhimento). */
@@ -93,6 +95,8 @@ export class WorkOrdersService {
           openedAt: now,
           estimatedCompletionAt: input.estimatedCompletionAt,
           jbWorkOrderNumber: input.jbWorkOrderNumber,
+          execution: input.execution,
+          supplierName: input.execution === 'THIRD_PARTY' ? input.supplierName : null,
           createdById: actorId,
         },
       });
@@ -137,7 +141,10 @@ export class WorkOrdersService {
     await this.prisma.$transaction(async (tx) => {
       await tx.workOrder.update({
         where: { id },
-        data: { estimatedCompletionAt: input.estimatedCompletionAt },
+        data: {
+          estimatedCompletionAt: input.estimatedCompletionAt,
+          ...(input.execution ? { execution: input.execution, supplierName: input.execution === 'THIRD_PARTY' ? (input.supplierName ?? before.supplierName) : null } : {}),
+        },
       });
       await this.notifications.notifyForecastChange(
         tx,
@@ -183,6 +190,7 @@ export class WorkOrdersService {
           specialtyId: input.specialtyId,
           description: input.description,
           assignedToId: input.assignedToId,
+          technicianId: input.technicianId,
           checklistItems: {
             create: input.checklist.map((c, index) => ({
               sequence: index + 1,
@@ -714,11 +722,19 @@ export class WorkOrdersService {
       where: { id },
       include: {
         vehicle: { select: { code: true, plate: true } },
-        event: { select: { id: true, code: true } },
+        event: {
+          select: {
+            id: true,
+            code: true,
+            // Kit corretivo vigente da falha que trouxe o carro (Kaizen 2).
+            catalogItem: { select: { correctiveKits: { where: { isActive: true }, orderBy: { version: 'desc' }, take: 1, include: { items: { include: { material: true } } } } } },
+          },
+        },
         tasks: {
           orderBy: { code: 'asc' },
           include: {
             specialty: true,
+            technician: { select: { name: true } },
             confirmedCatalogItem: true,
             checklistItems: { orderBy: { sequence: 'asc' } },
             inspections: {
@@ -778,6 +794,14 @@ export class WorkOrdersService {
         ? (nameById.get(workOrder.releasedById) ?? null)
         : null,
       jbWorkOrderNumber: workOrder.jbWorkOrderNumber,
+      execution: workOrder.execution as WorkOrderDetail['execution'],
+      supplierName: workOrder.supplierName,
+      correctiveKit: (() => {
+        const kit = workOrder.event?.catalogItem?.correctiveKits[0];
+        return kit
+          ? { id: kit.id, name: kit.name, items: kit.items.map((i) => ({ materialId: i.materialId, materialCode: i.material.code, materialDescription: i.material.description, unit: i.material.unit, quantity: Number(i.quantity) })) }
+          : null;
+      })(),
       downtimeMinutes: minutes,
       isOverdue: !workOrder.releasedAt && workOrder.estimatedCompletionAt < now,
       breakdown,
@@ -791,6 +815,8 @@ export class WorkOrdersService {
         status: t.status,
         assignedToId: t.assignedToId,
         assignedToName: t.assignedToId ? (nameById.get(t.assignedToId) ?? null) : null,
+        technicianId: t.technicianId,
+        technicianName: t.technician?.name ?? null,
         startedAt: t.startedAt?.toISOString() ?? null,
         finishedAt: t.finishedAt?.toISOString() ?? null,
         confirmedCatalogItemId: t.confirmedCatalogItemId,
@@ -879,6 +905,8 @@ export class WorkOrdersService {
         estimatedCompletionAt: r.estimatedCompletionAt.toISOString(),
         downtimeMinutes: r.downtimeMinutes ?? (await this.downtime.currentMinutes(r.id, now)),
         isOverdue: !r.releasedAt && r.estimatedCompletionAt < now,
+        execution: r.execution as WorkOrderSummary['execution'],
+        supplierName: r.supplierName,
         taskCount: r.tasks.length,
         tasksDone: r.tasks.filter((t) => TASK_STATUSES_SETTLED.includes(t.status)).length,
       })),
@@ -917,10 +945,30 @@ export class WorkOrdersService {
     }
     return cleaning;
   }
+  /**
+   * Kaizen 2 — pede ao Estoque o kit corretivo inteiro da falha que trouxe o
+   * carro, item a item, em nome da sub-OS. Cada item vira uma solicitação
+   * normal (RF-23), que bloqueia a sub-OS até a entrega.
+   */
+  async requestCorrectiveKit(taskId: string, actorId: string): Promise<WorkOrderDetail> {
+    const task = await this.requireTask(taskId);
+    const detail = await this.findOne(task.workOrderId);
+    if (!detail.correctiveKit) throw new BadRequestException('A falha desta OS não tem kit corretivo cadastrado');
+    const existing = await this.prisma.materialRequest.findMany({ where: { workOrderTaskId: taskId }, select: { materialId: true } });
+    const already = new Set(existing.map((m) => m.materialId));
+    for (const item of detail.correctiveKit.items) {
+      if (already.has(item.materialId)) continue;
+      await this.materials.request({ workOrderTaskId: taskId, materialId: item.materialId, quantity: item.quantity, blocksTask: true }, actorId);
+    }
+    await this.audit.write({ actorId, action: 'task.requestKit', entity: 'WorkOrderTask', entityId: taskId, after: { kitId: detail.correctiveKit.id, items: detail.correctiveKit.items.length } });
+    return this.findOne(task.workOrderId);
+  }
+
 }
 
 function formatMinutes(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m}min`;
+
 }

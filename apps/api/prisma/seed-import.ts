@@ -305,6 +305,87 @@ export async function importBases(prisma: PrismaClient): Promise<void> {
 
   // Os planos genéricos de exemplo do R0 saem de cena: os reais são por modelo.
   await prisma.maintenancePlan.updateMany({ where: { code: { in: ['PLAN-DIESEL', 'PLAN-EBUS'] } }, data: { isActive: false } });
+
+  // ---- Kaizen 3: ferramental por tarefa (FR.168 × IT.MAN-01) ------------------
+  // A lista por tarefa é do item 3 do Kaizen (Danilo). Até ela chegar, o cruzamento
+  // abaixo é o óbvio da oficina: o que cada tarefa do diesel não faz sem.
+  const TASK_TOOLS: Record<string, string[]> = {
+    I01: ['FER-020', 'FER-012'], // óleo e filtro: cinta de sacar filtro, chave de grifo
+    I03: ['FER-047'], // arrefecimento: teste de radiador
+    I06: ['FER-014', 'FER-037'], // torque das porcas de roda: impacto 3/4 e soquete 33
+    I09: ['FER-045'], // baterias: teste de bateria
+    A07: ['FER-043'], // sistema de carga: Star Diagnosis
+    B04: ['FER-009', 'FER-014'], // cubos: chave de cubo dianteira
+    C03: ['FER-046'], // intercooler: teste de intercooler
+  };
+  const toolIdByCode = new Map((await prisma.tool.findMany({ select: { id: true, code: true } })).map((t) => [t.code, t.id]));
+  const dieselTasks = await prisma.maintenanceTask.findMany({ where: { package: { plan: { technology: VehicleTechnology.DIESEL, isActive: true } } }, select: { id: true, code: true } });
+  let taskToolLinks = 0;
+  for (const t of dieselTasks) {
+    for (const code of TASK_TOOLS[t.code] ?? []) {
+      const toolId = toolIdByCode.get(code);
+      if (!toolId) continue;
+      await prisma.maintenanceTaskTool.upsert({ where: { taskId_toolId: { taskId: t.id, toolId } }, update: {}, create: { taskId: t.id, toolId, quantity: 1 } });
+      taskToolLinks += 1;
+    }
+  }
+  console.log(`  ${taskToolLinks} vínculos tarefa × ferramenta (Kaizen 3)`);
+
+  // ---- Kaizen 2: kits corretivos por falha do catálogo ----------------------------
+  // Cruzamento das seis falhas do catálogo inicial com o inventário real.
+  const CORRECTIVE_KITS: Record<string, [string, number][]> = {
+    'ELE-ALT-01': [['102000', 1], ['002495', 1], ['006454', 1]],
+    'PNE-APU-01': [['008916', 1], ['008627', 1]],
+    'PNE-CUI-01': [['008450', 1]],
+    'MEC-MOT-01': [['102014', 1], ['006454', 1], ['000910', 4]],
+    'AC-CLI-01': [['122599', 1], ['100592', 1], ['122330', 1]],
+    'CAR-POR-01': [['140266', 1]],
+  };
+  const catalogItems = await prisma.failureCatalogItem.findMany({ where: { isActive: true } });
+  let correctiveKits = 0;
+  for (const item of catalogItems) {
+    const spec = CORRECTIVE_KITS[item.code];
+    if (!spec) continue;
+    const existing = await prisma.kit.findFirst({ where: { catalogItemId: item.id, isActive: true } });
+    if (existing) continue;
+    const items = spec.map(([code, qty]) => ({ materialId: materialIdByCode.get(code), quantity: qty })).filter((i): i is { materialId: string; quantity: number } => Boolean(i.materialId));
+    if (!items.length) continue;
+    await prisma.kit.create({
+      data: { code: `KIT-${item.code}`.slice(0, 24), name: `Kit corretivo — ${item.description}`, catalogItemId: item.id, version: 1, effectiveFrom, items: { create: items } },
+    });
+    correctiveKits += 1;
+  }
+  console.log(`  ${correctiveKits} kits corretivos (Kaizen 2)`);
+
+  // ---- Kaizen 15–17: técnicos e inspetores — MOCK até a lista da Manutenção chegar ----
+  const TECHNICIANS: { registration: string; name: string; specialty: string; technologies: VehicleTechnology[]; level: number; isInspector: boolean }[] = [
+    { registration: '70012', name: 'Carlos Henrique de Souza', specialty: 'MEC', technologies: ['DIESEL'], level: 3, isInspector: true },
+    { registration: '70034', name: 'Edson Luiz Ferreira', specialty: 'MEC', technologies: ['DIESEL'], level: 3, isInspector: false },
+    { registration: '70051', name: 'Marcos Vinícius Pereira', specialty: 'MEC', technologies: ['DIESEL', 'EBUS'], level: 2, isInspector: false },
+    { registration: '70077', name: 'Anderson Ribeiro da Silva', specialty: 'MEC', technologies: ['DIESEL'], level: 2, isInspector: false },
+    { registration: '70088', name: 'Jonas Alves Moreira', specialty: 'MEC', technologies: ['DIESEL'], level: 1, isInspector: false },
+    { registration: '70093', name: 'Rafael Augusto Lima', specialty: 'MEC', technologies: ['DIESEL', 'EBUS'], level: 1, isInspector: false },
+    { registration: '70104', name: 'Wellington Santos Costa', specialty: 'MEC', technologies: ['DIESEL'], level: 2, isInspector: false },
+    { registration: '70120', name: 'Luiz Fernando Barbosa', specialty: 'ELE', technologies: ['DIESEL', 'EBUS'], level: 3, isInspector: true },
+    { registration: '70131', name: 'Thiago Martins Rocha', specialty: 'ELE', technologies: ['DIESEL', 'EBUS'], level: 2, isInspector: false },
+    { registration: '70145', name: 'Bruno César Oliveira', specialty: 'ELE', technologies: ['EBUS'], level: 2, isInspector: false },
+    { registration: '70158', name: 'Diego Nascimento Araújo', specialty: 'ELE', technologies: ['DIESEL'], level: 1, isInspector: false },
+    { registration: '70166', name: 'Sérgio Ricardo Gomes', specialty: 'FUN', technologies: ['DIESEL', 'EBUS'], level: 3, isInspector: false },
+    { registration: '70172', name: 'Paulo Roberto Dias', specialty: 'FUN', technologies: ['DIESEL', 'EBUS'], level: 1, isInspector: false },
+    { registration: '70180', name: 'Rogério Mendes Carvalho', specialty: 'PNE', technologies: ['DIESEL', 'EBUS'], level: 3, isInspector: true },
+    { registration: '70191', name: 'Fábio Henrique Teixeira', specialty: 'PNE', technologies: ['DIESEL', 'EBUS'], level: 2, isInspector: false },
+    { registration: '70205', name: 'André Luís Cardoso', specialty: 'AC', technologies: ['DIESEL', 'EBUS'], level: 2, isInspector: false },
+  ];
+  for (const t of TECHNICIANS) {
+    const specialtyId = specialties[t.specialty];
+    if (!specialtyId) continue;
+    await prisma.technician.upsert({
+      where: { registration: t.registration },
+      update: { name: t.name, specialtyId, technologies: t.technologies, level: t.level, isInspector: t.isInspector },
+      create: { registration: t.registration, name: t.name, specialtyId, technologies: t.technologies, level: t.level, isInspector: t.isInspector },
+    });
+  }
+  console.log(`  ${TECHNICIANS.length} técnicos (mock — Kaizen 15–17)`);
 }
 
 if (require.main === module) {

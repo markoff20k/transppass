@@ -9,7 +9,9 @@ import {
   type ExpectedReturnRow,
   type KitSeparationRow,
   type KmTimelineRow,
+  type KaizenReadiness,
   type OperatorCandidate,
+  type TechnicianRow,
   type OperatorRow,
   type PlanPackageRow,
   type PlanTaskRow,
@@ -242,7 +244,7 @@ const history = MKBF_HIST.map((mkbf, i) => ({
 
 const specialtyIds: Record<string, string> = { MEC: 'sp-1', ELE: 'sp-2', PNE: 'sp-3', AC: 'sp-4' };
 const specialtyNames: Record<string, string> = { 'sp-1': 'Mecânica', 'sp-2': 'Elétrica', 'sp-3': 'Pneus', 'sp-4': 'Ar-condicionado' };
-const task = (id: string, code: string, description: string, sp: string, min: number): PlanTaskRow => ({ id, code, description, specialtyId: specialtyIds[sp]!, specialtyName: specialtyNames[specialtyIds[sp]!]!, estimatedMinutes: min , section: null, equipmentCondition: null });
+const task = (id: string, code: string, description: string, sp: string, min: number): PlanTaskRow => ({ id, code, description, specialtyId: specialtyIds[sp]!, specialtyName: specialtyNames[specialtyIds[sp]!]!, estimatedMinutes: min , section: null, equipmentCondition: null, tools: [] });
 const plansTree: PlanTree[] = [
   {
     id: 'plan-1', code: 'PLAN-DIESEL', name: 'Plano preventivo — frota diesel', technology: 'DIESEL', manufacturer: null, vehicleModel: null, version: 1, controlledDocument: 'IT.MAN-01', effectiveFrom: '2026-01-01T00:00:00.000Z', isActive: true,
@@ -280,7 +282,33 @@ const materialRows = [
   { id: 'm-9', code: 'PAST-FR-01', description: 'Pastilha de freio (jogo)', unit: 'jg', isSerialized: false, isActive: false, kitCount: 0 },
 ];
 
+const technicians: TechnicianRow[] = [
+  { id: 'tec-1', registration: '04521', name: 'Carlos Henrique Souza', specialtyId: 'sp-1', specialtyCode: 'MEC', specialtyName: 'Mecânica', technologies: ['DIESEL'], level: 3, isInspector: true, isActive: true, userId: null, openTasks: 1 },
+  { id: 'tec-2', registration: '05110', name: 'Edson Luiz Ferreira', specialtyId: 'sp-2', specialtyCode: 'ELE', specialtyName: 'Elétrica', technologies: ['DIESEL', 'EBUS'], level: 2, isInspector: false, isActive: true, userId: null, openTasks: 0 },
+];
+const readiness: KaizenReadiness = { vehicles: 5, vehiclesWithClass: 5, drivers: 4, conductors: 0, materials: 8, preventiveMaterials: 4, reconditionedMaterials: 2, tools: 3, toolUnits: 3, plans: 2, packages: 3, planTasks: 14, preventiveKits: 2, correctiveKits: 0, catalogItems: 6, taskTools: 0, tasksWithTools: 0, technicians: 2, inspectors: 1, serializedComponents: 4, thirdPartyWorkOrders: 0, inspections: 3, computedAt: new Date().toISOString() };
+
 export const r2Handlers = [
+  http.get('*/api/kaizen/readiness', () => HttpResponse.json(readiness)),
+  http.get('*/api/technicians', () => HttpResponse.json(technicians)),
+  http.post('*/api/technicians', async ({ request }) => {
+    const body = (await request.json()) as Partial<TechnicianRow>;
+    const row: TechnicianRow = { id: `tec-${Date.now()}`, registration: body.registration ?? '', name: body.name ?? '', specialtyId: body.specialtyId ?? 'sp-1', specialtyCode: 'MEC', specialtyName: specialtyNames[body.specialtyId ?? 'sp-1'] ?? 'Mecânica', technologies: body.technologies ?? ['DIESEL'], level: (body.level ?? 1) as TechnicianRow['level'], isInspector: Boolean(body.isInspector), isActive: true, userId: null, openTasks: 0 };
+    technicians.push(row);
+    return HttpResponse.json(row, { status: 201 });
+  }),
+  http.patch('*/api/technicians/:id', async ({ request, params }) => {
+    const row = technicians.find((t) => t.id === params.id);
+    if (row) Object.assign(row, await request.json());
+    return HttpResponse.json(row ?? technicians[0]);
+  }),
+  http.get('*/api/plans/catalog-kits', () => HttpResponse.json([])),
+  http.post('*/api/plans/catalog-items/:id/kit', async ({ request, params }) => {
+    const body = (await request.json()) as { code: string; name: string; items: { materialId: string; quantity: number }[] };
+    return HttpResponse.json({ id: `ck-${Date.now()}`, code: body.code, name: body.name, version: 1, isActive: true, catalogItemId: params.id, items: [] }, { status: 201 });
+  }),
+  http.post('*/api/plans/tasks/:id/tools', () => HttpResponse.json([])),
+  http.delete('*/api/plans/tasks/:id/tools/:toolId', () => HttpResponse.json([])),
   http.get('*/api/metrics/history', () => HttpResponse.json(history)),
   http.post('*/api/metrics/snapshot', () => new HttpResponse(null, { status: 204 })),
   http.get('*/api/plans/materials', () => HttpResponse.json(materialRows)),
@@ -316,7 +344,7 @@ export const r2Handlers = [
   http.post('*/api/plans/packages/:id/tasks', async ({ request, params }) => {
     const pkg = plansTree.flatMap((p) => p.packages).find((x) => x.id === params.id);
     const body = (await request.json()) as { code: string; description: string; specialtyId?: string; estimatedMinutes?: number };
-    const row = { id: `t-${Date.now()}`, code: body.code, description: body.description, specialtyId: body.specialtyId ?? null, specialtyName: body.specialtyId ? (specialtyNames[body.specialtyId] ?? null) : null, estimatedMinutes: body.estimatedMinutes ?? null, section: null, equipmentCondition: null };
+    const row = { id: `t-${Date.now()}`, code: body.code, description: body.description, specialtyId: body.specialtyId ?? null, specialtyName: body.specialtyId ? (specialtyNames[body.specialtyId] ?? null) : null, estimatedMinutes: body.estimatedMinutes ?? null, section: null, equipmentCondition: null, tools: [] };
     pkg?.tasks.push(row);
     if (pkg) pkg.estimatedMinutes += row.estimatedMinutes ?? 0;
     return HttpResponse.json(row, { status: 201 });

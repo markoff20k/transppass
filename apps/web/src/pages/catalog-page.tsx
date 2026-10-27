@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookCheck, Plus } from 'lucide-react';
+import { BookCheck, Package, Plus, Trash2 } from 'lucide-react';
 import {
   createFailureCatalogItemSchema,
   createReasonCodeSchema,
   REASON_CODE_LIST_LABELS,
   ReasonCodeList,
+  createKitSchema,
+  type CatalogKitRow,
   type CreateFailureCatalogItemInput,
+  type CreateKitInput,
   type CreateReasonCodeInput,
   type FailureCatalogItem,
+  type MaterialOption,
   type Paginated,
   type ReasonCode,
 } from '@app/shared';
@@ -20,8 +24,10 @@ import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { FailureCodeRules } from '@/components/failure-code/failure-code-rules';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { SearchSelect } from '@/components/ui/search-select';
+import { formatNumber } from '@/lib/format';
 
-type Panel = { kind: 'closed' } | { kind: 'item' } | { kind: 'reason'; list: ReasonCodeList };
+type Panel = { kind: 'closed' } | { kind: 'item' } | { kind: 'reason'; list: ReasonCodeList } | { kind: 'kit'; item: FailureCatalogItem };
 
 /**
  * RF-32/33 — catálogo de falhas e as cinco listas de códigos de motivo.
@@ -60,7 +66,13 @@ export function CatalogPage() {
   });
 
   const byList = (list: ReasonCodeList) => (reasonCodes.data ?? []).filter((rc) => rc.list === list);
-  const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['catalog'] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['catalog'] });
+    void queryClient.invalidateQueries({ queryKey: ['plans', 'catalog-kits'] });
+  };
+  // Kaizen 2 — kit corretivo vigente de cada falha.
+  const kits = useQuery({ queryKey: ['plans', 'catalog-kits'], queryFn: () => api.get<CatalogKitRow[]>('/plans/catalog-kits') });
+  const kitOf = (itemId: string) => (kits.data ?? []).find((k) => k.catalogItemId === itemId) ?? null;
 
   return (
     <>
@@ -84,6 +96,7 @@ export function CatalogPage() {
                   <th>Flags</th>
                   <th className="is-num">Reparo (min)</th>
                   <th className="is-num">Taxa de campo</th>
+                  <th>Kit corretivo</th>
                 </tr>
               </thead>
               <tbody>
@@ -102,6 +115,16 @@ export function CatalogPage() {
                     <td className="is-num">{item.estimatedRepairMinutes ?? '—'}</td>
                     <td className="is-num">
                       {item.fieldResolutionRate === null ? '—' : `${(item.fieldResolutionRate * 100).toFixed(0)}% (${item.fieldResolutionSamples})`}
+                    </td>
+                    <td>
+                      {(() => {
+                        const kit = kitOf(item.id);
+                        return (
+                          <button type="button" className={`tp-btn tp-btn--sm ${kit ? 'tp-btn--ghost' : 'tp-btn--secondary'}`} onClick={() => setPanel({ kind: 'kit', item })}>
+                            <Package size={13} /> {kit ? `${kit.items.length} item(ns) · v${kit.version}` : 'Montar kit'}
+                          </button>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))}
@@ -147,6 +170,7 @@ export function CatalogPage() {
 
       <NewItemDrawer open={panel.kind === 'item'} onClose={() => setPanel({ kind: 'closed' })} onDone={() => { setPanel({ kind: 'closed' }); invalidate(); }} />
       <NewReasonDrawer list={panel.kind === 'reason' ? panel.list : null} onClose={() => setPanel({ kind: 'closed' })} onDone={() => { setPanel({ kind: 'closed' }); invalidate(); }} />
+      <CorrectiveKitDrawer item={panel.kind === 'kit' ? panel.item : null} kit={panel.kind === 'kit' ? kitOf(panel.item.id) : null} onClose={() => setPanel({ kind: 'closed' })} onDone={() => { setPanel({ kind: 'closed' }); invalidate(); }} />
     </>
   );
 }
@@ -233,6 +257,57 @@ function NewItemDrawer({ open, onClose, onDone }: { open: boolean; onClose: () =
 
         {error && <div className="tp-alert tp-alert--danger">{error}</div>}
       </form>
+    </Drawer>
+  );
+}
+
+/**
+ * Kaizen 2 — o kit corretivo da falha: o que o Estoque separa quando esta
+ * falha recolhe um carro. Mudar os itens cria versão nova, como no preventivo.
+ */
+function CorrectiveKitDrawer({ item, kit, onClose, onDone }: { item: FailureCatalogItem | null; kit: CatalogKitRow | null; onClose: () => void; onDone: () => void }) {
+  const [items, setItems] = useState<{ materialId: string; quantity: string }[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const materials = useQuery({ queryKey: ['materials', 'catalog'], queryFn: () => api.get<MaterialOption[]>('/materials/catalog'), enabled: Boolean(item) });
+  const byId = new Map((materials.data ?? []).map((m) => [m.id, m]));
+  useEffect(() => {
+    setError(null);
+    setItems((kit?.items ?? []).map((i) => ({ materialId: i.materialId, quantity: String(i.quantity) })));
+  }, [item, kit]);
+  const save = useMutation({
+    mutationFn: (input: CreateKitInput) => api.post(`/plans/catalog-items/${item?.id}/kit`, input),
+    onSuccess: onDone,
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível salvar o kit'),
+  });
+  const submit = () => {
+    if (!item) return;
+    const parsed = createKitSchema.safeParse({ code: kit?.code ?? `KIT-${item.code}`, name: kit?.name ?? `Kit corretivo — ${item.description}`, items: items.filter((i) => i.materialId) });
+    if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
+    if (parsed.data.items.length === 0) return setError('Acrescente ao menos um material');
+    setError(null);
+    save.mutate(parsed.data);
+  };
+  const setItem = (i: number, patch: Partial<{ materialId: string; quantity: string }>) => setItems((rows) => rows.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+  return (
+    <Drawer open={Boolean(item)} onClose={onClose} eyebrow={item ? `${item.code} · ${item.description}` : undefined} title={kit ? `Kit corretivo · v${kit.version}` : 'Montar kit corretivo'}
+      description="O que o Estoque separa quando esta falha recolhe um carro. Na OS, a sub-OS pede o kit inteiro com um clique (Kaizen 2)."
+      footer={<><button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button><button type="button" className="tp-btn tp-btn--primary" disabled={save.isPending} onClick={submit}>{kit ? 'Salvar nova versão' : 'Criar kit'}</button></>}>
+      <div className="tp-stack">
+        <div className="tp-field field-materials">
+          <span className="tp-label">Materiais do kit</span>
+          {items.length === 0 && <span className="tp-help">Nenhum item ainda.</span>}
+          {items.map((it, i) => (
+            <div key={i} className="field-materials__row field-materials__row--kit">
+              <SearchSelect value={it.materialId} onChange={(id) => setItem(i, { materialId: id })} placeholder="Código, descrição ou referência"
+                options={(materials.data ?? []).map((m) => ({ id: m.id, label: m.description, hint: `${m.code}${m.manufacturerRef ? ` · ${m.manufacturerRef}` : ''} · saldo ${formatNumber(m.stockQty)}` }))} />
+              <input className="tp-input" type="number" min={0} step="any" value={it.quantity} placeholder={byId.get(it.materialId)?.unit ?? 'qtd'} onChange={(e) => setItem(i, { quantity: e.target.value })} />
+              <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" aria-label="Remover" onClick={() => setItems((rows) => rows.filter((_, j) => j !== i))}><Trash2 size={14} /></button>
+            </div>
+          ))}
+          <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" style={{ justifySelf: 'start' }} onClick={() => setItems((rows) => [...rows, { materialId: '', quantity: '1' }])}><Plus size={14} /> Adicionar material</button>
+        </div>
+        {error && <p className="tp-error">{error}</p>}
+      </div>
     </Drawer>
   );
 }

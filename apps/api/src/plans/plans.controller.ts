@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, P
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   createKitSchema,
+  taskToolSchema,
   createMaterialSchema,
   createPackageSchema,
   createPlanSchema,
@@ -12,7 +13,10 @@ import {
   updatePlanSchema,
   updatePlanTaskSchema,
   UserRole,
+  type CatalogKitRow,
   type CreateKitInput,
+  type TaskToolInput,
+  type TaskToolRow,
   type CreateMaterialInput,
   type CreatePackageInput,
   type CreatePlanInput,
@@ -119,5 +123,32 @@ export class PlansController {
   @Roles(...MATERIAL_EDITORS)
   updateMaterial(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(updateMaterialSchema)) body: UpdateMaterialInput, @CurrentUser('sub') actorId: string) {
     return this.plans.updateMaterial(id, body, actorId);
+  }
+
+  // --- Kaizen 3: ferramental por tarefa ------------------------------------------
+
+  @Post('tasks/:id/tools')
+  @Roles(...EDITORS)
+  addTaskTool(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(taskToolSchema)) body: TaskToolInput, @CurrentUser('sub') actorId: string): Promise<TaskToolRow[]> {
+    return this.plans.addTaskTool(id, body, actorId);
+  }
+
+  @Delete('tasks/:id/tools/:toolId')
+  @Roles(...EDITORS)
+  removeTaskTool(@Param('id', ParseUUIDPipe) id: string, @Param('toolId', ParseUUIDPipe) toolId: string, @CurrentUser('sub') actorId: string): Promise<TaskToolRow[]> {
+    return this.plans.removeTaskTool(id, toolId, actorId);
+  }
+
+  // --- Kaizen 2: kits corretivos por falha do catálogo ---------------------------
+
+  @Get('catalog-kits')
+  listCatalogKits(): Promise<CatalogKitRow[]> {
+    return this.plans.listCatalogKits();
+  }
+
+  @Post('catalog-items/:id/kit')
+  @Roles(...EDITORS)
+  saveCatalogKit(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(createKitSchema)) body: CreateKitInput, @CurrentUser('sub') actorId: string): Promise<CatalogKitRow> {
+    return this.plans.saveCatalogKit(id, body, actorId);
   }
 }

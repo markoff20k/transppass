@@ -9,6 +9,7 @@ import {
   WorkOrderStatus,
   type Paginated,
   type WorkOrderSummary,
+  WorkOrderExecution,
 } from '@app/shared';
 import { api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes } from '@/lib/format';
@@ -135,6 +136,7 @@ export function WorkOrdersPage() {
                       <td className="tp-muted">{WORK_ORDER_TYPE_LABELS[row.type]}</td>
                       <td>
                         <span className="tp-badge tp-badge--status">{WORK_ORDER_STATUS_LABELS[row.status]}</span>
+                        {row.execution === WorkOrderExecution.THIRD_PARTY && <span className="tp-badge tp-badge--status tp-badge--warning" style={{ marginLeft: 6 }} title={row.supplierName ?? undefined}>terceiro</span>}
                       </td>
                       <td className={`is-num${row.isOverdue ? ' tp-error' : ''}`}>{formatMinutes(row.downtimeMinutes)}</td>
                       <td className="tp-muted">

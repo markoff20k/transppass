@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowRight, CalendarClock, Check, Lock, Plus, Unlock } from 'lucide-react';
+import { ArrowRight, CalendarClock, Check, HardHat, Lock, Package, Plus, Unlock } from 'lucide-react';
 import {
   DOWNTIME_CAUSE_LABELS,
   InspectionResult,
@@ -14,7 +14,10 @@ import {
   type Paginated,
   type ReasonCode,
   type TaskRow,
+  type TechnicianRow,
   type WorkOrderDetail,
+  WORK_ORDER_EXECUTION_LABELS,
+  WorkOrderExecution,
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes } from '@/lib/format';
@@ -24,6 +27,7 @@ import { Drawer } from '@/components/ui/drawer';
 import { FailureCodePicker } from '@/components/failure-code/failure-code-picker';
 import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { SearchSelect } from '@/components/ui/search-select';
 
 type Panel =
   | { kind: 'closed' }
@@ -158,11 +162,11 @@ export function WorkOrderPage() {
   usePageHeader({
     eyebrow: 'Execução',
     title: data ? `${data.code} · carro ${data.vehicleCode}` : 'Ordem de serviço',
-    description: data ? `${data.vehiclePlate} · relógio único de indisponibilidade (RN-02)` : undefined,
+    description: data ? `${data.vehiclePlate} · ${data.execution === WorkOrderExecution.THIRD_PARTY ? `executada por terceiro${data.supplierName ? ` (${data.supplierName})` : ''}` : 'oficina própria'} · relógio único de indisponibilidade (RN-02)` : undefined,
     crumbs: [{ label: 'Ordens de serviço', to: '/os' }],
     actions: data && isOpen ? (
       <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setPanel({ kind: 'estimate' })}>
-        <CalendarClock size={14} /> Ajustar previsão
+        <CalendarClock size={14} /> Previsão e execução
       </button>
     ) : undefined,
   });
@@ -247,6 +251,15 @@ export function WorkOrderPage() {
               )}
             </div>
 
+            {data.correctiveKit && (
+              <div className="wo-kit">
+                <Package size={15} aria-hidden />
+                <div>
+                  <b>Kit corretivo da falha: {data.correctiveKit.name}</b>
+                  <span>{data.correctiveKit.items.map((i) => `${i.materialCode} ${i.materialDescription} × ${i.quantity} ${i.unit}`).join(' · ')}</span>
+                </div>
+              </div>
+            )}
             {data.tasks.length === 0 ? (
               <div className="tp-table__empty">Nenhuma sub-OS. Acrescente o serviço a executar.</div>
             ) : (
@@ -255,6 +268,8 @@ export function WorkOrderPage() {
                   <TaskCard
                     key={task.id}
                     task={task}
+                    hasKit={Boolean(data.correctiveKit)}
+                    onRequestKit={() => action.mutate(`tasks/${task.id}/request-kit`)}
                     onChanged={invalidate}
                     onFinish={() => setPanel({ kind: 'finish-task', task })}
                     onInspect={() => setPanel({ kind: 'inspect', task })}
@@ -466,11 +481,15 @@ function taskBadge(status: TaskStatus): string {
 
 function TaskCard({
   task,
+  hasKit,
+  onRequestKit,
   onChanged,
   onFinish,
   onInspect,
 }: {
   task: TaskRow;
+  hasKit: boolean;
+  onRequestKit: () => void;
   onChanged: () => void;
   onFinish: () => void;
   onInspect: () => void;
@@ -510,6 +529,9 @@ function TaskCard({
       </div>
 
       <p className="wo-task__title">{task.description}</p>
+      {(task.technicianName || task.assignedToName) && (
+        <p className="tp-muted wo-task__who"><HardHat size={12} aria-hidden /> {task.technicianName ?? task.assignedToName}</p>
+      )}
 
       {task.openMaterialRequests > 0 && (
         <div className="tp-alert tp-alert--danger">
@@ -564,6 +586,11 @@ function TaskCard({
             Iniciar
           </button>
         )}
+        {task.status === TaskStatus.IN_PROGRESS && hasKit && task.openMaterialRequests === 0 && (
+          <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm" onClick={onRequestKit} title="Pede ao Estoque todos os itens do kit corretivo desta falha">
+            <Package size={13} /> Pedir kit corretivo
+          </button>
+        )}
         {task.status === TaskStatus.IN_PROGRESS && (
           <button type="button" className="tp-btn tp-btn--primary tp-btn--sm" onClick={onFinish}>
             Concluir sub-OS
@@ -585,7 +612,9 @@ function TaskCard({
 function AddTaskDrawer({ open, workOrderId, onClose, onDone }: { open: boolean; workOrderId: string; onClose: () => void; onDone: () => void }) {
   const [description, setDescription] = useState('');
   const [specialtyId, setSpecialtyId] = useState('');
+  const [technicianId, setTechnicianId] = useState('');
   const [checklist, setChecklist] = useState('');
+  const technicians = useQuery({ queryKey: ['technicians', true], queryFn: () => api.get<TechnicianRow[]>('/technicians?onlyActive=true'), enabled: open });
   const [error, setError] = useState<string | null>(null);
 
   const specialties = useQuery({
@@ -598,6 +627,7 @@ function AddTaskDrawer({ open, workOrderId, onClose, onDone }: { open: boolean; 
     mutationFn: () =>
       api.post(`/work-orders/${workOrderId}/tasks`, {
         specialtyId,
+        technicianId: technicianId || undefined,
         description,
         checklist: checklist
           .split('\n')
@@ -645,6 +675,9 @@ function AddTaskDrawer({ open, workOrderId, onClose, onDone }: { open: boolean; 
         </select>
       </div>
       <div className="tp-field">
+        <label className="tp-label" htmlFor="at-tech">Técnico responsável <span className="tp-label__hint">Kaizen 16</span></label>
+        <SearchSelect id="at-tech" value={technicianId} onChange={setTechnicianId} placeholder="Nome ou matrícula (opcional)"
+          options={(technicians.data ?? []).filter((t) => !specialtyId || t.specialtyId === specialtyId).map((t) => ({ id: t.id, label: t.name, hint: `${t.registration} · ${t.specialtyName} · N${t.level}` }))} />
         <label className="tp-label" htmlFor="at-desc">Serviço a executar <span className="tp-label__required">obrigatório</span></label>
         <input id="at-desc" className="tp-input" value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
@@ -824,9 +857,11 @@ function toLocalInput(iso: string): string {
 /** RN-03 — a previsão de conclusão é obrigatória e pode ser ajustada; cada ajuste notifica os interessados (RF-09). */
 function EstimateDrawer({ open, workOrder, onClose, onDone }: { open: boolean; workOrder: WorkOrderDetail; onClose: () => void; onDone: () => void }) {
   const [value, setValue] = useState(() => toLocalInput(workOrder.estimatedCompletionAt));
+  const [execution, setExecution] = useState<WorkOrderExecution>(workOrder.execution);
+  const [supplierName, setSupplierName] = useState(workOrder.supplierName ?? '');
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
-    mutationFn: () => api.patch(`/work-orders/${workOrder.id}/estimate`, { estimatedCompletionAt: new Date(value).toISOString() }),
+    mutationFn: () => api.patch(`/work-orders/${workOrder.id}/estimate`, { estimatedCompletionAt: new Date(value).toISOString(), execution, supplierName: execution === WorkOrderExecution.THIRD_PARTY ? supplierName.trim() || null : null }),
     onSuccess: () => { setError(null); onDone(); },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao ajustar a previsão'),
   });
@@ -854,6 +889,17 @@ function EstimateDrawer({ open, workOrder, onClose, onDone }: { open: boolean; w
         <label className="tp-field">
           <span className="tp-label">Nova previsão</span>
           <input className="tp-input" type="datetime-local" value={value} onChange={(e) => setValue(e.target.value)} />
+        </label>
+        <label className="tp-field">
+          <span className="tp-label">Quem executa <span className="tp-label__hint">Kaizen 6</span></span>
+          <select className="tp-select" value={execution} onChange={(e) => setExecution(e.target.value as WorkOrderExecution)}>
+            {Object.values(WorkOrderExecution).map((x) => <option key={x} value={x}>{WORK_ORDER_EXECUTION_LABELS[x]}</option>)}
+          </select>
+        </label>
+        <label className="tp-field" hidden={execution !== WorkOrderExecution.THIRD_PARTY}>
+          <span className="tp-label">Fornecedor</span>
+          <input className="tp-input" value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="Oficina ou retífica externa" />
+          <span className="tp-help">A OS de terceiro continua com o relógio único; o portão de liberação é o mesmo.</span>
         </label>
         {error && <p className="tp-error">{error}</p>}
       </div>

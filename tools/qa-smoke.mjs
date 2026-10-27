@@ -229,6 +229,8 @@ async function run() {
     { path: '/cadastros/usuarios', name: 'Usuários', check: '.tp-table' },
     { path: '/cadastros/planos', name: 'Planos preventivos', check: '.plan-pkg' },
     { path: '/cadastros/materiais', name: 'Materiais', check: '.tp-table' },
+    { path: '/cadastros/tecnicos', name: 'Técnicos', check: '.tp-table' },
+    { path: '/kaizen', name: 'Kaizen MKBF', check: '.kz-table' },
     { path: '/design', name: 'Design kit', check: '.bus-gallery' },
   ];
   let i = 0;
@@ -431,7 +433,7 @@ async function run() {
   await sleep(400);
   await page.click('.tp-table tbody tr a');
   await sleep(600);
-  await clickText(page, '.subheader__actions button', 'Ajustar previsão');
+  await clickText(page, '.subheader__actions button', 'Previsão e execução');
   await sleep(300);
   record('OS-03', 'OS: ajustar previsão de conclusão abre painel (RN-03)', (await drawerOpen(page)) && (await exists(page, '.tp-drawer input[type="datetime-local"]')));
   await page.keyboard.press('Escape');

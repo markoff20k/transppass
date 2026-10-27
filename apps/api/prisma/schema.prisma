@@ -246,6 +246,7 @@ model Specialty {
   tasks            MaintenanceTask[]
   workOrderTasks   WorkOrderTask[]
   teamReservations TeamReservation[]
+  technicians      Technician[]
 
   @@map("specialties")
 }
@@ -296,6 +297,7 @@ model FailureCatalogItem {
   confirmedFieldServices FieldService[]        @relation("FieldConfirmedFailure")
   confirmedTasks         WorkOrderTask[]       @relation("TaskConfirmedFailure")
   backlogItems           VehicleBacklogItem[]
+  correctiveKits         Kit[]
 
   @@unique([versionId, code])
   @@index([isFastTrack])
@@ -417,9 +419,46 @@ model MaintenanceTask {
   package    MaintenancePackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
   specialty  Specialty?          @relation(fields: [specialtyId], references: [id])
   scopeItems ScheduleScopeItem[]
+  tools      MaintenanceTaskTool[]
 
   @@unique([packageId, code])
   @@map("maintenance_tasks")
+}
+
+/// Kaizen 3 — ferramental necessário por tarefa do plano (FR.168).
+model MaintenanceTaskTool {
+  id       String @id @default(uuid()) @db.Uuid
+  taskId   String @db.Uuid
+  toolId   String @db.Uuid
+  quantity Int    @default(1)
+
+  task MaintenanceTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tool Tool            @relation(fields: [toolId], references: [id])
+
+  @@unique([taskId, toolId])
+  @@map("maintenance_task_tools")
+}
+
+/// Kaizen 15–17 — técnicos e inspetores por especialidade, tecnologia e nível.
+model Technician {
+  id           String              @id @default(uuid()) @db.Uuid
+  registration String              @unique @db.VarChar(32)
+  name         String              @db.VarChar(120)
+  specialtyId  String              @db.Uuid
+  technologies VehicleTechnology[]
+  /// 1 iniciante, 2 pleno, 3 sênior — critério da Manutenção.
+  level        Int                 @default(1)
+  isInspector  Boolean             @default(false)
+  userId       String?             @unique @db.Uuid
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  specialty Specialty       @relation(fields: [specialtyId], references: [id])
+  tasks     WorkOrderTask[]
+
+  @@index([specialtyId])
+  @@map("technicians")
 }
 
 model Material {
@@ -461,11 +500,16 @@ model Kit {
   effectiveTo   DateTime?
   isActive      Boolean   @default(true)
 
-  package     MaintenancePackage? @relation(fields: [packageId], references: [id])
+  /// Kit corretivo: a falha do catálogo que ele atende (Kaizen 2).
+  catalogItemId String?   @db.Uuid
+
+  package     MaintenancePackage?  @relation(fields: [packageId], references: [id])
+  catalogItem FailureCatalogItem?  @relation(fields: [catalogItemId], references: [id])
   items       KitItem[]
   separations KitSeparation[]
 
   @@unique([code, version])
+  @@index([catalogItemId])
   @@map("kits")
 }
 
@@ -852,6 +896,9 @@ model WorkOrder {
   downtimeMinutes       Int?
   /// Espelhamento minimo com o JB, que segue mestre de custos e OS oficiais.
   jbWorkOrderNumber     String?         @db.VarChar(32)
+  /// Kaizen 6 — INTERNAL ou THIRD_PARTY, com o fornecedor quando for terceiro.
+  execution             String          @default("INTERNAL") @db.VarChar(16)
+  supplierName          String?         @db.VarChar(120)
   createdById           String          @db.Uuid
 
   vehicle              Vehicle               @relation(fields: [vehicleId], references: [id])
@@ -889,6 +936,8 @@ model WorkOrderTask {
   description            String     @db.VarChar(500)
   status                 TaskStatus @default(PENDING)
   assignedToId           String?    @db.Uuid
+  /// Técnico de manutenção responsável (Kaizen 16).
+  technicianId           String?    @db.Uuid
   startedAt              DateTime?
   finishedAt             DateTime?
   confirmedCatalogItemId String?    @db.Uuid
@@ -900,6 +949,7 @@ model WorkOrderTask {
 
   workOrder            WorkOrder            @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   specialty            Specialty            @relation(fields: [specialtyId], references: [id])
+  technician           Technician?          @relation(fields: [technicianId], references: [id])
   confirmedCatalogItem FailureCatalogItem?  @relation("TaskConfirmedFailure", fields: [confirmedCatalogItemId], references: [id])
   checklistItems       TaskChecklistItem[]
   inspections          Inspection[]
@@ -1201,7 +1251,8 @@ model Tool {
   requiredQty       Int       @default(1)
   availableQty      Int       @default(1)
 
-  loans ToolLoan[]
+  loans    ToolLoan[]
+  taskUses MaintenanceTaskTool[]
 
   @@map("tools")
 }

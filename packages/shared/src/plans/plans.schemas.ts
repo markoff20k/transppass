@@ -57,6 +57,20 @@ export const createPlanTaskSchema = z.object({
 
 export const updatePlanTaskSchema = createPlanTaskSchema.partial();
 
+/** Kaizen 3 — ferramenta exigida por uma tarefa do plano. */
+export const taskToolSchema = z.object({
+  toolId: z.string().uuid('Selecione a ferramenta'),
+  quantity: z.coerce.number().int().min(1).default(1),
+});
+export type TaskToolInput = z.infer<typeof taskToolSchema>;
+
+export interface TaskToolRow {
+  toolId: string;
+  code: string;
+  description: string;
+  quantity: number;
+}
+
 export const kitItemInputSchema = z.object({
   materialId: z.string().uuid(),
   quantity: z.coerce.number().positive('Quantidade deve ser maior que zero'),
@@ -114,6 +128,7 @@ export interface PlanTaskRow {
   estimatedMinutes: number | null;
   section: string | null;
   equipmentCondition: string | null;
+  tools: TaskToolRow[];
 }
 
 export interface KitItemRow {
@@ -131,6 +146,11 @@ export interface PlanKitRow {
   version: number;
   isActive: boolean;
   items: KitItemRow[];
+}
+
+/** Kaizen 2 — kit corretivo vigente de uma falha do catálogo. */
+export interface CatalogKitRow extends PlanKitRow {
+  catalogItemId: string;
 }
 
 export interface PlanPackageTree {

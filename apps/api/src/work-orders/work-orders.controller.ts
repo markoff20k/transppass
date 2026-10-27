@@ -189,4 +189,10 @@ export class WorkOrdersController {
   ): Promise<WorkOrderDetail> {
     return this.workOrders.release(id, actorId, actorRole);
   }
+
+  /** Kaizen 2 — solicita ao Estoque o kit corretivo da falha, item a item, para a sub-OS. */
+  @Post('tasks/:id/request-kit')
+  requestKit(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('sub') actorId: string): Promise<WorkOrderDetail> {
+    return this.workOrders.requestCorrectiveKit(id, actorId);
+  }
 }

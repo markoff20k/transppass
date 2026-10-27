@@ -771,6 +771,20 @@ async function main() {
     { role: UserRole.ADMIN, title: 'Inspeção reprovada e sub-OS reaberta', body: `S02 da OS do carro ${S.apu.code} reprovada (tensão de correia fora da faixa) e reaberta.`, entity: 'Inspection', createdAt: ago(2.6) },
   ] });
 
+  // ---- Kaizen 16: sub-OS abertas com técnico responsável, por especialidade ------
+  const technicians = await prisma.technician.findMany({ where: { isActive: true } });
+  const openTasks = await prisma.workOrderTask.findMany({ where: { technicianId: null, workOrder: { status: { notIn: [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] } } }, select: { id: true, specialtyId: true } });
+  const rr: Record<string, number> = {};
+  for (const task of openTasks) {
+    const pool = technicians.filter((t) => t.specialtyId === task.specialtyId);
+    if (!pool.length) continue;
+    rr[task.specialtyId] = (rr[task.specialtyId] ?? 0) + 1;
+    await prisma.workOrderTask.update({ where: { id: task.id }, data: { technicianId: pool[rr[task.specialtyId]! % pool.length]!.id } });
+  }
+  // ---- Kaizen 6: uma OS executada por terceiro, para a governança ter exemplo ------
+  const thirdParty = await prisma.workOrder.findFirst({ where: { status: WorkOrderStatus.IN_PROGRESS, event: { catalogItem: { code: 'MEC-MOT-01' } } }, orderBy: { openedAt: 'asc' } });
+  if (thirdParty) await prisma.workOrder.update({ where: { id: thirdParty.id }, data: { execution: 'THIRD_PARTY', supplierName: 'Retífica externa (mock)' } });
+
   const byStatus = await prisma.vehicle.groupBy({ by: ['status'], _count: { _all: true } });
   console.log('Seed de demonstração concluído.');
   console.log('  frota agora: ' + byStatus.map((s) => `${s.status} ${s._count._all}`).join(', '));

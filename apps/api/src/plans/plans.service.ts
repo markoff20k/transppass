@@ -13,6 +13,9 @@ import type {
   UpdatePackageInput,
   UpdatePlanInput,
   UpdatePlanTaskInput,
+  CatalogKitRow,
+  TaskToolInput,
+  TaskToolRow,
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit.service';
@@ -40,7 +43,7 @@ export class PlansService {
         packages: {
           orderBy: { intervalKm: 'asc' },
           include: {
-            tasks: { orderBy: { code: 'asc' }, include: { specialty: { select: { name: true } } } },
+            tasks: { orderBy: { code: 'asc' }, include: { specialty: { select: { name: true } }, tools: { include: { tool: true } } } },
             kits: {
               where: { isActive: true },
               orderBy: { version: 'desc' },
@@ -81,6 +84,7 @@ export class PlansService {
           estimatedMinutes: t.estimatedMinutes,
           section: t.section,
           equipmentCondition: t.equipmentCondition,
+          tools: t.tools.map((tt) => ({ toolId: tt.toolId, code: tt.tool.code, description: tt.tool.description, quantity: tt.quantity })),
         })),
         kit: pkg.kits[0] ? toKitRow(pkg.kits[0]) : null,
         estimatedMinutes: pkg.tasks.reduce((sum, t) => sum + (t.estimatedMinutes ?? 0), 0),
@@ -287,6 +291,75 @@ export class PlansService {
     const count = await this.prisma.material.count({ where: { id: { in: unique }, isActive: true } });
     if (count !== unique.length) throw new BadRequestException('Há material inexistente ou desativado no kit');
   }
+  // --- Kaizen 3: ferramental por tarefa ----------------------------------------
+
+  async addTaskTool(taskId: string, input: TaskToolInput, actorId: string): Promise<TaskToolRow[]> {
+    const task = await this.prisma.maintenanceTask.findUnique({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Tarefa não encontrada');
+    const tool = await this.prisma.tool.findUnique({ where: { id: input.toolId } });
+    if (!tool) throw new NotFoundException('Ferramenta não encontrada');
+    await this.prisma.maintenanceTaskTool.upsert({
+      where: { taskId_toolId: { taskId, toolId: input.toolId } },
+      update: { quantity: input.quantity },
+      create: { taskId, toolId: input.toolId, quantity: input.quantity },
+    });
+    await this.audit.write({ actorId, action: 'plan.task.tool.add', entity: 'MaintenanceTask', entityId: taskId, after: { toolId: input.toolId, quantity: input.quantity } });
+    return this.listTaskTools(taskId);
+  }
+
+  async removeTaskTool(taskId: string, toolId: string, actorId: string): Promise<TaskToolRow[]> {
+    await this.prisma.maintenanceTaskTool.deleteMany({ where: { taskId, toolId } });
+    await this.audit.write({ actorId, action: 'plan.task.tool.remove', entity: 'MaintenanceTask', entityId: taskId, after: { toolId } });
+    return this.listTaskTools(taskId);
+  }
+
+  private async listTaskTools(taskId: string): Promise<TaskToolRow[]> {
+    const rows = await this.prisma.maintenanceTaskTool.findMany({ where: { taskId }, include: { tool: true }, orderBy: { tool: { code: 'asc' } } });
+    return rows.map((tt) => ({ toolId: tt.toolId, code: tt.tool.code, description: tt.tool.description, quantity: tt.quantity }));
+  }
+
+  // --- Kaizen 2: kit corretivo por falha do catálogo -----------------------------
+
+  async listCatalogKits(): Promise<CatalogKitRow[]> {
+    const kits = await this.prisma.kit.findMany({
+      where: { isActive: true, catalogItemId: { not: null } },
+      orderBy: [{ catalogItemId: 'asc' }, { version: 'desc' }],
+      include: { items: { include: { material: true } } },
+    });
+    const seen = new Set<string>();
+    const out: CatalogKitRow[] = [];
+    for (const k of kits) {
+      if (seen.has(k.catalogItemId!)) continue;
+      seen.add(k.catalogItemId!);
+      out.push({ ...toKitRow(k), catalogItemId: k.catalogItemId! });
+    }
+    return out;
+  }
+
+  /** Mudar os itens cria versão nova e encerra a anterior, como no kit preventivo. */
+  async saveCatalogKit(catalogItemId: string, input: CreateKitInput, actorId: string): Promise<CatalogKitRow> {
+    const item = await this.prisma.failureCatalogItem.findUnique({ where: { id: catalogItemId } });
+    if (!item) throw new NotFoundException('Falha do catálogo não encontrada');
+    await this.assertMaterials(input.items.map((i) => i.materialId));
+    const last = await this.prisma.kit.findFirst({ where: { code: input.code }, orderBy: { version: 'desc' } });
+    const kit = await this.prisma.$transaction(async (tx) => {
+      await tx.kit.updateMany({ where: { catalogItemId, isActive: true }, data: { isActive: false, effectiveTo: new Date() } });
+      return tx.kit.create({
+        data: {
+          code: input.code,
+          name: input.name,
+          catalogItemId,
+          version: (last?.version ?? 0) + 1,
+          effectiveFrom: new Date(),
+          items: { create: input.items.map((i) => ({ materialId: i.materialId, quantity: i.quantity })) },
+        },
+        include: { items: { include: { material: true } } },
+      });
+    });
+    await this.audit.write({ actorId, action: 'catalog.kit.save', entity: 'Kit', entityId: kit.id, after: { catalogItemId, code: kit.code, version: kit.version, items: input.items.length } });
+    return { ...toKitRow(kit), catalogItemId };
+  }
+
 }
 
 function toKitRow(kit: {
@@ -311,4 +384,5 @@ function toKitRow(kit: {
       quantity: typeof i.quantity === 'number' ? i.quantity : i.quantity.toNumber(),
     })),
   };
+
 }

@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-10-21T14:47:08.028Z",
+  "ranAt": "2026-10-27T14:48:16.644Z",
   "base": "http://localhost:5173",
-  "passed": 78,
+  "passed": 80,
   "failed": 0,
   "results": [
     {
@@ -110,7 +110,7 @@
       "id": "DASH-06",
       "name": "Legenda das famílias de estado filtra a frota e volta ao todo",
       "ok": true,
-      "detail": "34 → 11 (esperado 11) → 34"
+      "detail": "31 → 11 (esperado 11) → 31"
     },
     {
       "id": "DASH-07",
@@ -216,6 +216,18 @@
     },
     {
       "id": "ROUTE-17",
+      "name": "Técnicos renderiza com subheader \"Técnicos\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-18",
+      "name": "Kaizen MKBF renderiza com subheader \"Kaizen MKBF\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-19",
       "name": "Design kit renderiza com subheader \"Design kit\"",
       "ok": true,
       "detail": ""

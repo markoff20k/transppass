@@ -108,6 +108,18 @@ export type InspectionResult = (typeof InspectionResult)[keyof typeof Inspection
 
 // --- Abertura e execução ----------------------------------------------------
 
+/** Kaizen 6 — execução interna ou por terceiro. */
+export const WorkOrderExecution = {
+  INTERNAL: 'INTERNAL',
+  THIRD_PARTY: 'THIRD_PARTY',
+} as const;
+export type WorkOrderExecution = (typeof WorkOrderExecution)[keyof typeof WorkOrderExecution];
+
+export const WORK_ORDER_EXECUTION_LABELS: Record<WorkOrderExecution, string> = {
+  INTERNAL: 'Oficina própria',
+  THIRD_PARTY: 'Terceiro',
+};
+
 export const openWorkOrderSchema = z.object({
   vehicleId: z.string().uuid(),
   type: z.nativeEnum(WorkOrderType).default(WorkOrderType.CORRECTIVE),
@@ -116,12 +128,17 @@ export const openWorkOrderSchema = z.object({
   /** RN-03 — previsão de conclusão é obrigatória na abertura. */
   estimatedCompletionAt: z.coerce.date({ message: 'Informe a previsão de conclusão' }),
   jbWorkOrderNumber: z.string().trim().max(32).optional(),
+  /** Kaizen 6 — quem executa: a oficina ou um terceiro. */
+  execution: z.nativeEnum(WorkOrderExecution).default(WorkOrderExecution.INTERNAL),
+  supplierName: z.string().trim().max(120).optional(),
 });
 
 export const createTaskSchema = z.object({
   specialtyId: z.string().uuid('Selecione a especialidade'),
   description: z.string().trim().min(3, 'Descreva o serviço').max(500),
   assignedToId: z.string().uuid().optional(),
+  /** Técnico responsável (Kaizen 16). */
+  technicianId: z.string().uuid().optional(),
   checklist: z
     .array(z.object({ description: z.string().trim().min(1).max(255) }))
     .default([]),
@@ -149,6 +166,8 @@ export const checklistItemSchema = z.object({
 
 export const updateEstimateSchema = z.object({
   estimatedCompletionAt: z.coerce.date(),
+  execution: z.nativeEnum(WorkOrderExecution).optional(),
+  supplierName: z.string().trim().max(120).optional().nullable(),
 });
 
 // --- Inspeção (RF-20) -------------------------------------------------------
@@ -223,6 +242,8 @@ export interface TaskRow {
   status: TaskStatus;
   assignedToId: string | null;
   assignedToName: string | null;
+  technicianId: string | null;
+  technicianName: string | null;
   startedAt: string | null;
   finishedAt: string | null;
   confirmedCatalogItemId: string | null;
@@ -262,6 +283,10 @@ export interface WorkOrderDetail {
   releasedAt: string | null;
   releasedByName: string | null;
   jbWorkOrderNumber: string | null;
+  execution: WorkOrderExecution;
+  supplierName: string | null;
+  /** Kit corretivo da falha que trouxe o carro, quando cadastrado (Kaizen 2). */
+  correctiveKit: { id: string; name: string; items: { materialId: string; materialCode: string; materialDescription: string; unit: string; quantity: number }[] } | null;
   /** Relógio único: minutos decorridos, ou o total travado após a liberação. */
   downtimeMinutes: number;
   /** Previsão estourada e ainda sem liberação. */
@@ -298,6 +323,8 @@ export interface WorkOrderSummary {
   estimatedCompletionAt: string;
   downtimeMinutes: number;
   isOverdue: boolean;
+  execution: WorkOrderExecution;
+  supplierName: string | null;
   taskCount: number;
   tasksDone: number;
 }

@@ -17,6 +17,8 @@ import {
   type PlanPackageTree,
   type PlanTaskRow,
   type PlanTree,
+  type TaskToolRow,
+  type ToolRow,
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate, formatMinutes, formatNumber } from '@/lib/format';
@@ -129,7 +131,7 @@ export function PlansPage() {
                               <tr key={t.id} className="is-clickable" tabIndex={0} onClick={() => setPanel({ kind: 'task', pkg, task: t })} onKeyDown={(e) => e.key === 'Enter' && setPanel({ kind: 'task', pkg, task: t })}>
                                 <td className="is-strong">{t.code}</td>
                                 <td className="tp-muted">{t.section ?? '—'}</td>
-                                <td>{t.description}{t.equipmentCondition && <span className="plan-task__cond">{t.equipmentCondition}</span>}</td>
+                                <td>{t.description}{t.equipmentCondition && <span className="plan-task__cond">{t.equipmentCondition}</span>}{t.tools.length > 0 && <span className="plan-task__cond"><Wrench size={11} /> {t.tools.map((x) => x.description).join(', ')}</span>}</td>
                                 <td className="tp-muted">{t.specialtyName ?? '—'}</td>
                                 <td className="is-num">{t.estimatedMinutes ?? '—'}</td>
                               </tr>
@@ -337,9 +339,42 @@ function TaskDrawer({ target, onClose, onDone }: { target: { pkg: PlanPackageTre
           </select>
           <span className="tp-help">Define quem executa a sub-OS quando a parada vira OS (RF-18).</span>
         </label>
+        {task && <TaskTools taskId={task.id} initial={task.tools} />}
+        {!task && <span className="tp-help">Salve a tarefa para listar o ferramental que ela exige (Kaizen 3).</span>}
         {error && <p className="tp-error">{error}</p>}
       </div>
     </Drawer>
+  );
+}
+
+/** Kaizen 3 — ferramentas da FR.168 que a tarefa exige. Salva na hora, item a item. */
+function TaskTools({ taskId, initial }: { taskId: string; initial: TaskToolRow[] }) {
+  const queryClient = useQueryClient();
+  const [rows, setRows] = useState<TaskToolRow[]>(initial);
+  const [toolId, setToolId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => setRows(initial), [initial]);
+  const tools = useQuery({ queryKey: ['materials', 'tools'], queryFn: () => api.get<ToolRow[]>('/materials/tools') });
+  const refresh = (next: TaskToolRow[]) => { setRows(next); setToolId(''); setError(null); void queryClient.invalidateQueries({ queryKey: ['plans'] }); };
+  const add = useMutation({ mutationFn: () => api.post<TaskToolRow[]>(`/plans/tasks/${taskId}/tools`, { toolId, quantity: 1 }), onSuccess: refresh, onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao vincular') });
+  const remove = useMutation({ mutationFn: (id: string) => api.delete<TaskToolRow[]>(`/plans/tasks/${taskId}/tools/${id}`), onSuccess: refresh, onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao remover') });
+  return (
+    <div className="tp-field">
+      <span className="tp-label">Ferramental necessário <span className="tp-label__hint">FR.168 · Kaizen 3</span></span>
+      {rows.length === 0 && <span className="tp-help">Nenhuma ferramenta vinculada.</span>}
+      <ul className="task-tools">
+        {rows.map((r) => (
+          <li key={r.toolId}><Wrench size={12} /> <span>{r.description}</span> <code className="tp-mono">{r.code}</code>
+            <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" aria-label={`Remover ${r.description}`} onClick={() => remove.mutate(r.toolId)}><Trash2 size={13} /></button>
+          </li>
+        ))}
+      </ul>
+      <div className="field-materials__row field-materials__row--tool">
+        <SearchSelect value={toolId} onChange={setToolId} placeholder="Buscar ferramenta" options={(tools.data ?? []).filter((t) => !rows.some((r) => r.toolId === t.id)).map((t) => ({ id: t.id, label: t.description, hint: t.code }))} />
+        <button type="button" className="tp-btn tp-btn--sm" disabled={!toolId || add.isPending} onClick={() => add.mutate()}><Plus size={14} /> Vincular</button>
+      </div>
+      {error && <p className="tp-error">{error}</p>}
+    </div>
   );
 }
 
