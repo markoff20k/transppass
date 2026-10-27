@@ -721,13 +721,17 @@ export class WorkOrdersService {
     const workOrder = await this.prisma.workOrder.findUnique({
       where: { id },
       include: {
-        vehicle: { select: { code: true, plate: true } },
+        vehicle: { select: { code: true, plate: true, technology: true, vehicleClass: true } },
+        scheduledMaintenance: { select: { package: { select: { name: true } } } },
         event: {
           select: {
             id: true,
             code: true,
+            reportedDescription: true,
+            failureModeCode: true,
+            subsystemCode: true,
             // Kit corretivo vigente da falha que trouxe o carro (Kaizen 2).
-            catalogItem: { select: { correctiveKits: { where: { isActive: true }, orderBy: { version: 'desc' }, take: 1, include: { items: { include: { material: true } } } } } },
+            catalogItem: { select: { description: true, correctiveKits: { where: { isActive: true }, orderBy: { version: 'desc' }, take: 1, include: { items: { include: { material: true } } } } } },
           },
         },
         tasks: {
@@ -784,6 +788,9 @@ export class WorkOrdersService {
       vehicleId: workOrder.vehicleId,
       vehicleCode: workOrder.vehicle.code,
       vehiclePlate: workOrder.vehicle.plate,
+      vehicleClass: workOrder.vehicle.vehicleClass as WorkOrderDetail['vehicleClass'],
+      technology: workOrder.vehicle.technology,
+      reason: reasonOf(workOrder),
       eventId: workOrder.event?.id ?? null,
       eventCode: workOrder.event?.code ?? null,
       openedAt: workOrder.openedAt.toISOString(),
@@ -884,8 +891,10 @@ export class WorkOrdersService {
         skip: (query.page - 1) * query.perPage,
         take: query.perPage,
         include: {
-          vehicle: { select: { code: true, plate: true } },
+          vehicle: { select: { code: true, plate: true, technology: true, vehicleClass: true } },
           tasks: { select: { status: true } },
+          scheduledMaintenance: { select: { package: { select: { name: true } } } },
+          event: { select: { reportedDescription: true, failureModeCode: true, subsystemCode: true, catalogItem: { select: { description: true } } } },
         },
       }),
       this.prisma.workOrder.count({ where }),
@@ -901,6 +910,9 @@ export class WorkOrdersService {
         status: r.status,
         vehicleCode: r.vehicle.code,
         vehiclePlate: r.vehicle.plate,
+        vehicleClass: r.vehicle.vehicleClass as WorkOrderSummary['vehicleClass'],
+        technology: r.vehicle.technology,
+        reason: reasonOf(r),
         openedAt: r.openedAt.toISOString(),
         estimatedCompletionAt: r.estimatedCompletionAt.toISOString(),
         downtimeMinutes: r.downtimeMinutes ?? (await this.downtime.currentMinutes(r.id, now)),
@@ -971,4 +983,16 @@ function formatMinutes(minutes: number): string {
   const m = minutes % 60;
   return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m}min`;
 
+}
+
+/** O motivo da OS em uma linha: a falha do evento (catálogo ou código) ou o pacote da preventiva. */
+function reasonOf(wo: {
+  type: string;
+  event?: { reportedDescription: string | null; failureModeCode: string | null; subsystemCode: string | null; catalogItem?: { description?: string } | null } | null;
+  scheduledMaintenance?: { package: { name: string } } | null;
+}): string | null {
+  if (wo.scheduledMaintenance?.package?.name) return `Preventiva ${wo.scheduledMaintenance.package.name}`;
+  const e = wo.event;
+  if (!e) return wo.type === 'PREVENTIVE' ? 'Preventiva' : null;
+  return e.catalogItem?.description ?? describeFailureCode(e.failureModeCode, e.subsystemCode) ?? e.reportedDescription ?? null;
 }

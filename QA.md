@@ -1,6 +1,6 @@
 # Relatório de QA — Transppass PCM (MVP: R0 + R1 + R2)
 
-**Rodada:** 20/10/2026 (madrugada da apresentação) · **Ambiente:** Microsoft Edge dirigido por puppeteer **contra a API real** no Postgres local — frota de 453 carros, bases da Transppass carregadas e simulador de demonstração ligado · **Resultado:** 86 verificações funcionais de UI, 86 aprovadas (`QA_API=1 node tools/qa-smoke.mjs`; rodada de 27/10 inclui Técnicos, Daily, Checklist diário, Qualidade de peças, Fornecedores, Auditorias, Vida de componentes e a página do carro); teste e2e da API 78/78 com a nova base; typecheck, lint e build de produção limpos. A rodada anterior (19/10, modo mock) continua válida e o roteiro ainda roda nos dois modos.
+**Rodada:** 20/10/2026 (madrugada da apresentação) · **Ambiente:** Microsoft Edge dirigido por puppeteer **contra a API real** no Postgres local — frota de 453 carros, bases da Transppass carregadas e simulador de demonstração ligado · **Resultado:** 87 verificações funcionais de UI, 87 aprovadas (`QA_API=1 node tools/qa-smoke.mjs`; rodada de 27/10 inclui Técnicos, Daily, Checklist diário, Qualidade de peças, Fornecedores, Auditorias, Vida de componentes e a página do carro); teste e2e da API 78/78 com a nova base; typecheck, lint e build de produção limpos. A rodada anterior (19/10, modo mock) continua válida e o roteiro ainda roda nos dois modos.
 
 Este relatório é o que um analista de QA entregaria ao fim da sprint: o que foi testado, como, o que passou, o que foi corrigido no caminho e — mais importante — **o que ainda não foi exercitado** e por quê.
 
@@ -91,6 +91,7 @@ Base: A3 "Kaizen Estruturante" (03/06/2026) e "Fluxos de Processo PCM" Rev. 00 (
 - **Cards da frota** com chip de estado, barra até a próxima preventiva (`nextPackageName`/`kmToNextPackage` no `GET /vehicles/panel`), motorista do checklist de hoje ou OS aberta; o card abre o carro.
 - **Página do carro** (`/frota/:id`, `GET /vehicles/:id/overview`): KPIs de 30 dias, render grande com ficha, manutenção (preventiva + vida de componentes), km por dia, ocorrências e OS. Conferida em 1440 px e 390 px (overflow do render corrigido com `minmax(0, 1fr)`).
 - Dashboard usa o mesmo render nos cards de "A frota agora". Novo check VEH-00 no roteiro.
+- **Ordens de serviço como quadro** (`/os`): quatro colunas com cards (render, motivo, relógio, previsão, sub-OS); `GET /work-orders` passa a trazer classe, tecnologia e motivo (falha do evento ou pacote da preventiva). **Página da OS** com hero (render + ficha) ao lado do caminho até liberar. Checks OS-00 (quadro) e OS-01 (hero) no roteiro.
 
 ## 4e. Rodada 27/10 (noite) — laboratório de peças, fornecedores, auditorias e treinamentos
 

@@ -27,6 +27,7 @@ import { Drawer } from '@/components/ui/drawer';
 import { FailureCodePicker } from '@/components/failure-code/failure-code-picker';
 import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { BusRender } from '@/components/bus/bus-render';
 import { SearchSelect } from '@/components/ui/search-select';
 
 type Panel =
@@ -208,32 +209,72 @@ export function WorkOrderPage() {
         )}
       </section>
 
-      <div className="tp-kpi-row">
-        <div className={`tp-kpi ${data.isOverdue ? 'tp-kpi--danger' : 'tp-kpi--brand'}`}>
-          <span className="tp-kpi__label">Relógio de indisponibilidade</span>
-          <strong className="tp-kpi__value">{formatMinutes(data.downtimeMinutes)}</strong>
-          <span className="tp-kpi__note">{data.releasedAt ? 'travado na liberação' : 'correndo'}</span>
-        </div>
-        <div className="tp-kpi">
-          <span className="tp-kpi__label">Estado</span>
-          <strong className="tp-kpi__value tp-kpi__value--sm">
-            <span className={`tp-badge tp-badge--status ${data.isOverdue ? 'tp-badge--danger' : 'tp-badge--info'}`}>
-              {WORK_ORDER_STATUS_LABELS[data.status]}
-            </span>
-          </strong>
-        </div>
-        <div className={`tp-kpi ${data.isOverdue ? 'tp-kpi--danger' : ''}`}>
-          <span className="tp-kpi__label">Previsão de conclusão</span>
-          <strong className="tp-kpi__value tp-kpi__value--sm">{formatDateTime(data.estimatedCompletionAt)}</strong>
-          {data.isOverdue && <span className="tp-kpi__note tp-error">estourada</span>}
-        </div>
-        <div className="tp-kpi">
-          <span className="tp-kpi__label">Sub-OS</span>
-          <strong className="tp-kpi__value">
-            {data.tasks.filter((t) => t.status === TaskStatus.APPROVED || t.status === TaskStatus.DONE).length}/{data.tasks.length}
-          </strong>
-          <span className="tp-kpi__note">aberta em {formatDateTime(data.openedAt)}</span>
-        </div>
+      <div className="wo-top">
+        <section className={`tp-card wo-hero${data.isOverdue ? ' wo-hero--overdue' : ''}`}>
+          <div className="wo-hero__stage">
+            <BusRender vehicleClass={data.vehicleClass} technology={data.technology} code={data.vehicleCode} width={560} title={`Carro ${data.vehicleCode}`} />
+            <Link to={`/frota/${data.vehicleId}`} className="wo-hero__vehicle">
+              <b>Carro {data.vehicleCode}</b>
+              <span className="tp-mono">{data.vehiclePlate}</span>
+              <span className="tp-muted">abrir o carro</span>
+            </Link>
+          </div>
+          <aside className="wo-hero__sheet">
+            <div className="wo-hero__clock">
+              <span className="wo-hero__label">Relógio de indisponibilidade</span>
+              <strong className={data.isOverdue ? 'tp-error' : undefined}>{formatMinutes(data.downtimeMinutes)}</strong>
+              <span className="wo-hero__sub">{data.releasedAt ? 'travado na liberação' : 'correndo desde a abertura'}</span>
+            </div>
+            <div className="wo-hero__chips">
+              <span className={`fleet-chip fleet-chip--${data.releasedAt ? 'running' : data.isOverdue ? 'stopped' : data.status === WorkOrderStatus.WAITING_PART ? 'stopped' : data.status === WorkOrderStatus.OPEN ? 'waiting' : 'working'}`}>{WORK_ORDER_STATUS_LABELS[data.status]}</span>
+              {data.isOverdue && <span className="fleet-chip fleet-chip--stopped">previsão estourada</span>}
+              {data.execution === WorkOrderExecution.THIRD_PARTY && <span className="fleet-chip">terceiro{data.supplierName ? ` · ${data.supplierName}` : ''}</span>}
+            </div>
+            <dl className="vpage__sheet-list">
+              <div><dt>Motivo</dt><dd>{data.reason ?? '—'}{data.eventCode && <span className="mat-sub">{data.eventCode}</span>}</dd></div>
+              <div><dt>Tipo</dt><dd>{data.type === 'CORRECTIVE' ? 'Corretiva' : 'Preventiva'} · {WORK_ORDER_EXECUTION_LABELS[data.execution]}</dd></div>
+              <div><dt>Aberta em</dt><dd>{formatDateTime(data.openedAt)}</dd></div>
+              <div><dt>Previsão de conclusão</dt><dd className={data.isOverdue ? 'tp-error' : undefined}>{formatDateTime(data.estimatedCompletionAt)}</dd></div>
+              <div><dt>Sub-OS</dt><dd>{data.tasks.filter((t) => t.status === TaskStatus.APPROVED || t.status === TaskStatus.DONE).length} de {data.tasks.length} concluída(s)</dd></div>
+            </dl>
+          </aside>
+        </section>
+
+        <section className="tp-card">
+          <div className="tp-card__head">
+            <div>
+              <h3>Caminho até liberar o carro</h3>
+              <span className="chart__hint">na ordem em que acontece — o passo atual está em laranja</span>
+            </div>
+          </div>
+          <ol className="wo-gates">
+            {path.map((g, i) => {
+              const current = i === currentIndex;
+              const last = i === path.length - 1;
+              return (
+                <li key={g.label} className={`wo-gate${g.done ? ' wo-gate--open' : ''}${current ? ' wo-gate--current' : ''}${last ? ' wo-gate--final' : ''}`}>
+                  <span className="wo-gate__dot" aria-hidden>
+                    {g.done ? (last ? <Unlock size={14} strokeWidth={2.5} /> : <Check size={14} strokeWidth={3} />) : last ? <Lock size={13} strokeWidth={2.5} /> : i + 1}
+                  </span>
+                  <div className="wo-gate__text">
+                    <span className="wo-gate__label">{g.label}</span>
+                    <span className="wo-gate__hint">{g.hint}</span>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+          {!data.releasedAt && data.gates.blockingReasons.length > 0 && (
+            <details className="wo-blocking">
+              <summary>O que ainda falta, em detalhe</summary>
+              <ul>
+                {data.gates.blockingReasons.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </section>
       </div>
 
       <div className="tp-split">
@@ -336,42 +377,6 @@ export function WorkOrderPage() {
         </div>
 
         <div className="tp-stack">
-          <section className="tp-card">
-            <div className="tp-card__head">
-              <div>
-                <h3>Caminho até liberar o carro</h3>
-                <span className="chart__hint">na ordem em que acontece — o passo atual está em laranja</span>
-              </div>
-            </div>
-            <ol className="wo-gates">
-              {path.map((g, i) => {
-                const current = i === currentIndex;
-                const last = i === path.length - 1;
-                return (
-                  <li key={g.label} className={`wo-gate${g.done ? ' wo-gate--open' : ''}${current ? ' wo-gate--current' : ''}${last ? ' wo-gate--final' : ''}`}>
-                    <span className="wo-gate__dot" aria-hidden>
-                      {g.done ? (last ? <Unlock size={14} strokeWidth={2.5} /> : <Check size={14} strokeWidth={3} />) : last ? <Lock size={13} strokeWidth={2.5} /> : i + 1}
-                    </span>
-                    <div className="wo-gate__text">
-                      <span className="wo-gate__label">{g.label}</span>
-                      <span className="wo-gate__hint">{g.hint}</span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-            {!data.releasedAt && data.gates.blockingReasons.length > 0 && (
-              <details className="wo-blocking">
-                <summary>O que ainda falta, em detalhe</summary>
-                <ul>
-                  {data.gates.blockingReasons.map((r) => (
-                    <li key={r}>{r}</li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </section>
-
           {data.breakdown.length > 0 && (
             <section className="tp-card">
               <h3>Onde o tempo foi</h3>

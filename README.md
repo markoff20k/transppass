@@ -78,6 +78,8 @@ O elemento de assinatura é o **render do ônibus** (`BusRender`): o carro da Tr
 
 O **Painel da frota** mostra cada carro num card com o render, o chip de estado, a barra até a próxima preventiva, km, média e o motorista ou a OS aberta. O card abre a **página do carro** (`/frota/:id`): disponibilidade, km, retornos e MKBF dos últimos 30 dias, o render grande com a ficha ao lado, o que vence primeiro (preventiva e vida dos componentes), km por dia e o histórico de ocorrências e OS.
 
+As **ordens de serviço** abrem num **quadro da garagem** com quatro colunas (aberta, em execução, aguardando peça, liberação): cada OS é um card com o carro, o motivo, o relógio, a previsão e o avanço das sub-OS; as estouradas e as mais antigas ficam no topo, e o filtro de estado do dashboard destaca a coluna. A tabela continua a um clique. A **página da OS** ganhou o mesmo topo da página do carro: render com a ficha (relógio, estado, motivo, tipo, abertura, previsão, sub-OS) ao lado do caminho até liberar.
+
 Responsivo em três faixas: ≥ 1024px sidebar fixa; < 1024px gaveta sobre o conteúdo; < 640px header compacto, subheader empilha e toda ação vira alvo de largura cheia.
 
 ## Design kit

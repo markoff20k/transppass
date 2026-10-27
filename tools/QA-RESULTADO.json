@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-10-27T17:23:07.016Z",
+  "ranAt": "2026-10-27T17:43:06.671Z",
   "base": "http://localhost:5173",
-  "passed": 86,
+  "passed": 87,
   "failed": 0,
   "results": [
     {
@@ -110,7 +110,7 @@
       "id": "DASH-06",
       "name": "Legenda das famílias de estado filtra a frota e volta ao todo",
       "ok": true,
-      "detail": "37 → 16 (esperado 16) → 37"
+      "detail": "38 → 16 (esperado 16) → 38"
     },
     {
       "id": "DASH-07",
@@ -325,6 +325,12 @@
     {
       "id": "PLT-02",
       "name": "Painel da demanda abre",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "OS-00",
+      "name": "Quadro da garagem com quatro colunas e cards com o render",
       "ok": true,
       "detail": ""
     },

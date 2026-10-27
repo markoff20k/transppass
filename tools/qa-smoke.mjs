@@ -222,7 +222,7 @@ async function run() {
     { path: '/socorro', name: 'Socorro', check: '.field-list, .tp-card' },
     { path: '/preventiva', name: 'Preventiva', check: '.tp-table' },
     { path: '/plantao', name: 'Plantão', check: '.tp-table' },
-    { path: '/os', name: 'Ordens de serviço', check: '.tp-table' },
+    { path: '/os', name: 'Ordens de serviço', check: '.wob, .tp-table' },
     { path: '/estoque', name: 'Estoque', check: '.tp-table' },
     { path: '/indicadores', name: 'Indicadores', check: '.tp-kpi' },
     { path: '/km', name: 'Quilometragem', check: 'table' },
@@ -324,15 +324,19 @@ async function run() {
   await page.goto(`${BASE}/os`, { waitUntil: 'networkidle0' });
   await sleep(400);
   // Uma OS em execução tem sub-OS; uma recém-aberta pela triagem ainda não.
-  const osRows = await page.$$('.tp-table tbody tr');
-  let osLink = null;
-  for (const row of osRows) {
-    const txt = await row.evaluate((tr) => tr.textContent ?? '');
-    if (/Em execução|Em manutenção|Em inspeção|Em limpeza|Aguardando peça/.test(txt)) { osLink = await row.$('a'); if (osLink) break; }
+  // No quadro, as colunas "Em execução" e "Aguardando peça" têm OS com sub-OS.
+  record('OS-00', 'Quadro da garagem com quatro colunas e cards com o render', (await page.$$('.wob__col')).length === 4 && await exists(page, '.wob-card .busr'));
+  let osLink = (await page.$('.wob__col--progress .wob-card')) ?? (await page.$('.wob__col--part .wob-card'));
+  if (!osLink) {
+    const osRows = await page.$$('.tp-table tbody tr');
+    for (const row of osRows) {
+      const txt = await row.evaluate((tr) => tr.textContent ?? '');
+      if (/Em execução|Em manutenção|Em inspeção|Em limpeza|Aguardando peça/.test(txt)) { osLink = await row.$('a'); if (osLink) break; }
+    }
   }
-  if (osLink) await osLink.click(); else await page.click('.tp-table tbody tr a');
+  if (osLink) await osLink.click(); else await page.click('.wob-card, .tp-table tbody tr a');
   await page.waitForSelector('.tp-gates', { timeout: 20000 }).catch(() => {});
-  record('OS-01', 'Detalhe da OS com próximo passo, caminho de 5 etapas e relógio', await exists(page, '.wo-gates') && (await page.$$('.wo-gate')).length === 5 && await exists(page, '.wo-next') && await exists(page, '.wo-task') && await exists(page, '.tp-kpi'));
+  record('OS-01', 'Detalhe da OS com próximo passo, caminho de 5 etapas e relógio', await exists(page, '.wo-gates') && (await page.$$('.wo-gate')).length === 5 && await exists(page, '.wo-next') && await exists(page, '.wo-task') && await exists(page, '.wo-hero .busr'));
   await shot(page, 'os-detalhe');
   const addTask = await clickText(page, '.tp-card__head button', 'Sub-OS');
   if (addTask) {
@@ -447,7 +451,7 @@ async function run() {
 
   await page.goto(`${BASE}/os`, { waitUntil: 'networkidle0' });
   await sleep(400);
-  await page.click('.tp-table tbody tr a');
+  await page.click('.wob__col--progress .wob-card, .wob-card, .tp-table tbody tr a');
   await sleep(600);
   await clickText(page, '.subheader__actions button', 'Previsão e execução');
   await sleep(300);

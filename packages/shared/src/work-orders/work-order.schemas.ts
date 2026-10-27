@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { VehicleClass, VehicleTechnology } from '../fleet/vehicle.schemas.js';
 import { FAILURE_MODE_CODES, POSITION_CODES, VMRS_SUBSYSTEM_CODES, positionRefinement } from '../catalog/failure-codes.js';
 
 /**
@@ -275,6 +276,10 @@ export interface WorkOrderDetail {
   vehicleId: string;
   vehicleCode: string;
   vehiclePlate: string;
+  vehicleClass: VehicleClass | null;
+  technology: VehicleTechnology;
+  /** O que trouxe o carro: a falha do evento ou o pacote da preventiva. */
+  reason: string | null;
   eventId: string | null;
   eventCode: string | null;
   openedAt: string;
@@ -319,6 +324,9 @@ export interface WorkOrderSummary {
   status: WorkOrderStatus;
   vehicleCode: string;
   vehiclePlate: string;
+  vehicleClass: VehicleClass | null;
+  technology: VehicleTechnology;
+  reason: string | null;
   openedAt: string;
   estimatedCompletionAt: string;
   downtimeMinutes: number;

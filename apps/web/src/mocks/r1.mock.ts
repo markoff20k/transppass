@@ -62,6 +62,9 @@ function workOrder(id: string): WorkOrderDetail {
     vehicleId: v.id,
     vehicleCode: v.code,
     vehiclePlate: v.plate,
+    vehicleClass: v.vehicleClass ?? null,
+    technology: v.technology,
+    reason: isFirst ? 'Válvula APU com vazamento' : 'Cuíca de freio inoperante',
     eventId: isFirst ? 'ev-EV-2026-000141' : 'ev-EV-2026-000142',
     eventCode: isFirst ? 'EV-2026-000141' : 'EV-2026-000142',
     openedAt: ago(isFirst ? 4.2 : 31.5),
@@ -125,7 +128,7 @@ function workOrder(id: string): WorkOrderDetail {
 const workOrderList: WorkOrderSummary[] = ['wo-1', 'wo-2'].map((id) => {
   const w = workOrder(id);
   return {
-    id: w.id, code: w.code, type: w.type, status: w.status, vehicleCode: w.vehicleCode, vehiclePlate: w.vehiclePlate,
+    id: w.id, code: w.code, type: w.type, status: w.status, vehicleCode: w.vehicleCode, vehiclePlate: w.vehiclePlate, vehicleClass: w.vehicleClass, technology: w.technology, reason: w.reason,
     openedAt: w.openedAt, estimatedCompletionAt: w.estimatedCompletionAt, downtimeMinutes: w.downtimeMinutes,
     isOverdue: w.isOverdue, execution: w.execution, supplierName: w.supplierName, taskCount: w.tasks.length, tasksDone: w.tasks.filter((t) => t.status === TaskStatus.APPROVED).length,
   };
