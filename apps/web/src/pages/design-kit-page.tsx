@@ -1,7 +1,6 @@
 import { BRAND } from '@app/design-kit';
 import { DOWNTIME_CAUSE_LABELS, DowntimeCause, VEHICLE_CLASS_LABELS, VEHICLE_STATUS_LABELS, VehicleClass, VehicleStatus } from '@app/shared';
 import { usePageHeader } from '@/components/shell/page-header.context';
-import { BusIllustration } from '@/components/bus/bus-illustration';
 import { BusRender } from '@/components/bus/bus-render';
 import { TransppassLogo, TransppassMark } from '@/components/brand/transppass-logo';
 import { BrandLoader } from '@/components/brand/brand-loader';
@@ -85,16 +84,17 @@ export function DesignKitPage() {
 
       {/* ---- O ônibus ---- */}
       <section className="tp-card">
-        <h2>O ônibus — estado desenhado no veículo</h2>
+        <h2>O ônibus — um instrumento por estado</h2>
         <p className="tp-muted">
-          Elemento de assinatura do sistema. Em vez de ler "em manutenção" numa etiqueta, o PCM vê um
-          ônibus âmbar levantado no macaco com a chave girando. A animação nunca é a única portadora da
-          informação: cor e distintivo continuam com <code>prefers-reduced-motion</code>.
+          O estado nunca pinta a carroceria: vira um instrumento. Asfalto e rodas correndo em linha, pisca-alerta
+          quando espera, elevador com luz de trabalho na manutenção, lanterna vermelha piscando aguardando peça,
+          scanner azul na inspeção, brilho e bolhas na lavagem, giroflex no socorro, luz de prontidão no pátio e
+          cinza apagado fora de operação. O chip do card continua dizendo o estado com <code>prefers-reduced-motion</code>.
         </p>
-        <div className="bus-gallery">
+        <div className="bus-gallery bus-gallery--render">
           {Object.values(VehicleStatus).map((status) => (
             <div key={status} className="bus-gallery__item">
-              <BusIllustration status={status} code="10001" width={220} />
+              <BusRender vehicleClass="PADRON_13M" status={status} code="82001" width={320} />
               <span className="tp-muted">{VEHICLE_STATUS_LABELS[status]}</span>
               <code>{status}</code>
             </div>

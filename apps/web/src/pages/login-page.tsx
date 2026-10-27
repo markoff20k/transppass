@@ -7,7 +7,7 @@ import { loginSchema, VehicleStatus, type LoginInput } from '@app/shared';
 import { ApiError } from '@/lib/api-client';
 import { useAuth } from '@/features/auth/use-auth';
 import { TransppassLogo, TransppassMark } from '@/components/brand/transppass-logo';
-import { BusIllustration } from '@/components/bus/bus-illustration';
+import { BusRender } from '@/components/bus/bus-render';
 
 /**
  * Login — a única tela sem o shell.
@@ -52,7 +52,7 @@ export function LoginPage() {
           </p>
         </div>
         <div className="login__road">
-          <BusIllustration status={VehicleStatus.IN_LINE} code="10001" width={560} className="login__bus" />
+          <BusRender vehicleClass="PADRON_13M" status={VehicleStatus.IN_LINE} code="82001" width={560} className="login__bus" />
         </div>
       </aside>
 

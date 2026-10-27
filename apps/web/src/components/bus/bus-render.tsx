@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type CSSProperties } from 'react';
 import { VehicleClass, VehicleTechnology, type VehicleStatus } from '@app/shared';
 
 /**
@@ -41,8 +41,8 @@ const SPECS: Record<VehicleClass, Spec> = {
 const BELLOWS = 12;
 const VIEW_W = 320;
 // Recorte útil: do equipamento de teto à sombra, sem o ar em cima
-const CROP_Y = 30;
-const CROP_H = 116;
+const CROP_Y = 26;
+const CROP_H = 120;
 const FRONT_X = 308;
 const ROOF_Y = 40;
 const BODY_H = 70;
@@ -51,6 +51,28 @@ const WINDOW_H = 28;
 const SKIRT_Y = 96;
 const WHEEL_Y = 112;
 const DOOR_W = 18;
+
+/**
+ * O estado vira um instrumento, nunca a pintura: asfalto e rodas correndo em
+ * linha; pisca-alerta âmbar quando espera; elevador com luz de trabalho na
+ * manutenção; elevador com lanterna vermelha piscando aguardando peça;
+ * scanner azul na inspeção; brilho e bolhas na lavagem; giroflex no socorro;
+ * respiração verde no pátio; cinza apagado fora de operação.
+ */
+type Visual = 'running' | 'parked' | 'waiting' | 'field' | 'maintenance' | 'part' | 'inspection' | 'cleaning' | 'off';
+
+const VISUAL: Record<VehicleStatus, Visual> = {
+  IN_LINE: 'running',
+  AVAILABLE: 'parked',
+  AWAITING_TRIAGE: 'waiting',
+  AWAITING_MAINTENANCE: 'waiting',
+  FIELD_SERVICE: 'field',
+  IN_MAINTENANCE: 'maintenance',
+  AWAITING_PART: 'part',
+  IN_INSPECTION: 'inspection',
+  IN_CLEANING: 'cleaning',
+  OUT_OF_SERVICE: 'off',
+};
 
 interface Props {
   vehicleClass?: VehicleClass | null;
@@ -68,7 +90,8 @@ export function BusRender({ vehicleClass, technology, status, code, width = 320,
   const cls = vehicleClass ?? (technology === VehicleTechnology.EBUS ? VehicleClass.EPADRON_13M : VehicleClass.BASICO_12M);
   const spec = SPECS[cls] ?? SPECS.BASICO_12M;
   const electric = spec.electric || technology === VehicleTechnology.EBUS;
-  const running = status === 'IN_LINE';
+  const visual: Visual | null = status ? VISUAL[status] : null;
+  const lifted = visual === 'maintenance' || visual === 'part';
   const total = spec.segments.reduce((s, seg) => s + seg.w, 0) + BELLOWS * (spec.segments.length - 1);
   const x0 = FRONT_X - total;
 
@@ -79,7 +102,9 @@ export function BusRender({ vehicleClass, technology, status, code, width = 320,
   });
   const axles = placed.flatMap((seg) => seg.axles.map((a) => seg.x + a));
 
-  const classes = ['busr', running ? 'busr--running' : '', electric ? 'busr--electric' : '', className ?? ''].filter(Boolean).join(' ');
+  const classes = ['busr', visual ? `busr--${visual}` : '', lifted ? 'busr--lifted' : '', electric ? 'busr--electric' : '', className ?? ''].filter(Boolean).join(' ');
+  const firstAxle = axles[0] ?? x0 + 40;
+  const lastAxle = axles[axles.length - 1] ?? FRONT_X - 40;
 
   return (
     <svg viewBox={`0 ${CROP_Y} ${VIEW_W} ${CROP_H}`} width={width} height={(width * CROP_H) / VIEW_W} className={classes} role="img" aria-label={title ?? `Carro ${code ?? ''}`}>
@@ -120,10 +145,50 @@ export function BusRender({ vehicleClass, technology, status, code, width = 320,
         <filter id={`${id}-soft`} x="-5%" y="-20%" width="110%" height="140%">
           <feGaussianBlur stdDeviation="1.2" />
         </filter>
+        <linearGradient id={`${id}-sheenv`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#fff" stopOpacity="0.6" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
       </defs>
 
       {/* Sombra no chão */}
       <ellipse cx={x0 + total / 2} cy={132} rx={total / 2 + 4} ry={7} className="busr__shadow" filter={`url(#${id}-shadow)`} />
+
+      {/* Asfalto correndo por baixo — só em linha */}
+      <line x1={x0 - 6} y1={129} x2={FRONT_X + 6} y2={129} className="busr__road" />
+
+      {/* Elevador de duas colunas — só com o carro levantado */}
+      {lifted && (
+        <g className="busr__lift">
+          <rect x={firstAxle - 30} y={ROOF_Y + 14} width={4} height={74} rx={1.5} />
+          <rect x={lastAxle + 26} y={ROOF_Y + 14} width={4} height={74} rx={1.5} />
+          <rect x={firstAxle - 40} y={126} width={24} height={3} rx={1} />
+          <rect x={lastAxle + 16} y={126} width={24} height={3} rx={1} />
+          <path d={`M${firstAxle - 26} ${ROOF_Y + BODY_H - 2} h22 M${lastAxle + 26} ${ROOF_Y + BODY_H - 2} h-22`} className="busr__lift-arm" />
+          <ellipse cx={x0 + total / 2} cy={ROOF_Y + BODY_H + 8} rx={total / 2.6} ry={5} className="busr__worklight" filter={`url(#${id}-soft)`} />
+        </g>
+      )}
+
+      {/* Giroflex do socorro, à frente do carro */}
+      {visual === 'field' && (
+        <g className="busr__beacon">
+          <circle cx={FRONT_X + 9} cy={118} r={9} className="busr__beacon-halo" />
+          <circle cx={FRONT_X + 9} cy={118} r={3.2} className="busr__beacon-core" />
+        </g>
+      )}
+
+      {/* Bolhas da lavagem subindo */}
+      {visual === 'cleaning' && (
+        <g className="busr__bubbles">
+          {[0.15, 0.32, 0.5, 0.66, 0.84].map((f, i) => (
+            <circle key={f} cx={x0 + total * f} cy={ROOF_Y - 2} r={2 + (i % 3)} className="busr__bubble" style={{ animationDelay: `${i * 0.5}s` }} />
+          ))}
+        </g>
+      )}
+
+      {/* Luz de prontidão no pátio */}
+      {visual === 'parked' && <circle cx={x0 + 8} cy={129} r={2.4} className="busr__ready" />}
 
       <g className="busr__vehicle">
         {/* Sanfonas entre segmentos (atrás das carrocerias) */}
@@ -202,7 +267,7 @@ function Body({ id, seg, spec, electric, code }: { id: string; seg: Segment & { 
             <text x={right - 14.5} y={ROOF_Y + 14.6} className="busr__sign-text" textAnchor="middle">TRANSPPASS</text>
             {/* Faróis e para-choque */}
             <rect x={right - 12} y={ROOF_Y + BODY_H - 16} width={8} height={5} rx={1.5} fill="#fff6d6" stroke="#9c6a2b" strokeWidth="0.5" />
-            <rect x={right - 12} y={ROOF_Y + BODY_H - 9.5} width={8} height={3} rx={1} fill="#ffb347" opacity="0.9" />
+            <rect x={right - 12} y={ROOF_Y + BODY_H - 9.5} width={8} height={3} rx={1} fill="#ffb347" opacity="0.9" className="busr__lamp-amber" />
             <rect x={right - 44} y={ROOF_Y + BODY_H - 4} width={44} height={4} fill="#2c2d2d" />
           </>
         )}
@@ -222,7 +287,8 @@ function Body({ id, seg, spec, electric, code }: { id: string; seg: Segment & { 
                 ))}
               </g>
             )}
-            <rect x={x + 1.2} y={ROOF_Y + BODY_H - 15} width={3} height={9} rx={1} fill="#d9342b" />
+            <rect x={x + 1.2} y={ROOF_Y + BODY_H - 15} width={3} height={9} rx={1} fill="#d9342b" className="busr__lamp-red" />
+            <rect x={x + 1.2} y={ROOF_Y + BODY_H - 21} width={3} height={4.5} rx={1} fill="#ffb347" opacity="0.9" className="busr__lamp-amber" />
             <rect x={x} y={ROOF_Y + BODY_H - 4} width={16} height={4} fill="#2c2d2d" />
           </>
         )}
@@ -243,6 +309,15 @@ function Body({ id, seg, spec, electric, code }: { id: string; seg: Segment & { 
         ))}
         {/* Luz de topo na lateral */}
         <rect x={x} y={ROOF_Y + 9} width={w} height={1.2} fill="#fff" opacity="0.7" />
+
+        {/* Scanner da inspeção e brilho da lavagem — varrem o segmento; o CSS liga um ou outro */}
+        <g className="busr__scan" style={{ '--seg-w': w } as CSSProperties}>
+          <rect x={x - 16} y={ROOF_Y} width={16} height={BODY_H} className="busr__scan-band" />
+          <rect x={x - 0.6} y={ROOF_Y} width={1.2} height={BODY_H} className="busr__scan-line" />
+        </g>
+        <g className="busr__sheen" style={{ '--seg-w': w } as CSSProperties}>
+          <rect x={x - 40} y={ROOF_Y} width={36} height={BODY_H} fill={`url(#${id}-sheenv)`} />
+        </g>
       </g>
 
       {/* Equipamentos de teto */}
