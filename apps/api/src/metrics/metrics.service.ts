@@ -18,6 +18,9 @@ import {
   type MkbfResult,
   type CodeAlignment,
   type ProcessAdherence,
+  AVAILABLE_STATUSES,
+  describeFailureCode,
+  type DailyBoard,
   type R1Metrics,
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -58,6 +61,71 @@ export class MetricsService {
       averageDowntimeMinutes: released.averageMinutes,
       adherence,
       codeAlignment,
+    };
+  }
+
+  /** Quadro da Daily (A3 §9): ontem, 7 e 30 dias, e o que atacar hoje. */
+  async daily(now = new Date()): Promise<DailyBoard> {
+    const DAY = 86_400_000;
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startYesterday = new Date(startToday.getTime() - DAY);
+    const d7 = new Date(now.getTime() - 7 * DAY);
+    const d30 = new Date(now.getTime() - 30 * DAY);
+    const d60 = new Date(now.getTime() - 60 * DAY);
+
+    const [mkbf30, mkbf60, avail7, rework, fleet, byStatus, missedY, missed7, missed30, woOpen, woOverdue, woOpenedY, woReleasedY, waitingPart, inQueue, evY, ev7, checks, recent, repeats, stale] = await Promise.all([
+      this.mkbf(d30, now),
+      this.mkbf(d60, d30),
+      this.availability(d7, now),
+      this.internalRework(d30, now),
+      this.prisma.vehicle.count({ where: { isActive: true } }),
+      this.prisma.vehicle.groupBy({ by: ['status'], where: { isActive: true }, _count: { _all: true } }),
+      this.prisma.replacementDemand.count({ where: { status: 'MISSED', windowEndsAt: { gte: startYesterday, lt: startToday } } }),
+      this.prisma.replacementDemand.count({ where: { status: 'MISSED', windowEndsAt: { gte: d7 } } }),
+      this.prisma.replacementDemand.count({ where: { status: 'MISSED', windowEndsAt: { gte: d30 } } }),
+      this.prisma.workOrder.count({ where: { status: { notIn: [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] } } }),
+      this.prisma.workOrder.count({ where: { status: { notIn: [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] }, estimatedCompletionAt: { lt: now } } }),
+      this.prisma.workOrder.count({ where: { openedAt: { gte: startYesterday, lt: startToday } } }),
+      this.prisma.workOrder.count({ where: { releasedAt: { gte: startYesterday, lt: startToday } } }),
+      this.prisma.workOrder.count({ where: { status: WorkOrderStatus.WAITING_PART } }),
+      this.prisma.workOrder.count({ where: { status: WorkOrderStatus.OPEN } }),
+      this.prisma.failureEvent.count({ where: { isUnscheduledReturn: true, reportedAt: { gte: startYesterday, lt: startToday } } }),
+      this.prisma.failureEvent.count({ where: { isUnscheduledReturn: true, reportedAt: { gte: d7 } } }),
+      this.prisma.dailyCheck.findMany({ where: { checkedAt: { gte: startToday } }, select: { vehicleId: true, result: true } }),
+      this.prisma.failureEvent.findMany({ where: { isUnscheduledReturn: true, reportedAt: { gte: d7 } }, select: { failureModeCode: true, subsystemCode: true, catalogItem: { select: { code: true, description: true } } } }),
+      this.prisma.failureEvent.groupBy({ by: ['vehicleId'], where: { isUnscheduledReturn: true, reportedAt: { gte: d30 } }, _count: { _all: true }, _max: { reportedAt: true }, orderBy: { _count: { vehicleId: 'desc' } }, take: 8 }),
+      this.prisma.kmProjection.count({ where: { isDegraded: true } }),
+    ]);
+
+    const available = byStatus.filter((s) => (AVAILABLE_STATUSES as readonly string[]).includes(s.status)).reduce((sum, s) => sum + s._count._all, 0);
+    const top = new Map<string, { key: string; description: string; count: number }>();
+    for (const e of recent) {
+      const key = e.catalogItem?.code ?? (e.failureModeCode && e.subsystemCode ? `${e.failureModeCode}-${e.subsystemCode}` : 'outros');
+      const description = e.catalogItem?.description ?? describeFailureCode(e.failureModeCode, e.subsystemCode) ?? 'Sem código';
+      const cur = top.get(key) ?? { key, description, count: 0 };
+      cur.count += 1;
+      top.set(key, cur);
+    }
+    const repeatIds = repeats.filter((r) => r._count._all >= 2).map((r) => r.vehicleId);
+    const repeatVehicles = repeatIds.length ? await this.prisma.vehicle.findMany({ where: { id: { in: repeatIds } }, select: { id: true, code: true } }) : [];
+    const codeById = new Map(repeatVehicles.map((v) => [v.id, v.code]));
+    const checkedVehicles = new Set(checks.map((c) => c.vehicleId));
+    const nokVehicles = new Set(checks.filter((c) => c.result === 'NOK').map((c) => c.vehicleId));
+
+    return {
+      date: startToday.toISOString(),
+      mkbf: { last30: mkbf30.mkbf, previous30: mkbf60.mkbf, kmLast30: mkbf30.kmTraveled, returnsLast30: mkbf30.unscheduledReturns },
+      availability: { now: fleet ? available / fleet : 0, last7: avail7, target: 0.85 },
+      rework: { rateLast30: rework.rate, inspectionsLast30: rework.inspections, rejectionsLast30: rework.rejections },
+      lostTrips: { yesterday: missedY, last7: missed7, last30: missed30, note: 'janelas de reposição estouradas (RF-29) — proxy até a Operação apurar viagens perdidas' },
+      workOrders: { open: woOpen, overdue: woOverdue, openedYesterday: woOpenedY, releasedYesterday: woReleasedY, waitingPart, inQueue },
+      events: { yesterday: evY, last7: ev7, avgPerDay7: Math.round((ev7 / 7) * 10) / 10 },
+      dailyChecks: { fleet, checked: checkedVehicles.size, nok: nokVehicles.size },
+      topFailures7d: [...top.values()].sort((a, b) => b.count - a.count).slice(0, 6),
+      repeatVehicles30d: repeats
+        .filter((r) => r._count._all >= 2)
+        .map((r) => ({ vehicleId: r.vehicleId, vehicleCode: codeById.get(r.vehicleId) ?? '—', count: r._count._all, lastAt: (r._max.reportedAt ?? now).toISOString() })),
+      staleOdometer: stale,
     };
   }
 

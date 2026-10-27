@@ -22,6 +22,7 @@ import { PlansModule } from './plans/plans.module';
 import { JobsModule } from './jobs/jobs.module';
 import { DemoModule } from './demo/demo.module';
 import { TechniciansModule } from './technicians/technicians.module';
+import { DailyChecksModule } from './daily-checks/daily-checks.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { envSchema } from './config/env.validation';
 
@@ -57,6 +58,8 @@ import { envSchema } from './config/env.validation';
     JobsModule,
     // Cadastros que o Kaizen MKBF exige (técnicos, kits corretivos, ferramental por tarefa)
     TechniciansModule,
+    // Manutenção diária (Fluxos PCM p.8): checklist de conservação que abre OS
+    DailyChecksModule,
     // Simulador de demonstração — só age com DEMO_SIMULATOR=true
     DemoModule,
   ],

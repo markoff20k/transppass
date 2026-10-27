@@ -1,6 +1,6 @@
 # Relatório de QA — Transppass PCM (MVP: R0 + R1 + R2)
 
-**Rodada:** 20/10/2026 (madrugada da apresentação) · **Ambiente:** Microsoft Edge dirigido por puppeteer **contra a API real** no Postgres local — frota de 453 carros, bases da Transppass carregadas e simulador de demonstração ligado · **Resultado:** 79 verificações funcionais de UI, 79 aprovadas (`QA_API=1 node tools/qa-smoke.mjs`; rodada de 27/10 inclui Técnicos); teste e2e da API 78/78 com a nova base; typecheck, lint e build de produção limpos. A rodada anterior (19/10, modo mock) continua válida e o roteiro ainda roda nos dois modos.
+**Rodada:** 20/10/2026 (madrugada da apresentação) · **Ambiente:** Microsoft Edge dirigido por puppeteer **contra a API real** no Postgres local — frota de 453 carros, bases da Transppass carregadas e simulador de demonstração ligado · **Resultado:** 81 verificações funcionais de UI, 81 aprovadas (`QA_API=1 node tools/qa-smoke.mjs`; rodada de 27/10 inclui Técnicos, Daily e Checklist diário); teste e2e da API 78/78 com a nova base; typecheck, lint e build de produção limpos. A rodada anterior (19/10, modo mock) continua válida e o roteiro ainda roda nos dois modos.
 
 Este relatório é o que um analista de QA entregaria ao fim da sprint: o que foi testado, como, o que passou, o que foi corrigido no caminho e — mais importante — **o que ainda não foi exercitado** e por quê.
 
@@ -76,6 +76,14 @@ O que mudou desde a rodada de 19/10 e foi exercitado nesta:
 - **Modelo para os itens que estavam em lacuna**: kit corretivo por falha do catálogo (pedido inteiro ao Estoque a partir da sub-OS), ferramental por tarefa do plano (FR.168), OS executada por terceiro com fornecedor, técnicos e inspetores por especialidade, tecnologia e nível 1–3 com atribuição na sub-OS.
 - **Carga**: 357 vínculos tarefa × ferramenta no diesel, 6 kits corretivos cruzados com o inventário, 16 técnicos (mock até a lista da Manutenção) e uma OS de terceiro de exemplo.
 - **Tela da OS guiada** (20/10, noite): "próximo passo" com um botão e caminho de cinco etapas; o botão "Inspecionar" passou a aparecer também na sub-OS já encaminhada à inspeção.
+
+## 4d. Rodada 27/10 (tarde) — o Kaizen rodando no sistema
+
+Base: A3 "Kaizen Estruturante" (03/06/2026) e "Fluxos de Processo PCM" Rev. 00 (08/2026), p.8 "Manutenção diária".
+
+- **Checklist diário** (`/checklist`): itens por tecnologia; reprovação abre evento corretivo no código composto (verificado: carro 82006, item Limpadores → EV-2026-002488 na triagem). Reporte de anomalia pelo motorista na mesma tela.
+- **Daily 15 min** (`/daily`): `GET /metrics/daily` com os cinco KPIs do A3 §9, falhas da semana, carros reincidentes (≥ 2 retornos em 30 dias) e rotina do dia.
+- Rotas novas no roteiro de QA; a tela Kaizen MKBF (painel sobre o Kaizen) foi removida a pedido: o Kaizen roda no sistema, não numa página.
 
 ## 5. O que NÃO foi testado (e o risco)
 

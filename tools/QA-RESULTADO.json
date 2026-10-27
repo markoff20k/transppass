@@ -1,8 +1,8 @@
 {
-  "ranAt": "2026-10-27T14:48:16.644Z",
+  "ranAt": "2026-10-27T15:04:35.137Z",
   "base": "http://localhost:5173",
   "passed": 80,
-  "failed": 0,
+  "failed": 1,
   "results": [
     {
       "id": "AUTH-01",
@@ -110,7 +110,7 @@
       "id": "DASH-06",
       "name": "Legenda das famílias de estado filtra a frota e volta ao todo",
       "ok": true,
-      "detail": "31 → 11 (esperado 11) → 31"
+      "detail": "32 → 12 (esperado 12) → 32"
     },
     {
       "id": "DASH-07",
@@ -126,108 +126,114 @@
     },
     {
       "id": "ROUTE-02",
-      "name": "Eventos renderiza com subheader \"Eventos\"",
+      "name": "Daily 15 min renderiza com subheader \"Daily 15 min\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-03",
-      "name": "Triagem renderiza com subheader \"Triagem\"",
-      "ok": true,
+      "name": "Checklist diário renderiza com subheader \"Checklist diário\"",
+      "ok": false,
       "detail": ""
     },
     {
       "id": "ROUTE-04",
-      "name": "Fila renderiza com subheader \"Fila de manutenção\"",
+      "name": "Eventos renderiza com subheader \"Eventos\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-05",
-      "name": "Socorro renderiza com subheader \"Socorro em campo\"",
+      "name": "Triagem renderiza com subheader \"Triagem\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-06",
-      "name": "Preventiva renderiza com subheader \"Preventiva\"",
+      "name": "Fila renderiza com subheader \"Fila de manutenção\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-07",
-      "name": "Plantão renderiza com subheader \"Plantão\"",
+      "name": "Socorro renderiza com subheader \"Socorro em campo\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-08",
-      "name": "Ordens de serviço renderiza com subheader \"Ordens de serviço\"",
+      "name": "Preventiva renderiza com subheader \"Preventiva\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-09",
-      "name": "Estoque renderiza com subheader \"Estoque\"",
+      "name": "Plantão renderiza com subheader \"Plantão\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-10",
-      "name": "Indicadores renderiza com subheader \"Indicadores\"",
+      "name": "Ordens de serviço renderiza com subheader \"Ordens de serviço\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-11",
-      "name": "Quilometragem renderiza com subheader \"Lançamento de km\"",
+      "name": "Estoque renderiza com subheader \"Estoque\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-12",
-      "name": "Cadastro da frota renderiza com subheader \"Frota\"",
+      "name": "Indicadores renderiza com subheader \"Indicadores\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-13",
-      "name": "Catálogo renderiza com subheader \"Catálogo de falhas\"",
+      "name": "Quilometragem renderiza com subheader \"Lançamento de km\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-14",
-      "name": "Usuários renderiza com subheader \"Usuários\"",
+      "name": "Cadastro da frota renderiza com subheader \"Frota\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-15",
-      "name": "Planos preventivos renderiza com subheader \"Planos preventivos\"",
+      "name": "Catálogo renderiza com subheader \"Catálogo de falhas\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-16",
-      "name": "Materiais renderiza com subheader \"Materiais\"",
+      "name": "Usuários renderiza com subheader \"Usuários\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-17",
-      "name": "Técnicos renderiza com subheader \"Técnicos\"",
+      "name": "Planos preventivos renderiza com subheader \"Planos preventivos\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-18",
-      "name": "Kaizen MKBF renderiza com subheader \"Kaizen MKBF\"",
+      "name": "Materiais renderiza com subheader \"Materiais\"",
       "ok": true,
       "detail": ""
     },
     {
       "id": "ROUTE-19",
+      "name": "Técnicos renderiza com subheader \"Técnicos\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-20",
       "name": "Design kit renderiza com subheader \"Design kit\"",
       "ok": true,
       "detail": ""

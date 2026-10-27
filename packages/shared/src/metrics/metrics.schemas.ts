@@ -97,3 +97,23 @@ export interface R1Metrics {
   /** Alinhamento entre o código do registro e o da constatação (seção 8.2 do padrão). */
   codeAlignment: CodeAlignment;
 }
+
+/**
+ * Quadro da Daily de 15 min (A3 do Kaizen, §9): os cinco KPIs — MKBF,
+ * disponibilidade, retrabalho, viagens perdidas, número de OS — lidos ontem,
+ * na semana e no mês, mais as listas do que atacar hoje.
+ */
+export interface DailyBoard {
+  date: string;
+  mkbf: { last30: number | null; previous30: number | null; kmLast30: number; returnsLast30: number };
+  availability: { now: number; last7: number | null; target: number };
+  rework: { rateLast30: number | null; inspectionsLast30: number; rejectionsLast30: number };
+  /** Até a Operação apurar viagens perdidas, o sistema usa as janelas de reposição estouradas. */
+  lostTrips: { yesterday: number; last7: number; last30: number; note: string };
+  workOrders: { open: number; overdue: number; openedYesterday: number; releasedYesterday: number; waitingPart: number; inQueue: number };
+  events: { yesterday: number; last7: number; avgPerDay7: number };
+  dailyChecks: { fleet: number; checked: number; nok: number };
+  topFailures7d: { key: string; description: string; count: number }[];
+  repeatVehicles30d: { vehicleId: string; vehicleCode: string; count: number; lastAt: string }[];
+  staleOdometer: number;
+}

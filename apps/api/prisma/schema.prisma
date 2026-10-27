@@ -196,6 +196,7 @@ model Vehicle {
   reserveAssignments    ReserveAssignment[]
   replacementDemands    ReplacementDemand[]
   poolComponents        PoolComponent[]
+  dailyChecks           DailyCheck[]
 
   @@index([status])
   @@index([technology])
@@ -221,6 +222,7 @@ model Operator {
   qualifications     OperatorQualification[]
   reserveAssignments ReserveAssignment[]
   failureEvents      FailureEvent[]
+  dailyChecks        DailyCheck[]
 
   @@map("operators")
 }
@@ -459,6 +461,42 @@ model Technician {
 
   @@index([specialtyId])
   @@map("technicians")
+}
+
+/// Checklist diário de conservação (Fluxos PCM p.8): item reprovado abre evento corretivo.
+model DailyCheck {
+  id          String   @id @default(uuid()) @db.Uuid
+  vehicleId   String   @db.Uuid
+  checkedAt   DateTime @default(now())
+  checkedById String   @db.Uuid
+  operatorId  String?  @db.Uuid
+  odometerKm  Int?
+  /// OK ou NOK
+  result      String   @db.VarChar(4)
+  note        String?  @db.VarChar(500)
+  eventId     String?  @db.Uuid
+
+  vehicle  Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  operator Operator?        @relation(fields: [operatorId], references: [id])
+  event    FailureEvent?    @relation(fields: [eventId], references: [id])
+  items    DailyCheckItem[]
+
+  @@index([vehicleId, checkedAt(sort: Desc)])
+  @@index([checkedAt])
+  @@map("daily_checks")
+}
+
+model DailyCheckItem {
+  id      String  @id @default(uuid()) @db.Uuid
+  checkId String  @db.Uuid
+  key     String  @db.VarChar(24)
+  label   String  @db.VarChar(80)
+  ok      Boolean
+  note    String? @db.VarChar(255)
+
+  check DailyCheck @relation(fields: [checkId], references: [id], onDelete: Cascade)
+
+  @@map("daily_check_items")
 }
 
 model Material {
@@ -723,6 +761,8 @@ model FailureEvent {
   fieldService FieldService?
   workOrder    WorkOrder?
   queueEntry   QueueEntry?
+
+  dailyChecks DailyCheck[]
 
   @@index([vehicleId, reportedAt])
   @@index([status])

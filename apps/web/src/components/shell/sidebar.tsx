@@ -21,7 +21,7 @@ import {
   Users,
   Wrench,
   X,
-  type LucideIcon, HardHat } from 'lucide-react';
+  type LucideIcon, HardHat, Sunrise, ListChecks } from 'lucide-react';
 import { USER_ROLE_LABELS, UserRole } from '@app/shared';
 import { useAuth } from '@/features/auth/use-auth';
 import { useI18n } from '@/i18n/i18n.context';
@@ -33,7 +33,7 @@ const {
 
 interface NavItem {
   to: string;
-  key: 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'scheduling' | 'operations' | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'users' | 'plans' | 'materials' | 'designKit' | 'technicians';
+  key: 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'scheduling' | 'operations' | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'users' | 'plans' | 'materials' | 'designKit' | 'technicians' | 'daily' | 'dailyCheck';
   icon: LucideIcon;
   roles?: UserRole[];
   /** Contador ao lado do item, quando a tela tem fila. */
@@ -55,7 +55,9 @@ const GROUPS: NavGroup[] = [
     key: 'operation',
     items: [
       { to: '/', key: 'dashboard', icon: LayoutDashboard },
+      { to: '/daily', key: 'daily', icon: Sunrise, roles: [ADMIN, PCM, MANUTENCAO, CCO, PLANTAO, GESTAO] },
       { to: '/frota', key: 'fleet', icon: Bus },
+      { to: '/checklist', key: 'dailyCheck', icon: ListChecks, roles: [ADMIN, PCM, MANUTENCAO, MECANICO, INSPETOR, CCO, PLANTAO] },
       { to: '/eventos', key: 'events', icon: Activity, roles: [ADMIN, CCO, PCM, MANUTENCAO, INSPETOR, LIMPEZA] },
       { to: '/triagem', key: 'triage', icon: Stethoscope, roles: [ADMIN, PCM] },
       { to: '/fila', key: 'queue', icon: ListOrdered, roles: [ADMIN, PCM, MANUTENCAO, PLANTAO] },

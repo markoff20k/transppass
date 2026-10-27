@@ -54,9 +54,13 @@ Login inicial: `admin@transppass.local` / `admin123`. Swagger em `http://localho
 
 `npm run db:seed:demo` monta a garagem: **453 carros** nas proporções da Escala de Carros (lote E8 com 238, AR9 com 215; prefixos, placas e modelos por classe são mock até a base carro a carro chegar), seis meses de km e de falhas, OS em todas as etapas, preventivas programadas, plantão e notificações. Apaga e recria todo o movimento — rode antes de apresentar.
 
-### O que o Kaizen MKBF exige do sistema
+### O Kaizen no sistema
 
-A meta final é o MKBF; o Kaizen "Software — Projeto MKBF" (25/08/2026) define os entregáveis que alimentam o sistema. Além das bases já carregadas, o modelo recebe: **kit corretivo por falha do catálogo** (montado no Catálogo, pedido inteiro ao Estoque a partir da sub-OS), **ferramental por tarefa** (FR.168 × plano), **OS executada por terceiro** com fornecedor e **técnicos e inspetores** por especialidade, tecnologia e nível 1–3 (Cadastros › Técnicos; a sub-OS é atribuída ao técnico).
+O Kaizen Estruturante (A3 de 03/06/2026) e os Fluxos de Processo PCM (Rev. 00, agosto/2026) são o desenho; o sistema é onde ele roda:
+
+- **Daily de 15 min** (`/daily`): os cinco KPIs do A3 — MKBF, disponibilidade, taxa de retrabalho, viagens perdidas e número de OS — lidos ontem, na semana e no mês, com as falhas da semana, os carros reincidentes e a rotina do dia. Viagens perdidas usam as janelas de reposição estouradas até a Operação apurar.
+- **Checklist diário de conservação** (`/checklist`, Fluxos p.8): faróis, limpadores, iluminação, avarias, pneus, portas e rampa, níveis; no eBUS, BTMS e carga. Item reprovado abre evento corretivo no código composto e segue para a triagem. Na mesma tela o motorista reporta anomalia durante o dia.
+- Cadastros que o Kaizen exige: **kit corretivo por falha** (Catálogo; a sub-OS pede o kit inteiro ao Estoque), **ferramental por tarefa** (FR.168 × plano), **técnicos e inspetores** por especialidade, tecnologia e nível 1–3 (Cadastros › Técnicos; sub-OS atribuída ao técnico) e **OS executada por terceiro** com fornecedor.
 
 Com `DEMO_SIMULATOR=true` no `.env` a garagem **anda sozinha** a cada 5 minutos pela própria API de negócio: telemetria dos eBUS, lançamento de km diesel de manhã (alguns atrasam), falhas na proporção do MKBF, triagem, socorro, fila, material, inspeção, limpeza, liberação e reposição com reserva habilitada. `POST /api/demo/pulse` (admin ou PCM) avança um ciclo na hora; `DEMO_SPEED=12` acelera os tempos de espera e `DEMO_ALL_HOURS=true` ignora o horário de operação (só para testes). Nunca ligue o simulador num banco com dados reais.
 

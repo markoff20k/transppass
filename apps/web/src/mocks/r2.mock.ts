@@ -9,6 +9,9 @@ import {
   type ExpectedReturnRow,
   type KitSeparationRow,
   type KmTimelineRow,
+  DAILY_CHECK_ITEMS,
+  type DailyBoard,
+  type DailyCheckRow,
   type OperatorCandidate,
   type TechnicianRow,
   type OperatorRow,
@@ -286,7 +289,33 @@ const technicians: TechnicianRow[] = [
   { id: 'tec-2', registration: '05110', name: 'Edson Luiz Ferreira', specialtyId: 'sp-2', specialtyCode: 'ELE', specialtyName: 'Elétrica', technologies: ['DIESEL', 'EBUS'], level: 2, isInspector: false, isActive: true, userId: null, openTasks: 0 },
 ];
 
+const dailyBoard: DailyBoard = {
+  date: new Date().toISOString(),
+  mkbf: { last30: 5820, previous30: 5410, kmLast30: 2_250_000, returnsLast30: 386 },
+  availability: { now: 0.92, last7: 0.9, target: 0.85 },
+  rework: { rateLast30: 0.06, inspectionsLast30: 120, rejectionsLast30: 7 },
+  lostTrips: { yesterday: 1, last7: 4, last30: 11, note: 'janelas de reposição estouradas (RF-29) — proxy até a Operação apurar viagens perdidas' },
+  workOrders: { open: 28, overdue: 3, openedYesterday: 14, releasedYesterday: 12, waitingPart: 4, inQueue: 7 },
+  events: { yesterday: 13, last7: 92, avgPerDay7: 13.1 },
+  dailyChecks: { fleet: 5, checked: 3, nok: 1 },
+  topFailures7d: [{ key: 'AC-CLI-01', description: 'Ar-condicionado sem refrigeração', count: 21 }, { key: 'CAR-POR-01', description: 'Porta não fecha completamente', count: 15 }],
+  repeatVehicles30d: [{ vehicleId: 'v-1', vehicleCode: '10003', count: 3, lastAt: new Date().toISOString() }],
+  staleOdometer: 1,
+};
+const dailyChecks: DailyCheckRow[] = [];
+
 export const r2Handlers = [
+  http.get('*/api/metrics/daily', () => HttpResponse.json(dailyBoard)),
+  http.get('*/api/daily-checks/summary', () => HttpResponse.json({ date: new Date().toISOString().slice(0, 10), fleet: 5, checked: dailyChecks.length, ok: dailyChecks.filter((c) => c.result === 'OK').length, nok: dailyChecks.filter((c) => c.result === 'NOK').length, pending: Math.max(0, 5 - dailyChecks.length) })),
+  http.get('*/api/daily-checks/template', () => HttpResponse.json(DAILY_CHECK_ITEMS)),
+  http.get('*/api/daily-checks', () => HttpResponse.json(dailyChecks)),
+  http.post('*/api/daily-checks', async ({ request }) => {
+    const body = (await request.json()) as { vehicleId: string; items: { key: string; ok: boolean; note?: string }[]; odometerKm?: number; note?: string };
+    const nok = body.items.filter((i) => !i.ok);
+    const row: DailyCheckRow = { id: `dc-${Date.now()}`, vehicleId: body.vehicleId, vehicleCode: '10001', vehiclePlate: 'ABC1D23', technology: 'DIESEL', checkedAt: new Date().toISOString(), checkedByName: 'Administrador', operatorName: null, odometerKm: body.odometerKm ?? null, result: nok.length ? 'NOK' : 'OK', nokItems: nok.map((i) => ({ key: i.key, label: DAILY_CHECK_ITEMS.find((d) => d.key === i.key)?.label ?? i.key, note: i.note ?? null })), note: body.note ?? null, eventId: nok.length ? 'ev-1' : null, eventCode: nok.length ? 'EV-2026-000900' : null };
+    dailyChecks.unshift(row);
+    return HttpResponse.json(row, { status: 201 });
+  }),
   http.get('*/api/technicians', () => HttpResponse.json(technicians)),
   http.post('*/api/technicians', async ({ request }) => {
     const body = (await request.json()) as Partial<TechnicianRow>;

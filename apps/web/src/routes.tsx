@@ -24,6 +24,8 @@ import { UsersPage } from '@/pages/users-page';
 import { PlansPage } from '@/pages/plans-page';
 import { MaterialsPage } from '@/pages/materials-page';
 import { TechniciansPage } from '@/pages/technicians-page';
+import { DailyCheckPage } from '@/pages/daily-check-page';
+import { DailyPage } from '@/pages/daily-page';
 import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-pages';
 
 export const router = createBrowserRouter([
@@ -39,6 +41,8 @@ export const router = createBrowserRouter([
           // R0 — Fundacoes
           { path: '/', element: <DashboardPage /> },
           { path: '/frota', element: <FleetPanelPage /> },
+          { path: '/daily', element: <DailyPage /> },
+          { path: '/checklist', element: <DailyCheckPage /> },
           { path: '/km', element: <OdometerEntryPage /> },
           { path: '/cadastros/frota', element: <VehiclesPage /> },
           { path: '/cadastros/catalogo', element: <CatalogPage /> },

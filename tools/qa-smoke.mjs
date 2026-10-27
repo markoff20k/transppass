@@ -214,6 +214,8 @@ async function run() {
   console.log('\nTelas e painéis laterais');
   const routes = [
     { path: '/frota', name: 'Painel da frota', check: '.fleet-grid, .tp-table' },
+    { path: '/daily', name: 'Daily 15 min', check: '.daily-tiles' },
+    { path: '/checklist', name: 'Checklist diário', check: '.dc-layout' },
     { path: '/eventos', name: 'Eventos', check: '.tp-table' },
     { path: '/triagem', name: 'Triagem', check: '.tp-table' },
     { path: '/fila', name: 'Fila', check: '.tp-table' },
