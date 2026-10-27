@@ -120,4 +120,6 @@ export interface DailyBoard {
   auditsOverdue: number;
   /** Materiais no ponto de pedido ou abaixo (kanban). */
   kanbanBelow: number;
+  /** Componentes rodando além da vida esperada. */
+  componentsOverLife: number;
 }

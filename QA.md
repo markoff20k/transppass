@@ -1,6 +1,6 @@
 # Relatório de QA — Transppass PCM (MVP: R0 + R1 + R2)
 
-**Rodada:** 20/10/2026 (madrugada da apresentação) · **Ambiente:** Microsoft Edge dirigido por puppeteer **contra a API real** no Postgres local — frota de 453 carros, bases da Transppass carregadas e simulador de demonstração ligado · **Resultado:** 84 verificações funcionais de UI, 84 aprovadas (`QA_API=1 node tools/qa-smoke.mjs`; rodada de 27/10 inclui Técnicos, Daily, Checklist diário, Qualidade de peças, Fornecedores e Auditorias); teste e2e da API 78/78 com a nova base; typecheck, lint e build de produção limpos. A rodada anterior (19/10, modo mock) continua válida e o roteiro ainda roda nos dois modos.
+**Rodada:** 20/10/2026 (madrugada da apresentação) · **Ambiente:** Microsoft Edge dirigido por puppeteer **contra a API real** no Postgres local — frota de 453 carros, bases da Transppass carregadas e simulador de demonstração ligado · **Resultado:** 85 verificações funcionais de UI, 85 aprovadas (`QA_API=1 node tools/qa-smoke.mjs`; rodada de 27/10 inclui Técnicos, Daily, Checklist diário, Qualidade de peças, Fornecedores, Auditorias e Vida de componentes); teste e2e da API 78/78 com a nova base; typecheck, lint e build de produção limpos. A rodada anterior (19/10, modo mock) continua válida e o roteiro ainda roda nos dois modos.
 
 Este relatório é o que um analista de QA entregaria ao fim da sprint: o que foi testado, como, o que passou, o que foi corrigido no caminho e — mais importante — **o que ainda não foi exercitado** e por quê.
 
@@ -92,6 +92,7 @@ Base: A3 "Kaizen Estruturante" (03/06/2026) e "Fluxos de Processo PCM" Rev. 00 (
 - **Treinamentos**: `POST /technicians/:id/trainings` (NR-10 + alta tensão) tirou o técnico 70093 da sinalização "sem alta tensão"; listagem de técnicos passa a trazer treinamentos, vencimentos em 30 dias e a lacuna de alta tensão.
 - **Checklist diário no seed**: 292 dos 453 carros com checklist de hoje, para a Daily nascer preenchida.
 - Capturas conferidas em 1440 px: laboratório (tabela em largura cheia, motivo com quebra de linha), fornecedores, auditorias (card por área com tendência, última e próxima data), técnicos e Daily.
+- **Vida de componentes** (`/componentes`, `GET/POST /components`): carga inicial para toda a frota (compressor, turbina, bicos, cubos, motor de partida, alternador, baterias de tração), com histórico de trocas; registrar a troca encerra o anterior com a vida real e abre o novo no km do carro. Contagem "além da vida" na Daily.
 - **Kanban** (`GET /materials/kanban`): ponto de pedido e lote no cadastro do material (ASSUMIDOS a partir do saldo); lista "Kanban — repor" no Estoque com fornecedor, SLA e pedidos abertos; contagem na Daily. **Carregadores eBUS** entram no ferramental (34 baias necessárias × 32 disponíveis, ASSUMIDO) e aparecem em vermelho na suficiência.
 
 ## 5. O que NÃO foi testado (e o risco)

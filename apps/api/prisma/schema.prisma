@@ -197,6 +197,7 @@ model Vehicle {
   replacementDemands    ReplacementDemand[]
   poolComponents        PoolComponent[]
   dailyChecks           DailyCheck[]
+  components            VehicleComponent[]
 
   @@index([status])
   @@index([technology])
@@ -546,6 +547,29 @@ model PartInspection {
   @@index([supplierId, inspectedAt])
   @@index([materialId, inspectedAt])
   @@map("part_inspections")
+}
+
+/// Kaizen — componente rastreável com vida por km; a troca fecha o anterior com a vida real que fez.
+model VehicleComponent {
+  id             String    @id @default(uuid()) @db.Uuid
+  vehicleId      String    @db.Uuid
+  /// COMPRESSOR, TURBINA, BICO_INJETOR, CUBO_RODA, MOTOR_PARTIDA, ALTERNADOR, BATERIA_TRACAO
+  kind           String    @db.VarChar(24)
+  serialNumber   String?   @db.VarChar(40)
+  installedAt    DateTime  @default(now())
+  installedAtKm  Int
+  expectedLifeKm Int
+  /// FALHA, PREVENTIVA, GARANTIA, INICIAL
+  installReason  String    @default("INICIAL") @db.VarChar(12)
+  note           String?   @db.VarChar(255)
+  removedAt      DateTime?
+  removedAtKm    Int?
+  removalReason  String?   @db.VarChar(12)
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, kind, removedAt])
+  @@map("vehicle_components")
 }
 
 /// Kaizen (A3 §9) — auditoria 5S mensal e de conformidade trimestral, por área.

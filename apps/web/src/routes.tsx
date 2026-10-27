@@ -29,6 +29,7 @@ import { DailyPage } from '@/pages/daily-page';
 import { SuppliersPage } from '@/pages/suppliers-page';
 import { PartsLabPage } from '@/pages/parts-lab-page';
 import { AuditsPage } from '@/pages/audits-page';
+import { ComponentsPage } from '@/pages/components-page';
 import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-pages';
 
 export const router = createBrowserRouter([
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
           { path: '/cadastros/fornecedores', element: <SuppliersPage /> },
           { path: '/qualidade-pecas', element: <PartsLabPage /> },
           { path: '/auditorias', element: <AuditsPage /> },
+          { path: '/componentes', element: <ComponentsPage /> },
           // R1 — Corretivo e execucao
           { path: '/eventos', element: <EventsPage /> },
           { path: '/triagem', element: <TriagePage /> },

@@ -235,6 +235,7 @@ async function run() {
     { path: '/cadastros/fornecedores', name: 'Fornecedores', check: '.tp-table' },
     { path: '/qualidade-pecas', name: 'Qualidade de peças', check: '.tp-table' },
     { path: '/auditorias', name: 'Auditorias', check: '.audit-areas' },
+    { path: '/componentes', name: 'Vida de componentes', check: '.cmp-table' },
     { path: '/design', name: 'Design kit', check: '.bus-gallery' },
   ];
   let i = 0;

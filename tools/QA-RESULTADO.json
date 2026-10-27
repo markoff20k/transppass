@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-10-27T15:38:17.680Z",
+  "ranAt": "2026-10-27T15:51:07.489Z",
   "base": "http://localhost:5173",
-  "passed": 84,
+  "passed": 85,
   "failed": 0,
   "results": [
     {
@@ -110,7 +110,7 @@
       "id": "DASH-06",
       "name": "Legenda das famílias de estado filtra a frota e volta ao todo",
       "ok": true,
-      "detail": "36 → 14 (esperado 14) → 36"
+      "detail": "31 → 11 (esperado 11) → 31"
     },
     {
       "id": "DASH-07",
@@ -252,6 +252,12 @@
     },
     {
       "id": "ROUTE-23",
+      "name": "Vida de componentes renderiza com subheader \"Vida de componentes\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-24",
       "name": "Design kit renderiza com subheader \"Design kit\"",
       "ok": true,
       "detail": ""

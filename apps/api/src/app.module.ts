@@ -25,6 +25,7 @@ import { TechniciansModule } from './technicians/technicians.module';
 import { DailyChecksModule } from './daily-checks/daily-checks.module';
 import { QualityModule } from './quality/quality.module';
 import { AuditsModule } from './audits/audits.module';
+import { ComponentsModule } from './components/components.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { envSchema } from './config/env.validation';
 
@@ -66,6 +67,8 @@ import { envSchema } from './config/env.validation';
     QualityModule,
     // Auditorias 5S e de conformidade (A3 §9)
     AuditsModule,
+    // Componentes rastreáveis com vida por km
+    ComponentsModule,
     // Simulador de demonstração — só age com DEMO_SIMULATOR=true
     DemoModule,
   ],

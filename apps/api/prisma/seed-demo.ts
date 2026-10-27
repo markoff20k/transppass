@@ -229,6 +229,7 @@ async function main() {
   await prisma.partInspection.deleteMany();
   await prisma.dailyCheck.deleteMany();
   await prisma.processAudit.deleteMany();
+  await prisma.vehicleComponent.deleteMany();
   await prisma.replacementDemand.deleteMany();
   await prisma.toolLoan.deleteMany();
   await prisma.poolMovement.deleteMany();
@@ -798,6 +799,39 @@ async function main() {
     }
   }
   console.log(`  ${auditsN} auditorias (5S e conformidade)`);
+
+  // ---- Componentes rastreáveis com vida por km (Kaizen) — carga inicial ASSUMIDA ----
+  // Cada carro leva os componentes do seu tipo de tração; parte já passou da vida, parte
+  // teve troca anterior (com vida real menor que a esperada quando foi por falha).
+  const CMP: Record<string, { lifeKm: number; diesel: boolean; ebus: boolean }> = {
+    COMPRESSOR: { lifeKm: 300_000, diesel: true, ebus: true },
+    TURBINA: { lifeKm: 350_000, diesel: true, ebus: false },
+    BICO_INJETOR: { lifeKm: 250_000, diesel: true, ebus: false },
+    CUBO_RODA: { lifeKm: 400_000, diesel: true, ebus: true },
+    MOTOR_PARTIDA: { lifeKm: 300_000, diesel: true, ebus: false },
+    ALTERNADOR: { lifeKm: 200_000, diesel: true, ebus: false },
+    BATERIA_TRACAO: { lifeKm: 600_000, diesel: false, ebus: true },
+  };
+  type CmpRow = { vehicleId: string; kind: string; serialNumber: string | null; installedAt: Date; installedAtKm: number; expectedLifeKm: number; installReason: string; removedAt?: Date; removedAtKm?: number; removalReason?: string };
+  const cmpRows: CmpRow[] = [];
+  for (const v of VEHICLES) {
+    const isEbus = v.technology === VehicleTechnology.EBUS;
+    const daily = Math.max(60, v.avgDailyKm);
+    for (const [kind, def] of Object.entries(CMP)) {
+      if (isEbus ? !def.ebus : !def.diesel) continue;
+      const usedKm = Math.min(v.currentKm, Math.round(def.lifeKm * Math.pow(rnd('cmp', v.code, kind), 1.1) * 1.15));
+      const installedAtKm = v.currentKm - usedKm;
+      const installedAt = new Date(NOW - Math.round(usedKm / daily) * D);
+      const replaced = installedAtKm > def.lifeKm * 0.4 && rnd('cmpPrev', v.code, kind) < 0.55;
+      cmpRows.push({ vehicleId: vid(v.code), kind, serialNumber: `${kind.slice(0, 3)}-${v.code}${Math.floor(rnd('cmpSn', v.code, kind) * 900 + 100)}`, installedAt, installedAtKm, expectedLifeKm: def.lifeKm, installReason: replaced ? (rnd('cmpWhy', v.code, kind) < 0.6 ? 'FALHA' : 'PREVENTIVA') : 'INICIAL' });
+      if (replaced) {
+        const realLife = Math.round(def.lifeKm * (0.5 + rnd('cmpLife', v.code, kind) * 0.65));
+        cmpRows.push({ vehicleId: vid(v.code), kind, serialNumber: null, installedAt: new Date(installedAt.getTime() - Math.round(realLife / daily) * D), installedAtKm: Math.max(0, installedAtKm - realLife), expectedLifeKm: def.lifeKm, installReason: 'INICIAL', removedAt: installedAt, removedAtKm: installedAtKm, removalReason: realLife < def.lifeKm * 0.9 ? 'FALHA' : 'PREVENTIVA' });
+      }
+    }
+  }
+  for (let i = 0; i < cmpRows.length; i += 500) await prisma.vehicleComponent.createMany({ data: cmpRows.slice(i, i + 500) });
+  console.log(`  ${cmpRows.length} componentes rastreados (${cmpRows.filter((r) => !r.removedAt).length} em uso)`);
 
   // ---- Laboratório de inspeção de peças: exemplos para a conversa de garantia -----
   const labItems = [

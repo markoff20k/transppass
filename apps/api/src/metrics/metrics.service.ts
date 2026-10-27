@@ -73,7 +73,7 @@ export class MetricsService {
     const d30 = new Date(now.getTime() - 30 * DAY);
     const d60 = new Date(now.getTime() - 60 * DAY);
 
-    const [mkbf30, mkbf60, avail7, rework, fleet, byStatus, missedY, missed7, missed30, woOpen, woOverdue, woOpenedY, woReleasedY, waitingPart, inQueue, evY, ev7, checks, recent, repeats, stale, audits, kanban] = await Promise.all([
+    const [mkbf30, mkbf60, avail7, rework, fleet, byStatus, missedY, missed7, missed30, woOpen, woOverdue, woOpenedY, woReleasedY, waitingPart, inQueue, evY, ev7, checks, recent, repeats, stale, audits, kanban, components] = await Promise.all([
       this.mkbf(d30, now),
       this.mkbf(d60, d30),
       this.availability(d7, now),
@@ -97,7 +97,9 @@ export class MetricsService {
       this.prisma.kmProjection.count({ where: { isDegraded: true } }),
       this.prisma.processAudit.findMany({ orderBy: { auditedAt: 'desc' }, select: { kind: true, area: true, nextDueAt: true } }),
       this.prisma.material.findMany({ where: { isActive: true, reorderPoint: { not: null } }, select: { stockQty: true, reorderPoint: true } }),
+      this.prisma.vehicleComponent.findMany({ where: { removedAt: null, vehicle: { isActive: true } }, select: { installedAtKm: true, expectedLifeKm: true, vehicle: { select: { currentKm: true } } } }),
     ]);
+    const componentsOverLife = components.filter((c) => c.vehicle.currentKm - c.installedAtKm >= c.expectedLifeKm).length;
     const kanbanBelow = kanban.filter((m) => Number(m.stockQty) <= (m.reorderPoint ?? 0)).length;
     const AUDIT_AREAS_N = 7;
     const latestAudit = new Map<string, Date>();
@@ -135,6 +137,7 @@ export class MetricsService {
       staleOdometer: stale,
       auditsOverdue,
       kanbanBelow,
+      componentsOverLife,
     };
   }
 

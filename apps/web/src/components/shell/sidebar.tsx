@@ -21,7 +21,7 @@ import {
   Users,
   Wrench,
   X,
-  type LucideIcon, HardHat, Sunrise, ListChecks, FlaskConical, Truck, ShieldCheck } from 'lucide-react';
+  type LucideIcon, HardHat, Sunrise, ListChecks, FlaskConical, Truck, ShieldCheck, Cog } from 'lucide-react';
 import { USER_ROLE_LABELS, UserRole } from '@app/shared';
 import { useAuth } from '@/features/auth/use-auth';
 import { useI18n } from '@/i18n/i18n.context';
@@ -33,7 +33,7 @@ const {
 
 interface NavItem {
   to: string;
-  key: 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'scheduling' | 'operations' | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'users' | 'plans' | 'materials' | 'designKit' | 'technicians' | 'daily' | 'dailyCheck' | 'partsLab' | 'suppliers' | 'audits';
+  key: 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'scheduling' | 'operations' | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'users' | 'plans' | 'materials' | 'designKit' | 'technicians' | 'daily' | 'dailyCheck' | 'partsLab' | 'suppliers' | 'audits' | 'components';
   icon: LucideIcon;
   roles?: UserRole[];
   /** Contador ao lado do item, quando a tela tem fila. */
@@ -72,6 +72,7 @@ const GROUPS: NavGroup[] = [
       { to: '/os', key: 'workOrders', icon: Wrench, roles: [ADMIN, MANUTENCAO, MECANICO, INSPETOR, PCM, LIMPEZA] },
       { to: '/estoque', key: 'stock', icon: Package, roles: [ADMIN, ESTOQUE, MANUTENCAO, PCM] },
       { to: '/qualidade-pecas', key: 'partsLab', icon: FlaskConical, roles: [ADMIN, ESTOQUE, MANUTENCAO, PCM, INSPETOR] },
+      { to: '/componentes', key: 'components', icon: Cog, roles: [ADMIN, PCM, MANUTENCAO, GESTAO] },
     ],
   },
   {

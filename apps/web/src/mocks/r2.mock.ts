@@ -16,6 +16,7 @@ import {
   type AuditAreaStatus,
   type AuditKind,
   type AuditRow,
+  type ComponentRow,
   type OperatorCandidate,
   type PartInspectionRow,
   type SupplierRow,
@@ -309,6 +310,7 @@ const dailyBoard: DailyBoard = {
   staleOdometer: 1,
   auditsOverdue: 3,
   kanbanBelow: 2,
+  componentsOverLife: 1,
 };
 const dailyChecks: DailyCheckRow[] = [];
 
@@ -319,9 +321,16 @@ const suppliers: SupplierRow[] = [
 const partInspections: PartInspectionRow[] = [];
 
 const audits: AuditRow[] = [];
+const componentRows: ComponentRow[] = [
+  { id: 'cp-1', vehicleId: 'v-1', vehicleCode: '82006', technology: 'DIESEL', kind: 'COMPRESSOR', kindLabel: 'Compressor de ar', serialNumber: 'COM-82006311', installedAt: new Date(Date.now() - 700 * 86_400_000).toISOString(), installedAtKm: 210_000, expectedLifeKm: 300_000, currentKm: 528_000, usedKm: 318_000, lifePct: 106, remainingKm: -18_000, daysToLife: null, status: 'OVER', installReason: 'FALHA', note: null, previousLifeKm: 212_000 },
+  { id: 'cp-2', vehicleId: 'v-2', vehicleCode: '91004', technology: 'EBUS', kind: 'COMPRESSOR', kindLabel: 'Compressor de ar', serialNumber: null, installedAt: new Date(Date.now() - 500 * 86_400_000).toISOString(), installedAtKm: 40_000, expectedLifeKm: 300_000, currentKm: 304_000, usedKm: 264_000, lifePct: 88, remainingKm: 36_000, daysToLife: 150, status: 'NEAR', installReason: 'INICIAL', note: null, previousLifeKm: null },
+];
 const auditStatus = (kind: AuditKind): AuditAreaStatus[] => AUDIT_AREAS.map((area) => { const last = audits.find((a) => a.kind === kind && a.area === area); return { area, kind, lastScore: last?.score ?? null, previousScore: null, lastAt: last?.auditedAt ?? null, nextDueAt: last?.nextDueAt ?? null, isOverdue: !last }; });
 
 export const r2Handlers = [
+  http.get('*/api/components/summary', () => HttpResponse.json({ tracked: componentRows.length, over: 1, near: 1, byKind: [{ kind: 'COMPRESSOR', label: 'Compressor de ar', expectedLifeKm: 300_000, active: 2, over: 1, near: 1, removals: 1, failures: 1, avgLifeAtRemovalKm: 212_000 }] })),
+  http.get('*/api/components', () => HttpResponse.json(componentRows)),
+  http.post('*/api/components', () => HttpResponse.json(componentRows, { status: 201 })),
   http.get('*/api/audits/summary', () => HttpResponse.json({ fiveS: auditStatus('FIVE_S'), compliance: auditStatus('COMPLIANCE'), averageFiveS: null, averageCompliance: null, overdue: 14 - audits.length })),
   http.get('*/api/audits', () => HttpResponse.json(audits)),
   http.post('*/api/audits', async ({ request }) => {

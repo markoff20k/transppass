@@ -125,6 +125,7 @@ export function DailyPage() {
             <li><b>{d.workOrders.inQueue}</b><span>carros na fila: o PCM confirma a ordem e os motivos · <Link to="/fila">fila</Link></span></li>
             <li><b>{d.staleOdometer}</b><span>carros sem km lançado há mais de 2 dias · <Link to="/km">lançar km</Link></span></li>
             <li><b>{d.kanbanBelow}</b><span>materiais no ponto de pedido (kanban): o Estoque confirma o pedido · <Link to="/estoque">estoque</Link></span></li>
+            <li><b>{d.componentsOverLife}</b><span>componentes rodando além da vida esperada: trocar antes de falhar · <Link to="/componentes">componentes</Link></span></li>
             <li><b>{d.auditsOverdue}</b><span>auditorias 5S ou de conformidade devendo · <Link to="/auditorias">auditorias</Link></span></li>
           </ul>
         </section>

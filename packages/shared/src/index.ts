@@ -5,6 +5,7 @@ export * from './daily/daily-check.schemas.js';
 export * from './quality/quality.schemas.js';
 export * from './audits/audit.schemas.js';
 export * from './fleet/odometer.schemas.js';
+export * from './fleet/component.schemas.js';
 export * from './catalog/catalog.schemas.js';
 export * from './catalog/failure-codes.js';
 export * from './events/event.schemas.js';

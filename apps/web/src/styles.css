@@ -3559,3 +3559,13 @@ small.muted {
 .audit-area .is-bad, .audit-score.is-bad { color: var(--color-danger); }
 .audit-score { font-weight: 700; font-variant-numeric: tabular-nums; }
 .audit-score--big { font-family: var(--tp-font-display); font-size: var(--tp-text-xl); }
+
+/* --- Vida de componentes ----------------------------------------------------- */
+.cmp-life { display: block; height: 6px; border-radius: 3px; background: var(--color-surface-sunken); overflow: hidden; margin-top: 4px; }
+.cmp-life i { display: block; height: 100%; background: var(--color-success); }
+.cmp-life--near i { background: var(--color-warning); }
+.cmp-life--over i { background: var(--color-danger); }
+.cmp-kinds { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }
+.cmp-kind { padding: 10px 12px; border: var(--tp-border-thin) solid var(--color-border); border-radius: var(--tp-radius-md); }
+.cmp-kind__head { display: flex; justify-content: space-between; gap: 8px; font-size: var(--tp-text-sm); }
+.cmp-kind__row { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: var(--tp-text-2xs); color: var(--color-text-muted); }
