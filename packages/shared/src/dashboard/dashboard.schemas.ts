@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { VehicleStatus, VehicleTechnology } from '../fleet/vehicle.schemas.js';
+import type { VehicleClass, VehicleStatus, VehicleTechnology } from '../fleet/vehicle.schemas.js';
 import type { DowntimeByCause } from '../metrics/metrics.schemas.js';
 import type { FailureEventSummary } from '../events/event.schemas.js';
 
@@ -42,6 +42,7 @@ export interface DashboardVehicle {
   code: string;
   plate: string;
   technology: VehicleTechnology;
+  vehicleClass: VehicleClass | null;
   status: VehicleStatus;
   /** Nome curto do que prende o carro, quando houver — a falha ou a OS. */
   reason: string | null;

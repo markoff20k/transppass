@@ -201,6 +201,26 @@ export const handlers = [
     return HttpResponse.json({ summary, rows });
   }),
 
+  http.get('*/api/vehicles/:id/overview', async ({ request, params }) => {
+    await delay();
+    const auth = requireAuth(request, '/api/vehicles/overview');
+    if ('error' in auth) return auth.error;
+    const all = filterVehicles(new URL(request.url)); const v = all.find((x) => x.id === params.id) ?? all[0];
+    if (!v) return HttpResponse.json({ statusCode: 404, code: 'NOT_FOUND', message: 'Carro não encontrado', timestamp: new Date().toISOString(), path: '/api/vehicles/overview' }, { status: 404 });
+    const today = new Date();
+    const kmByDay = Array.from({ length: 30 }, (_, i) => { const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (29 - i)); return { date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, km: i % 7 === 6 ? 0 : 150 + ((i * 37) % 90) }; });
+    return HttpResponse.json({
+      vehicle: v, garageName: 'Garagem Jaguaré', projectedKm: v.currentKm + 180, avgDailyKm: 195, isKmDegraded: false, daysSinceLastReading: 0,
+      driverToday: { name: 'Carlos Henrique de Souza', registration: '30412' }, lastDailyCheck: { at: today.toISOString(), result: 'OK' },
+      nextPackage: { name: 'B', windowKm: v.currentKm + 4_200, kmToWindow: 4_200, progress: 0.72, daysToWindow: 22 }, openWorkOrder: null,
+      last30: { kmTraveled: kmByDay.reduce((a, b) => a + b.km, 0), returns: 1, workOrders: 2, mkbf: 5_400, downtimeHours: 31, availability: 0.957 },
+      kmByDay,
+      components: [{ id: 'c1', kind: 'ALTERNADOR', label: 'Alternador', lifePct: 91, remainingKm: 18_000, status: 'NEAR' }, { id: 'c2', kind: 'COMPRESSOR', label: 'Compressor de ar', lifePct: 64, remainingKm: 108_000, status: 'OK' }],
+      recentEvents: [{ id: 'e1', code: 'EV-2026-000120', reportedAt: new Date(Date.now() - 5 * 86_400_000).toISOString(), description: 'Cuíca de freio inoperante', failureCode: 'IN-013-002-TD', status: 'CLOSED', isUnscheduledReturn: true }],
+      recentWorkOrders: [{ id: 'wo-1', code: 'OS-2026-000120', type: 'CORRECTIVE', status: 'RELEASED', openedAt: new Date(Date.now() - 5 * 86_400_000).toISOString(), releasedAt: new Date(Date.now() - 4 * 86_400_000).toISOString() }],
+    });
+  }),
+
   http.get('*/api/vehicles', async ({ request }) => {
     await delay();
     const auth = requireAuth(request, '/api/vehicles');
@@ -388,6 +408,7 @@ function toPanelRow(vehicle: Vehicle): FleetPanelRow {
     avgDailyKm: avg,
     isKmDegraded: daysSince !== null && daysSince > KM_DEGRADATION_DAYS,
     daysSinceLastReading: daysSince !== null ? Math.floor(daysSince) : null,
+    nextPackageName: 'B', kmToNextPackage: 4_200, nextPackageProgress: 0.72, driverName: 'Carlos Henrique de Souza', openWorkOrderCode: null,
   };
 }
 

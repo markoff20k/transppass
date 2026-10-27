@@ -180,6 +180,32 @@ export interface FleetPanelRow extends Vehicle {
   /** Projeção sem leitura há mais de 2 dias (RF-14). */
   isKmDegraded: boolean;
   daysSinceLastReading: number | null;
+  /** Próxima preventiva pelo plano vigente: nome do pacote, km que faltam e quanto do intervalo já rodou (0–1). */
+  nextPackageName: string | null;
+  kmToNextPackage: number | null;
+  nextPackageProgress: number | null;
+  /** Motorista do checklist de hoje, quando houver. */
+  driverName: string | null;
+  openWorkOrderCode: string | null;
+}
+
+/** A página do carro: o veículo como produto, com o que a manutenção precisa saber hoje. */
+export interface VehicleOverview {
+  vehicle: Vehicle;
+  garageName: string | null;
+  projectedKm: number | null;
+  avgDailyKm: number | null;
+  isKmDegraded: boolean;
+  daysSinceLastReading: number | null;
+  driverToday: { name: string; registration: string } | null;
+  lastDailyCheck: { at: string; result: 'OK' | 'NOK' } | null;
+  nextPackage: { name: string; windowKm: number; kmToWindow: number; progress: number; daysToWindow: number | null } | null;
+  openWorkOrder: { id: string; code: string; status: string; openedAt: string } | null;
+  last30: { kmTraveled: number; returns: number; workOrders: number; mkbf: number | null; downtimeHours: number; availability: number };
+  kmByDay: { date: string; km: number }[];
+  components: { id: string; kind: string; label: string; lifePct: number; remainingKm: number; status: 'OK' | 'NEAR' | 'OVER' }[];
+  recentEvents: { id: string; code: string; reportedAt: string; description: string; failureCode: string | null; status: string; isUnscheduledReturn: boolean }[];
+  recentWorkOrders: { id: string; code: string; type: string; status: string; openedAt: string; releasedAt: string | null }[];
 }
 
 /** KPIs do topo do painel (RF-37 / RF-38). */

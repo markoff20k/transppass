@@ -39,14 +39,14 @@ function availabilityCurve(hour: number): number {
 }
 
 const extraVehicles: DashboardVehicle[] = [
-  { id: 'v-201', code: '10004', plate: 'ABC1D26', technology: 'DIESEL', status: VehicleStatus.IN_LINE, reason: null, hoursInState: null },
-  { id: 'v-202', code: '10005', plate: 'ABC1D27', technology: 'DIESEL', status: VehicleStatus.AWAITING_TRIAGE, reason: 'Ar-condicionado sem refrigeração', hoursInState: 0.4 },
-  { id: 'v-203', code: '10006', plate: 'ABC1D28', technology: 'DIESEL', status: VehicleStatus.FIELD_SERVICE, reason: 'Alternador não carrega', hoursInState: 1.2 },
-  { id: 'v-204', code: '10007', plate: 'ABC1D29', technology: 'DIESEL', status: VehicleStatus.IN_LINE, reason: null, hoursInState: null },
-  { id: 'v-205', code: '10008', plate: 'ABC1D30', technology: 'DIESEL', status: VehicleStatus.IN_INSPECTION, reason: 'OS OS-2026-000041', hoursInState: 5.5 },
-  { id: 'v-206', code: '20003', plate: 'EBS1A03', technology: 'EBUS', status: VehicleStatus.IN_LINE, reason: null, hoursInState: null },
-  { id: 'v-207', code: '20004', plate: 'EBS1A04', technology: 'EBUS', status: VehicleStatus.AWAITING_MAINTENANCE, reason: 'Porta não fecha completamente', hoursInState: 3.1 },
-  { id: 'v-208', code: '20005', plate: 'EBS1A05', technology: 'EBUS', status: VehicleStatus.OUT_OF_SERVICE, reason: 'Aguardando vistoria', hoursInState: 72 },
+  { id: 'v-201', code: '10004', plate: 'ABC1D26', technology: 'DIESEL', vehicleClass: 'BASICO_12M', status: VehicleStatus.IN_LINE, reason: null, hoursInState: null },
+  { id: 'v-202', code: '10005', plate: 'ABC1D27', technology: 'DIESEL', vehicleClass: 'BASICO_12M', status: VehicleStatus.AWAITING_TRIAGE, reason: 'Ar-condicionado sem refrigeração', hoursInState: 0.4 },
+  { id: 'v-203', code: '10006', plate: 'ABC1D28', technology: 'DIESEL', vehicleClass: 'BASICO_12M', status: VehicleStatus.FIELD_SERVICE, reason: 'Alternador não carrega', hoursInState: 1.2 },
+  { id: 'v-204', code: '10007', plate: 'ABC1D29', technology: 'DIESEL', vehicleClass: 'BASICO_12M', status: VehicleStatus.IN_LINE, reason: null, hoursInState: null },
+  { id: 'v-205', code: '10008', plate: 'ABC1D30', technology: 'DIESEL', vehicleClass: 'BASICO_12M', status: VehicleStatus.IN_INSPECTION, reason: 'OS OS-2026-000041', hoursInState: 5.5 },
+  { id: 'v-206', code: '20003', plate: 'EBS1A03', technology: 'EBUS', vehicleClass: 'EPADRON_13M', status: VehicleStatus.IN_LINE, reason: null, hoursInState: null },
+  { id: 'v-207', code: '20004', plate: 'EBS1A04', technology: 'EBUS', vehicleClass: 'EPADRON_13M', status: VehicleStatus.AWAITING_MAINTENANCE, reason: 'Porta não fecha completamente', hoursInState: 3.1 },
+  { id: 'v-208', code: '20005', plate: 'EBS1A05', technology: 'EBUS', vehicleClass: 'EPADRON_13M', status: VehicleStatus.OUT_OF_SERVICE, reason: 'Aguardando vistoria', hoursInState: 72 },
 ];
 
 function buildVehicles(): DashboardVehicle[] {
@@ -54,6 +54,7 @@ function buildVehicles(): DashboardVehicle[] {
     id: v.id,
     code: v.code,
     plate: v.plate,
+    vehicleClass: v.technology === 'EBUS' ? 'EPADRON_13M' : 'PADRON_13M',
     technology: v.technology,
     status: v.status,
     reason:

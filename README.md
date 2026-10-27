@@ -74,7 +74,9 @@ Com `DEMO_SIMULATOR=true` no `.env` a garagem **anda sozinha** a cada 5 minutos 
 
 Shell com **sidebar recolhível** (trilho de 72px no desktop, gaveta abaixo de 1024px), **header** com atalhos de idioma, tema, contraste, notificações e perfil, e **subheader** controlado por cada tela. A tela inicial é o **dashboard**: quatro números que resumem a garagem, o que precisa de atenção, a frota carro a carro e as tendências em gráfico.
 
-O elemento de assinatura é a **ilustração do ônibus**: o estado operacional é desenhado no próprio veículo — âmbar levantado no macaco com a chave girando quando está em manutenção, vermelho com pisca-alerta quando aguarda peça, bolhas quando está na lavagem, rodas girando quando está em linha. A cor e o distintivo continuam informando com `prefers-reduced-motion`.
+O elemento de assinatura é o **render do ônibus** (`BusRender`): o carro da Transppass como um produto em estúdio, vista lateral com volumes, vidro com reflexo, rodas com aro e sombra no chão, na pintura da frota de São Paulo. A carroceria muda com a classe da Escala (Básico 12M, Padron 13M, ePadron 13M/15M, Articulado 18M, Biarticulado 23M e os elétricos com baterias no teto e tomada de recarga). O estado fica no chip do card; só as rodas giram em linha, e param com `prefers-reduced-motion`. O desenho técnico anterior continua no design kit.
+
+O **Painel da frota** mostra cada carro num card com o render, o chip de estado, a barra até a próxima preventiva, km, média e o motorista ou a OS aberta. O card abre a **página do carro** (`/frota/:id`): disponibilidade, km, retornos e MKBF dos últimos 30 dias, o render grande com a ficha ao lado, o que vence primeiro (preventiva e vida dos componentes), km por dia e o histórico de ocorrências e OS.
 
 Responsivo em três faixas: ≥ 1024px sidebar fixa; < 1024px gaveta sobre o conteúdo; < 640px header compacto, subheader empilha e toda ação vira alvo de largura cheia.
 

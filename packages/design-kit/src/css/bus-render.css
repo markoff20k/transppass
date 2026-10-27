@@ -1,0 +1,75 @@
+/**
+ * Render do ônibus (busr) — vista lateral em estilo de produto. A cor do
+ * estado fica fora do desenho (chip do card); só as rodas giram em linha.
+ */
+
+.busr {
+  display: block;
+  overflow: visible;
+}
+
+.busr__shadow {
+  fill: #000;
+  opacity: 0.22;
+}
+
+:root[data-theme='dark'] .busr__shadow { opacity: 0.5; }
+
+.busr__grille rect { fill: #3a3b3a; }
+
+.busr__sign-text {
+  font-family: var(--tp-font-display);
+  font-size: 3.6px;
+  font-weight: 700;
+  fill: #ffb347;
+  letter-spacing: 0.08em;
+}
+
+.busr__prefix {
+  font-family: var(--tp-font-display);
+  font-weight: 700;
+  font-size: 9px;
+  fill: #2b2c2b;
+  letter-spacing: 0.02em;
+}
+
+.busr__brand {
+  font-family: var(--tp-font-sans);
+  font-size: 4.2px;
+  font-weight: 800;
+  fill: #444544;
+  letter-spacing: 0.04em;
+}
+
+.busr__electric-text {
+  font-family: var(--tp-font-sans);
+  font-size: 4px;
+  font-weight: 700;
+  fill: #1fa37a;
+  letter-spacing: 0.06em;
+}
+
+.busr__seal {
+  font-family: var(--tp-font-sans);
+  font-size: 2.9px;
+  fill: #333;
+}
+.busr__seal--strong { font-weight: 700; }
+
+/* Rodas giram em linha; o eixo é o centro da própria roda */
+.busr__wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.busr--running .busr__wheel {
+  animation: busr-spin 1.4s linear infinite;
+}
+
+@keyframes busr-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .busr--running .busr__wheel { animation: none; }
+}

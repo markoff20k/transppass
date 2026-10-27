@@ -1,7 +1,8 @@
 import { BRAND } from '@app/design-kit';
-import { DOWNTIME_CAUSE_LABELS, DowntimeCause, VEHICLE_STATUS_LABELS, VehicleStatus } from '@app/shared';
+import { DOWNTIME_CAUSE_LABELS, DowntimeCause, VEHICLE_CLASS_LABELS, VEHICLE_STATUS_LABELS, VehicleClass, VehicleStatus } from '@app/shared';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusIllustration } from '@/components/bus/bus-illustration';
+import { BusRender } from '@/components/bus/bus-render';
 import { TransppassLogo, TransppassMark } from '@/components/brand/transppass-logo';
 import { BrandLoader } from '@/components/brand/brand-loader';
 
@@ -61,6 +62,24 @@ export function DesignKitPage() {
             mesmo: <code>--color-brand</code> preenche, <code>--color-brand-text</code> escreve, e{' '}
             <code>--color-text-on-brand</code> vai sobre o laranja — nunca branco.
           </p>
+        </div>
+      </section>
+
+      {/* ---- Render por classe ---- */}
+      <section className="tp-card">
+        <h2>O ônibus como produto — render por classe</h2>
+        <p className="tp-muted">
+          A carroceria muda com a classe operacional da Escala: comprimento, portas, eixos, ar-condicionado,
+          baterias no teto e tomada de recarga nos elétricos, sanfona nos articulados. Só as rodas giram em linha.
+        </p>
+        <div className="bus-gallery bus-gallery--render">
+          {Object.values(VehicleClass).map((cls) => (
+            <div key={cls} className="bus-gallery__item">
+              <BusRender vehicleClass={cls} status={cls === 'BASICO_12M' ? 'IN_LINE' : 'AVAILABLE'} code="82001" width={320} />
+              <span className="tp-muted">{VEHICLE_CLASS_LABELS[cls]}</span>
+              <code>{cls}</code>
+            </div>
+          ))}
         </div>
       </section>
 

@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-10-27T15:51:07.489Z",
+  "ranAt": "2026-10-27T17:23:07.016Z",
   "base": "http://localhost:5173",
-  "passed": 85,
+  "passed": 86,
   "failed": 0,
   "results": [
     {
@@ -90,7 +90,7 @@
     },
     {
       "id": "DASH-02",
-      "name": "Grade de ônibus com ilustrações",
+      "name": "Grade de ônibus com o render",
       "ok": true,
       "detail": ""
     },
@@ -110,7 +110,7 @@
       "id": "DASH-06",
       "name": "Legenda das famílias de estado filtra a frota e volta ao todo",
       "ok": true,
-      "detail": "31 → 11 (esperado 11) → 31"
+      "detail": "37 → 16 (esperado 16) → 37"
     },
     {
       "id": "DASH-07",
@@ -337,6 +337,12 @@
     {
       "id": "OS-02",
       "name": "Painel de nova sub-OS abre",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "VEH-00",
+      "name": "Página do carro: render, ficha, manutenção e km por dia",
       "ok": true,
       "detail": ""
     },

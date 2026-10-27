@@ -30,6 +30,7 @@ import { SuppliersPage } from '@/pages/suppliers-page';
 import { PartsLabPage } from '@/pages/parts-lab-page';
 import { AuditsPage } from '@/pages/audits-page';
 import { ComponentsPage } from '@/pages/components-page';
+import { VehiclePage } from '@/pages/vehicle-page';
 import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-pages';
 
 export const router = createBrowserRouter([
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
           // R0 — Fundacoes
           { path: '/', element: <DashboardPage /> },
           { path: '/frota', element: <FleetPanelPage /> },
+          { path: '/frota/:id', element: <VehiclePage /> },
           { path: '/daily', element: <DailyPage /> },
           { path: '/checklist', element: <DailyCheckPage /> },
           { path: '/km', element: <OdometerEntryPage /> },

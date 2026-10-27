@@ -18,7 +18,7 @@ import {
 import { api } from '@/lib/api-client';
 import { formatNumber } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
-import { BusIllustration } from '@/components/bus/bus-illustration';
+import { BusRender } from '@/components/bus/bus-render';
 import { FleetLegend } from '@/components/fleet/fleet-legend';
 import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
@@ -295,7 +295,7 @@ export function FleetPanelPage() {
         </div>
 
         <ul className="fleet-guide" aria-label="Como ler os cards">
-          <li><span className="fleet-guide__swatch" aria-hidden /> cor da borda = família do estado</li>
+          <li><span className="fleet-guide__swatch" aria-hidden /> chip = estado do carro agora · clique no card para abrir o carro</li>
           <li><Clock3 size={12} aria-hidden /> odômetro = quando o km foi lido pela última vez</li>
           <li><TechIcon technology={VehicleTechnology.DIESEL} /> diesel · <TechIcon technology={VehicleTechnology.EBUS} /> elétrico</li>
         </ul>
@@ -309,20 +309,35 @@ export function FleetPanelPage() {
               const reading = readingOf(row);
               return (
                 <article key={row.id} className={`fleet-card fleet-card--${fam}${row.isKmDegraded ? ' is-stale' : ''}`}>
+                  <Link to={`/frota/${row.id}`} className="fleet-card__link" aria-label={`Abrir o carro ${row.code}`} />
                   <header className="fleet-card__head">
-                    <span className="fleet-card__code">{row.code}</span>
-                    <span className="fleet-card__plate">{row.plate}</span>
-                    <TechIcon technology={row.technology} />
+                    <div className="fleet-card__title">
+                      <span className="fleet-card__code">{row.code}</span>
+                      <span className="fleet-card__model">{[row.manufacturer, row.model].filter(Boolean).join(' ') || (row.vehicleClass ? VEHICLE_CLASS_LABELS[row.vehicleClass] : '—')}</span>
+                    </div>
+                    <span className={`fleet-chip fleet-chip--${fam}`}>{VEHICLE_STATUS_LABELS[row.status]}</span>
                   </header>
                   <span className="fleet-card__class">
-                    {row.vehicleClass ? VEHICLE_CLASS_LABELS[row.vehicleClass] : row.model ?? '—'}
+                    <span className="fleet-card__plate">{row.plate}</span>
+                    {row.vehicleClass ? ` · ${VEHICLE_CLASS_LABELS[row.vehicleClass]}` : ''}
                     {row.lot ? ` · ${row.lot}` : ''}
                     {row.fleetRole === 'RESERVA' ? ' · reserva' : ''}
+                    <TechIcon technology={row.technology} />
                   </span>
                   <div className="fleet-card__bus">
-                    <BusIllustration status={row.status} code={row.code} width={200} />
+                    <BusRender vehicleClass={row.vehicleClass} technology={row.technology} status={row.status} code={row.code} width={320} />
                   </div>
-                  <span className={`tp-state tp-state--${fam} fleet-card__state`}>{VEHICLE_STATUS_LABELS[row.status]}</span>
+                  <div className="fleet-card__progress">
+                    <div className="fleet-card__progress-head">
+                      <span>{row.nextPackageName ? `Preventiva ${row.nextPackageName}` : 'Sem plano preventivo'}</span>
+                      {row.kmToNextPackage !== null && (
+                        <b className={row.kmToNextPackage < 0 ? 'tp-error' : undefined}>{row.kmToNextPackage < 0 ? `estourou ${formatNumber(-row.kmToNextPackage)} km` : `em ${formatNumber(row.kmToNextPackage)} km`}</b>
+                      )}
+                    </div>
+                    <span className={`fleet-card__bar${row.kmToNextPackage !== null && row.kmToNextPackage < 0 ? ' is-over' : (row.nextPackageProgress ?? 0) >= 0.85 ? ' is-near' : ''}`}>
+                      <i style={{ width: `${Math.round((row.nextPackageProgress ?? 0) * 100)}%` }} />
+                    </span>
+                  </div>
                   <dl className="fleet-card__facts">
                     <div>
                       <dt>Km atual</dt>
@@ -331,6 +346,10 @@ export function FleetPanelPage() {
                     <div>
                       <dt>Média/dia</dt>
                       <dd>{row.avgDailyKm === null ? '—' : `${formatNumber(Math.round(row.avgDailyKm))} km`}</dd>
+                    </div>
+                    <div>
+                      <dt>{row.openWorkOrderCode ? 'OS aberta' : 'Motorista'}</dt>
+                      <dd className="fleet-card__ellipsis">{row.openWorkOrderCode ?? (row.driverName ? row.driverName.split(' ').slice(0, 2).join(' ') : '—')}</dd>
                     </div>
                   </dl>
                   <footer className={`fleet-card__reading fleet-card__reading--${reading.tone}`}>

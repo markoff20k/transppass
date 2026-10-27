@@ -43,7 +43,7 @@ const DAY_MS = 86_400_000;
  * o caminho é o mesmo fluxo de execução do corretivo — a OS-mãe.
  */
 /** Próximo km em que o pacote dispara: offset + n×intervalo, acima do km atual. */
-function nextTrigger(currentKm: number, pkg: { intervalKm: number; offsetKm: number }): number {
+export function nextTrigger(currentKm: number, pkg: { intervalKm: number; offsetKm: number }): number {
   const base = Math.max(0, currentKm - pkg.offsetKm);
   return pkg.offsetKm + (Math.floor(base / pkg.intervalKm) + 1) * pkg.intervalKm;
 }
@@ -52,7 +52,7 @@ function nextTrigger(currentKm: number, pkg: { intervalKm: number; offsetKm: num
  * Pacotes que valem para o carro: o plano do modelo dele, se existir; senão o
  * plano genérico da tecnologia (IT.MAN-01 é por modelo, IT.MAN-54/60 por eBUS).
  */
-function packagesFor<T extends { intervalKm: number; plan: { technology: string; vehicleModel: string | null } }>(
+export function packagesFor<T extends { intervalKm: number; plan: { technology: string; vehicleModel: string | null } }>(
   packages: T[],
   vehicle: { technology: string; model: string | null },
 ): T[] {

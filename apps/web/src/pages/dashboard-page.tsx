@@ -14,7 +14,7 @@ import { api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes, formatNumber } from '@/lib/format';
 import { useI18n } from '@/i18n/i18n.context';
 import { usePageHeader } from '@/components/shell/page-header.context';
-import { BusIllustration } from '@/components/bus/bus-illustration';
+import { BusRender } from '@/components/bus/bus-render';
 import { InfoTip } from '@/components/ui/info-tip';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { FleetLegend } from '@/components/fleet/fleet-legend';
@@ -437,7 +437,7 @@ function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
       <div className="bus-grid" data-focus={focus ?? undefined}>
         {collapseRunning && running.length > 0 && (
           <Link to="/frota?status=IN_LINE" className="bus-card bus-card--running bus-card--summary">
-            <BusIllustration status="IN_LINE" code="" width={200} />
+            <BusRender vehicleClass="PADRON_13M" status="IN_LINE" width={260} title="Carros rodando" />
             <div className="bus-card__text">
               <div className="bus-card__row">
                 <b className="bus-card__big">{running.length}</b>
@@ -459,8 +459,8 @@ function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
 function BusCard({ vehicle }: { vehicle: DashboardVehicle }) {
   const family = VEHICLE_STATE_FAMILY[vehicle.status] ?? 'waiting';
   return (
-    <Link to={`/frota?search=${vehicle.code}`} className={`bus-card bus-card--${family}`}>
-      <BusIllustration status={vehicle.status} code={vehicle.code} width={200} />
+    <Link to={`/frota/${vehicle.id}`} className={`bus-card bus-card--${family}`}>
+      <BusRender vehicleClass={vehicle.vehicleClass} technology={vehicle.technology} status={vehicle.status} code={vehicle.code} width={260} />
       <div className="bus-card__text">
         <div className="bus-card__row">
           <b>{vehicle.code}</b>

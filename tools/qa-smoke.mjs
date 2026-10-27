@@ -184,7 +184,7 @@ async function run() {
   console.log('\nDashboard');
   record('DASH-01', 'Anel de disponibilidade + três KPIs', (await page.$$('.dash-kpi')).length === 3 && (await exists(page, '.ring__value')));
   record('DASH-05', 'Fluxo da garagem com seis etapas clicáveis', (await page.$$('.dash-flow__node')).length === 6);
-  record('DASH-02', 'Grade de ônibus com ilustrações', (await page.$$('.bus-grid .bus')).length >= 5);
+  record('DASH-02', 'Grade de ônibus com o render', (await page.$$('.bus-grid .busr')).length >= 5);
   record('DASH-03', 'Gráficos Recharts renderizados', (await page.$$('.recharts-surface')).length >= 3);
   record('DASH-04', 'Bloco de atenção com links', (await page.$$('.attention-item a')).length >= 1);
   {
@@ -213,7 +213,7 @@ async function run() {
   // ---- Rotas e painéis ------------------------------------------------------
   console.log('\nTelas e painéis laterais');
   const routes = [
-    { path: '/frota', name: 'Painel da frota', check: '.fleet-grid, .tp-table' },
+    { path: '/frota', name: 'Painel da frota', check: '.fleet-grid .busr, .tp-table' },
     { path: '/daily', name: 'Daily 15 min', check: '.daily-tiles' },
     { path: '/checklist', name: 'Checklist diário', check: '.dc-layout' },
     { path: '/eventos', name: 'Eventos', check: '.tp-table' },
@@ -338,6 +338,17 @@ async function run() {
   if (addTask) {
     record('OS-02', 'Painel de nova sub-OS abre', await drawerOpen(page));
     await closeDrawer(page);
+  }
+
+  // Frota: o card abre a página do carro
+  await page.goto(`${BASE}/frota`, { waitUntil: 'networkidle0' });
+  await sleep(600);
+  const cardLink = await page.$('.fleet-card .fleet-card__link');
+  if (cardLink) {
+    await cardLink.click();
+    await page.waitForSelector('.vpage', { timeout: 20000 }).catch(() => {});
+    record('VEH-00', 'Página do carro: render, ficha, manutenção e km por dia', await exists(page, '.vpage__stage .busr') && await exists(page, '.vpage__sheet') && await exists(page, '.vpage__maint') && await exists(page, '.vpage__kmbars'));
+    await shot(page, 'carro');
   }
 
   // Frota: novo carro pelo painel, com validação de placa

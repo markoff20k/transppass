@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, VehicleStatus as PrismaVehicleStatus } from '@prisma/client';
+import { OdometerStatus, Prisma, ScheduleStatus, VehicleStatus as PrismaVehicleStatus, WorkOrderStatus } from '@prisma/client';
+import { nextTrigger, packagesFor } from '../scheduling/scheduling.service';
 import {
   AVAILABLE_STATUSES,
   paginate,
@@ -11,7 +12,11 @@ import {
   type UpdateVehicleInput,
   type Vehicle,
   type VehicleClass,
+  type VehicleOverview,
   type VehicleQuery,
+  COMPONENT_KINDS,
+  COMPONENT_NEAR_LIFE_PCT,
+  describeFailureCode,
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit.service';
@@ -105,14 +110,21 @@ export class VehiclesService {
   ): Promise<{ summary: FleetPanelSummary; rows: FleetPanelRow[] }> {
     const where = buildWhere(query);
 
-    const vehicles = await this.prisma.vehicle.findMany({
-      where,
-      orderBy: { code: 'asc' },
-      include: { kmProjection: true },
-    });
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const [vehicles, packages, checksToday, openWos] = await Promise.all([
+      this.prisma.vehicle.findMany({ where, orderBy: { code: 'asc' }, include: { kmProjection: true } }),
+      this.activePackages(now),
+      this.prisma.dailyCheck.findMany({ where: { checkedAt: { gte: startToday } }, orderBy: { checkedAt: 'desc' }, select: { vehicleId: true, operator: { select: { name: true } } } }),
+      this.prisma.workOrder.findMany({ where: { status: { notIn: [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] } }, orderBy: { openedAt: 'desc' }, select: { vehicleId: true, code: true } }),
+    ]);
+    const driverByVehicle = new Map<string, string>();
+    for (const c of checksToday) if (!driverByVehicle.has(c.vehicleId) && c.operator) driverByVehicle.set(c.vehicleId, c.operator.name);
+    const woByVehicle = new Map<string, string>();
+    for (const w of openWos) if (!woByVehicle.has(w.vehicleId)) woByVehicle.set(w.vehicleId, w.code);
 
     const rows: FleetPanelRow[] = vehicles.map((v) => {
       const lastReadingAt = v.kmProjection?.lastReadingAt ?? v.lastReadingAt;
+      const next = nextPackageFor(packages, v);
       return {
         ...toVehicle(v),
         projectedKm: v.kmProjection?.projectedKm ?? null,
@@ -121,6 +133,11 @@ export class VehiclesService {
         daysSinceLastReading: lastReadingAt
           ? Math.floor((now.getTime() - lastReadingAt.getTime()) / DAY_MS)
           : null,
+        nextPackageName: next?.name ?? null,
+        kmToNextPackage: next?.kmToWindow ?? null,
+        nextPackageProgress: next?.progress ?? null,
+        driverName: driverByVehicle.get(v.id) ?? null,
+        openWorkOrderCode: woByVehicle.get(v.id) ?? null,
       };
     });
 
@@ -149,6 +166,127 @@ export class VehiclesService {
       rows,
     };
   }
+
+  private activePackages(now: Date) {
+    return this.prisma.maintenancePackage.findMany({
+      where: { plan: { isActive: true, effectiveFrom: { lte: now }, OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }] } },
+      include: { plan: true },
+      orderBy: { intervalKm: 'asc' },
+    });
+  }
+
+  /** A página do carro: estado, próxima preventiva, vida dos componentes, km e histórico dos últimos 30 dias. */
+  async overview(id: string, now: Date = new Date()): Promise<VehicleOverview> {
+    const v = await this.prisma.vehicle.findUnique({ where: { id }, include: { kmProjection: true, garage: { select: { name: true } } } });
+    if (!v) throw new NotFoundException('Carro não encontrado');
+    const d30 = new Date(now.getTime() - 30 * DAY_MS);
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const [packages, readings, events30, recentEvents, workOrders, components, lastCheck, openSchedule] = await Promise.all([
+      this.activePackages(now),
+      this.prisma.odometerReading.findMany({ where: { vehicleId: id, readAt: { gte: d30 }, status: { not: OdometerStatus.REJECTED } }, select: { readAt: true, deltaKm: true } }),
+      this.prisma.failureEvent.count({ where: { vehicleId: id, reportedAt: { gte: d30 }, isUnscheduledReturn: true } }),
+      this.prisma.failureEvent.findMany({ where: { vehicleId: id }, orderBy: { reportedAt: 'desc' }, take: 8, include: { catalogItem: { select: { description: true } } } }),
+      this.prisma.workOrder.findMany({ where: { vehicleId: id }, orderBy: { openedAt: 'desc' }, take: 40, select: { id: true, code: true, type: true, status: true, openedAt: true, releasedAt: true } }),
+      this.prisma.vehicleComponent.findMany({ where: { vehicleId: id, removedAt: null } }),
+      this.prisma.dailyCheck.findFirst({ where: { vehicleId: id }, orderBy: { checkedAt: 'desc' }, include: { operator: { select: { name: true, registration: true } } } }),
+      this.prisma.scheduledMaintenance.findFirst({ where: { vehicleId: id, status: { in: [ScheduleStatus.PLANNED, ScheduleStatus.CONFIRMED, ScheduleStatus.IN_EXECUTION] } }, select: { targetKm: true, package: { select: { name: true, intervalKm: true } } } }),
+    ]);
+
+    // Km por dia (30 dias), pela data local da leitura
+    const byDay = new Map<string, number>();
+    for (let i = 29; i >= 0; i -= 1) {
+      const d = new Date(startToday.getTime() - i * DAY_MS);
+      byDay.set(localDate(d), 0);
+    }
+    let kmTraveled = 0;
+    for (const r of readings) {
+      if (!r.deltaKm || r.deltaKm <= 0) continue;
+      kmTraveled += r.deltaKm;
+      const key = localDate(r.readAt);
+      if (byDay.has(key)) byDay.set(key, (byDay.get(key) ?? 0) + r.deltaKm);
+    }
+
+    // Horas parado em OS dentro da janela
+    let downtimeMs = 0;
+    for (const w of workOrders) {
+      if (w.status === WorkOrderStatus.CANCELLED) continue;
+      const start = Math.max(w.openedAt.getTime(), d30.getTime());
+      const end = Math.min((w.releasedAt ?? now).getTime(), now.getTime());
+      if (end > start) downtimeMs += end - start;
+    }
+    const windowMs = 30 * DAY_MS;
+
+    const next = openSchedule
+      ? { name: openSchedule.package.name, windowKm: openSchedule.targetKm, kmToWindow: openSchedule.targetKm - v.currentKm, progress: clamp01(1 - (openSchedule.targetKm - v.currentKm) / Math.max(1, openSchedule.package.intervalKm)) }
+      : nextPackageFor(packages, v);
+    const avg = v.kmProjection ? Number(v.kmProjection.avgDailyKm) : null;
+    const lastReadingAt = v.kmProjection?.lastReadingAt ?? v.lastReadingAt;
+    const openWo = workOrders.find((w) => w.status !== WorkOrderStatus.RELEASED && w.status !== WorkOrderStatus.CANCELLED) ?? null;
+
+    return {
+      vehicle: toVehicle(v),
+      garageName: v.garage?.name ?? null,
+      projectedKm: v.kmProjection?.projectedKm ?? null,
+      avgDailyKm: avg,
+      isKmDegraded: v.kmProjection?.isDegraded ?? false,
+      daysSinceLastReading: lastReadingAt ? Math.floor((now.getTime() - lastReadingAt.getTime()) / DAY_MS) : null,
+      driverToday: lastCheck && lastCheck.checkedAt >= startToday && lastCheck.operator ? { name: lastCheck.operator.name, registration: lastCheck.operator.registration } : null,
+      lastDailyCheck: lastCheck ? { at: lastCheck.checkedAt.toISOString(), result: lastCheck.result === 'NOK' ? 'NOK' : 'OK' } : null,
+      nextPackage: next ? { ...next, daysToWindow: avg && avg > 0 ? Math.round(next.kmToWindow / avg) : null } : null,
+      openWorkOrder: openWo ? { id: openWo.id, code: openWo.code, status: openWo.status, openedAt: openWo.openedAt.toISOString() } : null,
+      last30: {
+        kmTraveled,
+        returns: events30,
+        workOrders: workOrders.filter((w) => w.openedAt >= d30).length,
+        mkbf: events30 > 0 ? Math.round(kmTraveled / events30) : null,
+        downtimeHours: Math.round(downtimeMs / 3_600_000),
+        availability: clamp01(1 - downtimeMs / windowMs),
+      },
+      kmByDay: [...byDay.entries()].map(([date, km]) => ({ date, km })),
+      components: components
+        .map((c) => {
+          const usedKm = Math.max(0, v.currentKm - c.installedAtKm);
+          const lifePct = c.expectedLifeKm > 0 ? Math.round((usedKm / c.expectedLifeKm) * 100) : 0;
+          const status: 'OK' | 'NEAR' | 'OVER' = usedKm >= c.expectedLifeKm ? 'OVER' : lifePct >= COMPONENT_NEAR_LIFE_PCT ? 'NEAR' : 'OK';
+          return { id: c.id, kind: c.kind, label: COMPONENT_KINDS[c.kind as keyof typeof COMPONENT_KINDS]?.label ?? c.kind, lifePct, remainingKm: c.expectedLifeKm - usedKm, status };
+        })
+        .sort((a, b) => b.lifePct - a.lifePct)
+        .slice(0, 5),
+      recentEvents: recentEvents.map((e) => ({
+        id: e.id,
+        code: e.code,
+        reportedAt: e.reportedAt.toISOString(),
+        description: e.catalogItem?.description ?? describeFailureCode(e.failureModeCode, e.subsystemCode) ?? e.reportedDescription ?? 'Ocorrência',
+        failureCode: e.failureCode,
+        status: e.status,
+        isUnscheduledReturn: e.isUnscheduledReturn,
+      })),
+      recentWorkOrders: workOrders.slice(0, 6).map((w) => ({ id: w.id, code: w.code, type: w.type, status: w.status, openedAt: w.openedAt.toISOString(), releasedAt: w.releasedAt?.toISOString() ?? null })),
+    };
+  }
+}
+
+function clamp01(x: number): number {
+  return Math.max(0, Math.min(1, x));
+}
+
+function localDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Próxima preventiva do carro pelo plano vigente: o menor gatilho acima do km atual. */
+function nextPackageFor<T extends { name: string; intervalKm: number; offsetKm: number; plan: { technology: string; vehicleModel: string | null } }>(
+  packages: T[],
+  v: { technology: string; model: string | null; currentKm: number },
+): { name: string; windowKm: number; kmToWindow: number; progress: number } | null {
+  let next: { pkg: T; windowKm: number } | null = null;
+  for (const pkg of packagesFor(packages, v)) {
+    const windowKm = nextTrigger(v.currentKm, pkg);
+    if (!next || windowKm < next.windowKm || (windowKm === next.windowKm && pkg.intervalKm > next.pkg.intervalKm)) next = { pkg, windowKm };
+  }
+  if (!next) return null;
+  const kmToWindow = next.windowKm - v.currentKm;
+  return { name: next.pkg.name, windowKm: next.windowKm, kmToWindow, progress: clamp01(1 - kmToWindow / Math.max(1, next.pkg.intervalKm)) };
 }
 
 function buildWhere(query: VehicleQuery): Prisma.VehicleWhereInput {

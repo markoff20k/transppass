@@ -129,6 +129,7 @@ export class DashboardService {
         code: v.code,
         plate: v.plate,
         technology: v.technology,
+        vehicleClass: (v.vehicleClass as DashboardVehicle['vehicleClass']) ?? null,
         status: v.status,
         reason:
           event?.catalogItem?.description ??

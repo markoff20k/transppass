@@ -3569,3 +3569,90 @@ small.muted {
 .cmp-kind { padding: 10px 12px; border: var(--tp-border-thin) solid var(--color-border); border-radius: var(--tp-radius-md); }
 .cmp-kind__head { display: flex; justify-content: space-between; gap: 8px; font-size: var(--tp-text-sm); }
 .cmp-kind__row { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: var(--tp-text-2xs); color: var(--color-text-muted); }
+
+/* --- Frota como produto: cards com render, chip de estado e preventiva ---------- */
+.fleet-grid { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: var(--tp-space-4); }
+.fleet-card {
+  border-left: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-lg);
+  padding: var(--tp-space-4) var(--tp-space-4) 0;
+  gap: var(--tp-space-2);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+.fleet-card:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -18px rgb(0 0 0 / 0.35); border-color: var(--color-border-strong); }
+.fleet-card.is-stale { border-color: var(--color-warning-border); }
+.fleet-card__link { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.fleet-card__link:focus-visible { outline: 2px solid var(--color-brand); outline-offset: -2px; }
+.fleet-card > *:not(.fleet-card__link) { position: relative; }
+.fleet-card__head { align-items: flex-start; justify-content: space-between; }
+.fleet-card__title { display: grid; gap: 2px; min-width: 0; }
+.fleet-card__code { font-size: var(--tp-text-lg); }
+.fleet-card__model { font-size: var(--tp-text-xs); color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fleet-card__class { margin-top: 0; display: flex; align-items: center; gap: 4px; }
+.fleet-card__class .fleet-tech { margin-left: auto; width: 20px; height: 20px; }
+.fleet-card__plate { color: var(--color-text-secondary); }
+.fleet-card__bus { margin: 0 calc(-1 * var(--tp-space-2)); }
+.fleet-card__bus .busr { width: 100%; height: auto; }
+.fleet-card__progress { display: grid; gap: 5px; }
+.fleet-card__progress-head { display: flex; justify-content: space-between; gap: 8px; font-size: var(--tp-text-xs); color: var(--color-text-secondary); }
+.fleet-card__progress-head b { color: var(--color-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fleet-card__bar, .vpage__bar { display: block; height: 6px; border-radius: 3px; background: var(--color-surface-sunken); overflow: hidden; }
+.fleet-card__bar i, .vpage__bar i { display: block; height: 100%; border-radius: 3px; background: var(--color-brand); transition: width var(--tp-duration-normal) var(--tp-ease); }
+.fleet-card__bar.is-near i, .vpage__bar.is-near i { background: var(--color-warning); }
+.fleet-card__bar.is-over i, .vpage__bar.is-over i { background: var(--color-danger); }
+.fleet-card__facts { grid-template-columns: 1fr 1fr 1.2fr; padding-top: var(--tp-space-1); border-top: var(--tp-border-thin) solid var(--color-border-subtle); }
+.fleet-card__ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fleet-card__reading { margin-left: calc(-1 * var(--tp-space-4)); margin-right: calc(-1 * var(--tp-space-4)); padding-left: var(--tp-space-4); padding-right: var(--tp-space-4); }
+.fleet-card__reading .fleet-card__cta { position: relative; z-index: 2; }
+
+/* Chip de estado preenchido, no tom da família */
+.fleet-chip {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  padding: 3px 10px; border-radius: var(--tp-radius-full);
+  font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.02em; white-space: nowrap;
+  background: var(--color-surface-sunken); color: var(--color-text-secondary);
+}
+.fleet-chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.fleet-chip--running { background: var(--color-success-soft); color: var(--color-success-text); }
+.fleet-chip--waiting { background: var(--color-warning-soft); color: var(--color-warning-text); }
+.fleet-chip--working { background: var(--color-info-soft); color: var(--color-state-working); }
+.fleet-chip--stopped { background: var(--color-danger-soft); color: var(--color-danger); }
+
+/* Dashboard: cards com o render */
+.bus-card .busr { width: 100%; height: auto; }
+.bus-card--summary .busr { width: 100%; height: auto; }
+
+/* --- Página do carro --------------------------------------------------------------- */
+.vpage { display: grid; gap: var(--tp-space-4); }
+.vpage__main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: var(--tp-space-4); align-items: stretch; }
+.vpage__row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: var(--tp-space-4); align-items: start; }
+.vpage__row--even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.vpage__hero { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: var(--tp-space-4); align-items: center; overflow: hidden; background: radial-gradient(120% 90% at 30% 20%, color-mix(in srgb, var(--color-brand) 7%, var(--color-surface)) 0%, var(--color-surface) 60%); }
+.vpage__stage { display: grid; place-items: center; padding: var(--tp-space-2) 0; min-width: 0; }
+.vpage__stage .busr { width: 100%; max-width: 760px; height: auto; }
+.vpage__sheet { display: grid; gap: var(--tp-space-3); padding: var(--tp-space-4); border: var(--tp-border-thin) solid var(--color-border); border-radius: var(--tp-radius-lg); background: color-mix(in srgb, var(--color-surface) 92%, transparent); backdrop-filter: blur(8px); box-shadow: var(--shadow-card); }
+.vpage__sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.vpage__sheet-title { font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); }
+.vpage__sheet-list { margin: 0; display: grid; gap: 8px; }
+.vpage__sheet-list > div { display: grid; grid-template-columns: 1fr; gap: 1px; padding-bottom: 8px; border-bottom: var(--tp-border-thin) solid var(--color-border-subtle); }
+.vpage__sheet-list > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.vpage__sheet-list dt { font-size: var(--tp-text-2xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); font-weight: var(--tp-weight-semibold); }
+.vpage__sheet-list dd { margin: 0; font-size: var(--tp-text-sm); font-variant-numeric: tabular-nums; }
+.vpage__maint { display: grid; align-content: start; gap: var(--tp-space-3); }
+.vpage__gauge { display: grid; gap: 5px; }
+.vpage__gauge-head { display: flex; justify-content: space-between; gap: 8px; font-size: var(--tp-text-sm); }
+.vpage__gauge-head b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vpage__gauge-note { font-size: var(--tp-text-2xs); color: var(--color-text-muted); }
+.vpage__more { justify-self: start; margin-top: var(--tp-space-1); font-size: var(--tp-text-xs); font-weight: var(--tp-weight-semibold); color: var(--color-brand-text); text-decoration: none; }
+.vpage__more:hover { text-decoration: underline; }
+.vpage__kmbars { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 3px; align-items: end; height: 160px; padding-top: var(--tp-space-2); }
+.vpage__kmbar { display: grid; grid-template-rows: 1fr auto; align-items: end; height: 100%; gap: 4px; }
+.vpage__kmbar i { display: block; align-self: end; border-radius: 3px 3px 1px 1px; background: var(--color-brand); opacity: 0.85; min-height: 0; }
+.vpage__kmbar.is-empty i { background: var(--color-surface-sunken); height: 3px; }
+.vpage__kmbar span { font-size: 9px; color: var(--color-text-muted); text-align: center; font-variant-numeric: tabular-nums; }
+.vpage__kmbar:nth-child(2n) span { visibility: hidden; }
+@media (max-width: 1100px) {
+  .vpage__main, .vpage__row, .vpage__row--even { grid-template-columns: minmax(0, 1fr); }
+  .vpage__hero { grid-template-columns: minmax(0, 1fr); }
+  .vpage__stage .busr { max-width: 100%; }
+}
