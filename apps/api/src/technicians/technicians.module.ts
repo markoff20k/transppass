@@ -1,12 +1,15 @@
-import { Body, ConflictException, Controller, Get, Injectable, Module, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, ConflictException, Controller, Delete, Get, Injectable, Module, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TaskStatus, UserRole } from '@prisma/client';
 import {
   createTechnicianSchema,
+  createTrainingSchema,
   updateTechnicianSchema,
   type CreateTechnicianInput,
+  type CreateTrainingInput,
   type TechnicianLevel,
   type TechnicianRow,
+  type TrainingRow,
   type UpdateTechnicianInput,
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -35,9 +38,12 @@ export class TechniciansService {
       orderBy: [{ specialty: { code: 'asc' } }, { level: 'desc' }, { name: 'asc' }],
       include: {
         specialty: true,
+        trainings: { select: { kind: true, validUntil: true } },
         _count: { select: { tasks: { where: { status: { in: [TaskStatus.IN_PROGRESS, TaskStatus.PENDING, TaskStatus.BLOCKED_BY_MATERIAL] } } } } },
       },
     });
+    const now = Date.now();
+    const soon = now + 30 * 86_400_000;
     return rows.map((t) => ({
       id: t.id,
       registration: t.registration,
@@ -51,7 +57,32 @@ export class TechniciansService {
       isActive: t.isActive,
       userId: t.userId,
       openTasks: t._count.tasks,
+      trainings: t.trainings.length,
+      trainingsExpiring: t.trainings.filter((x) => x.validUntil && x.validUntil.getTime() < soon).length,
+      missingHighVoltage: t.technologies.includes('EBUS') && !t.trainings.some((x) => x.kind === 'ALTA_TENSAO' && (!x.validUntil || x.validUntil.getTime() >= now)),
     }));
+  }
+
+  // --- Matriz de treinamentos ------------------------------------------------------
+
+  async listTrainings(technicianId: string): Promise<TrainingRow[]> {
+    const rows = await this.prisma.technicianTraining.findMany({ where: { technicianId }, orderBy: { completedAt: 'desc' } });
+    const now = Date.now();
+    return rows.map((r) => ({ id: r.id, kind: r.kind as TrainingRow['kind'], title: r.title, completedAt: r.completedAt.toISOString(), validUntil: r.validUntil?.toISOString() ?? null, hours: r.hours, note: r.note, isExpired: Boolean(r.validUntil && r.validUntil.getTime() < now) }));
+  }
+
+  async addTraining(technicianId: string, input: CreateTrainingInput, actorId: string): Promise<TrainingRow[]> {
+    const tech = await this.prisma.technician.findUnique({ where: { id: technicianId } });
+    if (!tech) throw new NotFoundException('Técnico não encontrado');
+    await this.prisma.technicianTraining.create({ data: { technicianId, kind: input.kind, title: input.title, completedAt: input.completedAt, validUntil: input.validUntil ?? null, hours: input.hours ?? null, note: input.note ?? null } });
+    await this.audit.write({ actorId, action: 'technician.training.add', entity: 'Technician', entityId: technicianId, after: { kind: input.kind, title: input.title } });
+    return this.listTrainings(technicianId);
+  }
+
+  async removeTraining(technicianId: string, trainingId: string, actorId: string): Promise<TrainingRow[]> {
+    await this.prisma.technicianTraining.deleteMany({ where: { id: trainingId, technicianId } });
+    await this.audit.write({ actorId, action: 'technician.training.remove', entity: 'Technician', entityId: technicianId, after: { trainingId } });
+    return this.listTrainings(technicianId);
   }
 
   async create(input: CreateTechnicianInput, actorId: string): Promise<TechnicianRow> {
@@ -99,6 +130,23 @@ export class TechniciansController {
   @Roles(...EDITORS)
   update(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(updateTechnicianSchema)) body: UpdateTechnicianInput, @CurrentUser('sub') actorId: string): Promise<TechnicianRow> {
     return this.technicians.update(id, body, actorId);
+  }
+
+  @Get(':id/trainings')
+  trainings(@Param('id', ParseUUIDPipe) id: string): Promise<TrainingRow[]> {
+    return this.technicians.listTrainings(id);
+  }
+
+  @Post(':id/trainings')
+  @Roles(...EDITORS)
+  addTraining(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(createTrainingSchema)) body: CreateTrainingInput, @CurrentUser('sub') actorId: string): Promise<TrainingRow[]> {
+    return this.technicians.addTraining(id, body, actorId);
+  }
+
+  @Delete(':id/trainings/:trainingId')
+  @Roles(...EDITORS)
+  removeTraining(@Param('id', ParseUUIDPipe) id: string, @Param('trainingId', ParseUUIDPipe) trainingId: string, @CurrentUser('sub') actorId: string): Promise<TrainingRow[]> {
+    return this.technicians.removeTraining(id, trainingId, actorId);
   }
 }
 

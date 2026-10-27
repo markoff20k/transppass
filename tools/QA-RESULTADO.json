@@ -1,8 +1,8 @@
 {
-  "ranAt": "2026-10-27T15:04:35.137Z",
+  "ranAt": "2026-10-27T15:28:06.162Z",
   "base": "http://localhost:5173",
-  "passed": 80,
-  "failed": 1,
+  "passed": 84,
+  "failed": 0,
   "results": [
     {
       "id": "AUTH-01",
@@ -110,7 +110,7 @@
       "id": "DASH-06",
       "name": "Legenda das famílias de estado filtra a frota e volta ao todo",
       "ok": true,
-      "detail": "32 → 12 (esperado 12) → 32"
+      "detail": "31 → 11 (esperado 11) → 31"
     },
     {
       "id": "DASH-07",
@@ -133,7 +133,7 @@
     {
       "id": "ROUTE-03",
       "name": "Checklist diário renderiza com subheader \"Checklist diário\"",
-      "ok": false,
+      "ok": true,
       "detail": ""
     },
     {
@@ -234,6 +234,24 @@
     },
     {
       "id": "ROUTE-20",
+      "name": "Fornecedores renderiza com subheader \"Fornecedores\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-21",
+      "name": "Qualidade de peças renderiza com subheader \"Qualidade de peças\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-22",
+      "name": "Auditorias renderiza com subheader \"Auditorias\"",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ROUTE-23",
       "name": "Design kit renderiza com subheader \"Design kit\"",
       "ok": true,
       "detail": ""

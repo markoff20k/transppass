@@ -48,4 +48,40 @@ export interface TechnicianRow {
   userId: string | null;
   /** Sub-OS em andamento atribuídas a ele agora. */
   openTasks: number;
+  trainings: number;
+  /** Treinamentos vencidos ou vencendo em 30 dias. */
+  trainingsExpiring: number;
+  /** Atua em eBUS sem treinamento de alta tensão vigente. */
+  missingHighVoltage: boolean;
+}
+
+/** Kaizen — matriz de treinamentos: o que cada técnico fez e o que vence. */
+export const TRAINING_KINDS = {
+  PLANO_MANUTENCAO: 'Plano de manutenção (IT.MAN)',
+  ALTA_TENSAO: 'Alta tensão / eBUS (NR-10 + fabricante)',
+  NR: 'Norma regulamentadora (NR-12, NR-35…)',
+  PROCEDIMENTO: 'POP / procedimento interno',
+  OUTRO: 'Outro',
+} as const;
+export type TrainingKind = keyof typeof TRAINING_KINDS;
+
+export const createTrainingSchema = z.object({
+  kind: z.enum(Object.keys(TRAINING_KINDS) as [TrainingKind, ...TrainingKind[]]),
+  title: z.string().trim().min(3, 'Informe o treinamento').max(120),
+  completedAt: z.coerce.date({ message: 'Informe a data' }),
+  validUntil: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : v), z.coerce.date().optional()),
+  hours: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : v), z.coerce.number().int().min(0).optional()),
+  note: z.string().trim().max(255).optional(),
+});
+export type CreateTrainingInput = z.infer<typeof createTrainingSchema>;
+
+export interface TrainingRow {
+  id: string;
+  kind: TrainingKind;
+  title: string;
+  completedAt: string;
+  validUntil: string | null;
+  hours: number | null;
+  note: string | null;
+  isExpired: boolean;
 }

@@ -26,6 +26,9 @@ import { MaterialsPage } from '@/pages/materials-page';
 import { TechniciansPage } from '@/pages/technicians-page';
 import { DailyCheckPage } from '@/pages/daily-check-page';
 import { DailyPage } from '@/pages/daily-page';
+import { SuppliersPage } from '@/pages/suppliers-page';
+import { PartsLabPage } from '@/pages/parts-lab-page';
+import { AuditsPage } from '@/pages/audits-page';
 import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-pages';
 
 export const router = createBrowserRouter([
@@ -50,6 +53,9 @@ export const router = createBrowserRouter([
           { path: '/cadastros/planos', element: <PlansPage /> },
           { path: '/cadastros/materiais', element: <MaterialsPage /> },
           { path: '/cadastros/tecnicos', element: <TechniciansPage /> },
+          { path: '/cadastros/fornecedores', element: <SuppliersPage /> },
+          { path: '/qualidade-pecas', element: <PartsLabPage /> },
+          { path: '/auditorias', element: <AuditsPage /> },
           // R1 — Corretivo e execucao
           { path: '/eventos', element: <EventsPage /> },
           { path: '/triagem', element: <TriagePage /> },

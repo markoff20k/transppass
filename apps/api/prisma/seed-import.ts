@@ -386,6 +386,63 @@ export async function importBases(prisma: PrismaClient): Promise<void> {
     });
   }
   console.log(`  ${TECHNICIANS.length} técnicos (mock — Kaizen 15–17)`);
+
+  // ---- Fornecedores: lidos da referência do fabricante no inventário ---------------
+  // O inventário traz a referência (ex.: "WK-1060/4", "GARDINOTEC 553D"); a marca
+  // identificável vira fornecedor e a peça fica vinculada. O SLA de garantia e o
+  // contato são ASSUMIDOS até Suprimentos cadastrar.
+  const SUPPLIERS: { name: string; match: RegExp; claimSlaDays: number }[] = [
+    { name: 'Mann Filter', match: /WK-|\bHU ?\d|\bC ?\d{4,5}\b|MANN/i, claimSlaDays: 15 },
+    { name: 'Gardinotec', match: /GARDINOTEC/i, claimSlaDays: 30 },
+    { name: 'Cofap', match: /COFAP/i, claimSlaDays: 30 },
+    { name: 'Sabó', match: /\bSABO\b/i, claimSlaDays: 30 },
+    { name: 'SKF', match: /\bSKF\b/i, claimSlaDays: 30 },
+    { name: 'WEG', match: /\bWEG\b/i, claimSlaDays: 20 },
+    { name: 'Bitzer', match: /BITZER/i, claimSlaDays: 30 },
+    { name: 'Voith', match: /VOITH|DIWA/i, claimSlaDays: 30 },
+    { name: 'ZF', match: /\bZF\b|ECOLIFE/i, claimSlaDays: 30 },
+    { name: 'Shell', match: /RIMULA|SPIRAX|GADUS|TELLUS/i, claimSlaDays: 15 },
+    { name: 'Lubrax (Petrobras)', match: /LUBRAX/i, claimSlaDays: 15 },
+    { name: 'Michelin', match: /MICHELIN/i, claimSlaDays: 45 },
+    { name: '3M', match: /\b3M\b/i, claimSlaDays: 15 },
+    { name: 'KGM', match: /\bKGM\b/i, claimSlaDays: 30 },
+    { name: 'Farj', match: /\bFARJ\b/i, claimSlaDays: 30 },
+    { name: 'Haldex', match: /HALDEX/i, claimSlaDays: 30 },
+    { name: 'Eberspächer', match: /EBERSPACHER|EBERSP/i, claimSlaDays: 30 },
+    { name: 'Mercedes-Benz (peças genuínas)', match: /\bMBB\b|^[A0]\d{9,}$|^\d{10}$/i, claimSlaDays: 30 },
+    { name: 'Volkswagen (peças genuínas)', match: /^\d{2}[A-Z]\d{6}[A-Z]?$|VW|VOLKS/i, claimSlaDays: 30 },
+  ];
+  const supplierIds = new Map<string, string>();
+  for (const sp of SUPPLIERS) {
+    const row = await prisma.supplier.upsert({ where: { name: sp.name }, update: { claimSlaDays: sp.claimSlaDays }, create: { name: sp.name, claimSlaDays: sp.claimSlaDays } });
+    supplierIds.set(sp.name, row.id);
+  }
+  const unassigned = await prisma.material.findMany({ where: { supplierId: null, manufacturerRef: { not: null } }, select: { id: true, manufacturerRef: true, description: true } });
+  let linked = 0;
+  for (const m of unassigned) {
+    const hay = `${m.manufacturerRef ?? ''} ${m.description}`;
+    const sp = SUPPLIERS.find((x) => x.match.test(m.manufacturerRef ?? '')) ?? SUPPLIERS.find((x) => x.match.test(hay) && !/Mercedes|Volkswagen/.test(x.name));
+    if (!sp) continue;
+    await prisma.material.update({ where: { id: m.id }, data: { supplierId: supplierIds.get(sp.name) } });
+    linked += 1;
+  }
+  console.log(`  ${SUPPLIERS.length} fornecedores (da referência do inventário) · ${linked} materiais vinculados`);
+
+  // ---- Matriz de treinamentos — MOCK até a Manutenção enviar (Kaizen, capacitação) ----
+  const techs = await prisma.technician.findMany({ where: { isActive: true } });
+  let trainings = 0;
+  for (const t of techs) {
+    const has = await prisma.technicianTraining.count({ where: { technicianId: t.id } });
+    if (has) continue;
+    const base = new Date('2026-03-10');
+    await prisma.technicianTraining.create({ data: { technicianId: t.id, kind: 'PLANO_MANUTENCAO', title: 'Plano de manutenção IT.MAN-01 Rev.09', completedAt: base, hours: 8 } });
+    trainings += 1;
+    if (t.technologies.includes(VehicleTechnology.EBUS) && t.registration !== '70093') {
+      await prisma.technicianTraining.create({ data: { technicianId: t.id, kind: 'ALTA_TENSAO', title: 'NR-10 + alta tensão eBUS (Scania/VW)', completedAt: new Date('2026-01-20'), validUntil: new Date('2028-01-20'), hours: 40 } });
+      trainings += 1;
+    }
+  }
+  console.log(`  ${trainings} treinamentos (mock) — 70093 propositalmente sem alta tensão`);
 }
 
 if (require.main === module) {

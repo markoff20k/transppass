@@ -1,6 +1,6 @@
 # Relatório de QA — Transppass PCM (MVP: R0 + R1 + R2)
 
-**Rodada:** 20/10/2026 (madrugada da apresentação) · **Ambiente:** Microsoft Edge dirigido por puppeteer **contra a API real** no Postgres local — frota de 453 carros, bases da Transppass carregadas e simulador de demonstração ligado · **Resultado:** 81 verificações funcionais de UI, 81 aprovadas (`QA_API=1 node tools/qa-smoke.mjs`; rodada de 27/10 inclui Técnicos, Daily e Checklist diário); teste e2e da API 78/78 com a nova base; typecheck, lint e build de produção limpos. A rodada anterior (19/10, modo mock) continua válida e o roteiro ainda roda nos dois modos.
+**Rodada:** 20/10/2026 (madrugada da apresentação) · **Ambiente:** Microsoft Edge dirigido por puppeteer **contra a API real** no Postgres local — frota de 453 carros, bases da Transppass carregadas e simulador de demonstração ligado · **Resultado:** 84 verificações funcionais de UI, 84 aprovadas (`QA_API=1 node tools/qa-smoke.mjs`; rodada de 27/10 inclui Técnicos, Daily, Checklist diário, Qualidade de peças, Fornecedores e Auditorias); teste e2e da API 78/78 com a nova base; typecheck, lint e build de produção limpos. A rodada anterior (19/10, modo mock) continua válida e o roteiro ainda roda nos dois modos.
 
 Este relatório é o que um analista de QA entregaria ao fim da sprint: o que foi testado, como, o que passou, o que foi corrigido no caminho e — mais importante — **o que ainda não foi exercitado** e por quê.
 
@@ -84,6 +84,14 @@ Base: A3 "Kaizen Estruturante" (03/06/2026) e "Fluxos de Processo PCM" Rev. 00 (
 - **Checklist diário** (`/checklist`): itens por tecnologia; reprovação abre evento corretivo no código composto (verificado: carro 82006, item Limpadores → EV-2026-002488 na triagem). Reporte de anomalia pelo motorista na mesma tela.
 - **Daily 15 min** (`/daily`): `GET /metrics/daily` com os cinco KPIs do A3 §9, falhas da semana, carros reincidentes (≥ 2 retornos em 30 dias) e rotina do dia.
 - Rotas novas no roteiro de QA; a tela Kaizen MKBF (painel sobre o Kaizen) foi removida a pedido: o Kaizen roda no sistema, não numa página.
+
+## 4e. Rodada 27/10 (noite) — laboratório de peças, fornecedores, auditorias e treinamentos
+
+- **Qualidade de peças** (`/qualidade-pecas`) e **Fornecedores** (`/cadastros/fornecedores`): 19 fornecedores derivados da referência de fabricante do inventário (SLA de garantia ASSUMIDO), materiais vinculados, 5 inspeções de exemplo; reclamação de garantia muda na própria tabela (`PATCH /quality/part-inspections/:id`).
+- **Auditorias** (`/auditorias`): `POST /audits` com os dez critérios → nota 80% na Ferramentaria, próxima data +30 dias, "auditorias devendo" caiu de 6 para 5 no resumo e na Daily. Seed com três meses de 5S nas quatro áreas do roadmap (trajetória de ~50% para ~75%) e conformidade trimestral nas três primeiras.
+- **Treinamentos**: `POST /technicians/:id/trainings` (NR-10 + alta tensão) tirou o técnico 70093 da sinalização "sem alta tensão"; listagem de técnicos passa a trazer treinamentos, vencimentos em 30 dias e a lacuna de alta tensão.
+- **Checklist diário no seed**: 292 dos 453 carros com checklist de hoje, para a Daily nascer preenchida.
+- Capturas conferidas em 1440 px: laboratório (tabela em largura cheia, motivo com quebra de linha), fornecedores, auditorias (card por área com tendência, última e próxima data), técnicos e Daily.
 
 ## 5. O que NÃO foi testado (e o risco)
 

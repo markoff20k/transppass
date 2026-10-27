@@ -12,7 +12,13 @@ import {
   DAILY_CHECK_ITEMS,
   type DailyBoard,
   type DailyCheckRow,
+  AUDIT_AREAS,
+  type AuditAreaStatus,
+  type AuditKind,
+  type AuditRow,
   type OperatorCandidate,
+  type PartInspectionRow,
+  type SupplierRow,
   type TechnicianRow,
   type OperatorRow,
   type PlanPackageRow,
@@ -285,8 +291,8 @@ const materialRows = [
 ];
 
 const technicians: TechnicianRow[] = [
-  { id: 'tec-1', registration: '04521', name: 'Carlos Henrique Souza', specialtyId: 'sp-1', specialtyCode: 'MEC', specialtyName: 'Mecânica', technologies: ['DIESEL'], level: 3, isInspector: true, isActive: true, userId: null, openTasks: 1 },
-  { id: 'tec-2', registration: '05110', name: 'Edson Luiz Ferreira', specialtyId: 'sp-2', specialtyCode: 'ELE', specialtyName: 'Elétrica', technologies: ['DIESEL', 'EBUS'], level: 2, isInspector: false, isActive: true, userId: null, openTasks: 0 },
+  { id: 'tec-1', registration: '04521', name: 'Carlos Henrique Souza', specialtyId: 'sp-1', specialtyCode: 'MEC', specialtyName: 'Mecânica', technologies: ['DIESEL'], level: 3, isInspector: true, isActive: true, userId: null, openTasks: 1, trainings: 2, trainingsExpiring: 0, missingHighVoltage: false },
+  { id: 'tec-2', registration: '05110', name: 'Edson Luiz Ferreira', specialtyId: 'sp-2', specialtyCode: 'ELE', specialtyName: 'Elétrica', technologies: ['DIESEL', 'EBUS'], level: 2, isInspector: false, isActive: true, userId: null, openTasks: 0, trainings: 1, trainingsExpiring: 1, missingHighVoltage: false },
 ];
 
 const dailyBoard: DailyBoard = {
@@ -301,10 +307,40 @@ const dailyBoard: DailyBoard = {
   topFailures7d: [{ key: 'AC-CLI-01', description: 'Ar-condicionado sem refrigeração', count: 21 }, { key: 'CAR-POR-01', description: 'Porta não fecha completamente', count: 15 }],
   repeatVehicles30d: [{ vehicleId: 'v-1', vehicleCode: '10003', count: 3, lastAt: new Date().toISOString() }],
   staleOdometer: 1,
+  auditsOverdue: 3,
 };
 const dailyChecks: DailyCheckRow[] = [];
 
+const suppliers: SupplierRow[] = [
+  { id: 'sup-1', name: 'Mann Filter (distribuidor)', cnpj: null, contact: null, claimSlaDays: 15, isActive: true, materials: 4, rejections90d: 1, claimsOpen: 0 },
+  { id: 'sup-2', name: 'Gardinotec', cnpj: null, contact: null, claimSlaDays: 30, isActive: true, materials: 2, rejections90d: 0, claimsOpen: 0 },
+];
+const partInspections: PartInspectionRow[] = [];
+
+const audits: AuditRow[] = [];
+const auditStatus = (kind: AuditKind): AuditAreaStatus[] => AUDIT_AREAS.map((area) => { const last = audits.find((a) => a.kind === kind && a.area === area); return { area, kind, lastScore: last?.score ?? null, previousScore: null, lastAt: last?.auditedAt ?? null, nextDueAt: last?.nextDueAt ?? null, isOverdue: !last }; });
+
 export const r2Handlers = [
+  http.get('*/api/audits/summary', () => HttpResponse.json({ fiveS: auditStatus('FIVE_S'), compliance: auditStatus('COMPLIANCE'), averageFiveS: null, averageCompliance: null, overdue: 14 - audits.length })),
+  http.get('*/api/audits', () => HttpResponse.json(audits)),
+  http.post('*/api/audits', async ({ request }) => {
+    const b = (await request.json()) as { kind: AuditKind; area: AuditRow['area']; items: { key: string; score: number; note?: string }[]; actions?: string };
+    const max = b.kind === 'FIVE_S' ? 4 : 1;
+    const score = Math.round((b.items.reduce((s, i) => s + i.score, 0) / (b.items.length * max)) * 100);
+    const row: AuditRow = { id: `au-${Date.now()}`, kind: b.kind, area: b.area, auditedAt: new Date().toISOString(), auditorName: 'Administrador', score, items: b.items.map((i) => ({ key: i.key, label: i.key, score: i.score, max, note: i.note ?? null })), actions: b.actions ?? null, nextDueAt: new Date(Date.now() + (b.kind === 'FIVE_S' ? 30 : 90) * 86_400_000).toISOString() };
+    audits.unshift(row);
+    return HttpResponse.json(row, { status: 201 });
+  }),
+  http.get('*/api/technicians/:id/trainings', () => HttpResponse.json([])),
+  http.post('*/api/technicians/:id/trainings', () => HttpResponse.json([])),
+  http.delete('*/api/technicians/:id/trainings/:tid', () => HttpResponse.json([])),
+  http.get('*/api/suppliers', () => HttpResponse.json(suppliers)),
+  http.post('*/api/suppliers', async ({ request }) => { const b = (await request.json()) as Partial<SupplierRow>; const row: SupplierRow = { id: `sup-${Date.now()}`, name: b.name ?? '', cnpj: b.cnpj ?? null, contact: b.contact ?? null, claimSlaDays: b.claimSlaDays ?? null, isActive: true, materials: 0, rejections90d: 0, claimsOpen: 0 }; suppliers.push(row); return HttpResponse.json(row, { status: 201 }); }),
+  http.patch('*/api/suppliers/:id', async ({ request, params }) => { const row = suppliers.find((s) => s.id === params.id); if (row) Object.assign(row, await request.json()); return HttpResponse.json(row ?? suppliers[0]); }),
+  http.get('*/api/quality/part-inspections', () => HttpResponse.json(partInspections)),
+  http.get('*/api/quality/summary', () => HttpResponse.json({ inspected90d: partInspections.length, rejected90d: partInspections.filter((p) => p.result === 'REJECTED').length, warrantyOpen: 0, bySupplier: suppliers.map((s) => ({ supplierId: s.id, supplierName: s.name, inspected: 0, rejected: s.rejections90d, claimsOpen: 0 })), byReason: [] })),
+  http.post('*/api/quality/part-inspections', async ({ request }) => { const b = (await request.json()) as Partial<PartInspectionRow>; const row: PartInspectionRow = { id: `pi-${Date.now()}`, materialId: b.materialId ?? 'm-1', materialCode: 'FIL-OL-01', materialDescription: 'Filtro de óleo', supplierId: b.supplierId ?? null, supplierName: suppliers.find((s) => s.id === b.supplierId)?.name ?? null, workOrderId: null, workOrderCode: null, vehicleCode: null, serialNumber: b.serialNumber ?? null, quantity: Number(b.quantity ?? 1), result: b.result ?? 'REJECTED', reason: b.reason ?? 'OUTRO', kmInService: b.kmInService ?? null, underWarranty: Boolean(b.underWarranty), claimStatus: b.claimStatus ?? 'NONE', note: b.note ?? null, inspectedByName: 'Administrador', inspectedAt: new Date().toISOString() }; partInspections.unshift(row); return HttpResponse.json(row, { status: 201 }); }),
+  http.patch('*/api/quality/part-inspections/:id', async ({ request, params }) => { const row = partInspections.find((p) => p.id === params.id); if (row) Object.assign(row, await request.json()); return HttpResponse.json(row ?? partInspections[0]); }),
   http.get('*/api/metrics/daily', () => HttpResponse.json(dailyBoard)),
   http.get('*/api/daily-checks/summary', () => HttpResponse.json({ date: new Date().toISOString().slice(0, 10), fleet: 5, checked: dailyChecks.length, ok: dailyChecks.filter((c) => c.result === 'OK').length, nok: dailyChecks.filter((c) => c.result === 'NOK').length, pending: Math.max(0, 5 - dailyChecks.length) })),
   http.get('*/api/daily-checks/template', () => HttpResponse.json(DAILY_CHECK_ITEMS)),
@@ -319,7 +355,7 @@ export const r2Handlers = [
   http.get('*/api/technicians', () => HttpResponse.json(technicians)),
   http.post('*/api/technicians', async ({ request }) => {
     const body = (await request.json()) as Partial<TechnicianRow>;
-    const row: TechnicianRow = { id: `tec-${Date.now()}`, registration: body.registration ?? '', name: body.name ?? '', specialtyId: body.specialtyId ?? 'sp-1', specialtyCode: 'MEC', specialtyName: specialtyNames[body.specialtyId ?? 'sp-1'] ?? 'Mecânica', technologies: body.technologies ?? ['DIESEL'], level: (body.level ?? 1) as TechnicianRow['level'], isInspector: Boolean(body.isInspector), isActive: true, userId: null, openTasks: 0 };
+    const row: TechnicianRow = { id: `tec-${Date.now()}`, registration: body.registration ?? '', name: body.name ?? '', specialtyId: body.specialtyId ?? 'sp-1', specialtyCode: 'MEC', specialtyName: specialtyNames[body.specialtyId ?? 'sp-1'] ?? 'Mecânica', technologies: body.technologies ?? ['DIESEL'], level: (body.level ?? 1) as TechnicianRow['level'], isInspector: Boolean(body.isInspector), isActive: true, userId: null, openTasks: 0, trainings: 0, trainingsExpiring: 0, missingHighVoltage: false };
     technicians.push(row);
     return HttpResponse.json(row, { status: 201 });
   }),

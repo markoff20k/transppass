@@ -456,8 +456,9 @@ model Technician {
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
-  specialty Specialty       @relation(fields: [specialtyId], references: [id])
+  specialty Specialty            @relation(fields: [specialtyId], references: [id])
   tasks     WorkOrderTask[]
+  trainings TechnicianTraining[]
 
   @@index([specialtyId])
   @@map("technicians")
@@ -499,6 +500,105 @@ model DailyCheckItem {
   @@map("daily_check_items")
 }
 
+/// Kaizen — gestão de fornecedores: quem fornece, com que SLA de qualidade.
+model Supplier {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(120)
+  cnpj      String?  @db.VarChar(18)
+  contact   String?  @db.VarChar(160)
+  /// Prazo acordado para resposta a reclamação de garantia.
+  claimSlaDays Int?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  materials   Material[]
+  inspections PartInspection[]
+
+  @@map("suppliers")
+}
+
+/// Kaizen — laboratório de inspeção técnica de peças: cada peça avaliada
+/// (recebimento, falha prematura, garantia) e o desfecho com o fornecedor.
+model PartInspection {
+  id              String   @id @default(uuid()) @db.Uuid
+  materialId      String   @db.Uuid
+  supplierId      String?  @db.Uuid
+  workOrderId     String?  @db.Uuid
+  vehicleId       String?  @db.Uuid
+  serialNumber    String?  @db.VarChar(64)
+  quantity        Decimal  @default(1) @db.Decimal(12, 3)
+  /// APPROVED ou REJECTED
+  result          String   @db.VarChar(10)
+  /// DEFEITO_FABRICACAO, FORA_DE_ESPEC, DANO_TRANSPORTE, FALHA_PREMATURA, DESGASTE_NORMAL, OUTRO
+  reason          String   @db.VarChar(24)
+  /// Km rodado pela peça até falhar, quando se sabe.
+  kmInService     Int?
+  underWarranty   Boolean  @default(false)
+  /// NONE, OPENED, ACCEPTED, DENIED
+  claimStatus     String   @default("NONE") @db.VarChar(10)
+  note            String?  @db.VarChar(500)
+  inspectedById   String   @db.Uuid
+  inspectedAt     DateTime @default(now())
+
+  material Material  @relation(fields: [materialId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+
+  @@index([supplierId, inspectedAt])
+  @@index([materialId, inspectedAt])
+  @@map("part_inspections")
+}
+
+/// Kaizen (A3 §9) — auditoria 5S mensal e de conformidade trimestral, por área.
+model ProcessAudit {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// FIVE_S ou COMPLIANCE
+  kind      String   @db.VarChar(12)
+  area      String   @db.VarChar(40)
+  auditedAt DateTime @default(now())
+  auditorId String   @db.Uuid
+  /// 0 a 100, calculada dos critérios.
+  score     Int
+  actions   String?  @db.VarChar(1000)
+  nextDueAt DateTime
+
+  items ProcessAuditItem[]
+
+  @@index([kind, area, auditedAt(sort: Desc)])
+  @@map("process_audits")
+}
+
+model ProcessAuditItem {
+  id      String  @id @default(uuid()) @db.Uuid
+  auditId String  @db.Uuid
+  key     String  @db.VarChar(24)
+  label   String  @db.VarChar(120)
+  score   Int
+  max     Int
+  note    String? @db.VarChar(255)
+
+  audit ProcessAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@map("process_audit_items")
+}
+
+/// Kaizen — matriz de treinamentos do técnico (roadmap: capacitação no plano de manutenção).
+model TechnicianTraining {
+  id           String    @id @default(uuid()) @db.Uuid
+  technicianId String    @db.Uuid
+  /// PLANO_MANUTENCAO, ALTA_TENSAO, NR, PROCEDIMENTO, OUTRO
+  kind         String    @db.VarChar(20)
+  title        String    @db.VarChar(120)
+  completedAt  DateTime
+  validUntil   DateTime?
+  hours        Int?
+  note         String?   @db.VarChar(255)
+
+  technician Technician @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+
+  @@index([technicianId, completedAt(sort: Desc)])
+  @@map("technician_trainings")
+}
+
 model Material {
   id           String  @id @default(uuid()) @db.Uuid
   code         String  @unique @db.VarChar(32)
@@ -517,11 +617,17 @@ model Material {
   avgCost         Decimal? @db.Decimal(12, 2)
   /// Item da lista "Componentes substituídos na preventiva" (base 10 e 11 do Almoxarifado).
   isPreventive    Boolean  @default(false)
+  /// Kaizen — fornecedor e garantia (meses e km) para a inspeção de peças.
+  supplierId      String?  @db.Uuid
+  warrantyMonths  Int?
+  warrantyKm      Int?
 
   kitItems             KitItem[]
   materialRequests     MaterialRequest[]
   poolComponents       PoolComponent[]
   fieldServiceMaterial FieldServiceMaterial[]
+  supplier             Supplier?              @relation(fields: [supplierId], references: [id])
+  partInspections      PartInspection[]
 
   @@index([classCode])
   @@index([isPreventive])

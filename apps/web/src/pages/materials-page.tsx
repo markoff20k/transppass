@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Search } from 'lucide-react';
-import { createMaterialSchema, MATERIAL_CLASS_GROUPS, materialGroupLabel, type CreateMaterialInput, type MaterialRow } from '@app/shared';
+import { createMaterialSchema, MATERIAL_CLASS_GROUPS, materialGroupLabel, type CreateMaterialInput, type MaterialRow, type SupplierRow } from '@app/shared';
 import { formatNumber } from '@/lib/format';
 import { ApiError, api } from '@/lib/api-client';
 import { usePageHeader } from '@/components/shell/page-header.context';
@@ -122,7 +122,7 @@ export function MaterialsPage() {
                         {m.isSerialized && <span className="tp-badge tp-badge--status tp-badge--info">por série</span>}
                       </span>
                     </td>
-                    <td className="tp-muted">{materialGroupLabel(m.classCode)}</td>
+                    <td className="tp-muted">{materialGroupLabel(m.classCode)}{m.supplierName && <span className="mat-sub">{m.supplierName}{m.warrantyMonths ? ` · garantia ${m.warrantyMonths} m` : ''}{m.warrantyKm ? ` / ${formatNumber(m.warrantyKm)} km` : ''}</span>}</td>
                     <td className="tp-muted tp-mono">{m.location ?? '—'}</td>
                     <td className={`is-num${m.stockQty <= 0 ? ' tp-error' : ''}`}>{formatNumber(m.stockQty)} <small className="tp-muted">{m.unit}</small></td>
                     <td className="is-num tp-muted">{m.avgCost === null ? '—' : m.avgCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
@@ -146,17 +146,18 @@ export function MaterialsPage() {
   );
 }
 
-const EMPTY_MATERIAL = { code: '', description: '', unit: 'un', isSerialized: false, classCode: '', manufacturerRef: '', location: '', stockQty: '', isPreventive: false };
+const EMPTY_MATERIAL = { code: '', description: '', unit: 'un', isSerialized: false, classCode: '', manufacturerRef: '', location: '', stockQty: '', isPreventive: false, supplierId: '', warrantyMonths: '', warrantyKm: '' };
 
 function MaterialDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => void; onDone: () => void }) {
   const editing = mode.kind === 'edit' ? mode.material : null;
   const [form, setForm] = useState(EMPTY_MATERIAL);
   const [error, setError] = useState<string | null>(null);
+  const suppliers = useQuery({ queryKey: ['suppliers'], queryFn: () => api.get<SupplierRow[]>('/suppliers'), enabled: mode.kind !== 'closed' });
 
   useEffect(() => {
     setError(null);
     setForm(editing
-      ? { code: editing.code, description: editing.description, unit: editing.unit, isSerialized: editing.isSerialized, classCode: editing.classCode ?? '', manufacturerRef: editing.manufacturerRef ?? '', location: editing.location ?? '', stockQty: String(editing.stockQty), isPreventive: editing.isPreventive }
+      ? { code: editing.code, description: editing.description, unit: editing.unit, isSerialized: editing.isSerialized, classCode: editing.classCode ?? '', manufacturerRef: editing.manufacturerRef ?? '', location: editing.location ?? '', stockQty: String(editing.stockQty), isPreventive: editing.isPreventive, supplierId: editing.supplierId ?? '', warrantyMonths: editing.warrantyMonths === null ? '' : String(editing.warrantyMonths), warrantyKm: editing.warrantyKm === null ? '' : String(editing.warrantyKm) }
       : EMPTY_MATERIAL);
   }, [editing, mode.kind]);
 
@@ -172,7 +173,7 @@ function MaterialDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => 
   });
 
   const submit = () => {
-    const parsed = createMaterialSchema.safeParse({ ...form, classCode: form.classCode || undefined, manufacturerRef: form.manufacturerRef || undefined, location: form.location || undefined, stockQty: form.stockQty === '' ? undefined : form.stockQty });
+    const parsed = createMaterialSchema.safeParse({ ...form, classCode: form.classCode || undefined, manufacturerRef: form.manufacturerRef || undefined, location: form.location || undefined, stockQty: form.stockQty === '' ? undefined : form.stockQty, supplierId: form.supplierId || undefined, warrantyMonths: form.warrantyMonths === '' ? undefined : form.warrantyMonths, warrantyKm: form.warrantyKm === '' ? undefined : form.warrantyKm });
     if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
     setError(null);
     save.mutate(parsed.data);
@@ -200,6 +201,18 @@ function MaterialDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => 
         <div className="tp-grid-2">
           <label className="tp-field"><span className="tp-label">Prateleira / caixa</span><input className="tp-input tp-mono" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value.toUpperCase() }))} placeholder="I02 A01" maxLength={24} /></label>
           <label className="tp-field"><span className="tp-label">Saldo</span><input className="tp-input" type="number" min={0} step="any" value={form.stockQty} onChange={(e) => setForm((f) => ({ ...f, stockQty: e.target.value }))} /></label>
+        </div>
+        <div className="tp-grid-2">
+          <label className="tp-field"><span className="tp-label">Fornecedor</span>
+            <select className="tp-select" value={form.supplierId} onChange={(e) => setForm((f) => ({ ...f, supplierId: e.target.value }))}>
+              <option value="">—</option>
+              {(suppliers.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+          <div className="tp-grid-2">
+            <label className="tp-field"><span className="tp-label">Garantia (meses)</span><input className="tp-input tp-input--num" type="number" min={0} value={form.warrantyMonths} onChange={(e) => setForm((f) => ({ ...f, warrantyMonths: e.target.value }))} /></label>
+            <label className="tp-field"><span className="tp-label">Garantia (km)</span><input className="tp-input tp-input--num" type="number" min={0} value={form.warrantyKm} onChange={(e) => setForm((f) => ({ ...f, warrantyKm: e.target.value }))} /></label>
+          </div>
         </div>
         <label className="tp-check">
           <input type="checkbox" checked={form.isPreventive} onChange={(e) => setForm((f) => ({ ...f, isPreventive: e.target.checked }))} />

@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Search, ShieldCheck } from 'lucide-react';
+import { GraduationCap, Pencil, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import {
   createTechnicianSchema,
+  createTrainingSchema,
+  TRAINING_KINDS,
   TECHNICIAN_LEVEL_LABELS,
   VEHICLE_TECHNOLOGY_LABELS,
   VehicleTechnology,
   type CreateTechnicianInput,
   type TechnicianLevel,
   type TechnicianRow,
+  type TrainingRow,
+  type CreateTrainingInput,
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { formatDate } from '@/lib/format';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; technician: TechnicianRow };
 
@@ -72,10 +77,10 @@ export function TechniciansPage() {
           <strong className="tp-kpi__value">{inspectors}</strong>
           <span className="tp-kpi__note">quem aprova a sub-OS (RF-20)</span>
         </div>
-        <div className={`tp-kpi ${ebus > 0 ? 'tp-kpi--good' : 'tp-kpi--warn'}`}>
+        <div className={`tp-kpi ${active.some((t) => t.missingHighVoltage) ? 'tp-kpi--danger' : ebus > 0 ? 'tp-kpi--good' : 'tp-kpi--warn'}`}>
           <span className="tp-kpi__label">Habilitados em eBUS</span>
-          <strong className="tp-kpi__value">{ebus}</strong>
-          <span className="tp-kpi__note">alta tensão exige técnico habilitado</span>
+          <strong className="tp-kpi__value">{ebus}{active.some((t) => t.missingHighVoltage) && <small className="tp-kpi__of"> · {active.filter((t) => t.missingHighVoltage).length} sem alta tensão</small>}</strong>
+          <span className="tp-kpi__note">{active.filter((t) => t.trainingsExpiring > 0).length} com treinamento vencido ou vencendo em 30 dias</span>
         </div>
       </div>
 
@@ -109,6 +114,7 @@ export function TechniciansPage() {
                   <th>Tecnologias</th>
                   <th>Nível</th>
                   <th>Inspetor</th>
+                  <th>Treinamentos</th>
                   <th className="is-num">Sub-OS abertas</th>
                   <th className="is-action" aria-label="Ações" />
                 </tr>
@@ -122,11 +128,16 @@ export function TechniciansPage() {
                     <td className="tp-muted">{t.technologies.map((x) => VEHICLE_TECHNOLOGY_LABELS[x]).join(' · ')}</td>
                     <td><span className={`tp-badge tp-badge--status tech-level tech-level--${t.level}`}>N{t.level}</span></td>
                     <td>{t.isInspector ? <span className="tp-badge tp-badge--status tp-badge--info"><ShieldCheck size={12} /> inspetor</span> : <span className="tp-muted">—</span>}</td>
+                    <td>
+                      <span className={t.trainings ? '' : 'tp-muted'}>{t.trainings}</span>
+                      {t.missingHighVoltage && <span className="tp-badge tp-badge--status tp-badge--danger" style={{ marginLeft: 6 }}>sem alta tensão</span>}
+                      {t.trainingsExpiring > 0 && <span className="tp-badge tp-badge--status tp-badge--warning" style={{ marginLeft: 6 }}>{t.trainingsExpiring} vencendo</span>}
+                    </td>
                     <td className="is-num">{t.openTasks}</td>
                     <td className="is-action"><span className="tp-row-action"><Pencil size={13} /> Editar</span></td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={8} className="tp-table__empty">Nenhum técnico. A base vem da Manutenção (Kaizen 16).</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={9} className="tp-table__empty">Nenhum técnico. A base vem da Manutenção (Kaizen 16).</td></tr>}
               </tbody>
             </table>
           </div>
@@ -210,8 +221,53 @@ function TechnicianDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () =
           <input type="checkbox" checked={form.isInspector} onChange={(e) => setForm((f) => ({ ...f, isInspector: e.target.checked }))} />
           Também é inspetor (aprova ou reprova sub-OS — RF-20)
         </label>
+        {editing && <Trainings technicianId={editing.id} />}
+        {!editing && <span className="tp-help">Cadastre o técnico para registrar a matriz de treinamentos.</span>}
         {error && <p className="tp-error">{error}</p>}
       </div>
     </Drawer>
+  );
+}
+
+/** Kaizen — matriz de treinamentos do técnico: o que fez, quando vence. */
+function Trainings({ technicianId }: { technicianId: string }) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({ kind: 'PLANO_MANUTENCAO', title: '', completedAt: '', validUntil: '', hours: '' });
+  const [error, setError] = useState<string | null>(null);
+  const list = useQuery({ queryKey: ['technicians', 'trainings', technicianId], queryFn: () => api.get<TrainingRow[]>(`/technicians/${technicianId}/trainings`) });
+  const refresh = () => { void queryClient.invalidateQueries({ queryKey: ['technicians'] }); setError(null); };
+  const add = useMutation({ mutationFn: (input: CreateTrainingInput) => api.post<TrainingRow[]>(`/technicians/${technicianId}/trainings`, input), onSuccess: () => { refresh(); setForm({ kind: 'PLANO_MANUTENCAO', title: '', completedAt: '', validUntil: '', hours: '' }); }, onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao registrar') });
+  const remove = useMutation({ mutationFn: (id: string) => api.delete<TrainingRow[]>(`/technicians/${technicianId}/trainings/${id}`), onSuccess: refresh });
+  const submit = () => {
+    const parsed = createTrainingSchema.safeParse({ ...form, validUntil: form.validUntil || undefined, hours: form.hours || undefined });
+    if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
+    add.mutate(parsed.data);
+  };
+  return (
+    <div className="tp-field">
+      <span className="tp-label"><GraduationCap size={13} /> Matriz de treinamentos <span className="tp-label__hint">Kaizen · capacitação</span></span>
+      <ul className="task-tools">
+        {(list.data ?? []).map((t) => (
+          <li key={t.id} className={t.isExpired ? 'tp-error' : undefined}>
+            <span>{t.title}</span>
+            <code className="tp-mono">{TRAINING_KINDS[t.kind]} · {formatDate(t.completedAt)}{t.validUntil ? ` → ${formatDate(t.validUntil)}` : ''}{t.isExpired ? ' · vencido' : ''}</code>
+            <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" aria-label={`Remover ${t.title}`} onClick={() => remove.mutate(t.id)}><Trash2 size={13} /></button>
+          </li>
+        ))}
+        {(list.data ?? []).length === 0 && <li className="tp-muted">Nenhum treinamento registrado.</li>}
+      </ul>
+      <div className="tp-grid-2">
+        <select className="tp-select" value={form.kind} onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value }))}>
+          {Object.entries(TRAINING_KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <input className="tp-input" placeholder="Nome do treinamento" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+      </div>
+      <div className="tp-grid-2">
+        <label className="tp-field"><span className="tp-label">Concluído em</span><input className="tp-input" type="date" value={form.completedAt} onChange={(e) => setForm((f) => ({ ...f, completedAt: e.target.value }))} /></label>
+        <label className="tp-field"><span className="tp-label">Válido até</span><input className="tp-input" type="date" value={form.validUntil} onChange={(e) => setForm((f) => ({ ...f, validUntil: e.target.value }))} /></label>
+      </div>
+      <div className="tp-row tp-row--end"><button type="button" className="tp-btn tp-btn--sm" disabled={add.isPending} onClick={submit}><Plus size={14} /> Registrar treinamento</button></div>
+      {error && <p className="tp-error">{error}</p>}
+    </div>
   );
 }

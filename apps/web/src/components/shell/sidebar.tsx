@@ -21,7 +21,7 @@ import {
   Users,
   Wrench,
   X,
-  type LucideIcon, HardHat, Sunrise, ListChecks } from 'lucide-react';
+  type LucideIcon, HardHat, Sunrise, ListChecks, FlaskConical, Truck, ShieldCheck } from 'lucide-react';
 import { USER_ROLE_LABELS, UserRole } from '@app/shared';
 import { useAuth } from '@/features/auth/use-auth';
 import { useI18n } from '@/i18n/i18n.context';
@@ -33,7 +33,7 @@ const {
 
 interface NavItem {
   to: string;
-  key: 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'scheduling' | 'operations' | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'users' | 'plans' | 'materials' | 'designKit' | 'technicians' | 'daily' | 'dailyCheck';
+  key: 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'scheduling' | 'operations' | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'users' | 'plans' | 'materials' | 'designKit' | 'technicians' | 'daily' | 'dailyCheck' | 'partsLab' | 'suppliers' | 'audits';
   icon: LucideIcon;
   roles?: UserRole[];
   /** Contador ao lado do item, quando a tela tem fila. */
@@ -71,6 +71,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { to: '/os', key: 'workOrders', icon: Wrench, roles: [ADMIN, MANUTENCAO, MECANICO, INSPETOR, PCM, LIMPEZA] },
       { to: '/estoque', key: 'stock', icon: Package, roles: [ADMIN, ESTOQUE, MANUTENCAO, PCM] },
+      { to: '/qualidade-pecas', key: 'partsLab', icon: FlaskConical, roles: [ADMIN, ESTOQUE, MANUTENCAO, PCM, INSPETOR] },
     ],
   },
   {
@@ -78,6 +79,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { to: '/indicadores', key: 'metrics', icon: BarChart3, roles: [ADMIN, PCM, GESTAO] },
       { to: '/km', key: 'km', icon: Gauge, roles: [ADMIN, PCM, CCO, MANUTENCAO] },
+      { to: '/auditorias', key: 'audits', icon: ShieldCheck, roles: [ADMIN, PCM, GESTAO, MANUTENCAO, ESTOQUE] },
     ],
   },
   {
@@ -88,6 +90,7 @@ const GROUPS: NavGroup[] = [
       { to: '/cadastros/planos', key: 'plans', icon: ClipboardCheck, roles: [ADMIN, PCM] },
       { to: '/cadastros/materiais', key: 'materials', icon: Boxes, roles: [ADMIN, PCM, ESTOQUE] },
       { to: '/cadastros/tecnicos', key: 'technicians', icon: HardHat, roles: [ADMIN, PCM, MANUTENCAO] },
+      { to: '/cadastros/fornecedores', key: 'suppliers', icon: Truck, roles: [ADMIN, PCM, ESTOQUE] },
       { to: '/cadastros/usuarios', key: 'users', icon: Users, roles: [ADMIN] },
     ],
   },

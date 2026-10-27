@@ -232,6 +232,9 @@ async function run() {
     { path: '/cadastros/planos', name: 'Planos preventivos', check: '.plan-pkg' },
     { path: '/cadastros/materiais', name: 'Materiais', check: '.tp-table' },
     { path: '/cadastros/tecnicos', name: 'Técnicos', check: '.tp-table' },
+    { path: '/cadastros/fornecedores', name: 'Fornecedores', check: '.tp-table' },
+    { path: '/qualidade-pecas', name: 'Qualidade de peças', check: '.tp-table' },
+    { path: '/auditorias', name: 'Auditorias', check: '.audit-areas' },
     { path: '/design', name: 'Design kit', check: '.bus-gallery' },
   ];
   let i = 0;

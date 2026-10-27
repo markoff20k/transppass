@@ -244,7 +244,7 @@ export class PlansService {
   async listMaterials(): Promise<MaterialRow[]> {
     const rows = await this.prisma.material.findMany({
       orderBy: { code: 'asc' },
-      include: { _count: { select: { kitItems: { where: { kit: { isActive: true } } } } } },
+      include: { _count: { select: { kitItems: { where: { kit: { isActive: true } } } } }, supplier: { select: { name: true } } },
     });
     return rows.map((m) => ({
       id: m.id,
@@ -261,6 +261,10 @@ export class PlansService {
       stockQty: Number(m.stockQty),
       avgCost: m.avgCost === null ? null : Number(m.avgCost),
       isPreventive: m.isPreventive,
+      supplierId: m.supplierId,
+      supplierName: m.supplier?.name ?? null,
+      warrantyMonths: m.warrantyMonths,
+      warrantyKm: m.warrantyKm,
     }));
   }
 

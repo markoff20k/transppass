@@ -116,4 +116,6 @@ export interface DailyBoard {
   topFailures7d: { key: string; description: string; count: number }[];
   repeatVehicles30d: { vehicleId: string; vehicleCode: string; count: number; lastAt: string }[];
   staleOdometer: number;
+  /** Áreas sem auditoria 5S/conformidade ou com a próxima data vencida. */
+  auditsOverdue: number;
 }

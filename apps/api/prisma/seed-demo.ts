@@ -226,6 +226,9 @@ async function main() {
 
   // ---- Limpeza do movimento anterior e da frota ----------------------------
   await prisma.notification.deleteMany();
+  await prisma.partInspection.deleteMany();
+  await prisma.dailyCheck.deleteMany();
+  await prisma.processAudit.deleteMany();
   await prisma.replacementDemand.deleteMany();
   await prisma.toolLoan.deleteMany();
   await prisma.poolMovement.deleteMany();
@@ -770,6 +773,80 @@ async function main() {
     { role: UserRole.ESTOQUE, title: 'Kit para separar em D-1', body: `Kit da revisão A do carro ${S.prev1.code}: separar até amanhã para a parada programada.`, entity: 'KitSeparation', createdAt: ago(1) },
     { role: UserRole.ADMIN, title: 'Inspeção reprovada e sub-OS reaberta', body: `S02 da OS do carro ${S.apu.code} reprovada (tensão de correia fora da faixa) e reaberta.`, entity: 'Inspection', createdAt: ago(2.6) },
   ] });
+
+  // ---- Auditorias 5S (mensal) e conformidade (trimestral) — exemplos dos últimos meses ----
+  const AREAS = ['Almoxarifado', 'Oficina mecânica', 'Elétrica e eBUS', 'Funilaria', 'Borracharia', 'Pátio e lavagem', 'Ferramentaria'];
+  const FIVE_S = ['SEIRI_1', 'SEIRI_2', 'SEITON_1', 'SEITON_2', 'SEISO_1', 'SEISO_2', 'SEIKETSU_1', 'SEIKETSU_2', 'SHITSUKE_1', 'SHITSUKE_2'];
+  const COMPL = ['ITMAN01', 'ITMAN54_60', 'ITMAN03', 'FR168', 'CHECKLIST', 'TRIAGEM', 'PORTOES', 'LIMPEZA', 'ESTOQUE', 'KM'];
+  let auditsN = 0;
+  for (const [ai, area] of AREAS.entries()) {
+    // três meses de 5S: nota subindo onde o Kaizen já começou (Almoxarifado e oficina)
+    for (const monthsAgo of [3, 2, 1]) {
+      if (ai >= 4 && monthsAgo > 1) continue;
+      const at = new Date(NOW - (monthsAgo * 30 - 14 + ai * 3) * D);
+      const items = FIVE_S.map((key, i) => ({ key, label: key, max: 4, score: Math.min(4, Math.max(0, Math.round(1 + (3 - monthsAgo) * 0.6 + rnd('5s', area, key) * 2.2 - (ai >= 4 ? 0.6 : 0) + (i % 3 === 0 ? -0.3 : 0)))) }));
+      const score = Math.round((items.reduce((s, x) => s + x.score, 0) / 40) * 100);
+      await prisma.processAudit.create({ data: { kind: 'FIVE_S', area, auditedAt: at, auditorId: pcm.id, score, actions: score < 75 ? 'Demarcar piso e etiquetar prateleiras; definir responsável pela limpeza do turno' : null, nextDueAt: new Date(at.getTime() + 30 * D), items: { create: items } } });
+      auditsN += 1;
+    }
+    if (ai < 3) {
+      const at = new Date(NOW - (70 + ai * 3) * D);
+      const items = COMPL.map((key) => ({ key, label: key, max: 1, score: rnd('compl', area, key) < 0.8 ? 1 : 0 }));
+      const score = Math.round((items.reduce((s, x) => s + x.score, 0) / 10) * 100);
+      await prisma.processAudit.create({ data: { kind: 'COMPLIANCE', area, auditedAt: at, auditorId: pcm.id, score, actions: 'Treinar equipe no checklist de saída; cobrar código de motivo na fila', nextDueAt: new Date(at.getTime() + 90 * D), items: { create: items } } });
+      auditsN += 1;
+    }
+  }
+  console.log(`  ${auditsN} auditorias (5S e conformidade)`);
+
+  // ---- Laboratório de inspeção de peças: exemplos para a conversa de garantia -----
+  const labItems = [
+    { term: 'CUICA FREIO DIANT 1721', reason: 'FALHA_PREMATURA', km: 18_400, warranty: true, claim: 'OPENED', note: 'Diafragma rompido com 18 mil km; dentro da garantia de 12 meses', hours: 30 },
+    { term: 'ALTERNADOR 80A 1721/O500 REC', reason: 'FALHA_PREMATURA', km: 9_200, warranty: true, claim: 'ACCEPTED', note: 'Regulador de tensão falhou; fornecedor aceitou a troca', hours: 26 * 24 },
+    { term: 'FILTRO SEPARADOR AGUA MBB', reason: 'FORA_DE_ESPEC', km: null, warranty: true, claim: 'DENIED', note: 'Rosca fora de medida no recebimento; fornecedor alegou lote correto', hours: 40 * 24 },
+    { term: 'CORREIA VENTI O500 2X13X1610', reason: 'DANO_TRANSPORTE', km: null, warranty: true, claim: 'OPENED', note: 'Embalagem amassada, correia com corte', hours: 6 * 24 },
+    { term: 'FILTRO ANTI POLEN EBERSPACHER', reason: 'DESGASTE_NORMAL', km: 31_000, warranty: false, claim: 'NONE', note: 'Saturado após 31 mil km: desgaste normal, sem reclamação', hours: 12 * 24 },
+  ];
+  let labCount = 0;
+  for (const it of labItems) {
+    const m = materials.find((x) => x.description.startsWith(it.term));
+    if (!m) continue;
+    await prisma.partInspection.create({
+      data: { materialId: m.id, supplierId: (await prisma.material.findUnique({ where: { id: m.id }, select: { supplierId: true } }))?.supplierId ?? null, vehicleId: vid(pick(runners, 'lab', it.term).code), quantity: 1, result: it.reason === 'DESGASTE_NORMAL' ? 'APPROVED' : 'REJECTED', reason: it.reason, kmInService: it.km, underWarranty: it.warranty, claimStatus: it.claim, note: it.note, inspectedById: estoque.id, inspectedAt: ago(it.hours) },
+    });
+    labCount += 1;
+  }
+  console.log(`  ${labCount} inspeções de peça no laboratório`);
+
+  // ---- Checklist diário de hoje: a maior parte da frota em linha já saiu com checklist feito ----
+  const CHECK_ITEMS: [string, string, boolean][] = [
+    ['FAROIS', 'Faróis e lanternas', false], ['LIMPADORES', 'Limpadores e lavador', false], ['ILUMINACAO', 'Iluminação interna', false],
+    ['AVARIAS', 'Avarias externas', false], ['PNEUS', 'Pneus e rodas', false], ['PORTAS_RAMPA', 'Portas e rampa', false],
+    ['NIVEIS', 'Níveis e vazamentos', false], ['SALAO', 'Salão e bancos', false], ['BTMS', 'BTMS e carga', true],
+  ];
+  const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
+  const garageToday = await prisma.failureEvent.findMany({ where: { origin: EventOrigin.GARAGE, reportedAt: { gte: new Date(todayStart) } }, select: { id: true, vehicleId: true, catalogItem: { select: { description: true } } }, take: 3 });
+  const nokVehicles = new Set(garageToday.map((e) => e.vehicleId));
+  let checksN = 0;
+  for (const v of runners) {
+    const id = vid(v.code);
+    const nokEvent = garageToday.find((e) => e.vehicleId === id);
+    if (!nokEvent && rnd('check', v.code) > 0.72) continue; // ainda não saiu / não registrou
+    const at = new Date(todayStart + (4 * H) + Math.floor(rnd('checkAt', v.code) * 150) * 60_000);
+    if (at.getTime() > NOW) continue;
+    const items = CHECK_ITEMS.filter(([, , ebusOnly]) => !ebusOnly || v.technology === VehicleTechnology.EBUS);
+    const nokKey = nokEvent ? 'AVARIAS' : null;
+    await prisma.dailyCheck.create({
+      data: {
+        vehicleId: id, checkedAt: at, checkedById: admin.id, operatorId: motoristas[Math.floor(rnd('checkOp', v.code) * motoristas.length)]?.id ?? null,
+        result: nokEvent ? 'NOK' : 'OK', eventId: nokEvent?.id ?? null,
+        note: nokEvent ? `Checklist diário reprovado: ${nokEvent.catalogItem?.description ?? 'anomalia'}` : null,
+        items: { create: items.map(([key, label]) => ({ key, label, ok: key !== nokKey })) },
+      },
+    });
+    checksN += 1;
+  }
+  console.log(`  ${checksN} checklists diários de hoje (${nokVehicles.size} reprovados)`);
 
   // ---- Kaizen 16: sub-OS abertas com técnico responsável, por especialidade ------
   const technicians = await prisma.technician.findMany({ where: { isActive: true } });

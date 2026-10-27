@@ -99,6 +99,9 @@ export const createMaterialSchema = z.object({
   location: z.string().trim().toUpperCase().max(24).optional(),
   stockQty: optionalInt(),
   isPreventive: z.boolean().optional(),
+  supplierId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
+  warrantyMonths: optionalInt(),
+  warrantyKm: optionalInt(),
 });
 
 export const updateMaterialSchema = createMaterialSchema.partial().extend({
@@ -198,6 +201,10 @@ export interface MaterialRow {
   stockQty: number;
   avgCost: number | null;
   isPreventive: boolean;
+  supplierId: string | null;
+  supplierName: string | null;
+  warrantyMonths: number | null;
+  warrantyKm: number | null;
 }
 
 /** Classes contábeis do almoxarifado (4 primeiros dígitos = grupo). */

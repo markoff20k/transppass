@@ -23,6 +23,8 @@ import { JobsModule } from './jobs/jobs.module';
 import { DemoModule } from './demo/demo.module';
 import { TechniciansModule } from './technicians/technicians.module';
 import { DailyChecksModule } from './daily-checks/daily-checks.module';
+import { QualityModule } from './quality/quality.module';
+import { AuditsModule } from './audits/audits.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { envSchema } from './config/env.validation';
 
@@ -60,6 +62,10 @@ import { envSchema } from './config/env.validation';
     TechniciansModule,
     // Manutenção diária (Fluxos PCM p.8): checklist de conservação que abre OS
     DailyChecksModule,
+    // Qualidade de peças e fornecedores (laboratório de inspeção do Kaizen)
+    QualityModule,
+    // Auditorias 5S e de conformidade (A3 §9)
+    AuditsModule,
     // Simulador de demonstração — só age com DEMO_SIMULATOR=true
     DemoModule,
   ],

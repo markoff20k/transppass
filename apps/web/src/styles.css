@@ -3485,7 +3485,10 @@ small.muted {
 .wo-task__who { display: inline-flex; align-items: center; gap: 5px; font-size: var(--tp-text-xs); }
 
 /* --- Daily 15 min (A3 §9) ------------------------------------------------------ */
-.daily-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--tp-space-3); margin-bottom: var(--tp-space-4); }
+.daily-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--tp-space-3); margin-bottom: var(--tp-space-4); }
+@media (max-width: 1280px) { .daily-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .daily-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .daily-tiles { grid-template-columns: minmax(0, 1fr); } }
 .daily-tile { position: relative; display: grid; gap: 6px; padding: var(--tp-space-4); border: var(--tp-border-thin) solid var(--color-border); border-radius: var(--tp-radius-lg); background: var(--color-surface); box-shadow: var(--shadow-card); }
 .daily-tile::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 3px; border-radius: var(--tp-radius-lg) var(--tp-radius-lg) 0 0; background: var(--tile-color, var(--color-border-strong)); }
 .daily-tile--good { --tile-color: var(--color-success); }
@@ -3532,3 +3535,27 @@ small.muted {
 .dc-result--nok { background: var(--color-danger-soft); color: var(--color-danger); }
 .dc-progress { height: 8px; border-radius: 4px; background: var(--color-surface-sunken); overflow: hidden; }
 .dc-progress i { display: block; height: 100%; background: var(--color-success); }
+
+/* --- Qualidade de peças ------------------------------------------------------- */
+.pq-supplier { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--tp-space-3); align-items: center; padding: 8px 0; border-bottom: var(--tp-border-thin) solid var(--color-border-subtle); font-size: var(--tp-text-sm); }
+.pq-supplier:last-child { border-bottom: 0; }
+.pq-supplier__bar { height: 6px; border-radius: 3px; background: var(--color-surface-sunken); overflow: hidden; margin-top: 4px; }
+.pq-supplier__bar i { display: block; height: 100%; background: var(--color-danger); }
+.pq-rate { font-family: var(--tp-font-display); font-weight: 700; font-variant-numeric: tabular-nums; min-width: 48px; text-align: right; }
+
+/* --- Auditorias 5S e conformidade --------------------------------------------- */
+.audit-areas { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.audit-area__btn { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; width: 100%; padding: 10px 12px; border: var(--tp-border-thin) solid var(--color-border); border-radius: var(--tp-radius-md); background: var(--color-surface); text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.audit-area__btn:hover { border-color: var(--color-brand); }
+.audit-area.is-overdue .audit-area__btn { border-left: 3px solid var(--color-danger); }
+.audit-area__name { grid-column: 1; grid-row: 1; font-weight: var(--tp-weight-semibold); font-size: var(--tp-text-sm); }
+.audit-area__meta { grid-column: 1; grid-row: 2; }
+.audit-area__score { grid-column: 2; grid-row: 1 / span 2; align-self: center; justify-self: end; font-family: var(--tp-font-display); font-size: var(--tp-text-xl); font-weight: 700; font-variant-numeric: tabular-nums; }
+.audit-area__meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: var(--tp-text-2xs); color: var(--color-text-muted); }
+.audit-area__bar { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: var(--color-surface-sunken); overflow: hidden; }
+.audit-area__bar i { display: block; height: 100%; background: var(--color-success); }
+.audit-area .is-good, .audit-score.is-good { color: var(--color-success-text); }
+.audit-area .is-warn, .audit-score.is-warn { color: var(--color-warning-text); }
+.audit-area .is-bad, .audit-score.is-bad { color: var(--color-danger); }
+.audit-score { font-weight: 700; font-variant-numeric: tabular-nums; }
+.audit-score--big { font-family: var(--tp-font-display); font-size: var(--tp-text-xl); }

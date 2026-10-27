@@ -2,6 +2,8 @@ export * from './auth/auth.schemas.js';
 export * from './fleet/vehicle.schemas.js';
 export * from './technicians/technician.schemas.js';
 export * from './daily/daily-check.schemas.js';
+export * from './quality/quality.schemas.js';
+export * from './audits/audit.schemas.js';
 export * from './fleet/odometer.schemas.js';
 export * from './catalog/catalog.schemas.js';
 export * from './catalog/failure-codes.js';
