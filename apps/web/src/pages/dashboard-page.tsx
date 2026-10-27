@@ -456,6 +456,17 @@ function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
   );
 }
 
+/**
+ * O motivo é a falha que trouxe o carro. Depois do serviço, a fase muda e o
+ * texto precisa dizer isso: na inspeção o reparo está sendo conferido; na
+ * limpeza o reparo já foi aprovado e o carro só espera o último portão.
+ */
+function reasonPhase(status: DashboardVehicle['status']): string {
+  if (status === 'IN_INSPECTION') return 'Reparo em conferência · ';
+  if (status === 'IN_CLEANING') return 'Reparo aprovado · ';
+  return '';
+}
+
 function BusCard({ vehicle }: { vehicle: DashboardVehicle }) {
   const family = VEHICLE_STATE_FAMILY[vehicle.status] ?? 'waiting';
   return (
@@ -467,7 +478,7 @@ function BusCard({ vehicle }: { vehicle: DashboardVehicle }) {
           <span className="tp-muted">{vehicle.plate}</span>
         </div>
         <span className={`tp-state tp-state--${family}`}>{VEHICLE_STATUS_LABELS[vehicle.status]}</span>
-        {vehicle.reason && <span className="bus-card__reason">{vehicle.reason}</span>}
+        {vehicle.reason && <span className="bus-card__reason">{reasonPhase(vehicle.status)}{vehicle.reason}</span>}
         {vehicle.hoursInState !== null && (
           <span className="tp-muted">há {vehicle.hoursInState.toLocaleString('pt-BR')}h</span>
         )}

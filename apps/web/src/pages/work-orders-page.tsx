@@ -276,7 +276,7 @@ function BoardCard({ row }: { row: WorkOrderSummary }) {
         <span className="tp-mono">{row.vehiclePlate}</span>
         <span className="wob-card__type">{WORK_ORDER_TYPE_LABELS[row.type]}{row.execution === WorkOrderExecution.THIRD_PARTY ? ' · terceiro' : ''}</span>
       </div>
-      <p className="wob-card__reason">{row.reason ?? 'Sem motivo registrado'}</p>
+      <p className="wob-card__reason">{row.status === WorkOrderStatus.IN_CLEANING ? 'Reparo aprovado · ' : row.status === WorkOrderStatus.IN_INSPECTION ? 'Reparo em conferência · ' : row.status === WorkOrderStatus.TECH_CLOSED ? 'Serviço concluído · ' : ''}{row.reason ?? 'Sem motivo registrado'}</p>
       <div className="wob-card__progress">
         <span className="fleet-card__bar"><i style={{ width: `${pct}%` }} /></span>
         <span className="wob-card__progress-text">{row.tasksDone}/{row.taskCount} sub-OS</span>
