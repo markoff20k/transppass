@@ -478,10 +478,8 @@ function BusCard({ vehicle }: { vehicle: DashboardVehicle }) {
           <span className="tp-muted">{vehicle.plate}</span>
         </div>
         <span className={`tp-state tp-state--${family}`}>{VEHICLE_STATUS_LABELS[vehicle.status]}</span>
-        {vehicle.reason && <span className="bus-card__reason">{reasonPhase(vehicle.status)}{vehicle.reason}</span>}
-        {vehicle.hoursInState !== null && (
-          <span className="tp-muted">há {vehicle.hoursInState.toLocaleString('pt-BR')}h</span>
-        )}
+        <span className="bus-card__reason" title={vehicle.reason ?? undefined}>{vehicle.reason ? `${reasonPhase(vehicle.status)}${vehicle.reason}` : ' '}</span>
+        <span className="bus-card__since tp-muted">{vehicle.hoursInState !== null ? `há ${vehicle.hoursInState.toLocaleString('pt-BR')}h` : ' '}</span>
       </div>
     </Link>
   );

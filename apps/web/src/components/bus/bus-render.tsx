@@ -43,7 +43,7 @@ const VIEW_W = 320;
 // Recorte útil: do equipamento de teto à sombra, sem o ar em cima
 const CROP_Y = 26;
 const CROP_H = 120;
-const FRONT_X = 308;
+const MAX_LEN = 310;
 const ROOF_Y = 40;
 const BODY_H = 70;
 const WINDOW_Y = 52;
@@ -93,7 +93,9 @@ export function BusRender({ vehicleClass, technology, status, code, width = 320,
   const visual: Visual | null = status ? VISUAL[status] : null;
   const lifted = visual === 'maintenance' || visual === 'part';
   const total = spec.segments.reduce((s, seg) => s + seg.w, 0) + BELLOWS * (spec.segments.length - 1);
-  const x0 = FRONT_X - total;
+  // Centralizado: carros curtos e longos alinham pelo meio do card
+  const x0 = Math.round((VIEW_W - Math.min(total, MAX_LEN)) / 2);
+  const frontX = x0 + total;
 
   // Posições absolutas dos segmentos, da traseira (esquerda) para a frente (direita)
   const placed = spec.segments.map((seg, i) => {
@@ -104,7 +106,7 @@ export function BusRender({ vehicleClass, technology, status, code, width = 320,
 
   const classes = ['busr', visual ? `busr--${visual}` : '', lifted ? 'busr--lifted' : '', electric ? 'busr--electric' : '', className ?? ''].filter(Boolean).join(' ');
   const firstAxle = axles[0] ?? x0 + 40;
-  const lastAxle = axles[axles.length - 1] ?? FRONT_X - 40;
+  const lastAxle = axles[axles.length - 1] ?? frontX - 40;
 
   return (
     <svg viewBox={`0 ${CROP_Y} ${VIEW_W} ${CROP_H}`} width={width} height={(width * CROP_H) / VIEW_W} className={classes} role="img" aria-label={title ?? `Carro ${code ?? ''}`}>
@@ -156,7 +158,7 @@ export function BusRender({ vehicleClass, technology, status, code, width = 320,
       <ellipse cx={x0 + total / 2} cy={132} rx={total / 2 + 4} ry={7} className="busr__shadow" filter={`url(#${id}-shadow)`} />
 
       {/* Asfalto correndo por baixo — só em linha */}
-      <line x1={x0 - 6} y1={129} x2={FRONT_X + 6} y2={129} className="busr__road" />
+      <line x1={x0 - 6} y1={129} x2={frontX + 6} y2={129} className="busr__road" />
 
       {/* Elevador de duas colunas — só com o carro levantado */}
       {lifted && (
@@ -173,8 +175,8 @@ export function BusRender({ vehicleClass, technology, status, code, width = 320,
       {/* Giroflex do socorro, à frente do carro */}
       {visual === 'field' && (
         <g className="busr__beacon">
-          <circle cx={FRONT_X + 9} cy={118} r={9} className="busr__beacon-halo" />
-          <circle cx={FRONT_X + 9} cy={118} r={3.2} className="busr__beacon-core" />
+          <circle cx={frontX + 9} cy={118} r={9} className="busr__beacon-halo" />
+          <circle cx={frontX + 9} cy={118} r={3.2} className="busr__beacon-core" />
         </g>
       )}
 

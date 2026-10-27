@@ -1845,26 +1845,7 @@ small.muted {
 .dash-kpi--danger { --kpi-color: var(--color-danger); }
 .dash-kpi--brand { --kpi-color: var(--color-brand); }
 
-/* Fio de luz no topo e um foco suave no canto, na cor do estado. */
-.dash-kpi::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--kpi-color), transparent 70%);
-}
-
-.dash-kpi::after {
-  content: '';
-  position: absolute;
-  top: -40px;
-  right: -40px;
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--kpi-color) 11%, transparent), transparent);
-  pointer-events: none;
-}
+/* A cor do estado entra só no ponto do rótulo (regra em .tp-kpi__label). */
 
 .dash-kpi__head {
   display: flex;
@@ -3625,7 +3606,7 @@ small.muted {
 /* --- Página do carro --------------------------------------------------------------- */
 .vpage { display: grid; gap: var(--tp-space-4); }
 .vpage__main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: var(--tp-space-4); align-items: stretch; }
-.vpage__row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: var(--tp-space-4); align-items: start; }
+.vpage__row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: var(--tp-space-4); align-items: stretch; }
 .vpage__row--even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .vpage__hero { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: var(--tp-space-4); align-items: center; overflow: hidden; background: radial-gradient(120% 90% at 30% 20%, color-mix(in srgb, var(--color-brand) 7%, var(--color-surface)) 0%, var(--color-surface) 60%); }
 .vpage__stage { display: grid; place-items: center; padding: var(--tp-space-2) 0; min-width: 0; }
@@ -3658,8 +3639,8 @@ small.muted {
 }
 
 /* --- Quadro da garagem (ordens de serviço) ------------------------------------ */
-.wob { display: grid; grid-template-columns: repeat(4, minmax(250px, 1fr)); gap: var(--tp-space-3); align-items: start; overflow-x: auto; padding-bottom: 4px; }
-.wob__col { display: grid; gap: var(--tp-space-2); padding: var(--tp-space-3); border-radius: var(--tp-radius-lg); background: var(--color-surface-sunken); min-width: 0; transition: opacity var(--tp-duration-normal) var(--tp-ease); }
+.wob { display: grid; grid-template-columns: repeat(4, minmax(250px, 1fr)); gap: var(--tp-space-3); align-items: stretch; overflow-x: auto; padding-bottom: 4px; }
+.wob__col { display: grid; align-content: start; gap: var(--tp-space-2); padding: var(--tp-space-3); border-radius: var(--tp-radius-lg); background: var(--color-surface-sunken); min-width: 0; transition: opacity var(--tp-duration-normal) var(--tp-ease); }
 .wob[data-focus] .wob__col:not(.is-focus) { opacity: 0.45; }
 .wob__col.is-focus { outline: 2px solid var(--color-brand); outline-offset: -2px; }
 .wob__head { display: flex; align-items: center; gap: 8px; }
@@ -3686,7 +3667,7 @@ small.muted {
 .wob-card__vehicle b { font-size: var(--tp-text-sm); }
 .wob-card__vehicle .tp-mono { color: var(--color-text-secondary); }
 .wob-card__type { margin-left: auto; color: var(--color-text-muted); white-space: nowrap; }
-.wob-card__reason { margin: 0; font-size: var(--tp-text-xs); color: var(--color-text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wob-card__reason { margin: 0; font-size: var(--tp-text-xs); line-height: 1.35; height: 2.7em; color: var(--color-text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .wob-card__progress { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
 .wob-card__progress-text { font-size: var(--tp-text-2xs); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .wob-card__foot { display: flex; justify-content: space-between; gap: 8px; padding-top: 6px; border-top: var(--tp-border-thin) solid var(--color-border-subtle); font-size: var(--tp-text-2xs); }
@@ -3713,3 +3694,25 @@ small.muted {
   .wo-hero { grid-template-columns: minmax(0, 1fr); }
   .wo-hero__stage .busr { max-width: 100%; }
 }
+
+/* --- Alinhamento: cards da mesma linha com a mesma altura, conteúdo em linhas fixas ---- */
+.tp-grid-2, .vpage__main, .wo-top { align-items: stretch; }
+.tp-split > .tp-card, .tp-grid-2 > .tp-card, .vpage__row > .tp-card, .vpage__main > .tp-card, .wo-top > .tp-card { min-height: 100%; }
+/* Tabela ou lista é o que cresce dentro do card; cabeçalho e rodapé ficam no lugar */
+.tp-card > .tp-table-wrap, .tp-card > .cmp-kinds, .tp-card > .audit-areas, .tp-card > .vpage__sheet-list { flex: 1 1 auto; }
+.tp-card > .vpage__kmbars { flex: 1 1 auto; max-height: 300px; }
+.tp-card > .vpage__more, .tp-card > .tp-row--end { margin-top: auto; }
+
+/* Dashboard: card do carro com grade fixa — render, prefixo/placa, estado, motivo, tempo */
+.bus-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--tp-space-3); align-items: stretch; }
+.bus-card { grid-template-rows: auto 1fr; gap: var(--tp-space-2); padding: var(--tp-space-3); border-radius: var(--tp-radius-lg); }
+.bus-card .busr { width: 100%; height: auto; }
+.bus-card__text { grid-template-rows: 22px 22px 20px 18px; gap: 2px; align-content: start; padding: 0; }
+.bus-card__row { align-items: center; }
+.bus-card__row b { font-family: var(--tp-font-display); font-size: var(--tp-text-md); font-weight: 700; }
+.bus-card__row .tp-muted { font-family: var(--tp-font-mono); font-size: var(--tp-text-xs); }
+.bus-card .tp-state { align-self: center; justify-self: start; }
+.bus-card__reason { line-height: 20px; }
+.bus-card__since { font-size: var(--tp-text-2xs); line-height: 18px; }
+.bus-card--summary { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+.bus-card--summary .bus-card__text { grid-template-rows: auto auto; gap: 4px; align-content: center; }

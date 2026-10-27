@@ -317,9 +317,9 @@
 }
 
 /*
- * Tile de KPI: a cor do estado entra como um fio de luz no topo e um foco
- * suave no canto — nunca como borda grossa. É a mesma linguagem dos
- * instrumentos do dashboard, para toda tela ler igual.
+ * Tile de KPI: card limpo, sem fios nem brilhos. A cor do estado entra só
+ * como um ponto discreto antes do rótulo — a mesma linguagem dos chips de
+ * estado, para toda tela ler igual.
  */
 .tp-kpi {
   --kpi-color: var(--color-border-strong);
@@ -328,33 +328,12 @@
   flex-direction: column;
   gap: var(--tp-space-1);
   min-width: 0;
-  padding: var(--tp-space-3) var(--tp-space-4) var(--tp-space-4);
-  /* Sem overflow hidden: o balão "i" do rótulo precisa sair do card. O foco de
-     cor do canto é um gradiente radial dentro da própria caixa. */
-  background: linear-gradient(160deg, var(--color-surface), color-mix(in srgb, var(--color-surface) 90%, var(--color-surface-sunken)));
+  padding: var(--tp-space-4) var(--tp-space-4);
+  background: var(--color-surface);
   border: var(--tp-border-thin) solid var(--color-border);
   border-radius: var(--tp-radius-lg);
   box-shadow: var(--shadow-card);
 }
-
-.tp-kpi::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--kpi-color), transparent 70%);
-}
-
-.tp-kpi::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(140px circle at calc(100% + 40px) -40px, color-mix(in srgb, var(--kpi-color) 10%, transparent) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.tp-kpi > * { position: relative; z-index: 1; }
 
 .tp-kpi--good { --kpi-color: var(--color-success); }
 .tp-kpi--warn { --kpi-color: var(--color-warning); }
@@ -362,11 +341,26 @@
 .tp-kpi--brand { --kpi-color: var(--color-brand); }
 
 .tp-kpi__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: var(--tp-text-2xs);
   font-weight: var(--tp-weight-semibold);
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+/* O ponto de estado: em todos os tiles, para os rótulos alinharem; cinza quando não há tom */
+.tp-kpi .tp-kpi__label::before,
+.dash-kpi .tp-kpi__label::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--kpi-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kpi-color) 18%, transparent);
+  flex-shrink: 0;
 }
 
 .tp-kpi__value {
@@ -863,7 +857,8 @@
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
   gap: var(--tp-space-4);
-  align-items: start;
+  /* Cards da mesma linha têm a mesma altura: as bordas alinham */
+  align-items: stretch;
 }
 
 .tp-grid-cards {
