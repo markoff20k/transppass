@@ -225,7 +225,7 @@ async function run() {
     { path: '/os', name: 'Ordens de serviço', check: '.wob, .tp-table' },
     { path: '/estoque', name: 'Estoque', check: '.tp-table' },
     { path: '/indicadores', name: 'Indicadores', check: '.tp-kpi' },
-    { path: '/km', name: 'Quilometragem', check: 'table' },
+    { path: '/km', name: 'Quilometragem', check: 'table, .tp-table__empty' },
     { path: '/cadastros/frota', name: 'Cadastro da frota', check: '.tp-table' },
     { path: '/cadastros/catalogo', name: 'Catálogo', check: '.tp-table' },
     { path: '/cadastros/usuarios', name: 'Usuários', check: '.tp-table' },

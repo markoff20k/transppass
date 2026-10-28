@@ -10,3 +10,6 @@ coverage/
 .turbo/
 apps/api/generated/
 *.tsbuildinfo
+apps/api/prisma/data/frota.json
+apps/api/prisma/data/km-real.json
+apps/api/prisma/data/cco.json

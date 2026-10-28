@@ -88,7 +88,11 @@ Base: A3 "Kaizen Estruturante" (03/06/2026) e "Fluxos de Processo PCM" Rev. 00 (
 ## 4g. Rodada 28/10 — primeira entrega de dados reais
 
 - Chegou o arquivo "1-MODELO DO CHASSI.xlsx" (item 1 do pedido ao CEO): 52 códigos de chassi com descrição e classe. Virou `apps/api/prisma/data/chassis.json`, a tabela `chassis_models` (`GET /vehicles/chassis-models`) e um seletor no cadastro do carro que preenche fabricante, modelo, classe e tecnologia pelo código. A classe "Padron 15m" (Scania K 250/270, K 94) não existia no sistema e foi criada (`PADRON_15M`, render com três eixos).
-- Ainda faltam: frota carro a carro, quilometragem, ocorrências/quebras, OS e a classificação de falhas (itens 1 a 5 do pedido).
+- **Frota real** (arquivo "1-VBM0208"): 455 carros em operação (STATUS 0) viram a frota do sistema; os carros de exemplo saem. Prefixo do CCO derivado ("8" + lote + carro) bate em 455 de 457 prefixos do CCO.
+- **Km diário real** ("2-VBM0406_km", agosto e setembro): 21.979 leituras, 4.924.234 km. A âncora do hodômetro (KM CHASSI = hoje) é ASSUMIDA. Setembro soma 2.437.847 km, igual ao total da planilha.
+- **Ocorrências do CCO** ("3-CCOweb"): 6.886 das 8.243 linhas viram eventos (grupos FRO, SOS, RAM, PAM, TRO, SUB); sinistros, realocações, fiscalização e Maxtrack ficam de fora. Defeito do CCO → Modo × Subsistema do padrão de codificação. Viagens perdidas (V_Perdida) alimentam o KPI da Daily. Critério de quebra ASSUMIDO: SOS + RAM + TRO.
+- O seed de demonstração passou a rodar em cima da frota real: não apaga nada importado, preenche km só nos dias sem dado e não inventa falhas no período coberto pelo CCO. Reservas (~8%) e dias sem leitura são ASSUMIDOS para a demonstração.
+- Ainda faltam: ordens de serviço de setembro e a classificação de falhas usada pela Transppass (itens 4 e 5 do pedido).
 
 ## 4f. Rodada 28/10 — a frota como produto
 

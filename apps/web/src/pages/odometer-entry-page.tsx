@@ -33,7 +33,7 @@ export function OdometerEntryPage() {
   const { data, isPending } = useQuery({
     queryKey: ['vehicles', 'manual-km'],
     queryFn: () =>
-      api.get<Paginated<Vehicle>>('/vehicles?perPage=100&onlyActive=true'),
+      api.get<Paginated<Vehicle>>('/vehicles?perPage=500&onlyActive=true'),
   });
 
   const vehicles = useMemo(

@@ -1,5 +1,5 @@
-import { PrismaClient, VehicleTechnology } from '@prisma/client';
-import { readFileSync } from 'node:fs';
+import { EventOrigin, EventStatus, KmSource, PrismaClient, UserRole, VehicleTechnology } from '@prisma/client';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
@@ -21,6 +21,8 @@ import { resolve } from 'node:path';
 
 const DATA = resolve(__dirname, 'data');
 const readJson = <T>(file: string): T => JSON.parse(readFileSync(resolve(DATA, file), 'utf8')) as T;
+/** Os arquivos com dados do cliente (frota, km, CCO) podem não estar no repositório: sem eles a carga segue só com as bases públicas. */
+const readJsonIfPresent = <T>(file: string, fallback: T): T => (existsSync(resolve(DATA, file)) ? readJson<T>(file) : fallback);
 
 interface MaterialJson {
   code: string;
@@ -171,6 +173,27 @@ export async function importBases(prisma: PrismaClient): Promise<void> {
     await prisma.chassisModel.upsert({ where: { code: c.code }, update: data, create: { code: c.code, ...data } });
   }
   console.log(`  ${chassis.length} modelos de chassi (tabela da Transppass)`);
+
+  // ---- Frota real (arquivo "1-VBM0208", 28/10/2026): só os carros em operação (STATUS 0) ----
+  // O prefixo do CCO é "8" + lote (1 = E8, 0 = AR9) + número do carro. Km atual = KM CHASSI do arquivo.
+  type FleetJson = { code: string; ccoPrefix: string; plate: string; chassisCode: string; manufacturer: string | null; model: string | null; vehicleClass: string | null; technology: 'DIESEL' | 'EBUS'; hasAc: boolean; fabricationYear: number | null; modelYear: number | null; bodyMaker: string | null; bodyYear: number | null; vin: string | null; renavam: string | null; seats: number | null; acquiredAt: string | null; lot: string | null; garageCode: string | null; telemetry: boolean; currentKm: number };
+  const fleet = readJsonIfPresent<FleetJson[]>('frota.json', []);
+  if (fleet.length === 0) console.log('  frota real: arquivo frota.json ausente — mantendo a frota de exemplo');
+  if (fleet.length > 0) {
+    const garage = await prisma.garage.upsert({ where: { code: '009' }, update: { name: 'Garagem 009 (Transppass)' }, create: { code: '009', name: 'Garagem 009 (Transppass)' } });
+    for (const v of fleet) {
+      const data = {
+        plate: v.plate, technology: v.technology === 'EBUS' ? VehicleTechnology.EBUS : VehicleTechnology.DIESEL, kmSource: v.telemetry ? KmSource.TELEMETRY : KmSource.MANUAL,
+        manufacturer: v.manufacturer, model: v.model, modelYear: v.modelYear, vehicleClass: v.vehicleClass, lot: v.lot, fleetRole: 'OPERACIONAL', garageId: garage.id,
+        ccoPrefix: v.ccoPrefix, chassisCode: v.chassisCode, vin: v.vin, renavam: v.renavam, bodyMaker: v.bodyMaker, bodyYear: v.bodyYear, fabricationYear: v.fabricationYear,
+        hasAc: v.hasAc, seats: v.seats, acquiredAt: v.acquiredAt ? new Date(v.acquiredAt) : null, isImported: true, isActive: true,
+      };
+      await prisma.vehicle.upsert({ where: { code: v.code }, update: data, create: { code: v.code, ...data, currentKm: v.currentKm } });
+    }
+    // Carros de exemplo saem do ar aqui; o seed de demonstração os apaga depois de limpar o movimento que os referencia.
+    const removed = await prisma.vehicle.updateMany({ where: { isImported: false, isActive: true }, data: { isActive: false, status: 'OUT_OF_SERVICE' } });
+    console.log(`  ${fleet.length} carros da frota real (E8 ${fleet.filter((v) => v.lot === 'E8').length}, AR9 ${fleet.filter((v) => v.lot === 'AR9').length}; ${fleet.filter((v) => v.telemetry).length} com telemetria) · ${removed.count} carro(s) de exemplo desativado(s)`);
+  }
 
   // ---- Operadores -----------------------------------------------------------
   const operators = readJson<OperatorJson[]>('operadores.json');
@@ -476,6 +499,78 @@ export async function importBases(prisma: PrismaClient): Promise<void> {
     }
   }
   console.log(`  ${trainings} treinamentos (mock) — 70093 propositalmente sem alta tensão`);
+
+  await importRealMovement(prisma);
+}
+
+/**
+ * Km diário e ocorrências do CCO da Transppass (agosto e setembro de 2026).
+ * As leituras e os eventos entram marcados como importados: o seed de
+ * demonstração nunca os apaga e só preenche os dias que não têm dado real.
+ */
+export async function importRealMovement(prisma: PrismaClient): Promise<void> {
+  const DAY = 86_400_000;
+  const users = await prisma.user.findMany();
+  const admin = users.find((u) => u.role === UserRole.ADMIN);
+  if (!admin) return;
+  const ccoUser = users.find((u) => u.role === UserRole.CCO) ?? admin;
+  const vehicles = await prisma.vehicle.findMany({ where: { isImported: true }, select: { id: true, code: true, currentKm: true, kmSource: true, odometerOffset: true } });
+  const byCode = new Map(vehicles.map((v) => [v.code, v]));
+  if (byCode.size === 0) return;
+
+  // ---- Km diário (planilha "2-VBM0406_km": uma linha por carro, uma coluna por dia) ----
+  const kmReal = readJsonIfPresent<Record<string, Record<string, number>>>('km-real.json', {});
+  if (Object.keys(kmReal).length === 0) { console.log('  km real: arquivo km-real.json ausente'); return; }
+  await prisma.odometerReading.deleteMany({ where: { isImported: true } });
+  const allDates = [...new Set(Object.values(kmReal).flatMap((d) => Object.keys(d)))].sort();
+  const lastRealDate = allDates[allDates.length - 1]!;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const daysSinceLast = Math.max(0, Math.round((today.getTime() - new Date(`${lastRealDate}T00:00:00`).getTime()) / DAY));
+  const readings: { vehicleId: string; rawKm: number; adjustedKm: number; deltaKm: number; readAt: Date; source: KmSource; enteredById: string; isImported: boolean }[] = [];
+  for (const [code, days] of Object.entries(kmReal)) {
+    const v = byCode.get(code);
+    if (!v) continue;
+    const dates = Object.keys(days).sort();
+    const lastMonth = lastRealDate.slice(0, 7);
+    const avgLastMonth = dates.filter((d) => d.startsWith(lastMonth)).reduce((s, d) => s + days[d]!, 0) / 30;
+    // Âncora ASSUMIDA: o KM CHASSI do cadastro é o hodômetro de hoje; o último dia real fica
+    // esse valor menos o que o carro rodou desde então na média do último mês.
+    let km = Math.max(0, v.currentKm - Math.round(avgLastMonth * daysSinceLast));
+    for (const d of dates.slice().reverse()) {
+      const delta = days[d]!;
+      readings.push({ vehicleId: v.id, rawKm: Math.max(0, km - v.odometerOffset), adjustedKm: km, deltaKm: delta, readAt: new Date(`${d}T23:00:00`), source: v.kmSource, enteredById: admin.id, isImported: true });
+      km = Math.max(0, km - delta);
+    }
+  }
+  for (let i = 0; i < readings.length; i += 5000) await prisma.odometerReading.createMany({ data: readings.slice(i, i + 5000), skipDuplicates: true });
+  const kmTotal = readings.reduce((s, r) => s + r.deltaKm, 0);
+  console.log(`  ${readings.length} leituras reais de km (${allDates[0]} a ${lastRealDate}; ${kmTotal.toLocaleString('pt-BR')} km)`);
+
+  // ---- Ocorrências do CCO (planilha "3-CCOweb") ----
+  type CcoJson = { id: string; at: string; code: string; driverReg: number | null; line: string | null; defect: string | null; place: string | null; direction: string | null; lostTrips: number; group: string; groupLabel: string; unscheduledReturn: boolean; modeCode: string; subsystemCode: string; catalogCode: string | null; text: string | null };
+  const cco = readJsonIfPresent<CcoJson[]>('cco.json', []);
+  if (cco.length === 0) { console.log('  CCO: arquivo cco.json ausente'); return; }
+  await prisma.failureEvent.deleteMany({ where: { isImported: true } });
+  const operators = await prisma.operator.findMany({ select: { id: true, registration: true } });
+  const opByReg = new Map(operators.map((o) => [Number(o.registration.replace(/\D/g, '')), o.id]));
+  const catalog = new Map((await prisma.failureCatalogItem.findMany({ select: { id: true, code: true } })).map((c) => [c.code, c.id]));
+  const events = cco
+    .filter((e) => byCode.has(e.code))
+    .map((e) => {
+      const at = new Date(e.at);
+      return {
+        code: `EV-CCO-${e.id}`, externalId: e.id, vehicleId: byCode.get(e.code)!.id, catalogItemId: e.catalogCode ? (catalog.get(e.catalogCode) ?? null) : null,
+        reportedDescription: [e.defect, e.text].filter(Boolean).join(': ').slice(0, 500) || null,
+        origin: e.group === 'SOS' ? EventOrigin.OPERATOR : EventOrigin.CCO, status: EventStatus.CLOSED, reportedById: ccoUser.id, reportedAt: at,
+        operatorId: e.driverReg !== null ? (opByReg.get(e.driverReg) ?? null) : null, lineCode: e.line?.slice(0, 16) ?? null, locationDescription: e.place?.slice(0, 255) ?? null,
+        isUnscheduledReturn: e.unscheduledReturn, closedAt: new Date(at.getTime() + 2 * 3_600_000),
+        failureModeCode: e.modeCode, subsystemCode: e.subsystemCode, failureCode: `${e.modeCode}-${e.subsystemCode}`,
+        isImported: true, ccoGroup: e.group, ccoDefect: e.defect?.slice(0, 60) ?? null, lostTrips: e.lostTrips,
+      };
+    });
+  for (let i = 0; i < events.length; i += 500) await prisma.failureEvent.createMany({ data: events.slice(i, i + 500), skipDuplicates: true });
+  const returns = events.filter((e) => e.isUnscheduledReturn).length;
+  console.log(`  ${events.length} ocorrências reais do CCO (${returns} retornos não programados: SOS, RAM e TRO; ${events.reduce((s, e) => s + e.lostTrips, 0)} viagens perdidas)`);
 }
 
 if (require.main === module) {

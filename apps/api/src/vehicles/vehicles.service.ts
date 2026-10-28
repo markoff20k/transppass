@@ -282,9 +282,9 @@ function localDate(d: Date): string {
 }
 
 /** Próxima preventiva do carro pelo plano vigente: o menor gatilho acima do km atual. */
-function nextPackageFor<T extends { name: string; intervalKm: number; offsetKm: number; plan: { technology: string; vehicleModel: string | null } }>(
+function nextPackageFor<T extends { name: string; intervalKm: number; offsetKm: number; plan: { technology: string; vehicleModel: string | null; manufacturer?: string | null } }>(
   packages: T[],
-  v: { technology: string; model: string | null; currentKm: number },
+  v: { technology: string; model: string | null; manufacturer?: string | null; currentKm: number },
 ): { name: string; windowKm: number; kmToWindow: number; progress: number } | null {
   let next: { pkg: T; windowKm: number } | null = null;
   for (const pkg of packagesFor(packages, v)) {
@@ -333,6 +333,16 @@ function toVehicle(v: {
   currentKm: number;
   lastReadingAt: Date | null;
   isActive: boolean;
+  ccoPrefix?: string | null;
+  chassisCode?: string | null;
+  vin?: string | null;
+  bodyMaker?: string | null;
+  bodyYear?: number | null;
+  fabricationYear?: number | null;
+  hasAc?: boolean;
+  seats?: number | null;
+  acquiredAt?: Date | null;
+  isImported?: boolean;
 }): Vehicle {
   return {
     id: v.id,
@@ -352,5 +362,15 @@ function toVehicle(v: {
     currentKm: v.currentKm,
     lastReadingAt: v.lastReadingAt?.toISOString() ?? null,
     isActive: v.isActive,
+    ccoPrefix: v.ccoPrefix ?? null,
+    chassisCode: v.chassisCode ?? null,
+    vin: v.vin ?? null,
+    bodyMaker: v.bodyMaker ?? null,
+    bodyYear: v.bodyYear ?? null,
+    fabricationYear: v.fabricationYear ?? null,
+    hasAc: v.hasAc ?? false,
+    seats: v.seats ?? null,
+    acquiredAt: v.acquiredAt?.toISOString() ?? null,
+    isImported: v.isImported ?? false,
   };
 }

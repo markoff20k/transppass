@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-10-28T19:50:19.864Z",
+  "ranAt": "2026-10-28T20:24:00.959Z",
   "base": "http://localhost:5173",
   "passed": 87,
   "failed": 0,
@@ -110,7 +110,7 @@
       "id": "DASH-06",
       "name": "Legenda das famílias de estado filtra a frota e volta ao todo",
       "ok": true,
-      "detail": "37 → 14 (esperado 14) → 37"
+      "detail": "31 → 11 (esperado 11) → 31"
     },
     {
       "id": "DASH-07",

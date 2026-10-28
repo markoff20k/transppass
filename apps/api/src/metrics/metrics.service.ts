@@ -73,7 +73,7 @@ export class MetricsService {
     const d30 = new Date(now.getTime() - 30 * DAY);
     const d60 = new Date(now.getTime() - 60 * DAY);
 
-    const [mkbf30, mkbf60, avail7, rework, fleet, byStatus, missedY, missed7, missed30, woOpen, woOverdue, woOpenedY, woReleasedY, waitingPart, inQueue, evY, ev7, checks, recent, repeats, stale, audits, kanban, components] = await Promise.all([
+    const [mkbf30, mkbf60, avail7, rework, fleet, byStatus, missedY, missed7, missed30, woOpen, woOverdue, woOpenedY, woReleasedY, waitingPart, inQueue, evY, ev7, checks, recent, repeats, stale, audits, kanban, lostY, lost7, lost30, components] = await Promise.all([
       this.mkbf(d30, now),
       this.mkbf(d60, d30),
       this.availability(d7, now),
@@ -97,6 +97,9 @@ export class MetricsService {
       this.prisma.kmProjection.count({ where: { isDegraded: true } }),
       this.prisma.processAudit.findMany({ orderBy: { auditedAt: 'desc' }, select: { kind: true, area: true, nextDueAt: true } }),
       this.prisma.material.findMany({ where: { isActive: true, reorderPoint: { not: null } }, select: { stockQty: true, reorderPoint: true } }),
+      this.prisma.failureEvent.aggregate({ where: { reportedAt: { gte: startYesterday, lt: startToday } }, _sum: { lostTrips: true } }),
+      this.prisma.failureEvent.aggregate({ where: { reportedAt: { gte: d7 } }, _sum: { lostTrips: true } }),
+      this.prisma.failureEvent.aggregate({ where: { reportedAt: { gte: d30 } }, _sum: { lostTrips: true } }),
       this.prisma.vehicleComponent.findMany({ where: { removedAt: null, vehicle: { isActive: true } }, select: { installedAtKm: true, expectedLifeKm: true, vehicle: { select: { currentKm: true } } } }),
     ]);
     const componentsOverLife = components.filter((c) => c.vehicle.currentKm - c.installedAtKm >= c.expectedLifeKm).length;
@@ -126,7 +129,10 @@ export class MetricsService {
       mkbf: { last30: mkbf30.mkbf, previous30: mkbf60.mkbf, kmLast30: mkbf30.kmTraveled, returnsLast30: mkbf30.unscheduledReturns },
       availability: { now: fleet ? available / fleet : 0, last7: avail7, target: 0.85 },
       rework: { rateLast30: rework.rate, inspectionsLast30: rework.inspections, rejectionsLast30: rework.rejections },
-      lostTrips: { yesterday: missedY, last7: missed7, last30: missed30, note: 'janelas de reposição estouradas (RF-29) — proxy até a Operação apurar viagens perdidas' },
+      // Viagens perdidas apuradas pelo CCO quando existem (base real); senão, o proxy das janelas estouradas.
+      lostTrips: (lost30._sum.lostTrips ?? 0) > 0
+        ? { yesterday: lostY._sum.lostTrips ?? 0, last7: lost7._sum.lostTrips ?? 0, last30: lost30._sum.lostTrips ?? 0, note: 'viagens perdidas apuradas pelo CCO (ocorrências com V_Perdida)' }
+        : { yesterday: missedY, last7: missed7, last30: missed30, note: 'janelas de reposição estouradas (RF-29) — proxy até a Operação apurar viagens perdidas' },
       workOrders: { open: woOpen, overdue: woOverdue, openedYesterday: woOpenedY, releasedYesterday: woReleasedY, waitingPart, inQueue },
       events: { yesterday: evY, last7: ev7, avgPerDay7: Math.round((ev7 / 7) * 10) / 10 },
       dailyChecks: { fleet, checked: checkedVehicles.size, nok: nokVehicles.size },

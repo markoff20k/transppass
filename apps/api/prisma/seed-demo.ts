@@ -51,6 +51,7 @@ const D = 24 * H;
 const NOW = Date.now();
 const ago = (hours: number) => new Date(NOW - hours * H);
 const inHours = (hours: number) => new Date(NOW + hours * H);
+const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** Pseudoaleatório determinístico: a mesma garagem a cada execução. */
 function rnd(...seeds: (number | string)[]): number {
@@ -216,7 +217,14 @@ async function main() {
   const matLike = (term: string) => materials.find((m) => m.description.includes(term)) ?? materials[0]!;
 
   const plans = await prisma.maintenancePlan.findMany({ where: { isActive: true }, include: { packages: { include: { tasks: true, kits: { where: { isActive: true } } } } } });
-  const planFor = (model: string) => plans.find((p) => p.vehicleModel?.toUpperCase() === model.toUpperCase());
+  const modelKey = (m: string | null | undefined) => (m ?? '').toUpperCase().replace(/\b(E3|E5|AC|AR|OT|LE|VW|MB)\b/g, ' ').replace(/[^A-Z0-9]/g, '');
+  const planFor = (model: string, technology?: VehicleTechnology, manufacturer?: string | null) => {
+    const tech = technology ?? VehicleTechnology.DIESEL;
+    const family = plans.filter((p) => p.technology === tech && p.vehicleModel && modelKey(p.vehicleModel) === modelKey(model));
+    const wantsAc = /\bAC\b/i.test(model);
+    const maker = (manufacturer ?? '').toUpperCase().replace(/[^A-Z]/g, '');
+    return (wantsAc ? family.find((p) => /\bAC\b/i.test(p.vehicleModel ?? '')) : family.find((p) => !/\bAC\b/i.test(p.vehicleModel ?? ''))) ?? family[0] ?? (maker ? plans.find((p) => p.technology === tech && (p.manufacturer ?? '').toUpperCase().replace(/[^A-Z]/g, '') === maker) : undefined) ?? plans.find((p) => p.technology === tech && !p.vehicleModel);
+  };
 
   const motoristas = await prisma.operator.findMany({ where: { isActive: true, function: 'MOTORISTA' }, orderBy: { registration: 'asc' } });
   const driverFor = (cls: VehicleClass, seed: string) => {
@@ -238,12 +246,16 @@ async function main() {
   await prisma.workOrder.deleteMany();
   await prisma.scheduledMaintenance.deleteMany();
   await prisma.vehicleBacklogItem.deleteMany();
-  await prisma.failureEvent.deleteMany();
-  await prisma.odometerReading.deleteMany();
+  // Dados reais da Transppass (frota, km diário, ocorrências do CCO) ficam; só o movimento de demonstração sai.
+  await prisma.failureEvent.deleteMany({ where: { isImported: false } });
+  await prisma.odometerReading.deleteMany({ where: { isImported: false } });
   await prisma.kmProjection.deleteMany();
   await prisma.metricSnapshot.deleteMany();
   await prisma.poolComponent.updateMany({ data: { status: PoolComponentStatus.IN_STOCK, currentVehicleId: null } });
-  await prisma.vehicle.deleteMany();
+  const realFleet = await prisma.vehicle.findMany({ where: { isImported: true, isActive: true }, orderBy: { code: 'asc' } });
+  const real = realFleet.length > 0;
+  // Com frota real, só os carros de exemplo (não importados) saem; sem ela, a frota mock é refeita do zero.
+  await prisma.vehicle.deleteMany({ where: real ? { isImported: false } : {} });
 
   // ---- Garagens e frota -------------------------------------------------------
   const garages = {
@@ -251,9 +263,34 @@ async function main() {
     AR9: await prisma.garage.upsert({ where: { code: 'AR9' }, update: { name: 'Garagem AR9' }, create: { code: 'AR9', name: 'Garagem AR9' } }),
   };
 
-  const VEHICLES = buildFleet();
-  /** n-ésimo carro de uma classe num lote (0 = primeiro operacional). */
-  const carOf = (lot: 'E8' | 'AR9', cls: VehicleClass, n: number) => VEHICLES.filter((v) => v.lot === lot && v.vehicleClass === cls)[n]!;
+  // Com a frota real carregada, a demonstração roda nos carros de verdade: a média diária vem do km real
+  // do último mês; reservas (~8% por classe) e dias sem leitura são ASSUMIDOS só para a demonstração.
+  const realAvg = new Map<string, number>();
+  if (real) {
+    const imported = await prisma.odometerReading.findMany({ where: { isImported: true }, select: { vehicleId: true, readAt: true, deltaKm: true } });
+    const lastAt = imported.reduce((m, r) => Math.max(m, r.readAt.getTime()), 0);
+    for (const r of imported) {
+      if (r.readAt.getTime() < lastAt - 30 * D) continue;
+      realAvg.set(r.vehicleId, (realAvg.get(r.vehicleId) ?? 0) + (r.deltaKm ?? 0));
+    }
+  }
+  const VEHICLES: VehicleSpec[] = real
+    ? realFleet.map((v) => {
+        const electric = v.technology === VehicleTechnology.EBUS;
+        const cls = ((v.vehicleClass as VehicleClass | null) ?? (electric ? 'EPADRON_13M' : 'BASICO_12M')) as VehicleClass;
+        const avg = realAvg.has(v.id) ? Math.round((realAvg.get(v.id)! / 30) * 10) / 10 : electric ? 180 : 200;
+        const reserve = rnd(v.code, 'reserva') < 0.08;
+        const stale = v.kmSource === KmSource.MANUAL && rnd(v.code, 'stale') < 0.3 ? 3 + Math.floor(rnd(v.code, 'stale-d') * 4) : 0;
+        return {
+          code: v.code, plate: v.plate, technology: v.technology, kmSource: v.kmSource, manufacturer: v.manufacturer ?? '', model: v.model ?? '', modelYear: v.modelYear ?? 2019,
+          odometerOffset: v.odometerOffset, vehicleClass: cls, lot: (v.lot === 'AR9' ? 'AR9' : 'E8') as 'E8' | 'AR9', fleetRole: reserve ? 'RESERVA' : 'OPERACIONAL',
+          status: reserve ? VehicleStatus.AVAILABLE : VehicleStatus.IN_LINE, currentKm: v.currentKm, avgDailyKm: reserve ? Math.round(avg * 0.5) : avg, staleDays: stale,
+        };
+      })
+    : buildFleet();
+  /** n-ésimo carro de uma classe num lote (0 = primeiro operacional); cai para a classe em qualquer lote, depois para qualquer carro. */
+  const carOf = (lot: 'E8' | 'AR9', cls: VehicleClass, n: number) =>
+    VEHICLES.filter((v) => v.lot === lot && v.vehicleClass === cls)[n] ?? VEHICLES.filter((v) => v.vehicleClass === cls)[n % Math.max(1, VEHICLES.filter((v) => v.vehicleClass === cls).length)] ?? VEHICLES[n % VEHICLES.length]!;
 
   // A garagem AGORA — quem está em cada etapa do fluxo (cenários para operar na mão).
   const S = {
@@ -292,11 +329,18 @@ async function main() {
   }
 
   const vehicleIds = new Map<string, string>();
-  for (let i = 0; i < VEHICLES.length; i += 100) {
-    const slice = VEHICLES.slice(i, i + 100);
-    await prisma.vehicle.createMany({
-      data: slice.map(({ avgDailyKm: _a, staleDays, lot, ...v }) => ({ ...v, lot, garageId: garages[lot].id, lastReadingAt: ago(staleDays * 24 + 2) })),
-    });
+  if (real) {
+    // Frota real: só o estado de agora, o papel na escala e a última leitura mudam
+    for (const v of VEHICLES) {
+      await prisma.vehicle.update({ where: { code: v.code }, data: { status: v.status, fleetRole: v.fleetRole, lastReadingAt: ago(v.staleDays * 24 + 2) } });
+    }
+  } else {
+    for (let i = 0; i < VEHICLES.length; i += 100) {
+      const slice = VEHICLES.slice(i, i + 100);
+      await prisma.vehicle.createMany({
+        data: slice.map(({ avgDailyKm: _a, staleDays, lot, ...v }) => ({ ...v, lot, garageId: garages[lot].id, lastReadingAt: ago(staleDays * 24 + 2) })),
+      });
+    }
   }
   for (const row of await prisma.vehicle.findMany({ select: { id: true, code: true } })) vehicleIds.set(row.code, row.id);
   const vid = (code: string) => vehicleIds.get(code)!;
@@ -305,21 +349,74 @@ async function main() {
   // ---- Seis meses de leituras de km (a base do MKBF e da projeção) --------
   const DAYS = 185;
   const readings: { vehicleId: string; rawKm: number; adjustedKm: number; deltaKm: number | null; readAt: Date; source: KmSource; enteredById: string }[] = [];
+  // Leituras reais (quando existem) ancoram a série: a demonstração só preenche os dias sem dado.
+  const realKm = new Map<string, Map<string, number>>();
+  if (real) {
+    for (const r of await prisma.odometerReading.findMany({ where: { isImported: true }, select: { vehicleId: true, readAt: true, adjustedKm: true } })) {
+      const key = localDay(r.readAt);
+      if (!realKm.has(r.vehicleId)) realKm.set(r.vehicleId, new Map());
+      realKm.get(r.vehicleId)!.set(key, r.adjustedKm);
+    }
+  }
   for (const v of VEHICLES) {
     if (v.avgDailyKm === 0) continue;
-    let km = v.currentKm;
-    const rows: { day: number; km: number }[] = [];
-    for (let day = v.staleDays; day < DAYS; day += 1) {
-      rows.push({ day, km });
+    const mine = realKm.get(vid(v.code));
+    const realDays = mine ? [...mine.keys()].sort() : [];
+    const firstReal = realDays[0] ?? null;
+    const lastReal = realDays[realDays.length - 1] ?? null;
+    // km por dia (índice = dias atrás), já com os dias reais no lugar
+    const series = new Map<number, number>();
+    const dayKey = (day: number) => localDay(new Date(NOW - day * D));
+    const weight = (day: number) => {
       const date = new Date(NOW - day * D);
       const weekend = date.getDay() === 0 || date.getDay() === 6;
-      const delta = Math.round(v.avgDailyKm * (weekend ? 0.55 : 1) * (0.82 + 0.36 * rnd(v.code, day)));
-      km = Math.max(0, km - delta);
+      return (weekend ? 0.55 : 1) * (0.82 + 0.36 * rnd(v.code, day));
+    };
+    const synthetic: number[] = [];
+    if (mine && firstReal && lastReal) {
+      // Depois do último dia real: distribui o que falta até o km de hoje
+      const after: number[] = [];
+      for (let day = v.staleDays; day < DAYS; day += 1) {
+        const k = dayKey(day);
+        if (k > lastReal) after.push(day);
+        else break;
+      }
+      const kmLast = mine.get(lastReal)!;
+      const total = Math.max(0, v.currentKm - kmLast);
+      const wsum = after.reduce((acc, d) => acc + weight(d), 0) || 1;
+      let acc = 0;
+      for (const day of after) {
+        series.set(day, Math.round(v.currentKm - (acc / wsum) * total));
+        acc += weight(day);
+        synthetic.push(day);
+      }
+      // Dias reais
+      for (let day = 0; day < DAYS; day += 1) {
+        const k = dayKey(day);
+        if (mine.has(k)) series.set(day, mine.get(k)!);
+      }
+      // Antes do primeiro dia real: segue para trás pela média
+      let km = mine.get(firstReal)!;
+      for (let day = 0; day < DAYS; day += 1) {
+        if (dayKey(day) >= firstReal) continue;
+        km = Math.max(0, km - Math.round(v.avgDailyKm * weight(day)));
+        series.set(day, km);
+        synthetic.push(day);
+      }
+    } else {
+      let km = v.currentKm;
+      for (let day = v.staleDays; day < DAYS; day += 1) {
+        series.set(day, km);
+        synthetic.push(day);
+        km = Math.max(0, km - Math.round(v.avgDailyKm * weight(day)));
+      }
     }
-    for (let i = 0; i < rows.length; i += 1) {
-      const r = rows[i]!;
-      const older = rows[i + 1];
-      readings.push({ vehicleId: vid(v.code), rawKm: Math.max(0, r.km - v.odometerOffset), adjustedKm: r.km, deltaKm: older ? r.km - older.km : null, readAt: new Date(NOW - r.day * D - 2 * H), source: v.kmSource, enteredById: v.kmSource === KmSource.MANUAL ? pcm.id : admin.id });
+    const known = [...series.keys()].sort((a, b) => a - b);
+    for (const day of synthetic.sort((a, b) => a - b)) {
+      const km = series.get(day)!;
+      const olderDay = known.find((d) => d > day);
+      const older = olderDay === undefined ? null : series.get(olderDay)!;
+      readings.push({ vehicleId: vid(v.code), rawKm: Math.max(0, km - v.odometerOffset), adjustedKm: km, deltaKm: older === null ? null : Math.max(0, km - older), readAt: new Date(NOW - day * D - 2 * H), source: v.kmSource, enteredById: v.kmSource === KmSource.MANUAL ? pcm.id : admin.id });
     }
   }
   for (let i = 0; i < readings.length; i += 5000) await prisma.odometerReading.createMany({ data: readings.slice(i, i + 5000) });
@@ -343,9 +440,14 @@ async function main() {
   const history: Hist[] = [];
   const CATALOG_CODES = ['ELE-ALT-01', 'PNE-APU-01', 'PNE-CUI-01', 'MEC-MOT-01', 'AC-CLI-01', 'CAR-POR-01'];
   const runners = VEHICLES.filter((v) => v.avgDailyKm > 0 && v.fleetRole === 'OPERACIONAL');
+  // Nos dias cobertos pelas ocorrências reais do CCO não se inventa falha nenhuma.
+  const realEvents = real ? await prisma.failureEvent.aggregate({ where: { isImported: true }, _min: { reportedAt: true }, _max: { reportedAt: true } }) : null;
+  const realFrom = realEvents?._min.reportedAt ? new Date(realEvents._min.reportedAt).setHours(0, 0, 0, 0) : null;
+  const realTo = realEvents?._max.reportedAt ? new Date(realEvents._max.reportedAt).setHours(23, 59, 59, 999) : null;
   for (let day = 1; day <= DAYS; day += 1) {
     // ~15 falhas/dia numa frota de 453 (MKBF perto de 5.500 km), menos no fim de semana.
     const date = new Date(NOW - day * D);
+    if (realFrom !== null && realTo !== null && date.getTime() >= realFrom && date.getTime() <= realTo) continue;
     const weekend = date.getDay() === 0 || date.getDay() === 6;
     const n = Math.round((weekend ? 9 : 15) * (0.7 + rnd('events', day) * 0.6));
     for (let i = 0; i < n; i += 1) {
@@ -728,7 +830,7 @@ async function main() {
 
   const nextTrigger = (km: number, pkg: { intervalKm: number; offsetKm: number }) => pkg.offsetKm + (Math.floor(Math.max(0, km - pkg.offsetKm) / pkg.intervalKm) + 1) * pkg.intervalKm;
   const scheduleFor = async (v: VehicleSpec, pkgCode: string, opts: { status: ScheduleStatus; plannedInDays: number; kit: KitSeparationStatus | null; team?: string; reschedule?: boolean; backlog?: string[] }) => {
-    const plan = planFor(v.model);
+    const plan = planFor(v.model, v.technology, v.manufacturer);
     const pkg = plan?.packages.find((p) => p.code === pkgCode) ?? plan?.packages[0];
     if (!plan || !pkg) return;
     const targetKm = nextTrigger(v.currentKm, pkg);
@@ -754,7 +856,8 @@ async function main() {
   console.log('  6 paradas preventivas programadas com os pacotes dos planos IT.MAN');
 
   // ---- Plantão: três demandas de reposição ---------------------------------
-  const reserveOf = (cls: VehicleClass, lot: 'E8' | 'AR9', n: number) => VEHICLES.filter((v) => v.lot === lot && v.vehicleClass === cls && v.fleetRole === 'RESERVA')[n]!;
+  const reserveOf = (cls: VehicleClass, lot: 'E8' | 'AR9', n: number) =>
+    VEHICLES.filter((v) => v.lot === lot && v.vehicleClass === cls && v.fleetRole === 'RESERVA')[n] ?? VEHICLES.filter((v) => v.vehicleClass === cls && v.fleetRole === 'RESERVA')[0] ?? VEHICLES.filter((v) => v.fleetRole === 'RESERVA')[n % Math.max(1, VEHICLES.filter((v) => v.fleetRole === 'RESERVA').length)]!;
   const resB = reserveOf('PADRON_13M', 'E8', 0);
   const resC = reserveOf('EPADRON_13M', 'AR9', 0);
   resB.status = VehicleStatus.IN_LINE;

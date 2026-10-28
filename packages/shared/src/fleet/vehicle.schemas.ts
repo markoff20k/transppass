@@ -168,6 +168,17 @@ export const vehicleSchema = z.object({
   currentKm: z.number().int(),
   lastReadingAt: z.string().datetime().nullable(),
   isActive: z.boolean(),
+  /** Frota real da Transppass: prefixo do CCO, chassi, carroceria, lotação. */
+  ccoPrefix: z.string().nullable().optional(),
+  chassisCode: z.string().nullable().optional(),
+  vin: z.string().nullable().optional(),
+  bodyMaker: z.string().nullable().optional(),
+  bodyYear: z.number().int().nullable().optional(),
+  fabricationYear: z.number().int().nullable().optional(),
+  hasAc: z.boolean().optional(),
+  seats: z.number().int().nullable().optional(),
+  acquiredAt: z.string().datetime().nullable().optional(),
+  isImported: z.boolean().optional(),
 });
 
 export type CreateVehicleInput = z.infer<typeof createVehicleSchema>;

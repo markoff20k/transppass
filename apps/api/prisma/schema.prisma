@@ -199,6 +199,20 @@ model Vehicle {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
+  /// Frota real da Transppass (arquivo VBM0208): prefixo do CCO ("8" + lote + carro), chassi, carroceria, lotação.
+  ccoPrefix       String?   @unique @db.VarChar(16)
+  chassisCode     String?   @db.VarChar(32)
+  vin             String?   @db.VarChar(32)
+  renavam         String?   @db.VarChar(16)
+  bodyMaker       String?   @db.VarChar(60)
+  bodyYear        Int?
+  fabricationYear Int?
+  hasAc           Boolean   @default(false)
+  seats           Int?
+  acquiredAt      DateTime?
+  /// Veio da base real da Transppass; o seed de demonstração não apaga.
+  isImported      Boolean   @default(false)
+
   garage                Garage?                @relation(fields: [garageId], references: [id])
   odometerReadings      OdometerReading[]
   kmProjection          KmProjection?
@@ -735,6 +749,8 @@ model OdometerReading {
   enteredById String?        @db.Uuid
   note        String?        @db.VarChar(255)
   createdAt   DateTime       @default(now())
+  /// Leitura da base real (km diário da Transppass); o seed de demonstração não apaga.
+  isImported  Boolean        @default(false)
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
@@ -890,6 +906,12 @@ model FailureEvent {
   /// Gerado pelo simulador de demonstração — nunca por gente.
   isSimulated         Boolean     @default(false)
   closedAt            DateTime?
+  /// Ocorrência real do CCO da Transppass (arquivo CCOweb): id de origem, grupo (FRO, SOS, RAM, PAM, TRO, SUB), defeito e viagens perdidas.
+  isImported          Boolean     @default(false)
+  externalId          String?     @unique @db.VarChar(24)
+  ccoGroup            String?     @db.VarChar(4)
+  ccoDefect           String?     @db.VarChar(60)
+  lostTrips           Int         @default(0)
 
   /// Padrao de codificacao de falhas: Modo x Sistema/Subsistema (VMRS) x Posicao.
   failureModeCode String? @db.VarChar(2)

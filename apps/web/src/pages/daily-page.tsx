@@ -79,7 +79,7 @@ export function DailyPage() {
           </span>
           <span className="daily-tile__value">{d.lostTrips.yesterday} <small>ontem</small></span>
           <span className="daily-tile__delta"><b>{d.lostTrips.last7}</b>&nbsp;na semana · <b>{d.lostTrips.last30}</b>&nbsp;no mês</span>
-          <div className="daily-tile__row"><span>janelas de reposição estouradas</span></div>
+          <div className="daily-tile__row"><span>{(d.lostTrips.note.split(' — ')[0] ?? '').split(' (')[0]}</span></div>
         </div>
         <div className={`daily-tile daily-tile--${d.workOrders.overdue > 0 ? 'warn' : 'good'}`}>
           <span className="daily-tile__label">Ordens de serviço</span>

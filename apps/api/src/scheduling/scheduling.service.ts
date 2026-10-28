@@ -52,14 +52,42 @@ export function nextTrigger(currentKm: number, pkg: { intervalKm: number; offset
  * Pacotes que valem para o carro: o plano do modelo dele, se existir; senão o
  * plano genérico da tecnologia (IT.MAN-01 é por modelo, IT.MAN-54/60 por eBUS).
  */
-export function packagesFor<T extends { intervalKm: number; plan: { technology: string; vehicleModel: string | null } }>(
+/**
+ * Chave de família do modelo: "O500 U-AC", "O500U/E5 AC" e "O500U/E3" viram "O500U"; "18.280 OT LE-AC" e
+ * "VW 18.280" viram "18280". Assim o plano do IT.MAN-01 casa com o nome que a Transppass usa no cadastro.
+ */
+export function modelKey(model: string | null | undefined): string {
+  return (model ?? '')
+    .toUpperCase()
+    .replace(/\b(E3|E5|AC|AR|OT|LE|VW|MB|MERCEDES|BENZ|VOLKSWAGEN)\b/g, ' ')
+    .replace(/[^A-Z0-9]/g, '');
+}
+
+/** O plano que vale para o carro: mesmo modelo (por família), preferindo o "AC" para carros com ar; senão o genérico da tecnologia. */
+export function planMatches<P extends { technology: string; vehicleModel: string | null; manufacturer?: string | null }>(vehicle: { technology: string; model: string | null; manufacturer?: string | null }, plans: P[]): P | null {
+  const ofTech = plans.filter((p) => p.technology === vehicle.technology);
+  const key = modelKey(vehicle.model);
+  const wantsAc = /\bAC\b/i.test(vehicle.model ?? '');
+  const sameFamily = key ? ofTech.filter((p) => p.vehicleModel && modelKey(p.vehicleModel) === key) : [];
+  if (sameFamily.length) {
+    const withAc = sameFamily.filter((p) => /\bAC\b/i.test(p.vehicleModel ?? ''));
+    return (wantsAc ? withAc[0] : sameFamily.find((p) => !/\bAC\b/i.test(p.vehicleModel ?? ''))) ?? sameFamily[0] ?? null;
+  }
+  // eBUS: os planos são por fabricante (IT.MAN-54 Scania, IT.MAN-60 VW, IT.MAN-16 Eletra)
+  const maker = (vehicle.manufacturer ?? '').toUpperCase().replace(/[^A-Z]/g, '');
+  const byMaker = maker ? ofTech.find((p) => (p.manufacturer ?? '').toUpperCase().replace(/[^A-Z]/g, '') === maker || (maker === 'VOLKSWAGEN' && /VOLKS|VW/i.test(p.vehicleModel ?? ''))) : undefined;
+  return byMaker ?? ofTech.find((p) => !p.vehicleModel) ?? null;
+}
+
+export function packagesFor<T extends { intervalKm: number; plan: { technology: string; vehicleModel: string | null; manufacturer?: string | null } }>(
   packages: T[],
-  vehicle: { technology: string; model: string | null },
+  vehicle: { technology: string; model: string | null; manufacturer?: string | null },
 ): T[] {
   // Pacotes por tempo (intervalKm 0) vivem no calendário, não na linha do km.
   const ofTech = packages.filter((p) => p.plan.technology === vehicle.technology && p.intervalKm > 0);
-  const ofModel = vehicle.model ? ofTech.filter((p) => p.plan.vehicleModel && p.plan.vehicleModel.toUpperCase() === vehicle.model!.toUpperCase()) : [];
-  return ofModel.length ? ofModel : ofTech.filter((p) => !p.plan.vehicleModel);
+  const plan = planMatches(vehicle, ofTech.map((p) => p.plan));
+  if (!plan) return [];
+  return ofTech.filter((p) => p.plan.technology === plan.technology && p.plan.vehicleModel === plan.vehicleModel);
 }
 
 @Injectable()

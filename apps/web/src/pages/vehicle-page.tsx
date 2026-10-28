@@ -130,7 +130,11 @@ export function VehiclePage() {
             <div><dt>Ano</dt><dd>{v.modelYear ?? '—'}</dd></div>
             <div><dt>Classe</dt><dd>{v.vehicleClass ? VEHICLE_CLASS_LABELS[v.vehicleClass] : '—'}</dd></div>
             <div><dt>Tecnologia</dt><dd>{VEHICLE_TECHNOLOGY_LABELS[v.technology]}</dd></div>
-            <div><dt>Placa</dt><dd className="tp-mono">{v.plate}</dd></div>
+            <div><dt>Placa</dt><dd className="tp-mono">{v.plate}{v.ccoPrefix ? <span className="mat-sub">prefixo no CCO {v.ccoPrefix}</span> : null}</dd></div>
+            {v.chassisCode && <div><dt>Chassi</dt><dd>{v.chassisCode}{v.vin ? <span className="mat-sub tp-mono">{v.vin}</span> : null}</dd></div>}
+            {v.bodyMaker && <div><dt>Carroceria</dt><dd>{v.bodyMaker}{v.bodyYear ? ` · ${v.bodyYear}` : ''}</dd></div>}
+            {(v.seats || v.hasAc) && <div><dt>Lotação</dt><dd>{v.seats ? `${v.seats} passageiros` : '—'}{v.hasAc ? ' · ar-condicionado' : ''}</dd></div>}
+            {v.acquiredAt && <div><dt>Aquisição</dt><dd>{formatDate(v.acquiredAt)}</dd></div>}
             <div><dt>Fonte de km</dt><dd>{KM_SOURCE_LABELS[v.kmSource]}{v.odometerOffset ? ` · offset ${formatNumber(v.odometerOffset)} km` : ''}</dd></div>
             <div><dt>Km projetado hoje</dt><dd>{o.projectedKm === null ? '—' : `${formatNumber(o.projectedKm)} km`}</dd></div>
           </dl>
