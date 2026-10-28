@@ -73,7 +73,7 @@ export class MetricsService {
     const d30 = new Date(now.getTime() - 30 * DAY);
     const d60 = new Date(now.getTime() - 60 * DAY);
 
-    const [mkbf30, mkbf60, avail7, rework, fleet, byStatus, missedY, missed7, missed30, woOpen, woOverdue, woOpenedY, woReleasedY, waitingPart, inQueue, evY, ev7, checks, recent, repeats, stale, audits, kanban, lostY, lost7, lost30, components] = await Promise.all([
+    const [mkbf30, mkbf60, avail7, rework, fleet, byStatus, missedY, missed7, missed30, woOpen, woOverdue, woOpenedY, woReleasedY, waitingPart, inQueue, evY, ev7, checks, recent, repeats, stale, audits, kanban, lostY, lost7, lost30, components, recs30, tripAgg] = await Promise.all([
       this.mkbf(d30, now),
       this.mkbf(d60, d30),
       this.availability(d7, now),
@@ -101,7 +101,20 @@ export class MetricsService {
       this.prisma.failureEvent.aggregate({ where: { reportedAt: { gte: d7 } }, _sum: { lostTrips: true } }),
       this.prisma.failureEvent.aggregate({ where: { reportedAt: { gte: d30 } }, _sum: { lostTrips: true } }),
       this.prisma.vehicleComponent.findMany({ where: { removedAt: null, vehicle: { isActive: true } }, select: { installedAtKm: true, expectedLifeKm: true, vehicle: { select: { currentKm: true } } } }),
+      this.prisma.maintenanceRecord.findMany({ where: { openedAt: { gte: d30 } }, select: { foundCode: true, foundText: true, materials: { select: { totalCost: true } } } }),
+      this.prisma.lineTripDay.aggregate({ where: { date: { gte: d30 } }, _sum: { planned: true, monitored: true, lost: true } }),
     ]);
+    const foundTop = new Map<string, { code: string; label: string; count: number }>();
+    for (const r of recs30) {
+      if (!r.foundCode) continue;
+      const cur = foundTop.get(r.foundCode) ?? { code: r.foundCode, label: r.foundText ?? r.foundCode, count: 0 };
+      cur.count += 1;
+      foundTop.set(r.foundCode, cur);
+    }
+    const maintenanceRecords = recs30.length
+      ? { last30: recs30.length, partsCostLast30: Math.round(recs30.reduce((s, r) => s + r.materials.reduce((x, m) => x + Number(m.totalCost), 0), 0)), topFound: [...foundTop.values()].sort((a, b) => b.count - a.count).slice(0, 5) }
+      : null;
+    const trips = (tripAgg._sum.planned ?? 0) > 0 ? { planned30: tripAgg._sum.planned ?? 0, monitored30: tripAgg._sum.monitored ?? 0, lost30: tripAgg._sum.lost ?? 0 } : null;
     const componentsOverLife = components.filter((c) => c.vehicle.currentKm - c.installedAtKm >= c.expectedLifeKm).length;
     const kanbanBelow = kanban.filter((m) => Number(m.stockQty) <= (m.reorderPoint ?? 0)).length;
     const AUDIT_AREAS_N = 7;
@@ -144,6 +157,8 @@ export class MetricsService {
       auditsOverdue,
       kanbanBelow,
       componentsOverLife,
+      maintenanceRecords,
+      trips,
     };
   }
 
@@ -310,6 +325,8 @@ export class MetricsService {
         readAt: { gte: from, lte: to },
         status: { not: OdometerStatus.REJECTED },
         deltaKm: { gt: 0 },
+        // Guincho e carro de treinamento rodam, mas não são frota em operação.
+        vehicle: { application: 'FROTA' },
       },
       _sum: { deltaKm: true },
     });

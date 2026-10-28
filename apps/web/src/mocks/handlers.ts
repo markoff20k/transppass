@@ -201,6 +201,13 @@ export const handlers = [
     return HttpResponse.json({ summary, rows });
   }),
 
+  http.get('*/api/catalog/transppass-codes', async ({ request }) => {
+    await delay();
+    const auth = requireAuth(request, '/api/catalog/transppass-codes');
+    if ('error' in auth) return auth.error;
+    return HttpResponse.json([]);
+  }),
+
   http.get('*/api/vehicles/chassis-models', async ({ request }) => {
     await delay();
     const auth = requireAuth(request, '/api/vehicles/chassis-models');
@@ -229,6 +236,7 @@ export const handlers = [
       components: [{ id: 'c1', kind: 'ALTERNADOR', label: 'Alternador', lifePct: 91, remainingKm: 18_000, status: 'NEAR' }, { id: 'c2', kind: 'COMPRESSOR', label: 'Compressor de ar', lifePct: 64, remainingKm: 108_000, status: 'OK' }],
       recentEvents: [{ id: 'e1', code: 'EV-2026-000120', reportedAt: new Date(Date.now() - 5 * 86_400_000).toISOString(), description: 'Cuíca de freio inoperante', failureCode: 'IN-013-002-TD', status: 'CLOSED', isUnscheduledReturn: true }],
       recentWorkOrders: [{ id: 'wo-1', code: 'OS-2026-000120', type: 'CORRECTIVE', status: 'RELEASED', openedAt: new Date(Date.now() - 5 * 86_400_000).toISOString(), releasedAt: new Date(Date.now() - 4 * 86_400_000).toISOString() }],
+      records: [], recordsLast30: 0, partsCostLast30: 0, lines30: [],
     });
   }),
 

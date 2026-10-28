@@ -64,12 +64,15 @@ export const ELECTRIC_CLASSES: readonly VehicleClass[] = [
 export const FleetRole = {
   OPERACIONAL: 'OPERACIONAL',
   RESERVA: 'RESERVA',
+  /** Guincho e carro de treinamento: existem no cadastro, não entram na operação nem no MKBF. */
+  APOIO: 'APOIO',
 } as const;
 export type FleetRole = (typeof FleetRole)[keyof typeof FleetRole];
 
 export const FLEET_ROLE_LABELS: Record<FleetRole, string> = {
   OPERACIONAL: 'Operacional',
   RESERVA: 'Reserva',
+  APOIO: 'Apoio',
 };
 
 export const VEHICLE_TECHNOLOGY_LABELS: Record<VehicleTechnology, string> = {
@@ -170,6 +173,8 @@ export const vehicleSchema = z.object({
   isActive: z.boolean(),
   /** Frota real da Transppass: prefixo do CCO, chassi, carroceria, lotação. */
   ccoPrefix: z.string().nullable().optional(),
+  /** Aplicação no cadastro da Transppass: FROTA, GUINCHO ou TREINAMENTO. */
+  application: z.string().nullable().optional(),
   chassisCode: z.string().nullable().optional(),
   vin: z.string().nullable().optional(),
   bodyMaker: z.string().nullable().optional(),
@@ -219,6 +224,44 @@ export interface VehicleOverview {
   components: { id: string; kind: string; label: string; lifePct: number; remainingKm: number; status: 'OK' | 'NEAR' | 'OVER' }[];
   recentEvents: { id: string; code: string; reportedAt: string; description: string; failureCode: string | null; status: string; isUnscheduledReturn: boolean }[];
   recentWorkOrders: { id: string; code: string; type: string; status: string; openedAt: string; releasedAt: string | null }[];
+  /** Fichas de manutenção reais da Transppass (as mais recentes) e quantas houve em 30 dias. */
+  records: MaintenanceRecordRow[];
+  recordsLast30: number;
+  partsCostLast30: number;
+  /** Linhas em que o carro rodou nos últimos 30 dias com dado real. */
+  lines30: { line: string; days: number; kmInLine: number; kmIdle: number; trips: number }[];
+}
+
+/** Ficha de manutenção real (arquivo VBM0503 + serviços VBM0805 + peças VBM0404). */
+export interface MaintenanceRecordRow {
+  id: string;
+  externalOs: string;
+  openedAt: string;
+  kind: string;
+  kindLabel: string | null;
+  /** Algum item com km-limite: manutenção preventiva por km (carta do cliente, item 6). */
+  isPreventive: boolean;
+  allegedCode: string | null;
+  allegedText: string | null;
+  allegedDetail: string | null;
+  foundCode: string | null;
+  foundText: string | null;
+  actions: string | null;
+  fieldActions: string | null;
+  mechanicReg: string | null;
+  line: string | null;
+  cost: number | null;
+  partsCost: number;
+  items: { componentCode: string | null; componentLabel: string; kmAtService: number | null; kmLimit: number | null }[];
+  materials: { materialCode: string | null; description: string; quantity: number; totalCost: number }[];
+}
+
+/** Classificação de falhas da Transppass. */
+export interface TransppassCodeRow {
+  kind: 'ALEGADO' | 'CONSTATADO' | 'FICHA';
+  code: string;
+  description: string;
+  group: string | null;
 }
 
 /** Tabela de modelos de chassi da Transppass (arquivo "1-MODELO DO CHASSI"): o código do sistema deles → fabricante, modelo e classe. */

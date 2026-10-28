@@ -122,4 +122,8 @@ export interface DailyBoard {
   kanbanBelow: number;
   /** Componentes rodando além da vida esperada. */
   componentsOverLife: number;
+  /** Fichas de manutenção reais (Transppass) nos últimos 30 dias, com o custo de peças; null sem base real. */
+  maintenanceRecords: { last30: number; partsCostLast30: number; topFound: { code: string; label: string; count: number }[] } | null;
+  /** Viagens por linha (SPTrans) nos últimos 30 dias: programadas × monitoradas; null sem base real. */
+  trips: { planned30: number; monitored30: number; lost30: number } | null;
 }

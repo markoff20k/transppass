@@ -17,6 +17,7 @@ import {
   type MaterialOption,
   type Paginated,
   type ReasonCode,
+  type TransppassCodeRow,
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/format';
@@ -135,6 +136,8 @@ export function CatalogPage() {
       </section>
 
       <FailureCodeRules />
+
+      <TransppassCodes />
 
       <section className="tp-card">
         <div className="tp-card__head">
@@ -409,6 +412,42 @@ function CatalogVersions({ items, onPublished }: { items: FailureCatalogItem[]; 
         </button>
         {error && <span className="tp-error">{error}</span>}
       </div>
+    </section>
+  );
+}
+
+/** A classificação que a Transppass usa hoje (defeito alegado × defeito constatado), lado a lado com o padrão de codificação. */
+function TransppassCodes() {
+  const codes = useQuery({ queryKey: ['catalog', 'transppass-codes'], queryFn: () => api.get<TransppassCodeRow[]>('/catalog/transppass-codes'), staleTime: 300_000 });
+  const [kind, setKind] = useState<'ALEGADO' | 'CONSTATADO'>('CONSTATADO');
+  const [q, setQ] = useState('');
+  const rows = (codes.data ?? []).filter((c) => c.kind === kind && (!q || c.code.includes(q) || c.description.toLowerCase().includes(q.toLowerCase()) || (c.group ?? '').toLowerCase().includes(q.toLowerCase())));
+  if (!codes.data || codes.data.length === 0) return null;
+  const fichas = codes.data.filter((c) => c.kind === 'FICHA');
+  return (
+    <section className="tp-card">
+      <div className="tp-card__head">
+        <div><h3>Classificação da Transppass</h3><span className="chart__hint">os códigos do sistema atual (arquivo "Serviços"): o que o motorista alega e o que a oficina constata. O de-para com o padrão Modo × Subsistema é o próximo passo.</span></div>
+        <div className="tp-btn-group" role="group" aria-label="Tabela">
+          <button type="button" className={`tp-btn tp-btn--sm ${kind === 'ALEGADO' ? '' : 'tp-btn--secondary'}`} aria-pressed={kind === 'ALEGADO'} onClick={() => setKind('ALEGADO')}>Defeito alegado · {codes.data.filter((c) => c.kind === 'ALEGADO').length}</button>
+          <button type="button" className={`tp-btn tp-btn--sm ${kind === 'CONSTATADO' ? '' : 'tp-btn--secondary'}`} aria-pressed={kind === 'CONSTATADO'} onClick={() => setKind('CONSTATADO')}>Defeito constatado · {codes.data.filter((c) => c.kind === 'CONSTATADO').length}</button>
+        </div>
+      </div>
+      <div className="tp-toolbar">
+        <input type="search" className="tp-input" style={{ maxWidth: 320 }} placeholder="Código, descrição ou grupo" aria-label="Buscar código" value={q} onChange={(e) => setQ(e.target.value)} />
+        <span className="tp-muted tp-toolbar__count">{rows.length} código(s)</span>
+      </div>
+      <div className="tp-table-wrap" style={{ maxHeight: 420, overflowY: 'auto' }}>
+        <table className="tp-table tp-table--compact">
+          <thead><tr><th>Código</th><th>Descrição</th><th>Grupo</th></tr></thead>
+          <tbody>
+            {rows.map((c) => (
+              <tr key={`${c.kind}-${c.code}`}><td className="tp-mono is-strong">{c.code}</td><td>{c.description}</td><td className="tp-muted">{c.group ?? '—'}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {fichas.length > 0 && <p className="tp-muted" style={{ margin: 0, fontSize: 'var(--tp-text-xs)' }}>Tipos de ficha: {fichas.map((f) => `${f.code} ${f.description}`).join(' · ')}</p>}
     </section>
   );
 }

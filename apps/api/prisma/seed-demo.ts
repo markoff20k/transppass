@@ -252,7 +252,8 @@ async function main() {
   await prisma.kmProjection.deleteMany();
   await prisma.metricSnapshot.deleteMany();
   await prisma.poolComponent.updateMany({ data: { status: PoolComponentStatus.IN_STOCK, currentVehicleId: null } });
-  const realFleet = await prisma.vehicle.findMany({ where: { isImported: true, isActive: true }, orderBy: { code: 'asc' } });
+  // Guincho e treinamento (aplicação de apoio) ficam como estão: não entram em cenários nem ganham km de demonstração.
+  const realFleet = await prisma.vehicle.findMany({ where: { isImported: true, isActive: true, application: 'FROTA' }, orderBy: { code: 'asc' } });
   const real = realFleet.length > 0;
   // Com frota real, só os carros de exemplo (não importados) saem; sem ela, a frota mock é refeita do zero.
   await prisma.vehicle.deleteMany({ where: real ? { isImported: false } : {} });
@@ -351,11 +352,15 @@ async function main() {
   const readings: { vehicleId: string; rawKm: number; adjustedKm: number; deltaKm: number | null; readAt: Date; source: KmSource; enteredById: string }[] = [];
   // Leituras reais (quando existem) ancoram a série: a demonstração só preenche os dias sem dado.
   const realKm = new Map<string, Map<string, number>>();
+  // Janela com dado real da frota: dentro dela, dia sem leitura é dia em que o carro não rodou — nada é inventado.
+  let realWindow: [string, string] | null = null as [string, string] | null;
   if (real) {
     for (const r of await prisma.odometerReading.findMany({ where: { isImported: true }, select: { vehicleId: true, readAt: true, adjustedKm: true } })) {
       const key = localDay(r.readAt);
       if (!realKm.has(r.vehicleId)) realKm.set(r.vehicleId, new Map());
       realKm.get(r.vehicleId)!.set(key, r.adjustedKm);
+      const w: [string, string] | null = realWindow;
+      realWindow = w ? [key < w[0] ? key : w[0], key > w[1] ? key : w[1]] : [key, key];
     }
   }
   for (const v of VEHICLES) {
@@ -413,6 +418,7 @@ async function main() {
     }
     const known = [...series.keys()].sort((a, b) => a - b);
     for (const day of synthetic.sort((a, b) => a - b)) {
+      if (realWindow && dayKey(day) >= realWindow[0] && dayKey(day) <= realWindow[1]) continue;
       const km = series.get(day)!;
       const olderDay = known.find((d) => d > day);
       const older = olderDay === undefined ? null : series.get(olderDay)!;

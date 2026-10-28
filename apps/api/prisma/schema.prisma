@@ -135,6 +135,132 @@ model ChassisModel {
   @@map("chassis_models")
 }
 
+/// Classificação da Transppass (arquivo "5-Serviços" e "3-Códigos VBM0503"): defeito alegado, defeito constatado e tipo de ficha.
+model TransppassCode {
+  id          String  @id @default(uuid()) @db.Uuid
+  /// ALEGADO, CONSTATADO ou FICHA
+  kind        String  @db.VarChar(12)
+  code        String  @db.VarChar(8)
+  description String  @db.VarChar(80)
+  /// Grupo da tabela (ex.: "SISTEMA DE FREIO"), o código terminado em 00.
+  group       String? @db.VarChar(80)
+
+  @@unique([kind, code])
+  @@map("transppass_codes")
+}
+
+/// Ficha de manutenção real da Transppass (arquivo "3-VBM0503"): uma por OS do sistema deles.
+model MaintenanceRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  externalOs    String   @unique @db.VarChar(16)
+  ficha         String?  @db.VarChar(16)
+  vehicleId     String   @db.Uuid
+  openedAt      DateTime
+  /// Tipo da ficha (G garagem, R recolhida normal, A recolhida anormal, S socorro, V valetamento…)
+  kind          String   @db.VarChar(2)
+  kindLabel     String?  @db.VarChar(40)
+  /// Algum item com KM LIM > 0 (carta, item 6): intervenção de manutenção preventiva
+  isPreventive  Boolean  @default(false)
+  allegedCode   String?  @db.VarChar(8)
+  allegedText   String?  @db.VarChar(80)
+  allegedDetail String?  @db.VarChar(120)
+  foundCode     String?  @db.VarChar(8)
+  foundText     String?  @db.VarChar(80)
+  actions       String?  @db.VarChar(255)
+  fieldActions  String?  @db.VarChar(255)
+  driverName    String?  @db.VarChar(60)
+  line          String?  @db.VarChar(16)
+  mechanicReg   String?  @db.VarChar(16)
+  cost          Decimal? @db.Decimal(12, 2)
+  lot           String?  @db.VarChar(8)
+
+  vehicle   Vehicle                     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  items     MaintenanceRecordItem[]
+  materials MaintenanceRecordMaterial[]
+
+  @@index([vehicleId, openedAt(sort: Desc)])
+  @@index([openedAt])
+  @@map("maintenance_records")
+}
+
+/// Serviço ou componente registrado na ficha (arquivo "4-VBM0805"): com km do serviço e limite quando é item de vida.
+model MaintenanceRecordItem {
+  id             String  @id @default(uuid()) @db.Uuid
+  recordId       String  @db.Uuid
+  componentCode  String? @db.VarChar(8)
+  componentLabel String  @db.VarChar(80)
+  kmAtService    Int?
+  kmLimit        Int?
+  mechanicReg    String? @db.VarChar(16)
+  note           String? @db.VarChar(120)
+
+  record MaintenanceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_record_items")
+}
+
+/// Peça aplicada por OS (arquivo "8-VBM0404"): liga ao material do inventário pelo código quando existe.
+model MaintenanceRecordMaterial {
+  id           String   @id @default(uuid()) @db.Uuid
+  recordId     String?  @db.Uuid
+  vehicleId    String?  @db.Uuid
+  externalOs   String?  @db.VarChar(16)
+  materialId   String?  @db.Uuid
+  materialCode String?  @db.VarChar(16)
+  description  String   @db.VarChar(120)
+  classCode    String?  @db.VarChar(8)
+  className    String?  @db.VarChar(60)
+  quantity     Decimal  @db.Decimal(12, 3)
+  unitCost     Decimal  @db.Decimal(12, 4)
+  totalCost    Decimal  @db.Decimal(12, 2)
+  mechanicReg  String?  @db.VarChar(16)
+  kmAtService  Int?
+  appliedAt    DateTime
+
+  record   MaintenanceRecord? @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  material Material?          @relation(fields: [materialId], references: [id])
+
+  @@index([recordId])
+  @@index([vehicleId, appliedAt])
+  @@map("maintenance_record_materials")
+}
+
+/// Viagens por linha, dia e sentido (arquivo "7-Viagens"): programadas × monitoradas; perdidas = programadas − monitoradas (ASSUMIDO).
+model LineTripDay {
+  id             String   @id @default(uuid()) @db.Uuid
+  date           DateTime @db.Date
+  line           String   @db.VarChar(16)
+  direction      String   @db.VarChar(8)
+  plannedReserve Int      @default(0)
+  plannedOps     Int      @default(0)
+  planned        Int      @default(0)
+  monitored      Int      @default(0)
+  lost           Int      @default(0)
+
+  @@unique([date, line, direction])
+  @@map("line_trip_days")
+}
+
+/// Km do carro por linha e dia (arquivo "7-VBR0306"): em linha, ocioso e viagens.
+model VehicleLineDay {
+  id        String   @id @default(uuid()) @db.Uuid
+  vehicleId String   @db.Uuid
+  date      DateTime @db.Date
+  line      String?  @db.VarChar(16)
+  table     String?  @db.VarChar(16)
+  kmInLine  Decimal  @db.Decimal(10, 1)
+  kmIdle    Decimal  @db.Decimal(10, 1)
+  trips     Int      @default(0)
+  /// Registro do motorista (00.000 = substituição, carta 7.1.5)
+  driverReg      String?  @db.VarChar(8)
+  isSubstitution Boolean  @default(false)
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, date])
+  @@map("vehicle_line_days")
+}
+
 model Garage {
   id       String  @id @default(uuid()) @db.Uuid
   code     String  @unique @db.VarChar(16)
@@ -212,6 +338,8 @@ model Vehicle {
   acquiredAt      DateTime?
   /// Veio da base real da Transppass; o seed de demonstração não apaga.
   isImported      Boolean   @default(false)
+  /// Aplicação no cadastro da Transppass (STATUS): FROTA, GUINCHO ou TREINAMENTO. Só a FROTA entra no km do MKBF.
+  application     String    @default("FROTA") @db.VarChar(12)
 
   garage                Garage?                @relation(fields: [garageId], references: [id])
   odometerReadings      OdometerReading[]
@@ -226,6 +354,8 @@ model Vehicle {
   poolComponents        PoolComponent[]
   dailyChecks           DailyCheck[]
   components            VehicleComponent[]
+  maintenanceRecords    MaintenanceRecord[]
+  lineDays              VehicleLineDay[]
 
   @@index([status])
   @@index([technology])
@@ -678,6 +808,7 @@ model Material {
   warrantyKm      Int?
 
   kitItems             KitItem[]
+  recordMaterials      MaintenanceRecordMaterial[]
   materialRequests     MaterialRequest[]
   poolComponents       PoolComponent[]
   fieldServiceMaterial FieldServiceMaterial[]
@@ -912,6 +1043,9 @@ model FailureEvent {
   ccoGroup            String?     @db.VarChar(4)
   ccoDefect           String?     @db.VarChar(60)
   lostTrips           Int         @default(0)
+  /// Tipo da ficha do ERP que originou a quebra (A recolhida anormal, S socorro, T troca) e a OS correspondente
+  fichaKind           String?     @db.VarChar(2)
+  externalOs          String?     @db.VarChar(16)
 
   /// Padrao de codificacao de falhas: Modo x Sistema/Subsistema (VMRS) x Posicao.
   failureModeCode String? @db.VarChar(2)

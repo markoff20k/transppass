@@ -13,3 +13,8 @@ apps/api/generated/
 apps/api/prisma/data/frota.json
 apps/api/prisma/data/km-real.json
 apps/api/prisma/data/cco.json
+apps/api/prisma/data/os-real.json
+apps/api/prisma/data/viagens.json
+apps/api/prisma/data/linhas-dia.json
+apps/api/prisma/data/codigos-transppass.json
+apps/api/prisma/data/eventos.json

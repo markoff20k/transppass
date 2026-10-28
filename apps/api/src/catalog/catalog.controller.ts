@@ -22,7 +22,9 @@ import {
   type UpdateFailureCatalogItemInput,
   type UpdateFailureCodeRuleInput,
   type UpdateReasonCodeInput,
+  type TransppassCodeRow,
 } from '@app/shared';
+import { PrismaService } from '../prisma/prisma.service';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -39,7 +41,17 @@ const reasonCodeQuerySchema = z.object({
 @Controller('catalog')
 @UseGuards(RolesGuard)
 export class CatalogController {
-  constructor(private readonly catalog: CatalogService) {}
+  constructor(
+    private readonly catalog: CatalogService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /** Classificação de falhas da Transppass (defeito alegado, defeito constatado, tipo de ficha). */
+  @Get('transppass-codes')
+  async transppassCodes(): Promise<TransppassCodeRow[]> {
+    const rows = await this.prisma.transppassCode.findMany({ orderBy: [{ kind: 'asc' }, { code: 'asc' }] });
+    return rows.map((r) => ({ kind: r.kind as TransppassCodeRow['kind'], code: r.code, description: r.description, group: r.group }));
+  }
 
   @Get('items')
   listItems(

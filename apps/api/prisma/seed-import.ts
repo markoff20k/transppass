@@ -174,9 +174,9 @@ export async function importBases(prisma: PrismaClient): Promise<void> {
   }
   console.log(`  ${chassis.length} modelos de chassi (tabela da Transppass)`);
 
-  // ---- Frota real (arquivo "1-VBM0208", 28/10/2026): só os carros em operação (STATUS 0) ----
-  // O prefixo do CCO é "8" + lote (1 = E8, 0 = AR9) + número do carro. Km atual = KM CHASSI do arquivo.
-  type FleetJson = { code: string; ccoPrefix: string; plate: string; chassisCode: string; manufacturer: string | null; model: string | null; vehicleClass: string | null; technology: 'DIESEL' | 'EBUS'; hasAc: boolean; fabricationYear: number | null; modelYear: number | null; bodyMaker: string | null; bodyYear: number | null; vin: string | null; renavam: string | null; seats: number | null; acquiredAt: string | null; lot: string | null; garageCode: string | null; telemetry: boolean; currentKm: number };
+  // ---- Frota real (arquivo "1-VBM0208", 28/10/2026): carros sem desligamento com STATUS 0 (frota), 7 (guincho) e 17 (treinamento) ----
+  // O prefixo de operação é "8" + lote (1 = E8, 0 = AR9) + número do carro. Km atual = KM CHASSI do arquivo (carta, 1.1.6 e 2.1.8).
+  type FleetJson = { code: string; application?: 'FROTA' | 'GUINCHO' | 'TREINAMENTO'; ccoPrefix: string | null; plate: string; chassisCode: string; manufacturer: string | null; model: string | null; vehicleClass: string | null; technology: 'DIESEL' | 'EBUS'; hasAc: boolean; fabricationYear: number | null; modelYear: number | null; bodyMaker: string | null; bodyYear: number | null; vin: string | null; renavam: string | null; seats: number | null; acquiredAt: string | null; lot: string | null; garageCode: string | null; telemetry: boolean; currentKm: number };
   const fleet = readJsonIfPresent<FleetJson[]>('frota.json', []);
   if (fleet.length === 0) console.log('  frota real: arquivo frota.json ausente — mantendo a frota de exemplo');
   if (fleet.length > 0) {
@@ -184,7 +184,7 @@ export async function importBases(prisma: PrismaClient): Promise<void> {
     for (const v of fleet) {
       const data = {
         plate: v.plate, technology: v.technology === 'EBUS' ? VehicleTechnology.EBUS : VehicleTechnology.DIESEL, kmSource: v.telemetry ? KmSource.TELEMETRY : KmSource.MANUAL,
-        manufacturer: v.manufacturer, model: v.model, modelYear: v.modelYear, vehicleClass: v.vehicleClass, lot: v.lot, fleetRole: 'OPERACIONAL', garageId: garage.id,
+        manufacturer: v.manufacturer, model: v.model, modelYear: v.modelYear, vehicleClass: v.vehicleClass, lot: v.lot, fleetRole: (v.application ?? 'FROTA') === 'FROTA' ? 'OPERACIONAL' : 'APOIO', application: v.application ?? 'FROTA', garageId: garage.id,
         ccoPrefix: v.ccoPrefix, chassisCode: v.chassisCode, vin: v.vin, renavam: v.renavam, bodyMaker: v.bodyMaker, bodyYear: v.bodyYear, fabricationYear: v.fabricationYear,
         hasAc: v.hasAc, seats: v.seats, acquiredAt: v.acquiredAt ? new Date(v.acquiredAt) : null, isImported: true, isActive: true,
       };
@@ -192,7 +192,8 @@ export async function importBases(prisma: PrismaClient): Promise<void> {
     }
     // Carros de exemplo saem do ar aqui; o seed de demonstração os apaga depois de limpar o movimento que os referencia.
     const removed = await prisma.vehicle.updateMany({ where: { isImported: false, isActive: true }, data: { isActive: false, status: 'OUT_OF_SERVICE' } });
-    console.log(`  ${fleet.length} carros da frota real (E8 ${fleet.filter((v) => v.lot === 'E8').length}, AR9 ${fleet.filter((v) => v.lot === 'AR9').length}; ${fleet.filter((v) => v.telemetry).length} com telemetria) · ${removed.count} carro(s) de exemplo desativado(s)`);
+    const support = fleet.filter((v) => (v.application ?? 'FROTA') !== 'FROTA').length;
+    console.log(`  ${fleet.length} carros da frota real (E8 ${fleet.filter((v) => v.lot === 'E8').length}, AR9 ${fleet.filter((v) => v.lot === 'AR9').length}; ${fleet.filter((v) => v.telemetry).length} com telemetria; ${support} de apoio: guincho e treinamento) · ${removed.count} carro(s) de exemplo desativado(s)`);
   }
 
   // ---- Operadores -----------------------------------------------------------
@@ -546,10 +547,12 @@ export async function importRealMovement(prisma: PrismaClient): Promise<void> {
   const kmTotal = readings.reduce((s, r) => s + r.deltaKm, 0);
   console.log(`  ${readings.length} leituras reais de km (${allDates[0]} a ${lastRealDate}; ${kmTotal.toLocaleString('pt-BR')} km)`);
 
-  // ---- Ocorrências do CCO (planilha "3-CCOweb") ----
-  type CcoJson = { id: string; at: string; code: string; driverReg: number | null; line: string | null; defect: string | null; place: string | null; direction: string | null; lostTrips: number; group: string; groupLabel: string; unscheduledReturn: boolean; modeCode: string; subsystemCode: string; catalogCode: string | null; text: string | null };
-  const cco = readJsonIfPresent<CcoJson[]>('cco.json', []);
-  if (cco.length === 0) { console.log('  CCO: arquivo cco.json ausente'); return; }
+  // ---- Quebras e ocorrências (fichas A/S/T da "3-VBM0503" casadas com a "3-CCOweb") ----
+  // Critério do cliente (carta de 28/10/2026, item 3.1.5): contam para o MKBF as fichas de tipo A, S e T. As ocorrências do
+  // CCO que não viraram ficha ficam registradas (viagens perdidas, local), mas não contam como retorno não programado.
+  type CcoJson = { id: string; source: 'FICHA' | 'CCO'; fichaKind: string | null; externalOs: string | null; at: string; code: string; driverReg: number | null; line: string | null; defect: string | null; place: string | null; direction: string | null; lostTrips: number; group: string | null; groupLabel: string; unscheduledReturn: boolean; modeCode: string; subsystemCode: string; catalogCode: string | null; text: string | null };
+  const cco = readJsonIfPresent<CcoJson[]>('eventos.json', []);
+  if (cco.length === 0) { console.log('  quebras: arquivo eventos.json ausente'); return; }
   await prisma.failureEvent.deleteMany({ where: { isImported: true } });
   const operators = await prisma.operator.findMany({ select: { id: true, registration: true } });
   const opByReg = new Map(operators.map((o) => [Number(o.registration.replace(/\D/g, '')), o.id]));
@@ -559,18 +562,75 @@ export async function importRealMovement(prisma: PrismaClient): Promise<void> {
     .map((e) => {
       const at = new Date(e.at);
       return {
-        code: `EV-CCO-${e.id}`, externalId: e.id, vehicleId: byCode.get(e.code)!.id, catalogItemId: e.catalogCode ? (catalog.get(e.catalogCode) ?? null) : null,
-        reportedDescription: [e.defect, e.text].filter(Boolean).join(': ').slice(0, 500) || null,
-        origin: e.group === 'SOS' ? EventOrigin.OPERATOR : EventOrigin.CCO, status: EventStatus.CLOSED, reportedById: ccoUser.id, reportedAt: at,
+        code: `EV-${e.id}`, externalId: e.id, vehicleId: byCode.get(e.code)!.id, catalogItemId: e.catalogCode ? (catalog.get(e.catalogCode) ?? null) : null,
+        reportedDescription: (e.source === 'FICHA' ? [e.text, e.defect ? `CCO: ${e.defect}` : null] : [e.defect, e.text]).filter(Boolean).join(' · ').slice(0, 500) || null,
+        origin: e.group === 'SOS' || e.fichaKind === 'S' ? EventOrigin.OPERATOR : EventOrigin.CCO, status: EventStatus.CLOSED, reportedById: ccoUser.id, reportedAt: at,
         operatorId: e.driverReg !== null ? (opByReg.get(e.driverReg) ?? null) : null, lineCode: e.line?.slice(0, 16) ?? null, locationDescription: e.place?.slice(0, 255) ?? null,
         isUnscheduledReturn: e.unscheduledReturn, closedAt: new Date(at.getTime() + 2 * 3_600_000),
         failureModeCode: e.modeCode, subsystemCode: e.subsystemCode, failureCode: `${e.modeCode}-${e.subsystemCode}`,
-        isImported: true, ccoGroup: e.group, ccoDefect: e.defect?.slice(0, 60) ?? null, lostTrips: e.lostTrips,
+        isImported: true, ccoGroup: e.group, ccoDefect: e.defect?.slice(0, 60) ?? null, lostTrips: e.lostTrips, fichaKind: e.fichaKind, externalOs: e.externalOs,
       };
     });
   for (let i = 0; i < events.length; i += 500) await prisma.failureEvent.createMany({ data: events.slice(i, i + 500), skipDuplicates: true });
   const returns = events.filter((e) => e.isUnscheduledReturn).length;
-  console.log(`  ${events.length} ocorrências reais do CCO (${returns} retornos não programados: SOS, RAM e TRO; ${events.reduce((s, e) => s + e.lostTrips, 0)} viagens perdidas)`);
+  console.log(`  ${events.length} ocorrências reais: ${returns} quebras pelas fichas A/S/T (${events.filter((e) => e.isUnscheduledReturn && e.ccoGroup).length} com registro no CCO) + ${events.length - returns} ocorrências só do CCO; ${events.reduce((s, e) => s + e.lostTrips, 0)} viagens perdidas`);
+
+  // ---- Classificação da Transppass ("5-Serviços" + "3-Códigos VBM0503") ----
+  const codes = readJsonIfPresent<{ kind: string; code: string; description: string; group: string | null }[]>('codigos-transppass.json', []);
+  for (const c of codes) {
+    await prisma.transppassCode.upsert({ where: { kind_code: { kind: c.kind, code: c.code } }, update: { description: c.description, group: c.group }, create: c });
+  }
+  if (codes.length) console.log(`  ${codes.length} códigos da classificação da Transppass (alegado, constatado, tipo de ficha)`);
+
+  // ---- Fichas de manutenção ("3-VBM0503"), serviços ("4-VBM0805") e peças por OS ("8-VBM0404") ----
+  type RecordJson = { externalOs: string; ficha: string | null; code: string; openedAt: string; kind: string; kindLabel: string | null; isPreventive: boolean; allegedCode: string | null; allegedText: string | null; allegedDetail: string | null; foundCode: string | null; foundText: string | null; actions: string | null; fieldActions: string | null; driverName: string | null; line: string | null; mechanicReg: string | null; cost: number | null; lot: string | null; items: { componentCode: string | null; componentLabel: string; kmAtService: number | null; kmLimit: number | null; mechanicReg: string | null; note: string | null }[]; materials: MaterialJson[] };
+  type MaterialJson = { materialCode: string | null; description: string; classCode: string | null; className: string | null; quantity: number; unitCost: number; totalCost: number; mechanicReg: string | null; kmAtService: number | null; appliedAt: string | null; code: string; externalOs: string | null };
+  const os = readJsonIfPresent<{ records: RecordJson[]; looseMaterials: MaterialJson[] }>('os-real.json', { records: [], looseMaterials: [] });
+  if (os.records.length) {
+    await prisma.maintenanceRecordMaterial.deleteMany();
+    await prisma.maintenanceRecord.deleteMany();
+    const recs = os.records.filter((r) => byCode.has(r.code));
+    for (let i = 0; i < recs.length; i += 1000) {
+      await prisma.maintenanceRecord.createMany({
+        data: recs.slice(i, i + 1000).map((r) => ({
+          externalOs: r.externalOs, ficha: r.ficha, vehicleId: byCode.get(r.code)!.id, openedAt: new Date(r.openedAt), kind: r.kind, kindLabel: r.kindLabel, isPreventive: r.isPreventive,
+          allegedCode: r.allegedCode, allegedText: r.allegedText, allegedDetail: r.allegedDetail?.slice(0, 120) ?? null, foundCode: r.foundCode, foundText: r.foundText,
+          actions: r.actions?.slice(0, 255) ?? null, fieldActions: r.fieldActions?.slice(0, 255) ?? null, driverName: r.driverName?.slice(0, 60) ?? null, line: r.line?.slice(0, 16) ?? null, mechanicReg: r.mechanicReg, cost: r.cost, lot: r.lot,
+        })),
+        skipDuplicates: true,
+      });
+    }
+    const recId = new Map((await prisma.maintenanceRecord.findMany({ select: { id: true, externalOs: true } })).map((r) => [r.externalOs, r.id]));
+    const materialId = new Map((await prisma.material.findMany({ select: { id: true, code: true } })).map((m) => [m.code, m.id]));
+    const items = recs.flatMap((r) => r.items.map((i) => ({ recordId: recId.get(r.externalOs)!, componentCode: i.componentCode, componentLabel: i.componentLabel, kmAtService: i.kmAtService, kmLimit: i.kmLimit, mechanicReg: i.mechanicReg, note: i.note })));
+    for (let i = 0; i < items.length; i += 2000) await prisma.maintenanceRecordItem.createMany({ data: items.slice(i, i + 2000) });
+    const toMaterial = (m: MaterialJson, recordId: string | null) => ({
+      recordId, vehicleId: byCode.get(m.code)?.id ?? null, externalOs: m.externalOs, materialId: m.materialCode ? (materialId.get(m.materialCode) ?? null) : null, materialCode: m.materialCode,
+      description: m.description, classCode: m.classCode, className: m.className, quantity: m.quantity, unitCost: m.unitCost, totalCost: m.totalCost, mechanicReg: m.mechanicReg, kmAtService: m.kmAtService,
+      appliedAt: new Date(`${m.appliedAt ?? '2026-09-01'}T12:00:00`),
+    });
+    const mats = [...recs.flatMap((r) => r.materials.map((m) => toMaterial(m, recId.get(r.externalOs) ?? null))), ...os.looseMaterials.map((m) => toMaterial(m, null))];
+    for (let i = 0; i < mats.length; i += 2000) await prisma.maintenanceRecordMaterial.createMany({ data: mats.slice(i, i + 2000) });
+    const linked = mats.filter((m) => m.materialId).length;
+    console.log(`  ${recs.length} fichas e OS reais (${recs.filter((r) => r.isPreventive).length} preventivas por km) · ${items.length} serviços/componentes · ${mats.length} peças aplicadas (${linked} ligadas ao inventário; R$ ${Math.round(mats.reduce((s, m) => s + m.totalCost, 0)).toLocaleString('pt-BR')})`);
+  }
+
+  // ---- Viagens por linha e dia ("7-Viagens") ----
+  const trips = readJsonIfPresent<{ date: string; line: string; direction: string; plannedReserve: number; plannedOps: number; planned: number; monitored: number; lost: number }[]>('viagens.json', []);
+  if (trips.length) {
+    await prisma.lineTripDay.deleteMany();
+    for (let i = 0; i < trips.length; i += 2000) await prisma.lineTripDay.createMany({ data: trips.slice(i, i + 2000).map((t) => ({ ...t, date: new Date(`${t.date}T00:00:00Z`) })), skipDuplicates: true });
+    console.log(`  ${trips.length} linhas-dia de viagens (SPTrans): ${trips.reduce((s, t) => s + t.planned, 0).toLocaleString('pt-BR')} programadas, ${trips.reduce((s, t) => s + t.lost, 0).toLocaleString('pt-BR')} perdidas`);
+  }
+
+  // ---- Km por carro, linha e dia ("7-VBR0306") ----
+  const lineDays = readJsonIfPresent<{ code: string; date: string; line: string | null; table: string | null; driverReg?: string | null; isSubstitution?: boolean; kmInLine: number; kmIdle: number; trips: number }[]>('linhas-dia.json', []);
+  if (lineDays.length) {
+    await prisma.vehicleLineDay.deleteMany();
+    const rowsLd = lineDays.filter((l) => byCode.has(l.code)).map((l) => ({ vehicleId: byCode.get(l.code)!.id, date: new Date(`${l.date}T00:00:00Z`), line: l.line, table: l.table, driverReg: l.driverReg ?? null, isSubstitution: l.isSubstitution ?? false, kmInLine: l.kmInLine, kmIdle: l.kmIdle, trips: l.trips }));
+    for (let i = 0; i < rowsLd.length; i += 5000) await prisma.vehicleLineDay.createMany({ data: rowsLd.slice(i, i + 5000) });
+    console.log(`  ${rowsLd.length} carro-linha-dia com km em linha e ocioso`);
+  }
 }
 
 if (require.main === module) {

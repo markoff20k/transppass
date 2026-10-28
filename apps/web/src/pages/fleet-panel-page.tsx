@@ -321,7 +321,7 @@ export function FleetPanelPage() {
                     <span className="fleet-card__plate">{row.plate}</span>
                     {row.vehicleClass ? ` · ${VEHICLE_CLASS_LABELS[row.vehicleClass]}` : ''}
                     {row.lot ? ` · ${row.lot}` : ''}
-                    {row.fleetRole === 'RESERVA' ? ' · reserva' : ''}
+                    {row.fleetRole === 'RESERVA' ? ' · reserva' : row.fleetRole === 'APOIO' ? ' · apoio' : ''}
                     <TechIcon technology={row.technology} />
                   </span>
                   <div className="fleet-card__bus">

@@ -188,7 +188,7 @@ export class VehiclesService {
     if (!v) throw new NotFoundException('Carro não encontrado');
     const d30 = new Date(now.getTime() - 30 * DAY_MS);
     const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const [packages, readings, events30, recentEvents, workOrders, components, lastCheck, openSchedule] = await Promise.all([
+    const [packages, readings, events30, recentEvents, workOrders, components, lastCheck, openSchedule, records, records30, lineDays] = await Promise.all([
       this.activePackages(now),
       this.prisma.odometerReading.findMany({ where: { vehicleId: id, readAt: { gte: d30 }, status: { not: OdometerStatus.REJECTED } }, select: { readAt: true, deltaKm: true } }),
       this.prisma.failureEvent.count({ where: { vehicleId: id, reportedAt: { gte: d30 }, isUnscheduledReturn: true } }),
@@ -197,7 +197,17 @@ export class VehiclesService {
       this.prisma.vehicleComponent.findMany({ where: { vehicleId: id, removedAt: null } }),
       this.prisma.dailyCheck.findFirst({ where: { vehicleId: id }, orderBy: { checkedAt: 'desc' }, include: { operator: { select: { name: true, registration: true } } } }),
       this.prisma.scheduledMaintenance.findFirst({ where: { vehicleId: id, status: { in: [ScheduleStatus.PLANNED, ScheduleStatus.CONFIRMED, ScheduleStatus.IN_EXECUTION] } }, select: { targetKm: true, package: { select: { name: true, intervalKm: true } } } }),
+      this.prisma.maintenanceRecord.findMany({ where: { vehicleId: id }, orderBy: { openedAt: 'desc' }, take: 8, include: { items: true, materials: true } }),
+      this.prisma.maintenanceRecord.findMany({ where: { vehicleId: id, openedAt: { gte: d30 } }, select: { id: true, materials: { select: { totalCost: true } } } }),
+      this.prisma.vehicleLineDay.findMany({ where: { vehicleId: id, date: { gte: d30 } }, select: { line: true, date: true, kmInLine: true, kmIdle: true, trips: true } }),
     ]);
+    const linesMap = new Map<string, { line: string; days: Set<string>; kmInLine: number; kmIdle: number; trips: number }>();
+    for (const l of lineDays) {
+      const key = l.line ?? '—';
+      const cur = linesMap.get(key) ?? { line: key, days: new Set<string>(), kmInLine: 0, kmIdle: 0, trips: 0 };
+      cur.days.add(l.date.toISOString().slice(0, 10)); cur.kmInLine += Number(l.kmInLine); cur.kmIdle += Number(l.kmIdle); cur.trips += l.trips;
+      linesMap.set(key, cur);
+    }
 
     // Km por dia (30 dias), pela data local da leitura
     const byDay = new Map<string, number>();
@@ -269,6 +279,17 @@ export class VehiclesService {
         isUnscheduledReturn: e.isUnscheduledReturn,
       })),
       recentWorkOrders: workOrders.slice(0, 6).map((w) => ({ id: w.id, code: w.code, type: w.type, status: w.status, openedAt: w.openedAt.toISOString(), releasedAt: w.releasedAt?.toISOString() ?? null })),
+      records: records.map((r) => ({
+        id: r.id, externalOs: r.externalOs, openedAt: r.openedAt.toISOString(), kind: r.kind, kindLabel: r.kindLabel, isPreventive: r.isPreventive,
+        allegedCode: r.allegedCode, allegedText: r.allegedText, allegedDetail: r.allegedDetail, foundCode: r.foundCode, foundText: r.foundText,
+        actions: r.actions, fieldActions: r.fieldActions, mechanicReg: r.mechanicReg, line: r.line, cost: r.cost === null ? null : Number(r.cost),
+        partsCost: r.materials.reduce((s, m) => s + Number(m.totalCost), 0),
+        items: r.items.map((i) => ({ componentCode: i.componentCode, componentLabel: i.componentLabel, kmAtService: i.kmAtService, kmLimit: i.kmLimit })),
+        materials: r.materials.map((m) => ({ materialCode: m.materialCode, description: m.description, quantity: Number(m.quantity), totalCost: Number(m.totalCost) })),
+      })),
+      recordsLast30: records30.length,
+      partsCostLast30: Math.round(records30.reduce((s, r) => s + r.materials.reduce((x, m) => x + Number(m.totalCost), 0), 0) * 100) / 100,
+      lines30: [...linesMap.values()].map((l) => ({ line: l.line, days: l.days.size, kmInLine: Math.round(l.kmInLine), kmIdle: Math.round(l.kmIdle), trips: l.trips })).sort((a, b) => b.kmInLine - a.kmInLine).slice(0, 8),
     };
   }
 }
@@ -334,6 +355,7 @@ function toVehicle(v: {
   lastReadingAt: Date | null;
   isActive: boolean;
   ccoPrefix?: string | null;
+  application?: string | null;
   chassisCode?: string | null;
   vin?: string | null;
   bodyMaker?: string | null;
@@ -363,6 +385,7 @@ function toVehicle(v: {
     lastReadingAt: v.lastReadingAt?.toISOString() ?? null,
     isActive: v.isActive,
     ccoPrefix: v.ccoPrefix ?? null,
+    application: v.application ?? 'FROTA',
     chassisCode: v.chassisCode ?? null,
     vin: v.vin ?? null,
     bodyMaker: v.bodyMaker ?? null,

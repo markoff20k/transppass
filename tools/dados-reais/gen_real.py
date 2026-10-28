@@ -27,7 +27,9 @@ col = lambda r, n: (r[fh.index(n)].strip() if fh.index(n) < len(r) else '')
 frota = []
 missing_chassis = collections.Counter()
 for r in fro[1:]:
-    if col(r, 'STATUS') != '0' or not col(r, 'PLACA'): continue
+    # Carta do cliente (1.1.7/1.1.8): interessam os carros sem data de desligamento com STATUS 0 (frota), 7 (guincho) e 17 (treinamento).
+    APPLICATION = {'0': 'FROTA', '7': 'GUINCHO', '17': 'TREINAMENTO'}
+    if col(r, 'STATUS') not in APPLICATION or col(r, 'DESLIGAMENTO') or not col(r, 'PLACA'): continue
     code = col(r, 'CARRO')
     cc = (col(r, 'MARCA DO CHASSI') + col(r, 'MODELO DO CHASSI')).strip()
     ch = chassis.get(cc)
@@ -37,7 +39,9 @@ for r in fro[1:]:
     acq = xl_date(col(r, 'DATA DE AQUISICAO'))
     frota.append({
         'code': code,
-        'ccoPrefix': ('81' if lot == 'E8' else '80') + code,
+        'application': APPLICATION[col(r, 'STATUS')],
+        # Prefixo completo (1.1.4): lote E8 = 81 + carro, AR9 = 80 + carro. Veículos de apoio (4 dígitos) não têm prefixo de operação.
+        'ccoPrefix': (('81' if lot == 'E8' else '80') + code) if re.fullmatch(r'\d{3}', code) else None,
         'plate': col(r, 'PLACA').replace(' ', ''),
         'chassisCode': cc,
         'manufacturer': ch['manufacturer'] if ch else (col(r, 'MARCA DO CHASSI') or None),
@@ -59,12 +63,12 @@ for r in fro[1:]:
         'currentKm': km if 0 < km < 3_000_000 else 0,
     })
 assert len({v['code'] for v in frota}) == len(frota) and len({v['plate'] for v in frota}) == len(frota)
-print('frota ativa:', len(frota), '· sem chassi na tabela:', dict(missing_chassis))
+print('frota ativa:', len(frota), '· por aplicação:', collections.Counter(v['application'] for v in frota).most_common(), '· sem chassi na tabela:', dict(missing_chassis))
 print('  por classe:', collections.Counter(v['vehicleClass'] for v in frota).most_common())
 print('  por lote:', collections.Counter(v['lot'] for v in frota).most_common(), '· telemetria:', sum(v['telemetry'] for v in frota))
 json.dump(frota, open(OUT + 'frota.json', 'w', encoding='utf-8', newline='\n'), ensure_ascii=False, indent=0)
 codes = {v['code'] for v in frota}
-by_prefix = {v['ccoPrefix']: v['code'] for v in frota}
+by_prefix = {v['ccoPrefix']: v['code'] for v in frota if v['ccoPrefix']}
 
 # ---- Km diário ------------------------------------------------------------------------------
 km = {}
@@ -154,5 +158,6 @@ sept = [e for e in events if e['at'].startswith('2026-09')]
 print('  setembro:', len(sept), '· retornos não programados (SOS+RAM+TRO):', sum(e['unscheduledReturn'] for e in sept), '· só RAM:', sum(1 for e in sept if e['group'] == 'RAM'), '· viagens perdidas:', sum(e['lostTrips'] for e in sept))
 ago = [e for e in events if e['at'].startswith('2026-08')]
 print('  agosto:', len(ago), '· retornos:', sum(e['unscheduledReturn'] for e in ago), '· viagens perdidas:', sum(e['lostTrips'] for e in ago))
-print('  MKBF setembro (SOS+RAM+TRO):', round(sum(km[c].get(d, 0) for c in km for d in km[c] if d.startswith('2026-09')) / max(1, sum(e['unscheduledReturn'] for e in sept))), 'km · só RAM:', round(sum(km[c].get(d, 0) for c in km for d in km[c] if d.startswith('2026-09')) / max(1, sum(1 for e in sept if e['group'] == 'RAM'))), 'km')
+# O MKBF oficial usa as fichas A/S/T (gen_real2.py); isto é só a leitura pelo CCO, para comparação.
+print('  (comparação) MKBF setembro pelo CCO (SOS+RAM+TRO):', round(sum(km[c].get(d, 0) for c in km for d in km[c] if d.startswith('2026-09')) / max(1, sum(e['unscheduledReturn'] for e in sept))), 'km · só RAM:', round(sum(km[c].get(d, 0) for c in km for d in km[c] if d.startswith('2026-09')) / max(1, sum(1 for e in sept if e['group'] == 'RAM'))), 'km')
 json.dump(events, open(OUT + 'cco.json', 'w', encoding='utf-8', newline='\n'), ensure_ascii=False, indent=0)

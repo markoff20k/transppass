@@ -59,7 +59,7 @@ export function VehiclePage() {
         <div className={`tp-kpi ${s.returns === 0 ? 'tp-kpi--good' : s.returns >= 3 ? 'tp-kpi--danger' : 'tp-kpi--warn'}`}>
           <span className="tp-kpi__label">Retornos não programados · 30 dias</span>
           <strong className="tp-kpi__value">{s.returns}</strong>
-          <span className="tp-kpi__note">{s.workOrders} ordem(ns) de serviço no período</span>
+          <span className="tp-kpi__note">{o.recordsLast30 > 0 ? `${o.recordsLast30} ficha(s) de manutenção · peças R$ ${formatNumber(Math.round(o.partsCostLast30))}` : `${s.workOrders} ordem(ns) de serviço no período`}</span>
         </div>
         <div className="tp-kpi">
           <span className="tp-kpi__label">
@@ -86,7 +86,7 @@ export function VehiclePage() {
               <div><dt>Odômetro</dt><dd className={o.isKmDegraded ? 'tp-error' : undefined}>{o.daysSinceLastReading === null ? 'sem leitura' : o.daysSinceLastReading === 0 ? 'lido hoje' : `lido há ${o.daysSinceLastReading} dia(s)`}</dd></div>
               <div><dt>Motorista de hoje</dt><dd>{o.driverToday ? `${o.driverToday.name} · ${o.driverToday.registration}` : '—'}</dd></div>
               <div><dt>Checklist diário</dt><dd>{o.lastDailyCheck ? <>{formatDate(o.lastDailyCheck.at)} · <span className={o.lastDailyCheck.result === 'NOK' ? 'tp-error' : undefined}>{o.lastDailyCheck.result === 'OK' ? 'aprovado' : 'reprovado'}</span></> : 'não registrado'}</dd></div>
-              <div><dt>Garagem</dt><dd>{o.garageName ?? '—'}{v.lot ? ` · lote ${v.lot}` : ''}{v.fleetRole === 'RESERVA' ? ' · reserva' : ''}</dd></div>
+              <div><dt>Garagem</dt><dd>{o.garageName ?? '—'}{v.lot ? ` · lote ${v.lot}` : ''}{v.fleetRole === 'RESERVA' ? ' · reserva' : ''}{v.application === 'GUINCHO' ? ' · guincho (apoio)' : v.application === 'TREINAMENTO' ? ' · treinamento (apoio)' : ''}</dd></div>
               {o.openWorkOrder && (
                 <div><dt>OS aberta</dt><dd><Link to={`/os/${o.openWorkOrder.id}`} className="is-strong">{o.openWorkOrder.code}</Link> · {WORK_ORDER_STATUS_LABELS[o.openWorkOrder.status as WorkOrderStatus] ?? o.openWorkOrder.status} · desde {formatDate(o.openWorkOrder.openedAt)}</dd></div>
               )}
@@ -141,6 +141,47 @@ export function VehiclePage() {
           <Link to={`/cadastros/frota?search=${v.code}`} className="vpage__more">Editar cadastro</Link>
         </section>
       </div>
+
+      {o.records.length > 0 && (
+        <section className="tp-card">
+          <div className="tp-card__head"><div><h3>Fichas de manutenção</h3><span className="chart__hint">as OS do sistema da Transppass: o que o motorista alegou, o que a oficina constatou e o que foi feito · A, S e T são as quebras que contam no MKBF</span></div><span className="tp-muted">{o.recordsLast30} em 30 dias</span></div>
+          <div className="tp-table-wrap">
+            <table className="tp-table tp-table--compact">
+              <thead><tr><th>Quando</th><th>OS</th><th>Tipo</th><th>Alegado</th><th>Constatado</th><th>Providência</th><th>Peças</th><th>Mecânico</th></tr></thead>
+              <tbody>
+                {o.records.map((r) => (
+                  <tr key={r.id}>
+                    <td className="tp-muted">{formatDateTime(r.openedAt)}</td>
+                    <td className="tp-mono">{r.externalOs}</td>
+                    <td><span className={`tp-badge ${r.isPreventive ? 'tp-badge--success' : ['A', 'S', 'T'].includes(r.kind) ? 'tp-badge--warning' : 'tp-badge--status'}`}>{r.kindLabel ?? r.kind}</span>{r.isPreventive && r.kind !== 'PV' && <span className="mat-sub">com item preventivo</span>}</td>
+                    <td style={{ whiteSpace: 'normal', minWidth: 160 }}><span className="mat-desc">{r.allegedText ?? '—'}</span>{r.allegedDetail && <span className="mat-sub">{r.allegedDetail}</span>}</td>
+                    <td style={{ whiteSpace: 'normal', minWidth: 160 }}><span className="mat-desc">{r.foundText ?? '—'}</span>{r.foundCode && <span className="mat-sub tp-mono">{r.foundCode}</span>}</td>
+                    <td style={{ whiteSpace: 'normal', minWidth: 180 }} className="tp-muted">{r.actions ?? r.fieldActions ?? '—'}{r.items.length > 0 && <span className="mat-sub">{r.items.map((i) => i.componentLabel).join(' · ')}</span>}</td>
+                    <td className="is-num">{r.materials.length ? <>{formatNumber(Math.round(r.partsCost))} <small className="tp-muted">R$</small><span className="mat-sub">{r.materials.length} item(ns)</span></> : '—'}</td>
+                    <td className="tp-muted tp-mono">{r.mechanicReg ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {o.lines30.length > 0 && (
+        <section className="tp-card">
+          <div className="tp-card__head"><div><h3>Linhas em que rodou · 30 dias</h3><span className="chart__hint">km em linha, km ocioso e viagens por linha (dado da Operação)</span></div></div>
+          <div className="tp-table-wrap">
+            <table className="tp-table tp-table--compact">
+              <thead><tr><th>Linha</th><th className="is-num">Dias</th><th className="is-num">Km em linha</th><th className="is-num">Km ocioso</th><th className="is-num">Viagens</th></tr></thead>
+              <tbody>
+                {o.lines30.map((l) => (
+                  <tr key={l.line}><td className="is-strong">{l.line}</td><td className="is-num">{l.days}</td><td className="is-num">{formatNumber(l.kmInLine)}</td><td className="is-num tp-muted">{formatNumber(l.kmIdle)}</td><td className="is-num">{formatNumber(l.trips)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <div className="vpage__row vpage__row--even">
         <section className="tp-card">

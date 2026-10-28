@@ -311,6 +311,8 @@ const dailyBoard: DailyBoard = {
   auditsOverdue: 3,
   kanbanBelow: 2,
   componentsOverLife: 1,
+  maintenanceRecords: null,
+  trips: null,
 };
 const dailyChecks: DailyCheckRow[] = [];
 

@@ -50,7 +50,7 @@ export function DailyPage() {
             MKBF · 30 dias
             <InfoTip label="Como o MKBF é calculado" align="start" className="fleet-tip">
               <b>MKBF</b>
-              <span>Km rodados pela frota dividido pelos retornos não programados (eventos que recolheram ou pararam o carro). Nasce do processo: cada evento conta até a triagem dizer que não era retorno.</span>
+              <span>Km rodados pela frota dividido pelas quebras: recolhida anormal, socorro e troca de carro (fichas A, S e T do ERP, critério da Transppass). Guincho e carro de treinamento não entram. No dia a dia cada evento conta até a triagem dizer que não era retorno.</span>
             </InfoTip>
           </span>
           <span className="daily-tile__value">{d.mkbf.last30 === null ? '—' : formatNumber(d.mkbf.last30)} <small>km</small></span>
@@ -80,12 +80,14 @@ export function DailyPage() {
           <span className="daily-tile__value">{d.lostTrips.yesterday} <small>ontem</small></span>
           <span className="daily-tile__delta"><b>{d.lostTrips.last7}</b>&nbsp;na semana · <b>{d.lostTrips.last30}</b>&nbsp;no mês</span>
           <div className="daily-tile__row"><span>{(d.lostTrips.note.split(' — ')[0] ?? '').split(' (')[0]}</span></div>
+          {d.trips && <div className="daily-tile__row"><span>SPTrans 30 dias: <b>{formatNumber(d.trips.planned30)}</b> programadas · <b>{formatNumber(d.trips.monitored30)}</b> monitoradas · <b>{formatNumber(d.trips.lost30)}</b> não monitoradas</span></div>}
         </div>
         <div className={`daily-tile daily-tile--${d.workOrders.overdue > 0 ? 'warn' : 'good'}`}>
           <span className="daily-tile__label">Ordens de serviço</span>
           <span className="daily-tile__value">{d.workOrders.open} <small>abertas</small></span>
           <span className={`daily-tile__delta ${d.workOrders.overdue ? 'is-down' : 'is-up'}`}>{d.workOrders.overdue} com previsão estourada</span>
           <div className="daily-tile__row"><span>ontem: <b>{d.workOrders.openedYesterday}</b> abertas</span><span><b>{d.workOrders.releasedYesterday}</b> liberadas</span><span><b>{d.events.yesterday}</b> falhas na rua</span></div>
+          {d.maintenanceRecords && <div className="daily-tile__row"><span><b>{formatNumber(d.maintenanceRecords.last30)}</b> fichas em 30 dias · peças R$ {formatNumber(d.maintenanceRecords.partsCostLast30)}</span></div>}
         </div>
       </div>
 
