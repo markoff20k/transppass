@@ -15,6 +15,7 @@ import {
   type CreateVehicleInput,
   type Paginated,
   type Vehicle,
+  type ChassisModelRow,
 } from '@app/shared';
 import { VEHICLE_STATE_FAMILY } from '@app/design-kit';
 import { ApiError, api } from '@/lib/api-client';
@@ -22,6 +23,7 @@ import { formatNumber } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { SearchSelect } from '@/components/ui/search-select';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; vehicle: Vehicle };
 
@@ -185,6 +187,7 @@ function VehicleDrawer({ mode, onClose, onSaved }: { mode: Mode; onClose: () => 
 
   const {
     register,
+    setValue,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
@@ -192,6 +195,18 @@ function VehicleDrawer({ mode, onClose, onSaved }: { mode: Mode; onClose: () => 
     resolver: zodResolver(createVehicleSchema),
     defaultValues: { technology: VehicleTechnology.DIESEL, kmSource: KmSource.MANUAL, odometerOffset: 0 },
   });
+  const [chassisCode, setChassisCode] = useState('');
+  const chassisModels = useQuery({ queryKey: ['vehicles', 'chassis-models'], queryFn: () => api.get<ChassisModelRow[]>('/vehicles/chassis-models'), staleTime: 300_000 });
+  const chassisOptions = (chassisModels.data ?? []).map((c) => ({ id: c.code, label: c.code, hint: `${c.description} · ${c.rawClass}` }));
+  const pickChassis = (code: string) => {
+    setChassisCode(code);
+    const c = chassisModels.data?.find((x) => x.code === code);
+    if (!c) return;
+    setValue('manufacturer', c.manufacturer, { shouldDirty: true });
+    setValue('model', c.model, { shouldDirty: true });
+    setValue('vehicleClass', c.vehicleClass, { shouldDirty: true });
+    setValue('technology', c.isElectric ? VehicleTechnology.EBUS : VehicleTechnology.DIESEL, { shouldDirty: true });
+  };
 
   useEffect(() => {
     if (mode.kind === 'edit') {
@@ -267,6 +282,10 @@ function VehicleDrawer({ mode, onClose, onSaved }: { mode: Mode; onClose: () => 
     >
       <form id="vehicle-form" className="tp-stack" onSubmit={handleSubmit((v) => save.mutate(v))} noValidate>
         <div className="tp-facts" style={{ display: 'grid' }}>
+          <div className="tp-field is-full">
+            <label className="tp-label" htmlFor="vf-chassis">Modelo do chassi <span className="tp-label__hint">tabela da Transppass</span></label>
+            <SearchSelect id="vf-chassis" value={chassisCode} onChange={pickChassis} placeholder="Código do chassi (ex.: MBO500U-AC) — preenche fabricante, modelo, classe e tecnologia" options={chassisOptions} />
+          </div>
           <div className="tp-field">
             <label className="tp-label" htmlFor="vf-code">Prefixo</label>
             <input id="vf-code" className="tp-input" aria-invalid={errors.code ? 'true' : undefined} {...register('code')} />

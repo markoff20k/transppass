@@ -201,6 +201,17 @@ export const handlers = [
     return HttpResponse.json({ summary, rows });
   }),
 
+  http.get('*/api/vehicles/chassis-models', async ({ request }) => {
+    await delay();
+    const auth = requireAuth(request, '/api/vehicles/chassis-models');
+    if ('error' in auth) return auth.error;
+    return HttpResponse.json([
+      { code: 'MBO500U-AC', description: 'Mercedes O500 U-AC', manufacturer: 'Mercedes-Benz', model: 'O500 U-AC', vehicleClass: 'PADRON_13M', rawClass: 'Padron AC', hasAc: true, isElectric: false },
+      { code: 'MBOF 1721', description: 'Mercedes OF 1721', manufacturer: 'Mercedes-Benz', model: 'OF 1721', vehicleClass: 'BASICO_12M', rawClass: 'Básico', hasAc: false, isElectric: false },
+      { code: 'SCANIAE-BUS', description: 'e-Bus Scania', manufacturer: 'Scania', model: 'e-Bus', vehicleClass: 'EPADRON_15M', rawClass: 'ePadron 15m AC', hasAc: true, isElectric: true },
+    ]);
+  }),
+
   http.get('*/api/vehicles/:id/overview', async ({ request, params }) => {
     await delay();
     const auth = requireAuth(request, '/api/vehicles/overview');

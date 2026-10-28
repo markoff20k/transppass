@@ -85,6 +85,11 @@ Base: A3 "Kaizen Estruturante" (03/06/2026) e "Fluxos de Processo PCM" Rev. 00 (
 - **Daily 15 min** (`/daily`): `GET /metrics/daily` com os cinco KPIs do A3 §9, falhas da semana, carros reincidentes (≥ 2 retornos em 30 dias) e rotina do dia.
 - Rotas novas no roteiro de QA; a tela Kaizen MKBF (painel sobre o Kaizen) foi removida a pedido: o Kaizen roda no sistema, não numa página.
 
+## 4g. Rodada 28/10 — primeira entrega de dados reais
+
+- Chegou o arquivo "1-MODELO DO CHASSI.xlsx" (item 1 do pedido ao CEO): 52 códigos de chassi com descrição e classe. Virou `apps/api/prisma/data/chassis.json`, a tabela `chassis_models` (`GET /vehicles/chassis-models`) e um seletor no cadastro do carro que preenche fabricante, modelo, classe e tecnologia pelo código. A classe "Padron 15m" (Scania K 250/270, K 94) não existia no sistema e foi criada (`PADRON_15M`, render com três eixos).
+- Ainda faltam: frota carro a carro, quilometragem, ocorrências/quebras, OS e a classificação de falhas (itens 1 a 5 do pedido).
+
 ## 4f. Rodada 28/10 — a frota como produto
 
 - **Render do ônibus por classe** (`BusRender`): vista lateral em estilo de produto com variantes Básico 12M, Padron 13M, ePadron 13M/15M, Articulado 18M, Biarticulado 23M e elétricos; galeria no design kit. Capturas conferidas em 2x: adesivos no maior vão livre entre as portas, três eixos no 15M, sanfona nos articulados.

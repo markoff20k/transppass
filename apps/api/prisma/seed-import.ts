@@ -164,6 +164,14 @@ export async function importBases(prisma: PrismaClient): Promise<void> {
   }
   console.log(`  ${kanbanTargets.length} materiais com ponto de pedido (kanban) · ${kanbanBelow} abaixo do ponto`);
 
+  // ---- Modelos de chassi (arquivo "1-MODELO DO CHASSI" enviado pela Transppass em 28/10/2026) ----
+  const chassis = readJson<{ code: string; description: string; manufacturer: string; model: string; vehicleClass: string; rawClass: string; hasAc: boolean; isElectric: boolean }[]>('chassis.json');
+  for (const c of chassis) {
+    const data = { description: c.description, manufacturer: c.manufacturer, model: c.model, vehicleClass: c.vehicleClass, rawClass: c.rawClass, hasAc: c.hasAc, isElectric: c.isElectric };
+    await prisma.chassisModel.upsert({ where: { code: c.code }, update: data, create: { code: c.code, ...data } });
+  }
+  console.log(`  ${chassis.length} modelos de chassi (tabela da Transppass)`);
+
   // ---- Operadores -----------------------------------------------------------
   const operators = readJson<OperatorJson[]>('operadores.json');
   for (let i = 0; i < operators.length; i += CHUNK) {

@@ -12,6 +12,7 @@ import {
   type UpdateVehicleInput,
   type Vehicle,
   type VehicleQuery,
+  type ChassisModelRow,
   type VehicleOverview,
 } from '@app/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -40,6 +41,11 @@ export class VehiclesController {
     @Query(new ZodValidationPipe(vehicleQuerySchema)) query: VehicleQuery,
   ): Promise<Paginated<Vehicle>> {
     return this.vehicles.list(query);
+  }
+
+  @Get('chassis-models')
+  chassisModels(): Promise<ChassisModelRow[]> {
+    return this.vehicles.listChassisModels();
   }
 
   @Get(':id/overview')

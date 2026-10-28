@@ -11,6 +11,7 @@ import {
   type Paginated,
   type UpdateVehicleInput,
   type Vehicle,
+  type ChassisModelRow,
   type VehicleClass,
   type VehicleOverview,
   type VehicleQuery,
@@ -165,6 +166,12 @@ export class VehiclesService {
       },
       rows,
     };
+  }
+
+  /** Tabela de modelos de chassi da Transppass, para o cadastro resolver fabricante, modelo, classe e tecnologia pelo código. */
+  async listChassisModels(): Promise<ChassisModelRow[]> {
+    const rows = await this.prisma.chassisModel.findMany({ orderBy: { code: 'asc' } });
+    return rows.map((c) => ({ code: c.code, description: c.description, manufacturer: c.manufacturer, model: c.model, vehicleClass: c.vehicleClass as VehicleClass, rawClass: c.rawClass, hasAc: c.hasAc, isElectric: c.isElectric }));
   }
 
   private activePackages(now: Date) {

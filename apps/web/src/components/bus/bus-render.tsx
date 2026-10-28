@@ -31,6 +31,7 @@ interface Spec {
 const SPECS: Record<VehicleClass, Spec> = {
   BASICO_12M: { segments: [{ w: 222, doors: [134, 178], axles: [52, 184] }], roofAc: false, electric: false },
   PADRON_13M: { segments: [{ w: 240, doors: [22, 150, 196], axles: [56, 202] }], roofAc: true, electric: false },
+  PADRON_15M: { segments: [{ w: 276, doors: [22, 170, 232], axles: [46, 78, 238] }], roofAc: true, electric: false },
   EPADRON_13M: { segments: [{ w: 240, doors: [22, 150, 196], axles: [56, 202] }], roofAc: true, electric: true },
   EPADRON_15M: { segments: [{ w: 276, doors: [22, 170, 232], axles: [46, 78, 238] }], roofAc: true, electric: true },
   ARTICULADO_18M: { segments: [{ w: 128, doors: [26, 86], axles: [50] }, { w: 152, doors: [30, 106], axles: [26, 112] }], roofAc: true, electric: false },

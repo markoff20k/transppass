@@ -1,0 +1,522 @@
+[
+ {
+  "code": "BC22LE",
+  "description": "e-Bus BRT BYD",
+  "manufacturer": "BYD",
+  "model": "e-Bus BRT",
+  "vehicleClass": "EARTICULADO_23M",
+  "rawClass": "eArticulado AC",
+  "hasAc": true,
+  "isElectric": true
+ },
+ {
+  "code": "BYDBC22LE",
+  "description": "e-Bus BRT BYD",
+  "manufacturer": "BYD",
+  "model": "e-Bus BRT",
+  "vehicleClass": "EARTICULADO_23M",
+  "rawClass": "eArticulado AC",
+  "hasAc": true,
+  "isElectric": true
+ },
+ {
+  "code": "BYDD9W",
+  "description": "e-Bus BRT BYD",
+  "manufacturer": "BYD",
+  "model": "e-Bus BRT",
+  "vehicleClass": "EARTICULADO_23M",
+  "rawClass": "eArticulado",
+  "hasAc": false,
+  "isElectric": true
+ },
+ {
+  "code": "BYDE-BYD",
+  "description": "e-Bus BRT BYD",
+  "manufacturer": "BYD",
+  "model": "e-Bus BRT",
+  "vehicleClass": "EARTICULADO_23M",
+  "rawClass": "eArticulado AC",
+  "hasAc": true,
+  "isElectric": true
+ },
+ {
+  "code": "E-MILLENIUM BRT",
+  "description": "e-Bus BRT BYD",
+  "manufacturer": "BYD",
+  "model": "e-Bus BRT",
+  "vehicleClass": "EARTICULADO_23M",
+  "rawClass": "eArticulado",
+  "hasAc": false,
+  "isElectric": true
+ },
+ {
+  "code": "MB",
+  "description": "Mercedes",
+  "manufacturer": "Mercedes-Benz",
+  "model": "Mercedes-Benz",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBO500 UA-AC",
+  "description": "Mercedes O500 UA-AC",
+  "manufacturer": "Mercedes-Benz",
+  "model": "O500 UA-AC",
+  "vehicleClass": "ARTICULADO_18M",
+  "rawClass": "Articulado AC",
+  "hasAc": true,
+  "isElectric": false
+ },
+ {
+  "code": "MBO500 UDA",
+  "description": "Mercedes O500 UDA",
+  "manufacturer": "Mercedes-Benz",
+  "model": "O500 UDA",
+  "vehicleClass": "ARTICULADO_23M",
+  "rawClass": "Articulado 23m",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBO500 UDA-AC",
+  "description": "Mercedes O500 UDA-AC",
+  "manufacturer": "Mercedes-Benz",
+  "model": "O500 UDA-AC",
+  "vehicleClass": "ARTICULADO_23M",
+  "rawClass": "Articulado 23m AC",
+  "hasAc": true,
+  "isElectric": false
+ },
+ {
+  "code": "MBO500U",
+  "description": "Mercedes O500 U",
+  "manufacturer": "Mercedes-Benz",
+  "model": "O500 U",
+  "vehicleClass": "PADRON_13M",
+  "rawClass": "Padron",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBO500U A",
+  "description": "Mercedes O500 UA",
+  "manufacturer": "Mercedes-Benz",
+  "model": "O500 UA",
+  "vehicleClass": "ARTICULADO_18M",
+  "rawClass": "Articulado",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBO500U-AC",
+  "description": "Mercedes O500 U-AC",
+  "manufacturer": "Mercedes-Benz",
+  "model": "O500 U-AC",
+  "vehicleClass": "PADRON_13M",
+  "rawClass": "Padron AC",
+  "hasAc": true,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF 1417",
+  "description": "Mercedes OF 1417",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1417",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF 1418",
+  "description": "Mercedes OF 1418",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1418",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF 1620",
+  "description": "Mercedes OF 1620",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1620",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF 1721",
+  "description": "Mercedes OF 1721",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1721",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF 1722",
+  "description": "Mercedes OF 1722",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1722",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF 1722 59",
+  "description": "Mercedes OF 1722",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1722",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF-1315",
+  "description": "Mercedes OF 1315",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1315",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF-1318",
+  "description": "Mercedes OF 1318",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1318",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF-1620",
+  "description": "Mercedes OF 1620",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1620",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF-1620/60",
+  "description": "Mercedes OF 1620",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1620",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF-1721",
+  "description": "Mercedes OF 1721",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1721",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOF-1722",
+  "description": "Mercedes OF 1722",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OF 1722",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOH 1621",
+  "description": "Mercedes OH 1621",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OH 1621",
+  "vehicleClass": "PADRON_13M",
+  "rawClass": "Padron",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOH-1621",
+  "description": "Mercedes OH 1621",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OH 1621",
+  "vehicleClass": "PADRON_13M",
+  "rawClass": "Padron",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOM 366 LA",
+  "description": "Mercedes OM 366 LA",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OM 366 LA",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOM 904 LA",
+  "description": "Mercedes OM 904 LA",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OM 904 LA",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBOM 924 LA",
+  "description": "Mercedes OM 924 LA",
+  "manufacturer": "Mercedes-Benz",
+  "model": "OM 924 LA",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBVW 17260",
+  "description": "Volkswagen 17.260",
+  "manufacturer": "Volkswagen",
+  "model": "17.260",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBZF G60 1722",
+  "description": "Mercedes",
+  "manufacturer": "Mercedes-Benz",
+  "model": "Mercedes-Benz",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBZF S5 680 1417",
+  "description": "Mercedes",
+  "manufacturer": "Mercedes-Benz",
+  "model": "Mercedes-Benz",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "MBZF S5 680 1721",
+  "description": "Mercedes",
+  "manufacturer": "Mercedes-Benz",
+  "model": "Mercedes-Benz",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "SCANIAE-BUS",
+  "description": "e-Bus Scania",
+  "manufacturer": "Scania",
+  "model": "e-Bus",
+  "vehicleClass": "EPADRON_15M",
+  "rawClass": "ePadron 15m AC",
+  "hasAc": true,
+  "isElectric": true
+ },
+ {
+  "code": "SCANIAE-SCANIA",
+  "description": "e-Bus Scania",
+  "manufacturer": "Scania",
+  "model": "e-Bus",
+  "vehicleClass": "EPADRON_15M",
+  "rawClass": "ePadron 15m AC",
+  "hasAc": true,
+  "isElectric": true
+ },
+ {
+  "code": "SCANIAK 250 UB 4X2",
+  "description": "Scania K 250 UB 4x2",
+  "manufacturer": "Scania",
+  "model": "K 250 UB 4x2",
+  "vehicleClass": "PADRON_15M",
+  "rawClass": "Padron 15m",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "SCANIAK250 UB 4X2",
+  "description": "Scania K 250 UB 4x2",
+  "manufacturer": "Scania",
+  "model": "K 250 UB 4x2",
+  "vehicleClass": "PADRON_15M",
+  "rawClass": "Padron 15m",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "SCANIAK270",
+  "description": "Scania K 270",
+  "manufacturer": "Scania",
+  "model": "K 270",
+  "vehicleClass": "PADRON_15M",
+  "rawClass": "Padron 15m",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "SCANIAK94",
+  "description": "Scania K 94",
+  "manufacturer": "Scania",
+  "model": "K 94",
+  "vehicleClass": "PADRON_15M",
+  "rawClass": "Padron 15m",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "TESTEB250R",
+  "description": "Volvo B250R",
+  "manufacturer": "Volvo",
+  "model": "B250R",
+  "vehicleClass": "PADRON_13M",
+  "rawClass": "Padron",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "VOLVOAPOIO",
+  "description": "Volvo B250R",
+  "manufacturer": "Volvo",
+  "model": "B250R",
+  "vehicleClass": "PADRON_13M",
+  "rawClass": "Padron",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "VOLVOB250R A/C",
+  "description": "Volvo B250R AC",
+  "manufacturer": "Volvo",
+  "model": "B250R AC",
+  "vehicleClass": "PADRON_13M",
+  "rawClass": "Padron AC",
+  "hasAc": true,
+  "isElectric": false
+ },
+ {
+  "code": "VOLVOB290R",
+  "description": "Volvo B290 R",
+  "manufacturer": "Volvo",
+  "model": "B290 R",
+  "vehicleClass": "PADRON_13M",
+  "rawClass": "Padron AC",
+  "hasAc": true,
+  "isElectric": false
+ },
+ {
+  "code": "VW16180-C",
+  "description": "Volkswagen 16.180",
+  "manufacturer": "Volkswagen",
+  "model": "16.180",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "VW16210 C",
+  "description": "Volkswagen 16.210",
+  "manufacturer": "Volkswagen",
+  "model": "16.210",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "VW18.280 OT LE-AC",
+  "description": "Volkswagen 18.280 OT LE-AC",
+  "manufacturer": "Volkswagen",
+  "model": "18.280 OT LE-AC",
+  "vehicleClass": "PADRON_13M",
+  "rawClass": "Padron AC",
+  "hasAc": true,
+  "isElectric": false
+ },
+ {
+  "code": "VWE-BUS",
+  "description": "e-Bus Volkswagen",
+  "manufacturer": "Volkswagen",
+  "model": "e-Bus",
+  "vehicleClass": "EPADRON_13M",
+  "rawClass": "ePadron AC",
+  "hasAc": true,
+  "isElectric": true
+ },
+ {
+  "code": "VWE-VOLKS",
+  "description": "e-Bus Volkswagen",
+  "manufacturer": "Volkswagen",
+  "model": "e-Bus",
+  "vehicleClass": "EPADRON_13M",
+  "rawClass": "ePadron AC",
+  "hasAc": true,
+  "isElectric": true
+ },
+ {
+  "code": "VWE-VOLKSBUS 22L",
+  "description": "e-Bus Volkswagen",
+  "manufacturer": "Volkswagen",
+  "model": "e-Bus",
+  "vehicleClass": "EPADRON_13M",
+  "rawClass": "ePadron AC",
+  "hasAc": true,
+  "isElectric": true
+ },
+ {
+  "code": "VWVW 16210",
+  "description": "Volkswagen 16.210",
+  "manufacturer": "Volkswagen",
+  "model": "16.210",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "VWVW 17260",
+  "description": "Volkswagen 17.260",
+  "manufacturer": "Volkswagen",
+  "model": "17.260",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ },
+ {
+  "code": "VWVW 8140",
+  "description": "Volkswagen 8.140",
+  "manufacturer": "Volkswagen",
+  "model": "8.140",
+  "vehicleClass": "BASICO_12M",
+  "rawClass": "Básico",
+  "hasAc": false,
+  "isElectric": false
+ }
+]

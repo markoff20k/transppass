@@ -33,6 +33,7 @@ export type VehicleStatus = (typeof VehicleStatus)[keyof typeof VehicleStatus];
 export const VehicleClass = {
   BASICO_12M: 'BASICO_12M',
   PADRON_13M: 'PADRON_13M',
+  PADRON_15M: 'PADRON_15M',
   EPADRON_13M: 'EPADRON_13M',
   EPADRON_15M: 'EPADRON_15M',
   ARTICULADO_18M: 'ARTICULADO_18M',
@@ -44,6 +45,7 @@ export type VehicleClass = (typeof VehicleClass)[keyof typeof VehicleClass];
 export const VEHICLE_CLASS_LABELS: Record<VehicleClass, string> = {
   BASICO_12M: 'Básico 12M',
   PADRON_13M: 'Padron 13M',
+  PADRON_15M: 'Padron 15M',
   EPADRON_13M: 'ePadron 13M',
   EPADRON_15M: 'ePadron 15M',
   ARTICULADO_18M: 'Articulado 18M',
@@ -206,6 +208,19 @@ export interface VehicleOverview {
   components: { id: string; kind: string; label: string; lifePct: number; remainingKm: number; status: 'OK' | 'NEAR' | 'OVER' }[];
   recentEvents: { id: string; code: string; reportedAt: string; description: string; failureCode: string | null; status: string; isUnscheduledReturn: boolean }[];
   recentWorkOrders: { id: string; code: string; type: string; status: string; openedAt: string; releasedAt: string | null }[];
+}
+
+/** Tabela de modelos de chassi da Transppass (arquivo "1-MODELO DO CHASSI"): o código do sistema deles → fabricante, modelo e classe. */
+export interface ChassisModelRow {
+  code: string;
+  description: string;
+  manufacturer: string;
+  model: string;
+  vehicleClass: VehicleClass;
+  /** Classe como está escrita na tabela da Transppass (ex.: "Padron 15m", "eArticulado AC"). */
+  rawClass: string;
+  hasAc: boolean;
+  isElectric: boolean;
 }
 
 /** KPIs do topo do painel (RF-37 / RF-38). */

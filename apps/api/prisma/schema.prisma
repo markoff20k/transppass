@@ -121,6 +121,20 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+/// Tabela de modelos de chassi da Transppass: o código do sistema deles resolve fabricante, modelo, classe e tecnologia.
+model ChassisModel {
+  code         String  @id @db.VarChar(32)
+  description  String  @db.VarChar(80)
+  manufacturer String  @db.VarChar(40)
+  model        String  @db.VarChar(60)
+  vehicleClass String  @db.VarChar(24)
+  rawClass     String  @db.VarChar(32)
+  hasAc        Boolean @default(false)
+  isElectric   Boolean @default(false)
+
+  @@map("chassis_models")
+}
+
 model Garage {
   id       String  @id @default(uuid()) @db.Uuid
   code     String  @unique @db.VarChar(16)
