@@ -156,31 +156,8 @@ export function MetricsPage() {
         </section>
 
         <section className="tp-card">
-          <h3>Alinhamento origem × diagnóstico</h3>
-          <p className="tp-muted">
-            O código decidido no registro se sustenta frente ao que a manutenção constata? Compara, por evento com constatação, o Sistema e o Subsistema completo (padrão de codificação, seção 8.2).
-          </p>
-          <div className="tp-kpi-row">
-            <div className="tp-kpi">
-              <span className="tp-kpi__label">Comparados</span>
-              <strong className="tp-kpi__value">{data.codeAlignment.compared}</strong>
-            </div>
-            <div className={`tp-kpi ${(data.codeAlignment.systemRate ?? 1) < 0.8 ? 'tp-kpi--warn' : 'tp-kpi--good'}`}>
-              <span className="tp-kpi__label">Sistema confere</span>
-              <strong className="tp-kpi__value">{data.codeAlignment.systemRate === null ? '—' : `${(data.codeAlignment.systemRate * 100).toFixed(0)}%`}</strong>
-              <span className="tp-muted">{data.codeAlignment.systemMatch} de {data.codeAlignment.compared}</span>
-            </div>
-            <div className="tp-kpi">
-              <span className="tp-kpi__label">Subsistema confere</span>
-              <strong className="tp-kpi__value">{data.codeAlignment.fullRate === null ? '—' : `${(data.codeAlignment.fullRate * 100).toFixed(0)}%`}</strong>
-              <span className="tp-muted">{data.codeAlignment.fullMatch} de {data.codeAlignment.compared}</span>
-            </div>
-          </div>
-        </section>
-
-        <section className="tp-card">
           <h3>Resolução em campo e retrabalho</h3>
-          <div className="tp-kpi-row">
+          <div className="tp-kpi-row tp-kpi-row--2">
             <div className="tp-kpi">
               <span className="tp-kpi__label">Resolvido em campo</span>
               <strong className="tp-kpi__value">
@@ -192,6 +169,8 @@ export function MetricsPage() {
                 {data.fieldResolution.resolvedInField} de {data.fieldResolution.total} socorros
               </span>
             </div>
+
+
             <div className={`tp-kpi ${(data.internalRework.rate ?? 0) > 0.1 ? 'tp-kpi--warn' : ''}`}>
               <span className="tp-kpi__label">Retrabalho interno</span>
               <strong className="tp-kpi__value">
@@ -209,7 +188,7 @@ export function MetricsPage() {
               <strong className="tp-kpi__value">
                 {data.adherence.preventive.rate === null ? '—' : `${(data.adherence.preventive.rate * 100).toFixed(0)}%`}
               </strong>
-              <span className="tp-muted">{data.adherence.preventive.onTime} de {data.adherence.preventive.due} paradas no prazo</span>
+              <span className="tp-muted">{data.adherence.preventive.due === 0 ? 'nenhuma parada venceu no mês' : `${data.adherence.preventive.onTime} de ${data.adherence.preventive.due} paradas no prazo`}</span>
             </div>
             <div className="tp-kpi">
               <span className="tp-kpi__label">Adoção do processo</span>
@@ -229,6 +208,33 @@ export function MetricsPage() {
           </div>
         </section>
       </div>
+
+      <section className="tp-card">
+          <h3>Alinhamento origem × diagnóstico</h3>
+          <p className="tp-muted">
+            O código decidido no registro se sustenta frente ao que a manutenção constata? Compara, por evento com constatação, o Sistema e o Subsistema completo (padrão de codificação, seção 8.2).
+          </p>
+          {data.codeAlignment.compared === 0 ? (
+            <p className="tp-table__empty">Nenhum evento do mês tem constatação da oficina ainda — a comparação começa quando a primeira OS confirmar o código.</p>
+          ) : (
+          <div className="tp-kpi-row">
+            <div className="tp-kpi">
+              <span className="tp-kpi__label">Comparados</span>
+              <strong className="tp-kpi__value">{data.codeAlignment.compared}</strong>
+            </div>
+            <div className={`tp-kpi ${(data.codeAlignment.systemRate ?? 1) < 0.8 ? 'tp-kpi--warn' : 'tp-kpi--good'}`}>
+              <span className="tp-kpi__label">Sistema confere</span>
+              <strong className="tp-kpi__value">{data.codeAlignment.systemRate === null ? '—' : `${(data.codeAlignment.systemRate * 100).toFixed(0)}%`}</strong>
+              <span className="tp-muted">{data.codeAlignment.systemMatch} de {data.codeAlignment.compared}</span>
+            </div>
+            <div className="tp-kpi">
+              <span className="tp-kpi__label">Subsistema confere</span>
+              <strong className="tp-kpi__value">{data.codeAlignment.fullRate === null ? '—' : `${(data.codeAlignment.fullRate * 100).toFixed(0)}%`}</strong>
+              <span className="tp-muted">{data.codeAlignment.fullMatch} de {data.codeAlignment.compared}</span>
+            </div>
+          </div>
+          )}
+      </section>
 
       <section className="tp-card">
         <div className="tp-card__head">

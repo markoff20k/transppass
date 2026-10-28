@@ -162,11 +162,13 @@ function MaterialDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => 
   }, [editing, mode.kind]);
 
   const save = useMutation({
+    meta: { success: 'Material salvo' },
     mutationFn: (input: CreateMaterialInput) => (editing ? api.patch(`/plans/materials/${editing.id}`, input) : api.post('/plans/materials', input)),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível salvar'),
   });
   const toggle = useMutation({
+    meta: { success: 'Material atualizado' },
     mutationFn: () => api.patch(`/plans/materials/${editing?.id}`, { isActive: !editing?.isActive }),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível salvar'),

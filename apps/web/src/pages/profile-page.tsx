@@ -72,6 +72,7 @@ function ProfileForm({ user, onSaved }: { user: PublicUser; onSaved: (u: PublicU
   const fileRef = useRef<HTMLInputElement>(null);
 
   const mutation = useMutation({
+    meta: { success: 'Perfil atualizado' },
     mutationFn: (input: UpdateProfileInput) => api.patch<PublicUser>('/users/me', input),
     onSuccess: (u) => {
       onSaved(u);
@@ -190,6 +191,7 @@ function PasswordForm() {
   const [done, setDone] = useState(false);
 
   const mutation = useMutation({
+    meta: { success: 'Senha alterada' },
     mutationFn: (input: { currentPassword: string; newPassword: string }) => api.post('/users/me/password', input),
     onSuccess: () => {
       setDone(true);

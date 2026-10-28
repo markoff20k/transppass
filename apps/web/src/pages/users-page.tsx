@@ -183,11 +183,13 @@ function UserDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => void
   }, [mode, form]);
 
   const create = useMutation({
+    meta: { success: 'Usuário criado' },
     mutationFn: (input: CreateUserInput) => api.post<PublicUser>('/users', input),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível criar a conta'),
   });
   const update = useMutation({
+    meta: { success: 'Usuário atualizado' },
     mutationFn: (input: UpdateUserInput) => api.patch<PublicUser>(`/users/${editing?.id}`, input),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível salvar'),

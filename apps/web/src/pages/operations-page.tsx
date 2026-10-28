@@ -191,7 +191,7 @@ export function OperationsPage() {
                       {r.coveredByDemandId ? (
                         <span className="tp-badge tp-badge--status tp-badge--success">reserva na rua</span>
                       ) : (
-                        <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setPanel({ kind: 'create', originVehicleId: r.vehicleId })}>
+                        <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm" onClick={() => setPanel({ kind: 'create', originVehicleId: r.vehicleId })}>
                           Pedir reposição
                         </button>
                       )}
@@ -260,6 +260,7 @@ function CreateDemandDrawer({ open, originVehicleId, onClose, onCreated }: { ope
   const vehicles = useQuery({ queryKey: ['vehicles', 'select'], queryFn: () => api.get<Paginated<Vehicle>>('/vehicles?perPage=500'), enabled: open });
 
   const mutation = useMutation({
+    meta: { success: 'Demanda de reposição aberta — janela contando' },
     mutationFn: (body: CreateDemandInput) => api.post<DemandRow>('/operations/demands', body),
     onSuccess: (d) => {
       setLineCode('');
@@ -321,6 +322,7 @@ function DemandDrawer({ id, onClose, onChanged }: { id: string | null; onClose: 
   const operators = useQuery({ queryKey: ['operations', 'operators', vehicleId], queryFn: () => api.get<OperatorCandidate[]>(`/operations/operators/for-vehicle/${vehicleId}`), enabled: Boolean(vehicleId) });
 
   const call = useMutation({
+    meta: { success: 'Demanda atualizada' },
     mutationFn: ({ path, body }: { path: string; body?: unknown }) => api.post<DemandRow>(`/operations/demands/${id}/${path}`, body),
     onSuccess: () => {
       setError(null);

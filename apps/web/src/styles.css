@@ -283,7 +283,7 @@
 .wo-next__title { margin: 0; font-family: var(--tp-font-display); font-size: var(--tp-text-xl); font-weight: 700; line-height: 1.15; }
 .wo-next__text { margin: 0; color: var(--color-text-secondary); max-width: 70ch; }
 .wo-next__btn { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; }
-@media (max-width: 640px) { .wo-next { flex-direction: column; align-items: stretch; } }
+@media (max-width: 640px) { .wo-next { flex-direction: column; align-items: stretch; } .bus-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tp-space-2); } .bus-grid .bus-card--summary { grid-column: 1 / -1; } }
 
 .wo-gate--final .wo-gate__dot { border-style: dashed; }
 .wo-gate--final.wo-gate--open .wo-gate__dot { border-style: solid; }
@@ -3470,19 +3470,20 @@ small.muted {
 @media (max-width: 1280px) { .daily-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .daily-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 480px) { .daily-tiles { grid-template-columns: minmax(0, 1fr); } }
-.daily-tile { position: relative; display: grid; gap: 6px; padding: var(--tp-space-4); border: var(--tp-border-thin) solid var(--color-border); border-radius: var(--tp-radius-lg); background: var(--color-surface); box-shadow: var(--shadow-card); }
+.daily-tile { position: relative; display: grid; grid-template-rows: auto auto auto 1fr; align-content: start; gap: 6px; padding: var(--tp-space-4); border: var(--tp-border-thin) solid var(--color-border); border-radius: var(--tp-radius-lg); background: var(--color-surface); box-shadow: var(--shadow-card); }
 .daily-tile__label::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--tile-color, var(--color-border-strong)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tile-color, var(--color-border-strong)) 18%, transparent); flex-shrink: 0; }
 .daily-tile--good { --tile-color: var(--color-success); }
 .daily-tile--warn { --tile-color: var(--color-warning); }
 .daily-tile--bad { --tile-color: var(--color-danger); }
 .daily-tile--brand { --tile-color: var(--color-brand); }
-.daily-tile__label { display: flex; align-items: center; gap: 6px; font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); }
+.daily-tile__label { display: flex; align-items: center; gap: 6px; min-height: 20px; font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; }
+.daily-tile__delta { min-height: 18px; }
 .daily-tile__value { font-family: var(--tp-font-display); font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .daily-tile__value small { font-size: var(--tp-text-md); font-weight: 500; color: var(--color-text-muted); }
 .daily-tile__delta { display: inline-flex; align-items: center; gap: 4px; font-size: var(--tp-text-xs); font-weight: var(--tp-weight-semibold); }
 .daily-tile__delta.is-up { color: var(--color-success-text); }
 .daily-tile__delta.is-down { color: var(--color-danger); }
-.daily-tile__row { display: flex; flex-wrap: wrap; gap: var(--tp-space-3); font-size: var(--tp-text-xs); color: var(--color-text-secondary); }
+.daily-tile__row { display: flex; flex-wrap: wrap; gap: 4px var(--tp-space-3); font-size: var(--tp-text-xs); color: var(--color-text-secondary); align-self: start; }
 .daily-tile__row b { color: var(--color-text); font-variant-numeric: tabular-nums; }
 .daily-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--tp-space-4); }
 @media (max-width: 1100px) { .daily-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -3716,3 +3717,24 @@ small.muted {
 .bus-card__since { font-size: var(--tp-text-2xs); line-height: 18px; }
 .bus-card--summary { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
 .bus-card--summary .bus-card__text { grid-template-rows: auto auto; gap: 4px; align-content: center; }
+
+/* Estoque: a lista de ferramentas (FR.168) tem 50 linhas — rola dentro do cartão, sem esticar a página. */
+.stock-tools .tp-table-wrap { max-height: 560px; overflow: auto; }
+
+/* Listas longas: rodapé com o que falta ver. */
+.tp-showmore { display: flex; align-items: center; justify-content: space-between; gap: var(--tp-space-3); flex-wrap: wrap; padding: var(--tp-space-3) var(--tp-space-1) 0; font-size: var(--tp-text-xs); }
+.tp-showmore b { color: var(--color-text); font-variant-numeric: tabular-nums; }
+.tp-showmore__actions { display: flex; gap: var(--tp-space-2); }
+
+/* Página do carro: o gráfico de km ocupa toda a altura do cartão ao lado da ficha. */
+.vpage__kmcard .vpage__kmbars { flex: 1; height: auto; min-height: 160px; }
+
+/* Celular: a frota em duas colunas (o cartão de 164px cabe lado a lado), o resumo ocupa a linha inteira. */
+@media (max-width: 640px) {
+  .bus-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tp-space-2); }
+  .bus-grid .bus-card--summary { grid-column: 1 / -1; }
+}
+
+/* Indicadores: cinco KPIs em duas colunas, para o cartão ficar na altura do vizinho. */
+.tp-kpi-row--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 640px) { .tp-kpi-row--2 { grid-template-columns: minmax(0, 1fr); } }

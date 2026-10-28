@@ -21,6 +21,7 @@ import { Drawer } from '@/components/ui/drawer';
 import { SearchSelect } from '@/components/ui/search-select';
 import { InfoTip } from '@/components/ui/info-tip';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { ShowMore } from '@/components/ui/show-more';
 
 const STATUS_LABEL = { OVER: 'acima da vida', NEAR: 'perto do fim', OK: 'dentro da vida' } as const;
 
@@ -32,6 +33,7 @@ const STATUS_LABEL = { OVER: 'acima da vida', NEAR: 'perto do fim', OK: 'dentro 
 export function ComponentsPage() {
   const queryClient = useQueryClient();
   const [kind, setKind] = useState<ComponentKind | ''>('');
+  const [limit, setLimit] = useState(60);
   const [search, setSearch] = useState('');
   const [onlyAttention, setOnlyAttention] = useState(true);
   const [panel, setPanel] = useState<{ vehicleId?: string; kind?: ComponentKind } | null>(null);
@@ -118,11 +120,11 @@ export function ComponentsPage() {
           {list.isPending ? <BrandLoader size={44} label="Carregando" /> : rows.length === 0 ? (
             <div className="tp-table__empty">{onlyAttention ? 'Nenhum componente perto do fim da vida. Desmarque o filtro para ver todos.' : 'Nenhum componente rastreado.'}</div>
           ) : (
-            <div className="tp-table-wrap">
+            <><div className="tp-table-wrap">
               <table className="tp-table tp-table--compact cmp-table">
                 <thead><tr><th>Carro</th><th>Componente</th><th>Vida usada</th><th className="is-num">Restante</th><th>Instalado</th><th>Anterior durou</th><th className="is-action" aria-label="Ações" /></tr></thead>
                 <tbody>
-                  {rows.map((c) => (
+                  {rows.slice(0, limit).map((c) => (
                     <tr key={c.id} className={c.status === 'OVER' ? 'is-danger' : undefined}>
                       <td className="is-strong tp-mono">{c.vehicleCode}</td>
                       <td><span className="mat-desc">{c.kindLabel}</span><span className="mat-sub">{c.serialNumber ? `nº ${c.serialNumber}` : 'sem nº de série'} · {c.technology === 'EBUS' ? 'eBUS' : 'diesel'}</span></td>
@@ -141,6 +143,7 @@ export function ComponentsPage() {
                 </tbody>
               </table>
             </div>
+              <ShowMore shown={Math.min(limit, rows.length)} total={rows.length} step={60} label="componentes" onMore={() => setLimit((l) => l + 60)} onAll={() => setLimit(rows.length)} /></>
           )}
       </section>
 
@@ -168,6 +171,7 @@ function InstallDrawer({ target, onClose, onDone }: { target: { vehicleId?: stri
   const vehicles = useQuery({ queryKey: ['vehicles', 'select'], queryFn: () => api.get<Paginated<Vehicle>>('/vehicles?perPage=500'), enabled: Boolean(target) });
   const vehicleOptions = useMemo(() => (vehicles.data?.data ?? []).map((v) => ({ id: v.id, label: v.code, hint: `${v.plate} · ${formatNumber(v.currentKm)} km` })), [vehicles.data]);
   const save = useMutation({
+    meta: { success: 'Componente instalado e relógio de vida reiniciado' },
     mutationFn: (input: InstallComponentInput) => api.post('/components', input),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível registrar'),

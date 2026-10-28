@@ -6,6 +6,7 @@ import { api } from '@/lib/api-client';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { PageHeaderContext, type PageHeaderSpec } from './page-header.context';
+import { Toaster } from '@/components/ui/toaster';
 
 const COLLAPSE_KEY = 'tp.sidebar.collapsed';
 const DRAWER_BREAKPOINT = 1024;
@@ -124,6 +125,7 @@ export function AppShell() {
             <Outlet />
           </main>
         </div>
+        <Toaster />
       </div>
     </PageHeaderContext.Provider>
   );

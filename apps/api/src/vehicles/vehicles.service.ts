@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { OdometerStatus, Prisma, ScheduleStatus, VehicleStatus as PrismaVehicleStatus, WorkOrderStatus } from '@prisma/client';
 import { nextTrigger, packagesFor } from '../scheduling/scheduling.service';
+import { realEventLabel } from '../events/events.service';
 import {
   AVAILABLE_STATUSES,
   paginate,
@@ -273,7 +274,7 @@ export class VehiclesService {
         id: e.id,
         code: e.code,
         reportedAt: e.reportedAt.toISOString(),
-        description: e.catalogItem?.description ?? describeFailureCode(e.failureModeCode, e.subsystemCode) ?? e.reportedDescription ?? 'Ocorrência',
+        description: e.catalogItem?.description ?? (e.isImported && e.reportedDescription ? realEventLabel(e.reportedDescription) : null) ?? describeFailureCode(e.failureModeCode, e.subsystemCode) ?? e.reportedDescription ?? 'Ocorrência',
         failureCode: e.failureCode,
         status: e.status,
         isUnscheduledReturn: e.isUnscheduledReturn,

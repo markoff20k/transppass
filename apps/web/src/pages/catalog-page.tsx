@@ -194,6 +194,7 @@ function NewItemDrawer({ open, onClose, onDone }: { open: boolean; onClose: () =
   const isSafety = watch('isSafety');
 
   const mutation = useMutation({
+    meta: { success: 'Falha adicionada ao rascunho' },
     mutationFn: (input: CreateFailureCatalogItemInput) => api.post<FailureCatalogItem>('/catalog/items', input),
     onSuccess: () => {
       reset();
@@ -278,6 +279,7 @@ function CorrectiveKitDrawer({ item, kit, onClose, onDone }: { item: FailureCata
     setItems((kit?.items ?? []).map((i) => ({ materialId: i.materialId, quantity: String(i.quantity) })));
   }, [item, kit]);
   const save = useMutation({
+    meta: { success: 'Kit corretivo salvo' },
     mutationFn: (input: CreateKitInput) => api.post(`/plans/catalog-items/${item?.id}/kit`, input),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível salvar o kit'),
@@ -325,6 +327,7 @@ function NewReasonDrawer({ list, onClose, onDone }: { list: ReasonCodeList | nul
   } = useForm<CreateReasonCodeInput>({ resolver: zodResolver(createReasonCodeSchema) });
 
   const mutation = useMutation({
+    meta: { success: 'Código de motivo criado' },
     mutationFn: (input: CreateReasonCodeInput) => api.post<ReasonCode>('/catalog/reason-codes', input),
     onSuccess: () => {
       reset();
@@ -388,6 +391,7 @@ function CatalogVersions({ items, onPublished }: { items: FailureCatalogItem[]; 
   const published = useQuery({ queryKey: ['catalog', 'versions', 'published'], queryFn: () => api.get<CatalogVersion | null>('/catalog/versions/published') });
   const draft = useQuery({ queryKey: ['catalog', 'versions', 'draft'], queryFn: () => api.get<CatalogVersion>('/catalog/versions/draft') });
   const publish = useMutation({
+    meta: { success: 'Catálogo publicado — já vale na triagem e nas OS' },
     mutationFn: () => api.post(`/catalog/versions/${draft.data?.id}/publish`),
     onSuccess: () => { setError(null); onPublished(); },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível publicar'),

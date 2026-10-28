@@ -6,8 +6,9 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
+  LabelList,
   Line,
-  LineChart,
   Pie,
   PieChart,
   ReferenceLine,
@@ -84,7 +85,7 @@ export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
             width={56}
             tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))}
           />
-          {avg !== null && <ReferenceLine y={avg} />}
+          {avg !== null && <ReferenceLine y={avg} label={{ value: `média ${formatNumber(Math.round(avg))} km`, position: 'insideTopLeft', fill: 'var(--color-text-muted)', fontSize: 10 }} />}
           <Tooltip
             cursor={{ stroke: 'var(--color-border-strong)' }}
             content={({ active, payload }) => {
@@ -112,7 +113,20 @@ export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
             dot={{ r: 3, fill: 'var(--chart-1)', stroke: 'var(--color-surface)', strokeWidth: 2 }}
             activeDot={{ r: 5, fill: 'var(--chart-1)', stroke: 'var(--color-surface)', strokeWidth: 2 }}
             isAnimationActive={false}
-          />
+          >
+            <LabelList
+              dataKey="mkbf"
+              content={({ x, y, value, index }) => {
+                // Só o último mês leva o número: é o que o gestor lê de longe.
+                if (index !== rows.length - 1 || value === null || value === undefined || x === undefined || y === undefined) return null;
+                return (
+                  <text x={Number(x)} y={Number(y) - 10} textAnchor="end" className="chart__endlabel">
+                    {formatNumber(Number(value))} km
+                  </text>
+                );
+              }}
+            />
+          </Area>
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -169,36 +183,37 @@ export function AvailabilityByHourChart({
 // --- Eventos por dia -------------------------------------------------------
 
 export function EventsPerDayChart({ data }: { data: DayCount[] }) {
-  const rows = data.map((d) => {
+  // Barras = quebras do dia; linha = média móvel de 7 dias, que tira o ruído do fim de semana.
+  const rows = data.map((d, i) => {
     const dt = new Date(`${d.date}T12:00:00`);
-    return { ...d, label: `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}` };
+    const win = data.slice(Math.max(0, i - 6), i + 1);
+    const avg = Math.round((win.reduce((s, x) => s + x.count, 0) / win.length) * 10) / 10;
+    return { ...d, avg, label: `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}` };
   });
+  const peak = Math.max(0, ...rows.map((r) => r.count));
 
   return (
     <div className="chart chart--h200">
       <ResponsiveContainer>
-        <LineChart data={rows} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+        <ComposedChart data={rows} margin={{ top: 12, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
           <CartesianGrid vertical={false} />
           <XAxis dataKey="label" axisLine={false} tickLine={false} interval={6} />
           <YAxis axisLine={false} tickLine={false} width={30} allowDecimals={false} />
           <Tooltip
-            cursor={{ stroke: 'var(--color-border-strong)' }}
+            cursor={{ fill: 'var(--color-surface-hover)' }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const p = payload[0]!.payload as (typeof rows)[number];
-              return <Tip title={p.label} rows={[{ label: 'Eventos', value: String(p.count), color: 'var(--chart-3)' }]} />;
+              return <Tip title={p.label} rows={[{ label: 'Quebras', value: String(p.count), color: 'var(--chart-3)' }, { label: 'Média 7 dias', value: p.avg.toLocaleString('pt-BR'), color: 'var(--chart-1)' }]} />;
             }}
           />
-          <Line
-            type="monotone"
-            dataKey="count"
-            stroke="var(--chart-3)"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4, fill: 'var(--chart-3)', stroke: 'var(--color-surface)', strokeWidth: 2 }}
-            isAnimationActive={false}
-          />
-        </LineChart>
+          <Bar dataKey="count" radius={[3, 3, 0, 0]} isAnimationActive={false}>
+            {rows.map((r) => (
+              <Cell key={r.date} fill={r.count === peak && peak > 0 ? 'var(--chart-5)' : 'var(--chart-3)'} fillOpacity={0.75} />
+            ))}
+          </Bar>
+          <Line type="monotone" dataKey="avg" stroke="var(--chart-1)" strokeWidth={2.2} dot={false} activeDot={{ r: 4, fill: 'var(--chart-1)', stroke: 'var(--color-surface)', strokeWidth: 2 }} isAnimationActive={false} />
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

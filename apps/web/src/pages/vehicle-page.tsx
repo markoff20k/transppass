@@ -119,7 +119,7 @@ export function VehiclePage() {
       </div>
 
       <div className="vpage__row">
-        <section className="tp-card">
+        <section className="tp-card vpage__kmcard">
           <div className="tp-card__head"><div><h3>Km por dia · 30 dias</h3><span className="chart__hint">leituras de odômetro ou telemetria; dias sem leitura ficam vazios</span></div><span className="tp-muted">{formatNumber(s.kmTraveled)} km</span></div>
           <KmBars data={o.kmByDay} />
         </section>

@@ -141,3 +141,17 @@ Credenciais do mock: `admin@transppass.local` / `admin123` (demais personas em `
 ## 7. Parecer
 
 Do ponto de vista de **interface e experiência**, o MVP está completo e consistente: todas as telas do PRD existem, seguem o design kit, respondem a 390 px sem quebrar, e os bloqueios de negócio visíveis ao usuário (motivo obrigatório, placa, km, travas da preventiva) acontecem na origem. Do ponto de vista de **regra de negócio no servidor**, o parecer passa a ser **favorável**: o ciclo completo rodou contra Postgres (78/78) sem erro no log. A rodada real revelou um defeito que o mock escondia — `findOne` da OS enviava `''` como UUID ao buscar quem liberou o carro (corrigido) — e um buraco de validação no padrão de codificação (posição fora do tipo do subsistema era aceita; agora recusada no Zod compartilhado, tela e API). Pendências restantes são de definição com o cliente (flags de criticidade, SLAs, Especificação MVP v1.1), não de código.
+
+## 4h. Revisão de UI/UX (28/10/2026)
+
+Capturas de todas as telas em 1440px (claro e escuro) e 390px, antes e depois.
+
+- **Toasts**: `apps/web/src/lib/toast.ts` + `<Toaster/>` no shell; `MutationCache` global lê `meta.success` (string ou função do resultado) e mostra erro com a mensagem da API em qualquer mutação. 44 mutações receberam mensagem. Testado: "Escalonar prazos vencidos" no Estoque → toast "0 pendência(s) escalada(s)".
+- **Alinhamento da Daily**: os cinco cards tinham rótulos de uma e duas linhas e os valores desciam; rótulo numa linha (ellipsis), linhas fixas (`grid-template-rows`), "Retrabalho · 30 dias".
+- **Tabelas**: a coluna OS da lista de Eventos saía do cartão; célula "Falha" quebra (`td.is-wrap`). Eventos importados mostram o texto real da ficha (alegado → constatado) em vez do código genérico do de-para.
+- **Listas longas**: Componentes (505 linhas → 60 + mostrar mais), Preventiva (460 carros → 40), Checklists de hoje (298 → 30), Ferramentas (rolagem no cartão). Página de 30 mil pixels virou página de uma tela.
+- **Indicadores**: SLA de triagem e Resolução lado a lado; Alinhamento origem × diagnóstico virou cartão inteiro com estado vazio honesto quando não há constatação; aderência sem paradas vencidas diz isso em vez de "0 de 0".
+- **Gráficos**: "Quebras por dia" (só retornos não programados) com barras, pico destacado e média móvel de 7 dias; MKBF por mês com linha de média rotulada e valor do mês corrente em destaque.
+- **Continuidade dos dados**: o seed de demonstração calcula o ritmo real (21 quebras/dia em 61 dias) e gera o mês corrente no mesmo ritmo; o MKBF do mês corrente caiu de 8.791 km (salto artificial) para 3.842 km, coerente com agosto (3.785) e setembro (3.888).
+- **Página do carro**: o gráfico de km ocupa a altura do cartão ao lado da ficha (antes sobrava meio cartão vazio). **Plantão**: "Pedir reposição" virou botão secundário visível. **Celular**: frota em duas colunas no Dashboard.
+- QA: `QA_API=1 node tools/qa-smoke.mjs` 87/87 depois das mudanças.

@@ -230,6 +230,7 @@ function VehicleDrawer({ mode, onClose, onSaved }: { mode: Mode; onClose: () => 
   }, [mode, reset]);
 
   const save = useMutation({
+    meta: { success: 'Carro salvo' },
     mutationFn: (input: CreateVehicleInput) =>
       editing
         ? api.patch<Vehicle>(`/vehicles/${editing.id}`, input)
@@ -239,6 +240,7 @@ function VehicleDrawer({ mode, onClose, onSaved }: { mode: Mode; onClose: () => 
   });
 
   const deactivate = useMutation({
+    meta: { success: 'Cadastro do carro atualizado' },
     mutationFn: () => api.patch<Vehicle>(`/vehicles/${editing?.id}`, { isActive: !editing?.isActive }),
     onSuccess: onSaved,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao alterar o carro'),

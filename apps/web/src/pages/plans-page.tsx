@@ -197,6 +197,7 @@ function packageWindow(pkg: { intervalKm: number; offsetKm: number; toleranceKm:
 
 function PlanToggle({ plan, onDone }: { plan: PlanTree; onDone: () => void }) {
   const mutation = useMutation({
+    meta: { success: 'Plano atualizado' },
     mutationFn: () => api.patch(`/plans/${plan.id}`, { isActive: !plan.isActive }),
     onSuccess: onDone,
   });
@@ -219,6 +220,7 @@ function PlanDrawer({ open, onClose, onDone }: { open: boolean; onClose: () => v
   const [form, set] = useFormState({ code: '', name: '', technology: VehicleTechnology.DIESEL as VehicleTechnology, controlledDocument: '', manufacturer: '', vehicleModel: '' }, [open]);
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
+    meta: { success: 'Plano criado' },
     mutationFn: (input: CreatePlanInput) => api.post('/plans', input),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível criar o plano'),
@@ -257,6 +259,7 @@ function PackageDrawer({ plan, onClose, onDone }: { plan: PlanTree | null; onClo
   const [form, set] = useFormState({ code: '', name: '', intervalKm: '', toleranceKm: '1000', toleranceBelowKm: '', offsetKm: '0', periodDays: '' }, [plan?.id]);
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
+    meta: { success: 'Pacote criado' },
     mutationFn: (input: CreatePackageInput) => api.post(`/plans/${plan?.id}/packages`, input),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível criar o pacote'),
@@ -299,11 +302,13 @@ function TaskDrawer({ target, onClose, onDone }: { target: { pkg: PlanPackageTre
   const [error, setError] = useState<string | null>(null);
   const specialties = useQuery({ queryKey: ['catalog', 'specialties'], queryFn: () => api.get<{ id: string; name: string }[]>('/catalog/specialties') });
   const save = useMutation({
+    meta: { success: 'Tarefa salva' },
     mutationFn: (input: CreatePlanTaskInput) => (task ? api.patch(`/plans/tasks/${task.id}`, input) : api.post(`/plans/packages/${target?.pkg.id}/tasks`, input)),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível salvar a tarefa'),
   });
   const remove = useMutation({
+    meta: { success: 'Tarefa removida' },
     mutationFn: () => api.delete(`/plans/tasks/${task?.id}`),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível excluir'),
@@ -388,6 +393,7 @@ function KitDrawer({ target, onClose, onDone }: { target: { pkg: PlanPackageTree
   const materials = useQuery({ queryKey: ['materials', 'catalog'], queryFn: () => api.get<MaterialOption[]>('/materials/catalog') });
   const byId = useMemo(() => new Map((materials.data ?? []).map((m) => [m.id, m])), [materials.data]);
   const save = useMutation({
+    meta: { success: 'Kit salvo' },
     mutationFn: (input: CreateKitInput) => (kit ? api.patch(`/plans/kits/${kit.id}`, { name: input.name, items: input.items }) : api.post(`/plans/packages/${target?.pkg.id}/kits`, input)),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível salvar o kit'),

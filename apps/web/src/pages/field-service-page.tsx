@@ -168,6 +168,7 @@ function FieldCard({
   const elapsed = minutesSince(field?.dispatchedAt ?? event.reportedAt, now);
 
   const step = useMutation({
+    meta: { success: 'Etapa do socorro apontada' },
     mutationFn: (s: FieldStep) => api.post(`/events/${event.id}/field/step`, { step: s }),
     onSuccess: () => {
       setError(null);
@@ -332,6 +333,7 @@ function OutcomeDrawer({
   });
 
   const mutation = useMutation({
+    meta: { success: 'Desfecho do socorro registrado' },
     mutationFn: (o: FieldOutcome) =>
       api.post(`/events/${event.id}/field/outcome`, {
         outcome: o,
@@ -465,6 +467,7 @@ function DispatchDrawer({ event, onClose, onDone }: { event: FailureEventSummary
   const [code, setCode] = useState(event.fieldService?.supportVehicleCode ?? '');
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
+    meta: { success: 'Equipe despachada' },
     mutationFn: () => api.post(`/events/${event.id}/field/dispatch`, { supportVehicleCode: code.trim() || undefined }),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao registrar o despacho'),

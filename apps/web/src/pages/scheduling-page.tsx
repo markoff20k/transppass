@@ -20,6 +20,7 @@ import {
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate, formatDateTime, formatNumber } from '@/lib/format';
 import { useAuth } from '@/features/auth/use-auth';
+import { ShowMore } from '@/components/ui/show-more';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
@@ -62,6 +63,7 @@ export function SchedulingPage() {
   };
 
   const rows = timeline.data ?? [];
+  const [limit, setLimit] = useState(40);
   const overdue = rows.filter((r) => r.alert === 'overdue').length;
   const dueSoon = rows.filter((r) => r.alert === 'due-soon').length;
   const scheduled = (schedules.data ?? []).length;
@@ -97,7 +99,7 @@ export function SchedulingPage() {
         {timeline.isPending ? (
           <BrandLoader size={44} label="Carregando" />
         ) : (
-          <div className="tp-table-wrap">
+          <><div className="tp-table-wrap">
             <table className="tp-table">
               <thead>
                 <tr>
@@ -113,7 +115,7 @@ export function SchedulingPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {rows.slice(0, limit).map((r) => (
                   <tr
                     key={r.vehicleId}
                     className={`is-clickable${r.alert === 'overdue' ? ' is-danger' : r.alert === 'due-soon' ? ' is-warning' : ''}`}
@@ -154,6 +156,7 @@ export function SchedulingPage() {
               </tbody>
             </table>
           </div>
+            <ShowMore shown={Math.min(limit, rows.length)} total={rows.length} step={40} label="carros" onMore={() => setLimit((l) => l + 40)} onAll={() => setLimit(rows.length)} /></>
         )}
       </section>
 
@@ -292,6 +295,7 @@ function CreateScheduleDrawer({ open, row, onClose, onCreated }: { open: boolean
   const pkg = pkgs.find((p) => p.id === packageId);
 
   const mutation = useMutation({
+    meta: { success: 'Parada preventiva programada' },
     mutationFn: (body: CreateScheduleInput) => api.post<ScheduleDetail>('/scheduling', body),
     onSuccess: (d) => {
       setError(null);
@@ -417,6 +421,7 @@ function ScheduleDrawer({ id, onClose, onChanged }: { id: string | null; onClose
   const specialties = useQuery({ queryKey: ['specialties'], queryFn: () => api.get<{ id: string; name: string }[]>('/catalog/specialties'), enabled: mode === 'team' });
 
   const call = useMutation({
+    meta: { success: 'Parada atualizada' },
     mutationFn: ({ path, body }: { path: string; body?: unknown }) => api.post<ScheduleDetail>(`/scheduling/${id}/${path}`, body),
     onSuccess: () => {
       setMode('view');

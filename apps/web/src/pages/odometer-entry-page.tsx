@@ -60,6 +60,7 @@ export function OdometerEntryPage() {
   const pending = vehicles.length - entries.length;
 
   const mutation = useMutation({
+    meta: { success: (_d: unknown, v: unknown) => `${(v as { entries?: unknown[] } | undefined)?.entries?.length ?? 0} leitura(s) de km lançada(s)` },
     mutationFn: (payload: { entries: { vehicleId: string; rawKm: number; readAt: string }[] }) =>
       api.post<OdometerBatchResult>('/odometer/batch', payload),
     onSuccess: (res) => {

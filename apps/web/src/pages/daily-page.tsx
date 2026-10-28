@@ -64,7 +64,7 @@ export function DailyPage() {
           <div className="daily-tile__row"><span><b>{d.workOrders.inQueue}</b> na fila</span><span><b>{d.workOrders.waitingPart}</b> aguardando peça</span><span><b>{d.staleOdometer}</b> odômetro atrasado</span></div>
         </div>
         <div className={`daily-tile daily-tile--${reworkTone}`}>
-          <span className="daily-tile__label">Taxa de retrabalho · 30 dias</span>
+          <span className="daily-tile__label">Retrabalho · 30 dias</span>
           <span className="daily-tile__value">{pct(d.rework.rateLast30)}</span>
           <span className="daily-tile__delta">{d.rework.rejectionsLast30} reprovada(s) em {d.rework.inspectionsLast30} inspeções</span>
           <div className="daily-tile__row"><span>sub-OS reaberta pela inspeção (RF-20)</span></div>

@@ -159,6 +159,7 @@ function TriageDrawer({
   });
 
   const mutation = useMutation({
+    meta: { success: 'Triagem decidida' },
     mutationFn: (body: TriageInput) => api.post<FailureEventSummary>(`/events/${event?.id}/triage`, body),
     onSuccess: () => {
       setError(null);

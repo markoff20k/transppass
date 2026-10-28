@@ -158,6 +158,7 @@ function AuditDrawer({ target, onClose, onDone }: { target: { kind: AuditKind; a
   const total = criteria.reduce((s, c) => s + get(c.key).score, 0);
   const pct = Math.round((total / (criteria.length * max)) * 100);
   const save = useMutation({
+    meta: { success: 'Auditoria registrada' },
     mutationFn: (input: CreateAuditInput) => api.post('/audits', input),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível registrar'),

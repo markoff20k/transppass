@@ -185,3 +185,15 @@
     justify-items: center;
   }
 }
+
+/* Rótulo do último ponto: o número que se lê de longe. */
+.chart__endlabel {
+  fill: var(--color-text);
+  font-family: var(--tp-font-display);
+  font-size: 13px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--color-surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}

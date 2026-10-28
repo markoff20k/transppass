@@ -45,6 +45,7 @@ export function PartsLabPage() {
   const list = useQuery({ queryKey: ['quality', 'inspections'], queryFn: () => api.get<PartInspectionRow[]>('/quality/part-inspections') });
   const invalidate = () => { void queryClient.invalidateQueries({ queryKey: ['quality'] }); void queryClient.invalidateQueries({ queryKey: ['suppliers'] }); };
   const claim = useMutation({
+    meta: { success: 'Garantia atualizada' },
     mutationFn: ({ id, claimStatus }: { id: string; claimStatus: WarrantyClaimStatus }) => api.patch(`/quality/part-inspections/${id}`, { claimStatus }),
     onSuccess: invalidate,
   });
@@ -156,6 +157,7 @@ function InspectionDrawer({ open, onClose, onDone }: { open: boolean; onClose: (
   const materialOptions = useMemo(() => (materials.data ?? []).map((m) => ({ id: m.id, label: m.description, hint: `${m.code}${m.manufacturerRef ? ` · ${m.manufacturerRef}` : ''}` })), [materials.data]);
   const vehicleOptions = useMemo(() => (vehicles.data?.data ?? []).map((v) => ({ id: v.id, label: v.code, hint: v.plate })), [vehicles.data]);
   const save = useMutation({
+    meta: { success: 'Inspeção registrada' },
     mutationFn: (input: CreatePartInspectionInput) => api.post('/quality/part-inspections', input),
     onSuccess: () => { setMaterialId(''); setSupplierId(''); setVehicleId(''); setSerialNumber(''); setKmInService(''); setNote(''); setError(null); onDone(); },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível registrar'),

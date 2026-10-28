@@ -149,6 +149,7 @@ export function WorkOrderPage() {
   };
 
   const action = useMutation({
+    meta: { success: (_d: unknown, v: unknown) => String(v).endsWith('/release') ? 'Carro liberado para a linha' : String(v).endsWith('/cleaning/start') ? 'Limpeza iniciada' : String(v).endsWith('/cleaning/finish') ? 'Limpeza concluída' : 'OS atualizada' },
     mutationFn: (path: string) => api.post<WorkOrderDetail>(`/work-orders/${path}`),
     onSuccess: () => {
       setError(null);
@@ -503,6 +504,7 @@ function TaskCard({
   const [error, setError] = useState<string | null>(null);
 
   const start = useMutation({
+    meta: { success: 'Tarefa iniciada' },
     mutationFn: () => api.post(`/work-orders/tasks/${task.id}/start`),
     onSuccess: () => {
       setError(null);
@@ -707,6 +709,7 @@ function FinishTaskDrawer({ task, onClose, onDone }: { task: TaskRow | null; onC
   });
 
   const mutation = useMutation({
+    meta: { success: 'Tarefa concluída — vai para a inspeção' },
     mutationFn: () => api.post(`/work-orders/tasks/${task?.id}/finish`, { confirmedCatalogItemId: causeId || undefined, ...toCodeFields(code, 'confirmed') }),
     onSuccess: () => {
       setCauseId('');
@@ -866,6 +869,7 @@ function EstimateDrawer({ open, workOrder, onClose, onDone }: { open: boolean; w
   const [supplierName, setSupplierName] = useState(workOrder.supplierName ?? '');
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
+    meta: { success: 'Previsão da OS atualizada' },
     mutationFn: () => api.patch(`/work-orders/${workOrder.id}/estimate`, { estimatedCompletionAt: new Date(value).toISOString(), execution, supplierName: execution === WorkOrderExecution.THIRD_PARTY ? supplierName.trim() || null : null }),
     onSuccess: () => { setError(null); onDone(); },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao ajustar a previsão'),
@@ -917,6 +921,7 @@ function DamageDrawer({ open, workOrderId, onClose, onDone }: { open: boolean; w
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
+    meta: { success: 'Avaria registrada na limpeza' },
     mutationFn: () => api.post(`/work-orders/${workOrderId}/cleaning/damage`, { description: description.trim() }),
     onSuccess: () => { setError(null); setDescription(''); onDone(); },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao reportar a avaria'),

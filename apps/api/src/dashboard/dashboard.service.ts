@@ -234,8 +234,9 @@ export class DashboardService {
     const start = new Date(now.getTime() - 29 * DAY_MS);
     start.setHours(0, 0, 0, 0);
 
+    // Só o que tirou carro da rua: é a série que explica o MKBF, não o volume de registros.
     const rows = await this.prisma.failureEvent.findMany({
-      where: { reportedAt: { gte: start } },
+      where: { reportedAt: { gte: start }, isUnscheduledReturn: true },
       select: { reportedAt: true },
     });
 

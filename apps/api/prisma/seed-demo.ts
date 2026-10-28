@@ -450,12 +450,22 @@ async function main() {
   const realEvents = real ? await prisma.failureEvent.aggregate({ where: { isImported: true }, _min: { reportedAt: true }, _max: { reportedAt: true } }) : null;
   const realFrom = realEvents?._min.reportedAt ? new Date(realEvents._min.reportedAt).setHours(0, 0, 0, 0) : null;
   const realTo = realEvents?._max.reportedAt ? new Date(realEvents._max.reportedAt).setHours(23, 59, 59, 999) : null;
+  // Fora da janela real, a demonstração segue o ritmo real de quebras (fichas A/S/T por dia) para o MKBF
+  // não dar um salto artificial entre o mês real e o mês simulado. Sem dados reais, ~15 falhas/dia (MKBF ~5.500 km).
+  let perDay = 15;
+  if (realFrom !== null && realTo !== null) {
+    const returns = await prisma.failureEvent.count({ where: { isImported: true, isUnscheduledReturn: true } });
+    const realDays = Math.max(1, Math.round((realTo - realFrom) / D));
+    // 'deferred' não conta como retorno (só falha sem flag de segurança, 38% delas): o total por dia é maior que o ritmo de quebras.
+    const deferrable = CATALOG_CODES.filter((c) => !cat(c).isSafety).length / CATALOG_CODES.length;
+    perDay = Math.round((returns / realDays) / (1 - 0.38 * deferrable));
+    console.log(`  ritmo real: ${(returns / realDays).toFixed(1)} quebras/dia em ${realDays} dias → ${perDay} eventos/dia na demonstração`);
+  }
   for (let day = 1; day <= DAYS; day += 1) {
-    // ~15 falhas/dia numa frota de 453 (MKBF perto de 5.500 km), menos no fim de semana.
     const date = new Date(NOW - day * D);
     if (realFrom !== null && realTo !== null && date.getTime() >= realFrom && date.getTime() <= realTo) continue;
     const weekend = date.getDay() === 0 || date.getDay() === 6;
-    const n = Math.round((weekend ? 9 : 15) * (0.7 + rnd('events', day) * 0.6));
+    const n = Math.round(perDay * (weekend ? 0.72 : 1.08) * (0.8 + rnd('events', day) * 0.4));
     for (let i = 0; i < n; i += 1) {
       const k = rnd('kind', day, i);
       const catalogCode = pick(CATALOG_CODES, 'cat', day, i);

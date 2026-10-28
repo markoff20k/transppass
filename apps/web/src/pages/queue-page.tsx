@@ -176,6 +176,7 @@ function QueueDrawer({
   });
 
   const mutation = useMutation({
+    meta: { success: 'Fila reordenada — motivo registrado' },
     mutationFn: (body: ReorderQueueInput) => api.post<QueueEntryRow[]>('/queue/reorder', body),
     onSuccess: () => {
       setMoving(false);

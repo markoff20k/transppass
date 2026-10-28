@@ -607,7 +607,8 @@ function toSummary(event: EventWithRelations, rules: FailureCodeRule[]): Failure
     subsystemCode: event.subsystemCode,
     position: event.position,
     failureCode: event.failureCode,
-    failureLabel: describeFailureCode(event.failureModeCode, event.subsystemCode, event.position),
+    // Ocorrência real importada: o texto da ficha (alegado → constatado) diz mais que o código genérico do de-para.
+    failureLabel: event.isImported && event.reportedDescription ? realEventLabel(event.reportedDescription) : describeFailureCode(event.failureModeCode, event.subsystemCode, event.position),
     flags,
     reportedDescription: event.reportedDescription,
     origin: event.origin,
@@ -641,4 +642,12 @@ function toSummary(event: EventWithRelations, rules: FailureCodeRule[]): Failure
     workOrderId: event.workOrder?.id ?? null,
     workOrderCode: event.workOrder?.code ?? null,
   };
+}
+
+/** Rótulo curto de uma ocorrência importada: o que foi alegado e, quando a oficina constatou, o que constatou. */
+export function realEventLabel(text: string): string {
+  const parts = text.split(' · ');
+  const found = parts.find((p) => p.startsWith('constatado: '));
+  const first = parts[0]?.startsWith('CCO: ') ? parts[0].slice(5) : parts[0];
+  return [first, found ? `→ ${found.slice('constatado: '.length)}` : null].filter(Boolean).join(' ').slice(0, 90);
 }

@@ -152,7 +152,10 @@ pool = collections.defaultdict(list)
 for e in cco:
     if e['group'] in ('SOS', 'RAM', 'TRO'): pool[(e['code'], e['at'][:10])].append(e)
 used = set(); events = []
-fichas_ast = sorted((x for x in records.values() if x['kind'] in PAIR), key=lambda x: x['openedAt'])
+# Só a abrangência combinada (agosto e setembro): o VBM0503 traz algumas fichas de outubro, que ficariam
+# sozinhas num mês sem km real e distorceriam o MKBF do mês corrente.
+fichas_ast = sorted((x for x in records.values() if x['kind'] in PAIR and x['openedAt'][:7] in WINDOW), key=lambda x: x['openedAt'])
+skipped_window = sum(1 for x in records.values() if x['kind'] in PAIR and x['openedAt'][:7] not in WINDOW)
 for f in fichas_ast:
     cands = [e for e in pool.get((f['code'], f['openedAt'][:10]), []) if e['id'] not in used]
     match = next((e for e in cands if e['group'] == PAIR[f['kind']]), None) or (cands[0] if cands else None)
@@ -169,10 +172,10 @@ for f in fichas_ast:
     })
 matched = sum(1 for e in events if e['group'])
 for e in cco:
-    if e['id'] in used: continue
+    if e['id'] in used or e['at'][:7] not in WINDOW: continue
     events.append({**e, 'id': 'CCO-' + e['id'], 'source': 'CCO', 'fichaKind': None, 'externalOs': None, 'unscheduledReturn': False})
 events.sort(key=lambda e: e['at'])
-print('eventos:', len(events), '· quebras (fichas A/S/T)', len(fichas_ast), 'das quais com registro no CCO', matched, '· CCO sem ficha', sum(1 for e in events if e['source'] == 'CCO'), '(SOS/RAM/TRO sem ficha:', sum(1 for e in events if e['source'] == 'CCO' and e['group'] in ('SOS', 'RAM', 'TRO')), ')')
+print('eventos:', len(events), '· fichas A/S/T fora de ago/set ignoradas', skipped_window, '· quebras (fichas A/S/T)', len(fichas_ast), 'das quais com registro no CCO', matched, '· CCO sem ficha', sum(1 for e in events if e['source'] == 'CCO'), '(SOS/RAM/TRO sem ficha:', sum(1 for e in events if e['source'] == 'CCO' and e['group'] in ('SOS', 'RAM', 'TRO')), ')')
 km = json.load(open(OUT + 'km-real.json', encoding='utf-8'))
 for m in WINDOW:
     k = sum(v for c in km for d, v in km[c].items() if d.startswith(m) and c in operacao)

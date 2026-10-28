@@ -128,7 +128,7 @@ export function EventsPage() {
                       <span className="tp-muted" style={{ marginLeft: 6 }}>{event.vehiclePlate}</span>
                     </td>
                     <td>{event.failureCode ? <code className="fcode__inline">{event.failureCode}</code> : <span className="tp-muted">—</span>}</td>
-                    <td>
+                    <td className="is-wrap">
                       {event.failureLabel ?? event.catalog?.description ?? event.reportedDescription ?? '—'}
                       {event.flags.isSafety && <span className="tp-badge tp-badge--danger" style={{ marginLeft: 6 }}>segurança</span>}
                     </td>
@@ -213,6 +213,7 @@ function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: 
   };
 
   const mutation = useMutation({
+    meta: { success: (d: unknown) => `Evento ${(d as { code?: string } | undefined)?.code ?? ''} registrado — segue para a triagem` },
     mutationFn: (body: CreateEventInput) => api.post<FailureEventSummary>('/events', body),
     onSuccess: () => {
       setVehicleId('');

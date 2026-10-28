@@ -32,6 +32,7 @@ export function StockPage() {
   const [selected, setSelected] = useState<MaterialRequestRow | null>(null);
 
   const escalate = useMutation({
+    meta: { success: (d: unknown) => `${(d as { escalated?: number } | undefined)?.escalated ?? 0} pendência(s) escalada(s)` },
     mutationFn: () => api.post<{ escalated: number }>('/materials/escalate-overdue'),
     onSuccess: (r) => {
       setNotice(
@@ -335,6 +336,7 @@ function ToolDrawer({ tool, onClose, onChanged }: { tool: ToolRow | null; onClos
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
+    meta: { success: 'Movimentação da ferramenta registrada' },
     mutationFn: () => (tool?.loanedToName ? api.post(`/materials/tools/${tool.id}/return`) : api.post('/materials/tools/loan', { toolId: tool?.id })),
     onSuccess: () => { setError(null); onChanged(); },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha na operação'),
@@ -388,6 +390,7 @@ function PoolDrawer({ component, onClose, onChanged }: { component: PoolComponen
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
+    meta: { success: 'Componente movimentado no pool' },
     mutationFn: () => api.post(`/materials/pool/${component?.id}/move`, { toStatus, note: note || undefined }),
     onSuccess: () => { setError(null); setToStatus(null); setNote(''); onChanged(); },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao movimentar'),
@@ -456,6 +459,7 @@ function RequestDrawer({
   });
 
   const call = useMutation({
+    meta: { success: 'Solicitação atualizada' },
     mutationFn: ({ path, body }: { path: string; body?: unknown }) =>
       api.post(`/materials/requests/${request?.id}/${path}`, body),
     onSuccess: () => {

@@ -96,11 +96,13 @@ function SupplierDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => 
     setForm(editing ? { name: editing.name, cnpj: editing.cnpj ?? '', contact: editing.contact ?? '', claimSlaDays: editing.claimSlaDays === null ? '' : String(editing.claimSlaDays) } : EMPTY);
   }, [editing, mode.kind]);
   const save = useMutation({
+    meta: { success: 'Fornecedor salvo' },
     mutationFn: (input: CreateSupplierInput) => (editing ? api.patch(`/suppliers/${editing.id}`, input) : api.post('/suppliers', input)),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível salvar'),
   });
   const toggle = useMutation({
+    meta: { success: 'Fornecedor atualizado' },
     mutationFn: () => api.patch(`/suppliers/${editing?.id}`, { isActive: !editing?.isActive }),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível salvar'),

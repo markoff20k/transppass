@@ -13,6 +13,7 @@ import {
   type Vehicle,
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
+import { ShowMore } from '@/components/ui/show-more';
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { SearchSelect } from '@/components/ui/search-select';
@@ -46,6 +47,7 @@ export function DailyCheckPage() {
   };
 
   const s = summary.data;
+  const [limit, setLimit] = useState(30);
   const pct = s && s.fleet ? Math.round((s.checked / s.fleet) * 100) : 0;
   const vehicleOptions = useMemo(() => (vehicles.data?.data ?? []).map((v) => ({ id: v.id, label: v.code, hint: `${v.plate} · ${VEHICLE_TECHNOLOGY_LABELS[v.technology]}` })), [vehicles.data]);
   const driverOptions = useMemo(() => (operators.data ?? []).filter((o) => o.function === 'MOTORISTA').map((o) => ({ id: o.id, label: o.name, hint: o.registration })), [operators.data]);
@@ -97,13 +99,13 @@ export function DailyCheckPage() {
             ) : (today.data ?? []).length === 0 ? (
               <div className="tp-table__empty">Nenhum checklist hoje ainda.</div>
             ) : (
-              <div className="tp-table-wrap">
+              <><div className="tp-table-wrap">
                 <table className="tp-table tp-table--compact">
                   <thead>
                     <tr><th>Carro</th><th>Hora</th><th>Resultado</th><th>Itens reprovados</th><th>Quem</th></tr>
                   </thead>
                   <tbody>
-                    {(today.data ?? []).map((c) => (
+                    {(today.data ?? []).slice(0, limit).map((c) => (
                       <tr key={c.id} className={c.result === 'NOK' ? 'is-danger' : undefined}>
                         <td className="is-strong">{c.vehicleCode} <span className="tp-muted tp-mono">{c.vehiclePlate}</span></td>
                         <td className="tp-muted">{formatDateTime(c.checkedAt).slice(-5)}</td>
@@ -115,6 +117,7 @@ export function DailyCheckPage() {
                   </tbody>
                 </table>
               </div>
+                <ShowMore shown={Math.min(limit, (today.data ?? []).length)} total={(today.data ?? []).length} step={30} label="checklists" onMore={() => setLimit((l) => l + 30)} onAll={() => setLimit((today.data ?? []).length)} /></>
             )}
           </section>
         </div>
@@ -138,6 +141,7 @@ function CheckForm({ vehicleOptions, vehicles, driverOptions, onDone }: { vehicl
   const nok = items.filter((i) => !get(i.key).ok);
 
   const save = useMutation({
+    meta: { success: (row: unknown) => (row as { result?: string } | undefined)?.result === 'NOK' ? 'Checklist reprovado — evento aberto para a triagem' : 'Checklist aprovado — carro liberado' },
     mutationFn: () =>
       api.post<DailyCheckRow>('/daily-checks', {
         vehicleId,
@@ -234,6 +238,7 @@ function AnomalyForm({ vehicleOptions, driverOptions, onDone }: { vehicleOptions
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const save = useMutation({
+    meta: { success: 'Evento registrado' },
     mutationFn: () => api.post<{ code: string }>('/events', { vehicleId, operatorId: operatorId || undefined, origin: EventOrigin.OPERATOR, ...toCodeFields(code), reportedDescription: description.trim() || undefined }),
     onSuccess: (ev) => { setDone(ev.code); setError(null); setVehicleId(''); setOperatorId(''); setCode(EMPTY_FAILURE_CODE); setDescription(''); onDone(); },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao registrar'),
