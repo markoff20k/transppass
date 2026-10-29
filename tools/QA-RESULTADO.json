@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-10-29T02:28:17.375Z",
+  "ranAt": "2026-10-29T12:59:33.861Z",
   "base": "http://localhost:5173",
   "passed": 90,
   "failed": 0,
@@ -110,7 +110,7 @@
       "id": "DASH-06",
       "name": "Legenda das famílias de estado filtra a frota e volta ao todo",
       "ok": true,
-      "detail": "34 → 13 (esperado 13) → 34"
+      "detail": "33 → 12 (esperado 12) → 33"
     },
     {
       "id": "DASH-07",
@@ -329,19 +329,19 @@
       "detail": ""
     },
     {
-      "id": "DASH-01",
+      "id": "CONS-02",
       "name": "Cartão \"Na fila\" = carros aguardando manutenção no fluxo",
       "ok": true,
       "detail": ""
     },
     {
-      "id": "DASH-02",
+      "id": "CONS-03",
       "name": "Cartão \"na oficina\" = oficina + peça + liberação do fluxo",
       "ok": true,
       "detail": ""
     },
     {
-      "id": "DASH-03",
+      "id": "CONS-04",
       "name": "Página Fila lista os mesmos carros que o fluxo conta na fila",
       "ok": true,
       "detail": ""

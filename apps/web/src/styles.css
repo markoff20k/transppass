@@ -2376,22 +2376,7 @@ small.muted {
   gap: var(--tp-space-3);
 }
 
-.fleet-grid__more {
-  grid-column: 1 / -1;
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  padding: var(--tp-space-3);
-  border: var(--tp-border-thin) dashed var(--color-border-strong);
-  border-radius: var(--tp-radius-md);
-  background: transparent;
-  color: var(--color-brand);
-  font: inherit;
-  font-weight: var(--tp-weight-semibold);
-  cursor: pointer;
-}
-.fleet-grid__more small { font-weight: 400; color: var(--color-text-muted); font-size: var(--tp-text-xs); }
-.fleet-grid__more:hover { background: var(--color-surface-sunken); }
+.fleet-grid__pager { margin-top: var(--tp-space-2); }
 
 .fleet-grid[data-focus='running'] .fleet-card:not(.fleet-card--running),
 .fleet-grid[data-focus='waiting'] .fleet-card:not(.fleet-card--waiting),
@@ -2400,24 +2385,19 @@ small.muted {
   opacity: 0.28;
 }
 
+/*
+ * O card é um palco 3D: `.fleet-card` dá a perspectiva, `.fleet-card__inner`
+ * gira, e as duas faces ocupam a mesma célula da grade (a altura é a da face
+ * mais alta, sem posicionamento absoluto). O verso nasce virado em 180°.
+ */
 .fleet-card {
   --fleet-color: var(--color-border-strong);
+  --flip-duration: calc(var(--tp-duration-slow) * 2.2); /* 616ms; zero em reduced motion */
   position: relative;
-  display: grid;
-  gap: var(--tp-space-2);
-  padding: var(--tp-space-3) var(--tp-space-3) 0;
-  border: var(--tp-border-thin) solid var(--color-border);
-  border-left: 3px solid var(--fleet-color);
-  border-radius: var(--tp-radius-md);
-  background: var(--color-surface);
-  color: var(--color-text);
   min-width: 0;
-  overflow: hidden;
-  transition:
-    opacity var(--tp-duration-normal) var(--tp-ease),
-    border-color var(--tp-duration-fast),
-    transform var(--tp-duration-fast) var(--tp-ease),
-    box-shadow var(--tp-duration-fast);
+  border-radius: var(--tp-radius-lg);
+  perspective: 1600px;
+  transition: opacity var(--tp-duration-normal) var(--tp-ease);
 }
 
 .fleet-card--running { --fleet-color: var(--color-state-running); }
@@ -2425,14 +2405,39 @@ small.muted {
 .fleet-card--working { --fleet-color: var(--color-state-working); }
 .fleet-card--stopped { --fleet-color: var(--color-state-stopped); }
 
-.fleet-card:hover {
-  border-color: var(--color-border-strong);
-  border-left-color: var(--fleet-color);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-card);
+.fleet-card__inner {
+  position: relative;
+  display: grid;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform var(--flip-duration) cubic-bezier(0.45, 0.05, 0.15, 1);
 }
+.fleet-card.is-flipped .fleet-card__inner { transform: rotateY(180deg); }
+.fleet-card.is-moving, .fleet-card.is-flipped, .fleet-card:hover { z-index: 2; }
 
-.fleet-card.is-stale { border-color: var(--color-warning-border); border-left-color: var(--fleet-color); }
+.fleet-card__face {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-space-2);
+  padding: var(--tp-space-3) var(--tp-space-3) 0;
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  min-width: 0;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition:
+    border-color var(--tp-duration-fast),
+    box-shadow var(--tp-duration-normal) var(--tp-ease),
+    transform var(--tp-duration-fast) var(--tp-ease);
+}
+.fleet-card__face--back { transform: rotateY(180deg); }
+
+.fleet-card:hover .fleet-card__face { border-color: var(--color-border-strong); }
+.fleet-card.is-stale .fleet-card__face--front { border-color: var(--color-warning-border); }
 
 .fleet-card__head {
   display: flex;
@@ -2514,7 +2519,7 @@ small.muted {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: var(--tp-space-1) calc(-1 * var(--tp-space-3)) 0;
+  margin: auto calc(-1 * var(--tp-space-3)) 0;
   padding: 7px var(--tp-space-3);
   border-top: var(--tp-border-thin) solid var(--color-border-subtle);
   background: var(--color-surface-sunken);
@@ -3582,18 +3587,93 @@ small.muted {
 
 /* --- Frota como produto: cards com render, chip de estado e preventiva ---------- */
 .fleet-grid { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: var(--tp-space-4); }
-.fleet-card {
-  border-left: var(--tp-border-thin) solid var(--color-border);
+.fleet-card__face {
   border-radius: var(--tp-radius-lg);
   padding: var(--tp-space-4) var(--tp-space-4) 0;
-  gap: var(--tp-space-2);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
 }
-.fleet-card:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -18px rgb(0 0 0 / 0.35); border-color: var(--color-border-strong); }
-.fleet-card.is-stale { border-color: var(--color-warning-border); }
+.fleet-card:hover .fleet-card__face { box-shadow: 0 14px 30px -18px rgb(0 0 0 / 0.35); }
+.fleet-card:hover:not(.is-flipped) .fleet-card__inner { transform: translateY(-2px); }
+/* Enquanto gira, o card sai do plano: sombra funda e por cima dos vizinhos. */
+.fleet-card.is-moving .fleet-card__face { box-shadow: 0 32px 56px -28px rgb(0 0 0 / 0.5); }
 .fleet-card__link { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
 .fleet-card__link:focus-visible { outline: 2px solid var(--color-brand); outline-offset: -2px; }
-.fleet-card > *:not(.fleet-card__link) { position: relative; }
+.fleet-card__face > *:not(.fleet-card__link) { position: relative; }
+
+/* Botão que vira o card: discreto na frente, ganha a cor da marca no hover */
+.fleet-card__flip {
+  display: inline-grid; place-items: center; flex-shrink: 0;
+  width: 28px; height: 28px; min-height: 0; padding: 0; margin: -2px -4px 0 0;
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  position: relative; z-index: 2;
+  transition: color var(--tp-duration-fast), border-color var(--tp-duration-fast), background var(--tp-duration-fast), transform var(--tp-duration-fast) var(--tp-ease);
+}
+.fleet-card__flip:hover { color: var(--color-brand); border-color: var(--color-brand); background: var(--color-brand-soft); transform: scale(1.06); }
+.fleet-card__flip:active { transform: scale(0.96); }
+.fleet-card__flip:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.fleet-card__face--back .fleet-card__flip:hover { color: var(--color-text); border-color: var(--color-border-strong); background: var(--color-surface-sunken); }
+
+/* Verso: dossiê de manutenção, tingido de leve pela família do carro */
+.fleet-card__face--back {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fleet-color) 10%, var(--color-surface)) 0, var(--color-surface) 46%);
+}
+.fleet-back__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--tp-space-2); }
+.fleet-back__eyebrow {
+  font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--fleet-color);
+}
+.fleet-back__label {
+  display: block;
+  font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.fleet-back__muted { font-size: var(--tp-text-xs); color: var(--color-text-secondary); }
+.fleet-back__row { display: flex; align-items: center; gap: var(--tp-space-2); flex-wrap: wrap; }
+.fleet-back__os {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-family: var(--tp-font-mono); font-size: var(--tp-text-sm); font-weight: var(--tp-weight-semibold);
+  color: var(--color-text); text-decoration: none; white-space: nowrap;
+}
+.fleet-back__os:hover { color: var(--color-brand); }
+.fleet-back__now {
+  display: grid; gap: 4px;
+  padding: 10px 12px;
+  border: var(--tp-border-thin) solid var(--color-border-subtle);
+  border-left: 3px solid var(--color-state-running);
+  border-radius: var(--tp-radius-md);
+  background: var(--color-surface);
+}
+.fleet-back__now--waiting { border-left-color: var(--color-state-waiting); }
+.fleet-back__now--working { border-left-color: var(--color-state-working); }
+.fleet-back__now--stopped { border-left-color: var(--color-state-stopped); }
+.fleet-back__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--tp-space-2); margin: 0; }
+.fleet-back__stats > div { display: grid; gap: 2px; min-width: 0; }
+.fleet-back__stats dt { font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); white-space: nowrap; }
+.fleet-back__stats dd { margin: 0; font-size: var(--tp-text-sm); font-weight: var(--tp-weight-medium); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fleet-back__alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.fleet-back__alerts li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px; font-size: var(--tp-text-xs); color: var(--color-warning-text); }
+.fleet-back__alerts li.is-over { color: var(--color-danger); }
+.fleet-back__alerts b { font-variant-numeric: tabular-nums; }
+.fleet-back__list { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 3px; }
+.fleet-back__list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: var(--tp-space-2); }
+.fleet-back__list .fleet-back__os { font-size: var(--tp-text-xs); }
+.fleet-back__skeleton { display: grid; gap: var(--tp-space-2); }
+.fleet-back__skel { display: block; border-radius: var(--tp-radius-md); }
+.fleet-back__empty { display: grid; gap: var(--tp-space-2); justify-items: start; font-size: var(--tp-text-xs); color: var(--color-text-secondary); }
+.fleet-back__foot {
+  margin: auto calc(-1 * var(--tp-space-4)) 0;
+  padding: 8px var(--tp-space-4);
+  border-top: var(--tp-border-thin) solid var(--color-border-subtle);
+  background: var(--color-surface-sunken);
+  font-size: var(--tp-text-xs);
+}
+.fleet-back__foot a { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--color-brand); font-weight: var(--tp-weight-semibold); text-decoration: none; }
+.fleet-back__foot a:hover { text-decoration: underline; }
+.fleet-guide__flip { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: var(--tp-border-thin) solid var(--color-border); color: var(--color-text-secondary); }
 .fleet-card__head { align-items: flex-start; justify-content: space-between; }
 .fleet-card__title { display: grid; gap: 2px; min-width: 0; }
 .fleet-card__code { font-size: var(--tp-text-lg); }

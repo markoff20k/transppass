@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Clock3, Fuel, LayoutGrid, List, Search, Zap } from 'lucide-react';
+import { Clock3, LayoutGrid, List, Search, Wrench } from 'lucide-react';
 import {
   KM_DEGRADATION_DAYS,
   KM_SOURCE_LABELS,
@@ -18,7 +18,8 @@ import {
 import { api } from '@/lib/api-client';
 import { formatNumber } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
-import { BusRender } from '@/components/bus/bus-render';
+import { FleetCard, TechIcon } from '@/components/fleet/fleet-card';
+import { readingOf } from '@/components/fleet/fleet-card.utils';
 import { FleetLegend } from '@/components/fleet/fleet-legend';
 import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
@@ -35,33 +36,6 @@ type View = 'grid' | 'table';
 
 /** Meta de disponibilidade — ARBITRADO em 85% até o PCM fixar (RF-38). */
 const AVAILABILITY_TARGET = 85;
-
-type ReadingTone = 'fresh' | 'aging' | 'stale';
-
-const PAGE = 60;
-
-/**
- * Como o carro está de odômetro. É o que o operador precisa ler de relance:
- * "lido hoje" está em dia; "ontem" ainda vale; acima do limite do RF-14 a
- * projeção de km fica desatualizada e o carro pede um lançamento.
- */
-function readingOf(row: FleetPanelRow): { tone: ReadingTone; text: string } {
-  const d = row.daysSinceLastReading;
-  if (d === null) return { tone: 'stale', text: 'sem leitura de km' };
-  if (row.isKmDegraded) return { tone: 'stale', text: `odômetro há ${d} dias` };
-  if (d === 0) return { tone: 'fresh', text: 'odômetro lido hoje' };
-  if (d === 1) return { tone: 'aging', text: 'odômetro lido ontem' };
-  return { tone: 'aging', text: `odômetro há ${d} dias` };
-}
-
-function TechIcon({ technology }: { technology: VehicleTechnology }) {
-  const label = VEHICLE_TECHNOLOGY_LABELS[technology];
-  return (
-    <span className={`fleet-tech fleet-tech--${technology.toLowerCase()}`} title={label} aria-label={label}>
-      {technology === VehicleTechnology.EBUS ? <Zap size={12} aria-hidden /> : <Fuel size={12} aria-hidden />}
-    </span>
-  );
-}
 
 function ProjectionTip({ align = 'end' }: { align?: 'start' | 'center' | 'end' }) {
   return (
@@ -97,8 +71,6 @@ export function FleetPanelPage() {
   });
   const [family, setFamily] = useState<Family | null>(null);
   const [hovered, setHovered] = useState<Family | null>(null);
-  // Centenas de carros ilustrados pesam no navegador: a grade mostra 60 por vez.
-  const [limit, setLimit] = useState(PAGE);
 
   const technology = (params.get('technology') ?? '') as VehicleTechnology | '';
   const status = (params.get('status') ?? '') as VehicleStatus | '';
@@ -108,7 +80,6 @@ export function FleetPanelPage() {
   const onlyStale = params.get('stale') === '1';
 
   const setParam = (key: string, value: string) => {
-    setLimit(PAGE);
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
@@ -167,7 +138,10 @@ export function FleetPanelPage() {
     refetchInterval: 30_000,
   });
 
-  const tablePaging = usePagerState('frota-tabela', `${technology}|${status}|${search}|${vehicleClass}|${lot}|${onlyStale}|${family}`);
+  const resetKey = `${technology}|${status}|${search}|${vehicleClass}|${lot}|${onlyStale}|${family}`;
+  // Centenas de carros ilustrados pesam no navegador: a grade também é paginada.
+  const gridPaging = usePagerState('frota-grade', resetKey);
+  const tablePaging = usePagerState('frota-tabela', resetKey);
 
   if (isPending) return <BrandLoader size={44} label="Carregando painel" />;
   if (isError) return <div className="tp-alert tp-alert--danger">{(error as Error).message}</div>;
@@ -181,12 +155,12 @@ export function FleetPanelPage() {
   const visible = rows
     .filter((r) => (family ? familyOf(r.status) === family : true))
     .filter((r) => (onlyStale ? r.isKmDegraded : true));
-  const paged = view === 'grid' ? visible.slice(0, limit) : visible;
   const focus = hovered ?? family;
   const stale = summary.degradedKmCount;
   const staleTone = stale === 0 ? 'tp-kpi--good' : stale >= Math.max(3, rows.length * 0.25) ? 'tp-kpi--danger' : 'tp-kpi--warn';
 
   const pager = pagerOf(tablePaging, visible.length);
+  const gridPager = pagerOf(gridPaging, visible.length);
   return (
     <>
       <div className="tp-kpi-row">
@@ -301,6 +275,7 @@ export function FleetPanelPage() {
 
         <ul className="fleet-guide" aria-label="Como ler os cards">
           <li><span className="fleet-guide__swatch" aria-hidden /> chip = estado do carro agora · clique no card para abrir o carro</li>
+          <li><span className="fleet-guide__flip" aria-hidden><Wrench size={10} /></span> vira o card e mostra a manutenção sem sair da tela</li>
           <li><Clock3 size={12} aria-hidden /> odômetro = quando o km foi lido pela última vez</li>
           <li><TechIcon technology={VehicleTechnology.DIESEL} /> diesel · <TechIcon technology={VehicleTechnology.EBUS} /> elétrico</li>
         </ul>
@@ -308,74 +283,16 @@ export function FleetPanelPage() {
         {visible.length === 0 ? (
           <div className="tp-table__empty">Nenhum carro encontrado com esses filtros.</div>
         ) : view === 'grid' ? (
-          <div className="fleet-grid" data-focus={focus ?? undefined}>
-            {paged.map((row) => {
-              const fam = familyOf(row.status);
-              const reading = readingOf(row);
-              return (
-                <article key={row.id} className={`fleet-card fleet-card--${fam}${row.isKmDegraded ? ' is-stale' : ''}`}>
-                  <Link to={`/frota/${row.id}`} className="fleet-card__link" aria-label={`Abrir o carro ${row.code}`} />
-                  <header className="fleet-card__head">
-                    <div className="fleet-card__title">
-                      <span className="fleet-card__code">{row.code}</span>
-                      <span className="fleet-card__model">{[row.manufacturer, row.model].filter(Boolean).join(' ') || (row.vehicleClass ? VEHICLE_CLASS_LABELS[row.vehicleClass] : '—')}</span>
-                    </div>
-                    <span className={`fleet-chip fleet-chip--${fam}`}>{VEHICLE_STATUS_LABELS[row.status]}</span>
-                  </header>
-                  <span className="fleet-card__class">
-                    <span className="fleet-card__plate">{row.plate}</span>
-                    {row.vehicleClass ? ` · ${VEHICLE_CLASS_LABELS[row.vehicleClass]}` : ''}
-                    {row.lot ? ` · ${row.lot}` : ''}
-                    {row.fleetRole === 'RESERVA' ? ' · reserva' : row.fleetRole === 'APOIO' ? ' · apoio' : ''}
-                    <TechIcon technology={row.technology} />
-                  </span>
-                  <div className="fleet-card__bus">
-                    <BusRender vehicleClass={row.vehicleClass} technology={row.technology} status={row.status} code={row.code} width={320} />
-                  </div>
-                  <div className="fleet-card__progress">
-                    <div className="fleet-card__progress-head">
-                      <span>{row.nextPackageName ? `Preventiva ${row.nextPackageName}` : 'Sem plano preventivo'}</span>
-                      {row.kmToNextPackage !== null && (
-                        <b className={row.kmToNextPackage < 0 ? 'tp-error' : undefined}>{row.kmToNextPackage < 0 ? `estourou ${formatNumber(-row.kmToNextPackage)} km` : `em ${formatNumber(row.kmToNextPackage)} km`}</b>
-                      )}
-                    </div>
-                    <span className={`fleet-card__bar${row.kmToNextPackage !== null && row.kmToNextPackage < 0 ? ' is-over' : (row.nextPackageProgress ?? 0) >= 0.85 ? ' is-near' : ''}`}>
-                      <i style={{ width: `${Math.round((row.nextPackageProgress ?? 0) * 100)}%` }} />
-                    </span>
-                  </div>
-                  <dl className="fleet-card__facts">
-                    <div>
-                      <dt>Km atual</dt>
-                      <dd>{formatNumber(row.currentKm)}</dd>
-                    </div>
-                    <div>
-                      <dt>Média/dia</dt>
-                      <dd>{row.avgDailyKm === null ? '—' : `${formatNumber(Math.round(row.avgDailyKm))} km`}</dd>
-                    </div>
-                    <div>
-                      <dt>{row.openWorkOrderCode ? 'OS aberta' : 'Motorista'}</dt>
-                      <dd className="fleet-card__ellipsis">{row.openWorkOrderCode ?? (row.driverName ? row.driverName.split(' ').slice(0, 2).join(' ') : '—')}</dd>
-                    </div>
-                  </dl>
-                  <footer className={`fleet-card__reading fleet-card__reading--${reading.tone}`}>
-                    <Clock3 size={12} aria-hidden />
-                    <span>{reading.text}</span>
-                    {row.isKmDegraded && row.kmSource === KmSource.MANUAL && (
-                      <Link to="/km" className="fleet-card__cta">
-                        lançar km
-                      </Link>
-                    )}
-                  </footer>
-                </article>
-              );
-            })}
-            {visible.length > paged.length && (
-              <button type="button" className="fleet-grid__more" onClick={() => setLimit((l) => l + PAGE)}>
-                Mostrar mais {Math.min(PAGE, visible.length - paged.length)} carros
-                <small>{paged.length} de {visible.length} na grade — use a busca e os filtros para chegar mais rápido</small>
-              </button>
-            )}
-          </div>
+          <>
+            <div className="fleet-grid" data-focus={focus ?? undefined}>
+              {gridPager.slice(visible).map((row) => (
+                <FleetCard key={row.id} row={row} />
+              ))}
+            </div>
+            <div className="fleet-grid__pager">
+              <Pager pager={gridPager} label="carros" />
+            </div>
+          </>
         ) : (
           <div className="tp-table-wrap">
             <table className="tp-table">

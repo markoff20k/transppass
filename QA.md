@@ -167,3 +167,13 @@ Apontamentos recebidos nas capturas do Dashboard e da Fila, e o que mudou:
 - **Paginação em todo o sistema**: `usePager`/`pagerOf` (`apps/web/src/lib/pager.ts`) + `<Pager/>` em 27 tabelas: 20 linhas por página, tamanho 10/20/50/100 à escolha e guardado por tabela no navegador. Eventos (9.947) e OS (877) passaram a ser paginados na API, com filtros no servidor (estado, "na liberação", busca por OS/prefixo/placa, só estouradas) e os KPIs do topo contados sobre a base inteira (`GET /events/summary`; OS abertas pelo total da consulta). "Mostrar mais" e rolagem interna de cartão foram removidos.
 - Seed de demonstração: entradas da fila de inspeção e limpeza ficam "em atendimento" até a liberação (eram DONE com OS aberta); posições da fila começam em 1.
 - Verificação: typecheck 0, lint 0, capturas em 1440 px (claro/escuro) e 390 px de Dashboard, Fila, Eventos (página 2 e 50 por página), OS (tabela e "na liberação"), Frota (tabela), Estoque, Catálogo, Preventiva e Carro.
+
+## 4j. Rodada 29/10 — verso do card da frota (manutenção sem sair da tela)
+
+**O que mudou.** Cada card do Painel da frota ganhou um verso. O botão com a chave (canto superior direito) gira o card em 3D e mostra o dossiê de manutenção do carro: OS aberta (código, estado, há quanto tempo, garagem) ou "sem OS aberta" com o último checklist; MKBF, retornos, OS e horas parado nos últimos 30 dias; disponibilidade de 30 dias; componentes perto do fim da vida; últimas OS; atalho para a ficha completa. O X ou a tecla Esc viram de volta.
+
+**Como foi feito.** `apps/web/src/components/fleet/fleet-card.tsx` (frente e verso), CSS em `apps/web/src/styles.css` (`.fleet-card__inner` com `preserve-3d`, faces na mesma célula da grade, `backface-visibility: hidden`). O verso é carregado só ao virar, pela mesma consulta da página do carro (`/vehicles/:id/overview`), com pré-carga ao passar o mouse no botão. A face escondida fica `inert` e `aria-hidden`; o foco acompanha a face visível. Com `prefers-reduced-motion` o giro é instantâneo. A grade da frota deixou o "mostrar mais" e passou a usar o paginador padrão (20 por página, tamanho à escolha).
+
+**Verificação.** Typecheck e lint sem erros. QA smoke 90/90. Capturas em 1440px (claro e escuro) e 390px: frente, hover do botão, meio do giro, verso com OS aberta e sem OS, dois cards virados ao mesmo tempo, Esc voltando com o foco no botão. Frente e verso com a mesma altura (345,5px em 1440; 342,5px em 390). Sem erros de console.
+
+**Risco.** `color-mix()` no tingimento do verso exige navegador de 2023 em diante (Edge/Chrome 111+, Safari 16.2+); em navegador mais antigo o verso fica sem o tom da família, sem quebrar nada.
