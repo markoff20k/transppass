@@ -156,6 +156,26 @@ docker compose -f docker-compose.prod.yml image prune -f
 
 A API sincroniza o schema sozinha ao subir (`prisma db push`); os dados ficam no volume `pgdata`.
 
+## Levar o banco da máquina de desenvolvimento para o servidor
+
+O código vai pelo git; o banco não. Para o servidor ficar igual ao local (frota real, km, fichas, OS, movimento da garagem), o banco local viaja no repositório como `deploy/banco-transppass.sql.gz.enc`: um `pg_dump` em SQL puro, gzip, cifrado com AES-256 porque leva placa, chassi, RENAVAM e nome de motorista. A senha fica fora do git.
+
+Na máquina de desenvolvimento, gerar o arquivo (Postgres local na porta 5433):
+
+```bash
+"/c/Program Files/PostgreSQL/18/bin/pg_dump.exe" -h localhost -p 5433 -U postgres -d transppass_pcm   --clean --if-exists --no-owner --no-privileges -Fp   | sed -E '/^SET transaction_timeout/d; /^\restrict /d; /^\unrestrict /d'   | gzip   | openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -out deploy/banco-transppass.sql.gz.enc
+```
+
+O `sed` tira as linhas que só o Postgres 18 entende; o servidor roda o 16. O `openssl` pede a senha duas vezes. Depois `git add deploy/banco-transppass.sql.gz.enc`, commit e push.
+
+No servidor, depois do `git pull` e do `up -d --build`:
+
+```bash
+bash deploy/restaurar-banco.sh
+```
+
+O script pede a senha, apaga e recria as tabelas com o conteúdo do dump, reinicia a API e imprime a contagem de carros e OS. Os usuários e senhas passam a ser os do banco local. O `.env` do servidor deve ter `DEMO_SIMULATOR=false` na homologação.
+
 ## Backup e restauração do banco
 
 ```bash

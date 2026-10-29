@@ -19,3 +19,7 @@ apps/api/prisma/data/linhas-dia.json
 apps/api/prisma/data/codigos-transppass.json
 apps/api/prisma/data/eventos.json
 docs/roteiro-validacao/shots/
+# dump do banco só viaja cifrado (deploy/banco-transppass.sql.gz.enc)
+deploy/*.sql
+deploy/*.sql.gz
+deploy/*.dump
