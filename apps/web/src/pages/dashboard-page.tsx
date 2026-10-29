@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2, Minus } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronRight, Gauge, Hourglass, Inbox, Minus, PackageX, ShieldAlert } from 'lucide-react';
 import {
   EVENT_STATUS_LABELS,
   VEHICLE_STATUS_LABELS,
@@ -76,12 +76,17 @@ export function DashboardPage() {
   const availabilityTone: Tone =
     availabilityPct >= AVAILABILITY_TARGET ? 'good' : availabilityPct >= AVAILABILITY_TARGET - 10 ? 'warn' : 'danger';
 
+  // Rótulo no plural certo: o dicionário traz "singular|plural".
+  const plural = (n: number, text: string) => {
+    const [one, many] = text.split('|');
+    return n === 1 ? one : (many ?? one);
+  };
   const alerts = [
-    { n: data.alerts.safetyEventsOpen, text: t.dash.safetyOpen, to: '/eventos', tone: 'danger' as const },
-    { n: data.materials.overdueParts, text: t.dash.overdueParts, to: '/estoque', tone: 'danger' as const },
-    { n: data.workOrders.overdue, text: t.dash.overdueWo, to: '/os', tone: 'danger' as const },
-    { n: data.alerts.pendingTriage, text: t.dash.pendingTriage, to: '/triagem', tone: 'warning' as const },
-    { n: data.alerts.degradedKm, text: t.dash.degradedKm, to: '/km', tone: 'warning' as const },
+    { n: data.alerts.safetyEventsOpen, text: t.dash.safetyOpen, to: '/eventos', tone: 'danger' as const, icon: <ShieldAlert size={18} /> },
+    { n: data.materials.overdueParts, text: t.dash.overdueParts, to: '/estoque', tone: 'danger' as const, icon: <PackageX size={18} /> },
+    { n: data.workOrders.overdue, text: t.dash.overdueWo, to: '/os', tone: 'danger' as const, icon: <Hourglass size={18} /> },
+    { n: data.alerts.pendingTriage, text: t.dash.pendingTriage, to: '/triagem', tone: 'warning' as const, icon: <Inbox size={18} /> },
+    { n: data.alerts.degradedKm, text: t.dash.degradedKm, to: '/km', tone: 'warning' as const, icon: <Gauge size={18} /> },
   ].filter((a) => a.n > 0);
 
   return (
@@ -170,23 +175,35 @@ export function DashboardPage() {
           className={`dash-hero__alerts${alerts.some((a) => a.tone === 'danger') ? ' has-critical' : alerts.length ? ' has-warning' : ' is-clear'}`}
           aria-label={t.dash.attention}
         >
-          <span className="dash-hero__alerts-title">
-            <i className="dash-hero__alerts-dot" aria-hidden />
-            {t.dash.attention}
-            {alerts.length > 0 && <b>{alerts.reduce((sum, a) => sum + a.n, 0)}</b>}
-          </span>
-          <ul className="attention-list attention-list--row">
+          <div className="dash-alerts__head">
+            <span className="dash-hero__alerts-title">
+              <i className="dash-hero__alerts-dot" aria-hidden />
+              {t.dash.attention}
+              {alerts.length > 0 && <b>{alerts.reduce((sum, a) => sum + a.n, 0)}</b>}
+            </span>
+            {alerts.length > 0 && <span className="dash-alerts__hint">{t.dash.attentionHint}</span>}
+          </div>
+          <ul className="dash-alerts">
             {alerts.length === 0 ? (
-              <li className="attention-item attention-item--ok">
-                <CheckCircle2 size={14} />
-                <Link to="/frota">{t.dash.allClear}</Link>
+              <li className="dash-alert dash-alert--ok">
+                <Link to="/frota" className="dash-alert__link">
+                  <span className="dash-alert__icon"><CheckCircle2 size={18} /></span>
+                  <span className="dash-alert__body">
+                    <span className="dash-alert__label">{t.dash.allClear}</span>
+                  </span>
+                  <ChevronRight size={16} className="dash-alert__go" aria-hidden />
+                </Link>
               </li>
             ) : (
               alerts.map((a) => (
-                <li key={a.text} className={`attention-item attention-item--${a.tone}`}>
-                  <AlertTriangle size={14} />
-                  <Link to={a.to}>
-                    <b>{a.n}</b> {a.text}
+                <li key={a.text} className={`dash-alert dash-alert--${a.tone}`}>
+                  <Link to={a.to} className="dash-alert__link">
+                    <span className="dash-alert__icon">{a.icon}</span>
+                    <span className="dash-alert__body">
+                      <b className="dash-alert__n">{a.n}</b>
+                      <span className="dash-alert__label">{plural(a.n, a.text)}</span>
+                    </span>
+                    <ChevronRight size={16} className="dash-alert__go" aria-hidden />
                   </Link>
                 </li>
               ))
