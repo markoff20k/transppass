@@ -160,13 +160,16 @@ export class DashboardService {
   }
 
   /**
-   * Para cada hora do dia, a fração de carros que NÃO tinham OS aberta
-   * naquele instante, na média dos últimos 7 dias. Amostra em hh:30.
+   * Para cada hora do dia, a fração de carros disponíveis naquele instante,
+   * na média dos últimos 7 dias (amostra em hh:30). Carro parado é o mesmo
+   * do anel de disponibilidade: da quebra (retorno não programado em aberto,
+   * ainda na fila ou no socorro) até a liberação da OS — não só enquanto a
+   * OS existe. Um carro com evento e OS ao mesmo tempo conta uma vez.
    */
   private async availabilityByHour(now: Date): Promise<HourAvailability[]> {
     const windowStart = new Date(now.getTime() - 7 * DAY_MS);
 
-    const [fleetSize, workOrders] = await Promise.all([
+    const [fleetSize, workOrders, returns] = await Promise.all([
       this.prisma.vehicle.count({ where: { isActive: true } }),
       this.prisma.workOrder.findMany({
         where: {
@@ -174,13 +177,35 @@ export class DashboardService {
           OR: [{ releasedAt: null }, { releasedAt: { gte: windowStart } }],
           status: { not: WorkOrderStatus.CANCELLED },
         },
-        select: { openedAt: true, releasedAt: true },
+        select: { vehicleId: true, openedAt: true, releasedAt: true },
+      }),
+      this.prisma.failureEvent.findMany({
+        where: {
+          isUnscheduledReturn: true,
+          reportedAt: { lte: now },
+          OR: [{ closedAt: null }, { closedAt: { gte: windowStart } }],
+          status: { not: EventStatus.CANCELLED },
+        },
+        select: { vehicleId: true, reportedAt: true, closedAt: true },
       }),
     ]);
 
     if (fleetSize === 0) {
-      return Array.from({ length: 24 }, (_, hour) => ({ hour, rate: 0 }));
+      return Array.from({ length: 24 }, (_, hour) => ({ hour, rate: 0, today: null }));
     }
+
+    const spans = [
+      ...workOrders.map((wo) => ({ vehicleId: wo.vehicleId, from: wo.openedAt, to: wo.releasedAt })),
+      ...returns.map((ev) => ({ vehicleId: ev.vehicleId, from: ev.reportedAt, to: ev.closedAt })),
+    ];
+
+    const rateAt = (t: Date): number => {
+      const downVehicles = new Set<string>();
+      for (const sp of spans) {
+        if (sp.from <= t && (!sp.to || sp.to >= t)) downVehicles.add(sp.vehicleId);
+      }
+      return (fleetSize - Math.min(downVehicles.size, fleetSize)) / fleetSize;
+    };
 
     const result: HourAvailability[] = [];
 
@@ -193,16 +218,17 @@ export class DashboardService {
         t.setDate(t.getDate() - day);
         t.setHours(hour, 30, 0, 0);
         if (t > now) continue;
-
-        const down = workOrders.filter(
-          (wo) => wo.openedAt <= t && (!wo.releasedAt || wo.releasedAt >= t),
-        ).length;
-
-        sum += (fleetSize - down) / fleetSize;
+        sum += rateAt(t);
         samples += 1;
       }
 
-      result.push({ hour, rate: samples ? sum / samples : 0 });
+      // Hoje, na mesma faixa: a hora corrente usa o instante atual, para o
+      // último ponto bater com o anel de disponibilidade.
+      const todayAt = new Date(now);
+      todayAt.setHours(hour, 30, 0, 0);
+      const todaySample = todayAt <= now ? todayAt : todayAt.getHours() === now.getHours() ? now : null;
+
+      result.push({ hour, rate: samples ? sum / samples : 0, today: todaySample ? rateAt(todaySample) : null });
     }
 
     return result;

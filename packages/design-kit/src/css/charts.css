@@ -23,6 +23,64 @@
   height: 200px;
 }
 
+/* Gráfico que ocupa o que sobrar do cartão: o cartão é coluna flex, e o
+   contêiner do Recharts mede o pai, então a altura vem do layout. */
+.chart--fill {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 220px;
+}
+.chart--fill > .recharts-responsive-container {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Legenda curta acima do gráfico: o que cada marca é e o número que importa. */
+.chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tp-space-2) var(--tp-space-4);
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-muted);
+}
+.chart__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chart__legend-note {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.chart__legend-note b {
+  color: var(--color-text);
+  font-weight: var(--tp-weight-semibold);
+}
+.chart__key {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--key-color);
+}
+.chart__key--dash {
+  background: none;
+  border-top: 2px dashed var(--key-color);
+  height: 0;
+}
+.chart__key--bar {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.chart__key--area {
+  height: 8px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, var(--key-color) 0 3px, color-mix(in srgb, var(--key-color) 22%, transparent) 3px);
+}
+
 .chart__title {
   display: flex;
   align-items: baseline;
@@ -132,23 +190,36 @@
 /* Donut de estados */
 .donut {
   display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
-  gap: var(--tp-space-4);
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--tp-space-5);
   align-items: center;
+  align-content: center;
+  flex: 1 1 auto;
+}
+
+.donut__ring {
+  position: relative;
+  flex: none;
 }
 
 .donut__center {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 2px;
   text-align: center;
-  line-height: 1.05;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .donut__big {
   font-family: var(--tp-font-display);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 
 .donut__small {
@@ -167,16 +238,54 @@
   font-size: var(--tp-text-sm);
 }
 
-.donut__legend li {
-  display: grid;
-  grid-template-columns: 10px 1fr auto;
-  align-items: center;
+.donut__legend {
   gap: var(--tp-space-2);
 }
 
+.donut__legend li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'dot name pct'
+    '. track hours';
+  align-items: center;
+  column-gap: var(--tp-space-2);
+  row-gap: 4px;
+}
+.donut__legend li > .tp-swatch { grid-area: dot; }
+.donut__legend li > b { grid-area: pct; }
+
 .donut__legend b {
+  text-align: right;
   font-variant-numeric: tabular-nums;
   font-weight: var(--tp-weight-semibold);
+}
+
+.donut__name {
+  grid-area: name;
+  line-height: 1.15;
+}
+
+.donut__hours {
+  grid-area: hours;
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Barra proporcional sob cada causa: a fatia sem precisar ler o número. */
+.donut__track {
+  grid-area: track;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border-subtle);
+  overflow: hidden;
+}
+.donut__track i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
 }
 
 @media (max-width: 480px) {

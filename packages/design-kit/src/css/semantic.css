@@ -116,14 +116,15 @@
   --color-neutral-soft: var(--tp-graphite-100);
   --color-neutral-border: var(--tp-graphite-200);
 
-  /* Preenchimento sólido (badge de estado): tom escuro, texto branco (>= 4.8:1). */
+  /* Preenchimento sólido (badge de estado): tom 500 com texto branco, como
+     a referência do cliente. Fica entre 3,5:1 e 4:1 em 12 px semibold. */
   --color-on-solid: #ffffff;
-  --color-success-solid: var(--tp-green-600);
-  --color-warning-solid: var(--tp-amber-700);
-  --color-danger-solid: var(--tp-red-600);
-  --color-info-solid: var(--tp-blue-600);
-  --color-neutral-solid: var(--tp-graphite-500);
-  --color-brand-solid: var(--tp-orange-700);
+  --color-success-solid: var(--tp-green-500);
+  --color-warning-solid: var(--tp-amber-600);
+  --color-danger-solid: var(--tp-red-500);
+  --color-info-solid: var(--tp-blue-500);
+  --color-neutral-solid: var(--tp-graphite-400);
+  --color-brand-solid: var(--tp-orange-600);
 
   /* ---- Estados do carro (RF-37) ------------------------------------------
      O painel da frota mostra dez estados ao vivo. Eles se agrupam em quatro

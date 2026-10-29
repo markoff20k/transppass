@@ -30,6 +30,8 @@ export interface HourAvailability {
   hour: number;
   /** Fração de carros disponíveis naquela faixa, média dos últimos 7 dias. */
   rate: number;
+  /** A mesma fração hoje, nessa faixa; null para as horas que ainda não chegaram. */
+  today: number | null;
 }
 
 export interface DayCount {

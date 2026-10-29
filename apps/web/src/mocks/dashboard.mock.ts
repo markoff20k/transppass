@@ -163,7 +163,7 @@ export function buildDashboard(): DashboardData {
         mkbf,
       })),
     },
-    availabilityByHour: Array.from({ length: 24 }, (_, hour) => ({ hour, rate: availabilityCurve(hour) })),
+    availabilityByHour: Array.from({ length: 24 }, (_, hour) => ({ hour, rate: availabilityCurve(hour), today: hour <= 17 ? availabilityCurve(hour) - 0.02 : null })),
     downtimeByCause: downtime.map((d) => ({ ...d, share: d.minutes / totalDowntime })),
     totalDowntimeMinutes: totalDowntime,
     eventsPerDay,

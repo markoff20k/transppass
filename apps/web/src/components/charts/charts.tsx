@@ -3,7 +3,6 @@ import {
   Area,
   AreaChart,
   Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   ComposedChart,
@@ -60,6 +59,30 @@ function Tip({ title, rows }: { title: string; rows: TipRow[] }) {
   );
 }
 
+// --- Legenda curta acima do gráfico -----------------------------------------
+
+function Legend({ items, note }: { items: { kind: 'line' | 'dash' | 'bar' | 'area'; color: string; label: string }[]; note?: ReactNode }) {
+  return (
+    <div className="chart__legend">
+      {items.map((it) => (
+        <span key={it.label} className="chart__legend-item">
+          <i className={`chart__key chart__key--${it.kind}`} style={{ '--key-color': it.color } as CSSProperties} />
+          {it.label}
+        </span>
+      ))}
+      {note && <span className="chart__legend-note">{note}</span>}
+    </div>
+  );
+}
+
+function niceStep(span: number): number {
+  const raw = span / 4;
+  const mag = 10 ** Math.floor(Math.log10(Math.max(raw, 1)));
+  const norm = raw / mag;
+  const f = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10;
+  return f * mag;
+}
+
 // --- MKBF por mês ----------------------------------------------------------
 
 export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
@@ -67,25 +90,43 @@ export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
   const valid = rows.filter((r) => r.mkbf !== null).map((r) => r.mkbf as number);
   const avg = valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
 
+  // Eixo apertado no intervalo real: a variação entre meses é o que importa,
+  // não a distância até zero.
+  const min = valid.length ? Math.min(...valid) : 0;
+  const max = valid.length ? Math.max(...valid) : 1;
+  const step = niceStep(Math.max(max - min, 1) * 1.6);
+  const lo = Math.max(0, Math.floor((min - step) / step) * step);
+  const hi = Math.ceil((max + step * 0.6) / step) * step;
+  const ticks: number[] = [];
+  for (let v = lo; v <= hi + 0.001; v += step) ticks.push(Math.round(v));
+
   return (
-    <div className="chart chart--h240">
+    <div className="chart chart--fill">
+      <Legend
+        items={[
+          { kind: 'area', color: 'var(--chart-1)', label: 'MKBF do mês' },
+          ...(avg !== null ? [{ kind: 'dash' as const, color: 'var(--color-text-muted)', label: `média do período ${formatNumber(Math.round(avg))} km` }] : []),
+        ]}
+      />
       <ResponsiveContainer>
-        <AreaChart data={rows} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
+        <AreaChart data={rows} margin={{ top: 18, right: 16, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="mkbfFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.28} />
-              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.26} />
+              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} />
-          <XAxis dataKey="label" axisLine={false} tickLine={false} />
+          <XAxis dataKey="label" axisLine={false} tickLine={false} padding={{ left: 18, right: 18 }} />
           <YAxis
             axisLine={false}
             tickLine={false}
-            width={56}
-            tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))}
+            width={52}
+            domain={[lo, hi]}
+            ticks={ticks}
+            tickFormatter={(v: number) => formatNumber(v)}
           />
-          {avg !== null && <ReferenceLine y={avg} label={{ value: `média ${formatNumber(Math.round(avg))} km`, position: 'insideTopLeft', fill: 'var(--color-text-muted)', fontSize: 10 }} />}
+          {avg !== null && <ReferenceLine y={avg} />}
           <Tooltip
             cursor={{ stroke: 'var(--color-border-strong)' }}
             content={({ active, payload }) => {
@@ -107,11 +148,11 @@ export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
             type="monotone"
             dataKey="mkbf"
             stroke="var(--chart-1)"
-            strokeWidth={2.2}
+            strokeWidth={2.4}
             fill="url(#mkbfFill)"
             connectNulls={false}
-            dot={{ r: 3, fill: 'var(--chart-1)', stroke: 'var(--color-surface)', strokeWidth: 2 }}
-            activeDot={{ r: 5, fill: 'var(--chart-1)', stroke: 'var(--color-surface)', strokeWidth: 2 }}
+            dot={{ r: 3.5, fill: 'var(--chart-1)', stroke: 'var(--color-surface)', strokeWidth: 2 }}
+            activeDot={{ r: 5.5, fill: 'var(--chart-1)', stroke: 'var(--color-surface)', strokeWidth: 2 }}
             isAnimationActive={false}
           >
             <LabelList
@@ -120,7 +161,7 @@ export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
                 // Só o último mês leva o número: é o que o gestor lê de longe.
                 if (index !== rows.length - 1 || value === null || value === undefined || x === undefined || y === undefined) return null;
                 return (
-                  <text x={Number(x)} y={Number(y) - 10} textAnchor="end" className="chart__endlabel">
+                  <text x={Number(x)} y={Number(y) - 12} textAnchor="end" className="chart__endlabel">
                     {formatNumber(Number(value))} km
                   </text>
                 );
@@ -145,36 +186,79 @@ export function AvailabilityByHourChart({
   const rows = data.map((d) => ({
     hour: `${String(d.hour).padStart(2, '0')}h`,
     pct: Math.round(d.rate * 1000) / 10,
+    today: d.today === null ? null : Math.round(d.today * 1000) / 10,
   }));
+  const todays = rows.filter((r) => r.today !== null);
+  const pcts = [...rows.map((r) => r.pct), ...todays.map((r) => r.today as number)];
+  const minPct = pcts.length ? Math.min(...pcts) : 0;
+  const worst = todays.length ? todays.reduce((a, b) => ((b.today as number) < (a.today as number) ? b : a)) : null;
+  const targetPct = Math.round(target * 100);
+  // Janela do eixo: do que couber abaixo da meta e do pior ponto até 100%.
+  const lo = Math.max(0, Math.floor(Math.min(minPct - 2, targetPct - 3) / 5) * 5);
+  const ticks: number[] = [];
+  for (let v = lo; v <= 100; v += 5) ticks.push(v);
+  const belowTarget = minPct < targetPct;
+  const color = belowTarget ? 'var(--chart-5)' : 'var(--chart-4)';
 
   return (
-    <div className="chart chart--h240">
+    <div className="chart chart--fill">
+      <Legend
+        items={[
+          { kind: 'area', color, label: 'hoje' },
+          { kind: 'line', color: 'var(--chart-2)', label: 'média 7 dias' },
+          { kind: 'dash', color: 'var(--color-text-muted)', label: `meta ${targetPct}%` },
+        ]}
+        note={worst ? <>pior faixa de hoje <b>{worst.hour}</b> · {(worst.today as number).toLocaleString('pt-BR')}%</> : undefined}
+      />
       <ResponsiveContainer>
-        <BarChart data={rows} margin={{ top: 12, right: 8, left: 0, bottom: 0 }} barCategoryGap="28%">
+        <ComposedChart data={rows} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id="availFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.26} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
           <CartesianGrid vertical={false} />
-          <XAxis dataKey="hour" axisLine={false} tickLine={false} interval={3} />
+          <XAxis dataKey="hour" axisLine={false} tickLine={false} interval={2} />
           <YAxis
             axisLine={false}
             tickLine={false}
-            width={40}
-            domain={[0, 100]}
+            width={44}
+            domain={[lo, 100]}
+            ticks={ticks}
             tickFormatter={(v: number) => `${v}%`}
           />
-          <ReferenceLine y={target * 100} />
+          <ReferenceLine y={targetPct} />
           <Tooltip
-            cursor={{ fill: 'var(--color-surface-hover)' }}
+            cursor={{ stroke: 'var(--color-border-strong)' }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const p = payload[0]!.payload as (typeof rows)[number];
-              return <Tip title={p.hour} rows={[{ label: 'Disponível', value: `${p.pct}%`, color: 'var(--chart-4)' }]} />;
+              return (
+                <Tip
+                  title={`faixa ${p.hour}`}
+                  rows={[
+                    { label: 'Hoje', value: p.today === null ? '—' : `${p.today.toLocaleString('pt-BR')}%`, color },
+                    { label: 'Média 7 dias', value: `${p.pct.toLocaleString('pt-BR')}%`, color: 'var(--chart-2)' },
+                    { label: 'Meta', value: `${targetPct}%` },
+                  ]}
+                />
+              );
             }}
           />
-          <Bar dataKey="pct" radius={[3, 3, 0, 0]} isAnimationActive={false}>
-            {rows.map((r) => (
-              <Cell key={r.hour} fill={r.pct >= target * 100 ? 'var(--chart-4)' : 'var(--chart-5)'} />
-            ))}
-          </Bar>
-        </BarChart>
+          <Area
+            type="monotone"
+            dataKey="today"
+            stroke={color}
+            strokeWidth={2.4}
+            fill="url(#availFill)"
+            connectNulls={false}
+            dot={false}
+            activeDot={{ r: 5, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 }}
+            isAnimationActive={false}
+          />
+          <Line type="monotone" dataKey="pct" stroke="var(--chart-2)" strokeWidth={1.8} strokeOpacity={0.8} dot={false} activeDot={{ r: 4, fill: 'var(--chart-2)', stroke: 'var(--color-surface)', strokeWidth: 2 }} isAnimationActive={false} />
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
@@ -190,12 +274,20 @@ export function EventsPerDayChart({ data }: { data: DayCount[] }) {
     const avg = Math.round((win.reduce((s, x) => s + x.count, 0) / win.length) * 10) / 10;
     return { ...d, avg, label: `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}` };
   });
-  const peak = Math.max(0, ...rows.map((r) => r.count));
+  const last = rows[rows.length - 1];
+  const total = rows.reduce((s, r) => s + r.count, 0);
 
   return (
-    <div className="chart chart--h200">
+    <div className="chart chart--fill">
+      <Legend
+        items={[
+          { kind: 'bar', color: 'var(--chart-3)', label: 'quebras no dia' },
+          { kind: 'line', color: 'var(--chart-1)', label: 'média de 7 dias' },
+        ]}
+        note={last ? <>hoje <b>{last.count}</b> · 30 dias {formatNumber(total)}</> : undefined}
+      />
       <ResponsiveContainer>
-        <ComposedChart data={rows} margin={{ top: 12, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
+        <ComposedChart data={rows} margin={{ top: 16, right: 12, left: 0, bottom: 0 }} barCategoryGap="35%">
           <CartesianGrid vertical={false} />
           <XAxis dataKey="label" axisLine={false} tickLine={false} interval={6} />
           <YAxis axisLine={false} tickLine={false} width={30} allowDecimals={false} />
@@ -207,10 +299,21 @@ export function EventsPerDayChart({ data }: { data: DayCount[] }) {
               return <Tip title={p.label} rows={[{ label: 'Quebras', value: String(p.count), color: 'var(--chart-3)' }, { label: 'Média 7 dias', value: p.avg.toLocaleString('pt-BR'), color: 'var(--chart-1)' }]} />;
             }}
           />
-          <Bar dataKey="count" radius={[3, 3, 0, 0]} isAnimationActive={false}>
-            {rows.map((r) => (
-              <Cell key={r.date} fill={r.count === peak && peak > 0 ? 'var(--chart-5)' : 'var(--chart-3)'} fillOpacity={0.75} />
+          <Bar dataKey="count" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+            {rows.map((r, i) => (
+              <Cell key={r.date} fill="var(--chart-3)" fillOpacity={i === rows.length - 1 ? 1 : 0.5} />
             ))}
+            <LabelList
+              dataKey="count"
+              content={({ x, y, width, value, index }) => {
+                if (index !== rows.length - 1 || x === undefined || y === undefined || width === undefined) return null;
+                return (
+                  <text x={Number(x) + Number(width) / 2} y={Number(y) - 6} textAnchor="middle" className="chart__endlabel">
+                    {String(value)}
+                  </text>
+                );
+              }}
+            />
           </Bar>
           <Line type="monotone" dataKey="avg" stroke="var(--chart-1)" strokeWidth={2.2} dot={false} activeDot={{ r: 4, fill: 'var(--chart-1)', stroke: 'var(--color-surface)', strokeWidth: 2 }} isAnimationActive={false} />
         </ComposedChart>
@@ -233,19 +336,22 @@ export function DowntimeDonut({
   if (data.length === 0) {
     return <p className="tp-muted">Nenhum tempo de indisponibilidade registrado no período.</p>;
   }
+  const size = 184;
+  const hours = (min: number) => `${formatNumber(Math.round(min / 60))} h`;
 
   return (
     <div className="donut">
-      <div style={{ position: 'relative', width: 160, height: 160 }}>
+      <div className="donut__ring" style={{ width: size, height: size }}>
         <ResponsiveContainer>
           <PieChart>
             <Pie
               data={data}
               dataKey="minutes"
               nameKey="cause"
-              innerRadius={54}
-              outerRadius={76}
+              innerRadius={size / 2 - 30}
+              outerRadius={size / 2 - 4}
               paddingAngle={2}
+              cornerRadius={3}
               stroke="var(--color-surface)"
               strokeWidth={2}
               isAnimationActive={false}
@@ -271,23 +377,28 @@ export function DowntimeDonut({
             />
           </PieChart>
         </ResponsiveContainer>
-        <div className="donut__center" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        <div className="donut__center">
           {center ?? (
             <>
-              <span className="donut__big">{formatMinutes(totalMinutes)}</span>
-              <span className="donut__small">total</span>
+              <span className="donut__big">{hours(totalMinutes)}</span>
+              <span className="donut__small">carro parado</span>
             </>
           )}
         </div>
       </div>
       <ul className="donut__legend">
-        {data.map((d) => (
-          <li key={d.cause}>
-            <i className={`tp-swatch cause-${d.cause.toLowerCase()}`} />
-            <span>{DOWNTIME_CAUSE_LABELS[d.cause]}</span>
-            <b>{(d.share * 100).toFixed(0)}%</b>
-          </li>
-        ))}
+        {data.map((d) => {
+          const cls = `cause-${d.cause.toLowerCase()}`;
+          return (
+            <li key={d.cause}>
+              <i className={`tp-swatch ${cls}`} />
+              <span className="donut__name">{DOWNTIME_CAUSE_LABELS[d.cause]}</span>
+              <span className="donut__hours">{hours(d.minutes)}</span>
+              <b>{(d.share * 100).toFixed(0)}%</b>
+              <span className="donut__track"><i className={cls} style={{ width: `${Math.max(1, d.share * 100)}%` }} /></span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

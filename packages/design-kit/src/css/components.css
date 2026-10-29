@@ -446,10 +446,17 @@
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Estado é um selo sólido, cantos de 8 px, altura fixa: o olho acha a
+     coluna de situação sem ler. O neutro (aberta, solicitado) é cinza. */
+  padding: 4px var(--tp-space-3);
+  min-height: 24px;
+  border-radius: var(--tp-radius-md);
   font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.01em;
+  background: var(--color-neutral-solid);
+  border-color: transparent;
+  color: var(--color-on-solid);
 }
-/* Estado com tom é sólido: o olho acha a coluna de situação sem ler. O neutro
-   (aberta, solicitado, cancelada) continua na pílula suave. */
 .tp-badge--status.tp-badge--success { background: var(--color-success-solid); border-color: transparent; color: var(--color-on-solid); }
 .tp-badge--status.tp-badge--warning { background: var(--color-warning-solid); border-color: transparent; color: var(--color-on-solid); }
 .tp-badge--status.tp-badge--danger { background: var(--color-danger-solid); border-color: transparent; color: var(--color-on-solid); }
