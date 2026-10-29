@@ -23,3 +23,4 @@ docs/roteiro-validacao/shots/
 deploy/*.sql
 deploy/*.sql.gz
 deploy/*.dump
+apps/api/prisma/data-full/

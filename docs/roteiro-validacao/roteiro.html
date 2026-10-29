@@ -178,12 +178,12 @@
     <p class="sub">Passo a passo para a Transppass testar, validar e aceitar o sistema que sustenta o Kaizen MKBF: do checklist da manhã à liberação do carro, com o MKBF calculado pelo próprio processo.</p>
     <div class="cover__points">
       <div><b>Operação sustentada</b>Checklist, evento, triagem, fila, socorro, OS, portões, preventiva, plantão e estoque executados no sistema, com as regras do Kaizen aplicadas pela ferramenta.</div>
-      <div><b>MKBF pelo processo</b>Calculado dos estados da garagem com os dados reais de agosto e setembro, pelo critério da carta de 28/10: quebra é ficha A, S ou T.</div>
+      <div><b>MKBF pelo processo</b>Calculado dos estados da garagem com a base real de setembro de 2026, pelo critério da carta de 28/10: quebra é ficha A, S ou T.</div>
       <div><b>Kaizen dentro do sistema</b>Daily de 15 min, auditorias 5S e de conformidade, treinamentos, laboratório de peças, kanban e vida de componentes, sem planilha paralela.</div>
     </div>
     <div class="cover__band">
       <div><b>16</b><span>blocos de teste, 112 passos com resultado esperado e campo de registro</span></div>
-      <div><b>460</b><span>carros da frota real da Transppass carregados, com km e quebras de agosto e setembro</span></div>
+      <div><b>460</b><span>carros da frota real da Transppass carregados, com o km e as quebras de setembro</span></div>
       <div><b>3.888 km</b><span>MKBF de setembro/2026 calculado pelo sistema a partir das fichas A, S e T</span></div>
       <div><b>10</b><span>dias úteis de operação assistida após os blocos de teste, com aceite por indicador</span></div>
     </div>
@@ -324,7 +324,7 @@
     <tbody>
       <tr><td style="width:38mm"><strong>Endereço</strong></td><td><span class="mono">https://transppass.online</span> (ambiente de homologação, HTTPS). Em rede local da garagem, o endereço alternativo será informado pela ProAero.</td></tr>
       <tr><td><strong>Navegadores</strong></td><td>Microsoft Edge ou Google Chrome atualizados no desktop. No celular, Chrome (Android) ou Safari (iOS). O bloco B16 cobre a largura de celular.</td></tr>
-      <tr><td><strong>Dados</strong></td><td>Bases reais entregues pela Transppass em 28/10/2026 (frota, km, fichas, OS, peças, viagens, linhas). O simulador de demonstração fica <strong>desligado</strong> na homologação; qualquer movimento de exemplo que ainda exista será removido pela ProAero antes da operação assistida (seção 5).</td></tr>
+      <tr><td><strong>Dados</strong></td><td>Bases reais entregues pela Transppass em 28/10/2026, recortadas à <strong>amostra de setembro de 2026</strong> (frota, km, fichas, OS, peças, viagens, linhas). Não há movimento de demonstração nem simulador no ambiente: o que aparecer além de setembro foi criado pela própria Transppass nos testes. Agosto e os meses seguintes entram quando a Transppass enviar as bases.</td></tr>
       <tr><td><strong>Horário</strong></td><td>Os blocos de teste podem ser executados em qualquer horário e em qualquer ordem, respeitando os pré-requisitos indicados em cada bloco. A operação assistida segue o horário da garagem, incluindo o lançamento de km da manhã.</td></tr>
     </tbody>
   </table>
@@ -347,11 +347,11 @@
   <h3>3.3 O que já está carregado</h3>
   <div class="cards">
     <div class="card"><b class="t">Frota</b><div class="k">460</div><p>carros do VBM0208 sem data de desligamento: 455 em operação (STATUS 0), 2 guinchos (7) e 3 de treinamento (17). Guincho e treinamento ficam fora do km do MKBF, como a carta orienta.</p></div>
-    <div class="card"><b class="t">Quilometragem</b><div class="k">22.015</div><p>leituras diárias de agosto e setembro (VBM0406), 4.932.412 km. Hodômetro ancorado no KM CHASSI do cadastro.</p></div>
-    <div class="card"><b class="t">Quebras</b><div class="k">1.284</div><p>fichas de tipo A, S e T (recolhida anormal, socorro, troca de carro) de agosto e setembro: 659 + 625. As 5.714 ocorrências do CCO sem ficha ficam registradas sem contar como quebra.</p></div>
-    <div class="card"><b class="t">Fichas e OS</b><div class="k">17.536</div><p>registros de manutenção (VBM0503 e VBM0805): 15.693 fichas com defeito alegado, constatado, providência e mecânico; 1.241 preventivas por km pela regra KM LIM &gt; 0.</p></div>
-    <div class="card"><b class="t">Peças</b><div class="k">21.759</div><p>linhas do VBM0404, R$ 4,7 milhões ligados às OS. Almoxarifado com 2.496 materiais, classe, prateleira, saldo e custo.</p></div>
-    <div class="card"><b class="t">Operação</b><div class="k">5.411</div><p>linha-dia-sentido de viagens da SPTrans (programadas × monitoradas) e 46.563 registros de km por carro, linha e dia. 907 motoristas e 864 cobradores.</p></div>
+    <div class="card"><b class="t">Quilometragem</b><div class="k">10.840</div><p>leituras diárias de setembro (VBM0406), 2.434.679 km. Hodômetro ancorado no KM CHASSI do cadastro.</p></div>
+    <div class="card"><b class="t">Quebras</b><div class="k">625</div><p>fichas de tipo A, S e T (recolhida anormal, socorro, troca de carro) de setembro: 363 S, 245 A e 17 T. As 3.038 ocorrências do CCO sem ficha ficam registradas sem contar como quebra.</p></div>
+    <div class="card"><b class="t">Fichas e OS</b><div class="k">10.399</div><p>registros de manutenção de setembro (VBM0503 e VBM0805) com defeito alegado, constatado, providência e mecânico; 1.241 preventivas por km pela regra KM LIM &gt; 0; 15.231 serviços e componentes.</p></div>
+    <div class="card"><b class="t">Peças</b><div class="k">9.660</div><p>peças aplicadas em setembro (VBM0404), R$ 2,65 milhões ligados às OS. Almoxarifado com 2.496 materiais, classe, prateleira, saldo e custo.</p></div>
+    <div class="card"><b class="t">Operação</b><div class="k">2.668</div><p>linha-dia-sentido de viagens da SPTrans em setembro (programadas × monitoradas) e 23.057 registros de km por carro, linha e dia. 907 motoristas e 864 cobradores.</p></div>
   </div>
   <p>Também estão carregados os 52 modelos de chassi, os planos preventivos IT.MAN-01 (diesel), IT.MAN-54 (Scania), IT.MAN-60 (VW) e IT.MAN-16 (Eletra) com tarefas, kits e ferramental, as 47 ferramentas da FR.168, a classificação de falhas da Transppass (215 defeitos alegados, 240 constatados) e o padrão de codificação Modo × Sistema/Subsistema × Posição da Engenharia de Confiabilidade.</p>
 
@@ -378,7 +378,7 @@
       <tr><td class="n star">2</td><td>Leia os cartões MKBF, Na fila e OS abertas, e a faixa "Precisa de atenção".</td><td>MKBF do mês em km com tendência; fila com o mais antigo; OS abertas com as estouradas. Cada aviso de atenção (segurança em aberto, peça vencida, OS estourada, evento aguardando triagem, carro sem km) leva à lista filtrada.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
       <tr><td class="n">3</td><td>Em "A frota agora", clique na legenda <span class="kw">Esperando</span>, depois <span class="kw">Parado</span>.</td><td>A grade filtra pela família de estado. O chip de cada card e o instrumento desenhado no ônibus (pisca-alerta, elevador, lanterna, scanner, lavagem, giroflex) dizem o estado sem precisar ler.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
       <tr><td class="n star">4</td><td>Clique na chave (canto do card) de um carro com OS aberta.</td><td>O card vira e mostra a manutenção sem sair da tela: OS aberta com código e estado, MKBF 30 dias, retornos, OS e horas parado, atalho "Ficha completa do carro". O X ou Esc volta a frente.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
-      <tr><td class="n">5</td><td>Role até os gráficos de baixo: "Quebras por dia" e "MKBF por mês".</td><td>Quebras por dia conta só retornos não programados, com média móvel de 7 dias. MKBF por mês mostra agosto, setembro e o mês corrente com a média.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">5</td><td>Role até os gráficos de baixo: "Quebras por dia" e "MKBF por mês".</td><td>Quebras por dia conta só retornos não programados, com média móvel de 7 dias. MKBF por mês mostra setembro e o mês corrente com a média; mês sem dado fica em branco, não em zero.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
       <tr><td class="n star">6</td><td><span class="path">Painel da frota</span>. Busque pelo prefixo de um carro real da sua garagem; depois filtre por tecnologia <span class="kw">elétrico</span>, por classe e por lote.</td><td>KPIs do topo: Frota 460 (350 diesel, 110 elétricos), Disponíveis, Disponibilidade, Odômetro atrasado. A busca acha o carro pelo prefixo ou pela placa; os filtros combinam entre si e o total de carros atualiza.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
       <tr><td class="n">7</td><td>Alterne <span class="kw">Grade</span> e <span class="kw">Tabela</span>; mude a página e o tamanho da página (20/50/100).</td><td>As duas vistas respeitam o mesmo filtro. A paginação mostra "x–y de N" e o tamanho escolhido é lembrado.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
       <tr><td class="n star">8</td><td>Abra um carro (clique no card). Confira a ficha com o cadastro da Transppass.</td><td>Prefixo, placa, chassi, modelo, classe, lote, tecnologia, km atual e média diária batem com o VBM0208. KPIs de 30 dias: disponibilidade, km, retornos, MKBF do carro.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
@@ -402,7 +402,7 @@
     <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
     <tbody>
       <tr><td class="n star">1</td><td><span class="path">Indicadores</span>. Leia "MKBF, métrica norte".</td><td>Quatro números do mês corrente: MKBF, km rodados, retornos não programados e OS liberadas. O subtítulo diz "calculado dos estados do processo, ninguém digita".</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
-      <tr><td class="n star">2</td><td>Em "Histórico mensal", localize setembro/2026 no gráfico de MKBF. Compare com a apuração da Transppass.</td><td><strong>Setembro: 2.430.114 km ÷ 625 quebras = 3.888 km.</strong> Agosto: 2.497.733 ÷ 659 = 3.790 km. Diferenças acima de 1% devem ser registradas com a planilha de origem.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Em "Histórico mensal", localize setembro/2026 no gráfico de MKBF. Compare com a apuração da Transppass.</td><td><strong>Setembro: 2.430.114 km ÷ 625 quebras = 3.888 km.</strong> Diferenças acima de 1% devem ser registradas com a planilha de origem.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
       <tr><td class="n star">3</td><td>Escolha um carro que tenha ficha de tipo A, S ou T em setembro (sua planilha). Abra-o no Painel da frota e confira as ocorrências.</td><td>A ficha aparece como <strong>retorno não programado</strong>, casada com o registro do CCO do mesmo dia quando ele existe (viagens perdidas, local, linha).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
       <tr><td class="n star">4</td><td>Escolha um carro com ocorrência no CCO em setembro <em>sem</em> ficha A/S/T (por exemplo um FRO ou PAM). Abra-o.</td><td>A ocorrência está registrada, mas não marcada como retorno não programado. Ela não entra no divisor do MKBF.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
       <tr><td class="n star">5</td><td>Abra um guincho (STATUS 7) e um carro de treinamento (STATUS 17) no Painel da frota.</td><td>Aparecem como apoio, disponíveis fora da operação. O km deles não compõe o MKBF.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
@@ -709,7 +709,7 @@
 
   <h3>5.1 Antes de começar</h3>
   <ul>
-    <li>A ProAero remove qualquer movimento de demonstração; ficam só as bases reais de agosto e setembro e o que a Transppass criou nos testes dirigidos.</li>
+    <li>O ambiente não tem movimento de demonstração: ficam a base real de setembro e o que a Transppass criou nos testes dirigidos.</li>
     <li>Contas nominais criadas para todos (B15). As contas genéricas da seção 3.2 são desativadas.</li>
     <li>Carros de teste dos blocos B4 a B10 liberados e com OS encerradas.</li>
     <li>Um responsável por área assina a rotina abaixo e um ponto focal da ProAero fica disponível no horário da garagem.</li>
@@ -839,7 +839,7 @@
       <tr><td><strong>Carregadores eBUS</strong></td><td>34 baias necessárias × 32 disponíveis, assumido para mostrar a insuficiência.</td><td>Manutenção eBUS</td></tr>
       <tr><td><strong>Lista de técnicos e inspetores</strong></td><td>16 técnicos de exemplo. A lista real entra por cadastro ou importação.</td><td>Manutenção (RH)</td></tr>
       <tr><td><strong>Espelhamento no JB</strong></td><td>O vínculo (número da OS no JB) existe; o que espelhar é decisão da Controladoria.</td><td>Controladoria</td></tr>
-      <tr><td><strong>Reservas e dias sem leitura</strong></td><td>Para o movimento de demonstração, ~8% de reservas foi assumido. Não afeta agosto e setembro reais.</td><td>Operação</td></tr>
+      <tr><td><strong>Reservas e dias sem leitura</strong></td><td>Para o movimento de demonstração (desligado na homologação), ~8% de reservas foi assumido. Não afeta a base real.</td><td>Operação</td></tr>
     </tbody>
   </table>
   <div class="note"><b>Achado para a Transppass.</b> O critério antigo de quebra (toda ocorrência do CCO) daria um MKBF de 2.297 km em setembro. Pelo critério da carta (fichas A, S e T), o MKBF é 3.888 km. A diferença não é do sistema: é do critério. O sistema registra as duas populações e conta só a segunda.</div>
@@ -957,7 +957,7 @@
       <tr><td><strong>Snapshot mensal</strong></td><td>Foto dos indicadores gravada toda madrugada para o histórico. O mês corrente é recalculado ao abrir.</td></tr>
     </tbody>
   </table>
-  <p class="small muted" style="margin-top:8mm">Documento TPP-PCM-VAL-001 · Versão 1.0 · 29/10/2026 · ProAero para Transppass Transporte de Passageiros. As capturas de tela deste documento foram feitas no ambiente de homologação com os dados reais da Transppass e contêm prefixos e placas da frota; trate o documento como interno.</p>
+  <p class="small muted" style="margin-top:8mm">Documento TPP-PCM-VAL-001 · Versão 1.0 · 29/10/2026 · ProAero para Transppass Transporte de Passageiros. As capturas de tela deste documento são ilustrativas: foram feitas com a frota real da Transppass e contêm prefixos e placas, mas o movimento de garagem que aparece nelas (OS, fila, socorro) era de exemplo. O ambiente de homologação começa só com a base de setembro; trate o documento como interno.</p>
 </section>
 
 </body>
