@@ -199,6 +199,14 @@ export interface CatalogIntelligence {
   isDeferrable: boolean;
 }
 
+/** Os quatro números do topo da tela de Eventos, contados sobre toda a base. */
+export interface EventsSummary {
+  registeredToday: number;
+  awaitingTriage: number;
+  safetyOpen: number;
+  deferred: number;
+}
+
 export interface FailureEventSummary {
   id: string;
   code: string;

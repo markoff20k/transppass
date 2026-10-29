@@ -22,6 +22,8 @@ import { Drawer } from '@/components/ui/drawer';
 import { SearchSelect } from '@/components/ui/search-select';
 import { InfoTip } from '@/components/ui/info-tip';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 /**
  * Kaizen — laboratório de inspeção técnica de peças (A3, contramedida 2).
@@ -53,6 +55,7 @@ export function PartsLabPage() {
   const rate = s && s.inspected90d ? s.rejected90d / s.inspected90d : null;
   const maxRej = Math.max(1, ...(s?.bySupplier.map((x) => x.rejected) ?? [1]));
 
+  const pager = usePager('laboratorio', (list.data ?? []).length);
   return (
     <>
       <div className="tp-kpi-row">
@@ -88,7 +91,7 @@ export function PartsLabPage() {
               <table className="tp-table tp-table--compact">
                 <thead><tr><th>Peça</th><th>Fornecedor</th><th>Resultado</th><th>Motivo</th><th>Garantia</th><th>Quando</th></tr></thead>
                 <tbody>
-                  {(list.data ?? []).map((r) => (
+                  {pager.slice((list.data ?? [])).map((r) => (
                     <tr key={r.id} className={r.result === 'REJECTED' ? 'is-danger' : undefined}>
                       <td style={{ whiteSpace: 'normal', minWidth: 220 }}><span className="mat-desc is-strong">{r.materialDescription}</span><span className="mat-sub">{r.materialCode}{r.serialNumber ? ` · nº ${r.serialNumber}` : ''}{r.vehicleCode ? ` · carro ${r.vehicleCode}` : ''}{r.workOrderCode ? ` · ${r.workOrderCode}` : ''}{r.kmInService ? ` · ${formatNumber(r.kmInService)} km` : ''}</span></td>
                       <td className="tp-muted">{r.supplierName ?? '—'}</td>
@@ -106,6 +109,7 @@ export function PartsLabPage() {
                   ))}
                 </tbody>
               </table>
+              <Pager pager={pager} label="inspeções" />
             </div>
           )}
       </section>

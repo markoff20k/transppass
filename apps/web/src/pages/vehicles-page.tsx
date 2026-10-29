@@ -24,6 +24,8 @@ import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { SearchSelect } from '@/components/ui/search-select';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; vehicle: Vehicle };
 
@@ -63,6 +65,7 @@ export function VehiclesPage() {
   const ebus = active.filter((v) => v.technology === VehicleTechnology.EBUS).length;
   const telemetry = active.filter((v) => v.kmSource === KmSource.TELEMETRY).length;
 
+  const pager = usePager('veiculos', rows.length, `${search}|${cls}|${lot}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -133,7 +136,7 @@ export function VehiclesPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((v) => {
+                {pager.slice(rows).map((v) => {
                   const family = VEHICLE_STATE_FAMILY[v.status] ?? 'waiting';
                   return (
                     <tr
@@ -163,6 +166,7 @@ export function VehiclesPage() {
                 })}
               </tbody>
             </table>
+            <Pager pager={pager} label="carros" />
           </div>
         )}
       </section>

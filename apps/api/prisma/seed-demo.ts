@@ -657,7 +657,7 @@ async function main() {
     data: { workOrderId: woCuica.id, workOrderTaskId: woCuica.tasks[0]!.id, materialId: cuicaMat.id, quantity: 1, status: MaterialRequestStatus.WAITING_PART, requestedById: manut.id, requestedAt: ago(28.5),
       partWaiting: { create: { reasonCodeId: reason(ReasonCodeList.PART_WAITING, 'COMPRA').id, expectedAt: ago(20), escalatedAt: ago(2), createdAt: ago(27.9) } } },
   });
-  const qCuica = await prisma.queueEntry.create({ data: { vehicleId: vid(S.cuica.code), eventId: E('cuica').id, workOrderId: woCuica.id, position: 1, criticality: 100, isFastTrack: true, status: QueueStatus.WAITING, enteredAt: ago(31.5), estimatedCompletionAt: inHours(4) } });
+  const qCuica = await prisma.queueEntry.create({ data: { vehicleId: vid(S.cuica.code), eventId: E('cuica').id, workOrderId: woCuica.id, position: 1, criticality: 100, isFastTrack: true, status: QueueStatus.IN_SERVICE, enteredAt: ago(31.5), startedAt: ago(31.2), estimatedCompletionAt: inHours(4) } });
   await prisma.queueChangeLog.createMany({ data: [
     { queueEntryId: qCuica.id, fromPosition: null, toPosition: 1, reasonCodeId: reason(ReasonCodeList.QUEUE_PRIORITY, 'SEG').id, isSystemGenerated: true, note: 'Fast-track automático por flag do catálogo', createdAt: ago(31.5) },
     { queueEntryId: qCuica.id, fromPosition: 2, toPosition: 1, reasonCodeId: reason(ReasonCodeList.QUEUE_PRIORITY, 'SEG').id, actorId: pcm.id, note: 'Falha de freio — não pode esperar', createdAt: ago(20) },
@@ -680,7 +680,7 @@ async function main() {
           { sequence: 3, description: 'Sangria e teste de temperatura', isChecked: true, checkedAt: ago(1), checkedById: manut.id, measurement: 88, unit: '°C' },
         ] } }] },
       cleaning: { create: { status: CleaningStatus.PENDING } },
-      queueEntry: { create: { vehicleId: vid(S.insp.code), eventId: E('insp').id, position: 1, criticality: 100, isFastTrack: false, status: QueueStatus.DONE, enteredAt: ago(9.1), startedAt: ago(8.3), finishedAt: ago(0.9) } },
+      queueEntry: { create: { vehicleId: vid(S.insp.code), eventId: E('insp').id, position: 1, criticality: 100, isFastTrack: false, status: QueueStatus.IN_SERVICE, enteredAt: ago(9.1), startedAt: ago(8.3) } },
     },
   });
   await prisma.failureEvent.update({ where: { id: E('insp').id }, data: { status: EventStatus.IN_MAINTENANCE, triage: { create: { destination: TriageDestination.RECALL, decidedById: cco.id, decidedAt: ago(9.3), slaSeconds: 11 * 60 } } } });
@@ -704,7 +704,7 @@ async function main() {
         { sequence: 3, description: 'Lavagem do piso', isChecked: false },
         { sequence: 4, description: 'Conferência de bancos e avarias', isChecked: false },
       ] }, damageReports: { create: [{ description: 'Banco 12 com estofado rasgado', createdAt: ago(0.3) }] } } },
-      queueEntry: { create: { vehicleId: vid(S.clean.code), eventId: E('clean').id, position: 1, criticality: 40, isFastTrack: false, status: QueueStatus.DONE, enteredAt: ago(7), startedAt: ago(6.4), finishedAt: ago(1.4) } },
+      queueEntry: { create: { vehicleId: vid(S.clean.code), eventId: E('clean').id, position: 1, criticality: 40, isFastTrack: false, status: QueueStatus.IN_SERVICE, enteredAt: ago(7), startedAt: ago(6.4) } },
     },
     include: { cleaning: { include: { damageReports: true } } },
   });
@@ -758,11 +758,11 @@ async function main() {
     },
   });
   await prisma.failureEvent.update({ where: { id: E('porta').id }, data: { status: EventStatus.IN_MAINTENANCE, triage: { create: { destination: TriageDestination.RECALL, decidedById: cco.id, decidedAt: ago(3.2), slaSeconds: 14 * 60 } } } });
-  const qPorta = await prisma.queueEntry.create({ data: { vehicleId: vid(S.porta.code), eventId: E('porta').id, workOrderId: woPorta.id, position: 2, criticality: 60, isFastTrack: false, status: QueueStatus.WAITING, enteredAt: ago(3.1), estimatedCompletionAt: inHours(5.5) } });
+  const qPorta = await prisma.queueEntry.create({ data: { vehicleId: vid(S.porta.code), eventId: E('porta').id, workOrderId: woPorta.id, position: 1, criticality: 60, isFastTrack: false, status: QueueStatus.WAITING, enteredAt: ago(3.1), estimatedCompletionAt: inHours(5.5) } });
   await prisma.queueChangeLog.create({ data: { queueEntryId: qPorta.id, fromPosition: null, toPosition: 2, reasonCodeId: reason(ReasonCodeList.QUEUE_PRIORITY, 'SEG').id, isSystemGenerated: true, note: 'Posição inicial por criticidade', createdAt: ago(3.1) } });
 
   // ---- Garagem genérica: mais carros em cada etapa ---------------------------
-  let queuePos = 3;
+  let queuePos = 2;
   for (const g of generic) {
     const item = cat(g.code);
     const specialty = spec(SPECIALTY_BY_SYSTEM[item.system ?? ''] ?? 'MEC');

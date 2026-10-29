@@ -20,10 +20,11 @@ import {
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate, formatDateTime, formatNumber } from '@/lib/format';
 import { useAuth } from '@/features/auth/use-auth';
-import { ShowMore } from '@/components/ui/show-more';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 type Panel =
   | { kind: 'closed' }
@@ -63,12 +64,13 @@ export function SchedulingPage() {
   };
 
   const rows = timeline.data ?? [];
-  const [limit, setLimit] = useState(40);
   const overdue = rows.filter((r) => r.alert === 'overdue').length;
   const dueSoon = rows.filter((r) => r.alert === 'due-soon').length;
   const scheduled = (schedules.data ?? []).length;
   const kitsLate = (kits.data ?? []).filter((k) => k.isLate || k.isDueToday).length;
 
+  const pager = usePager('preventiva', rows.length);
+  const schedulePager = usePager('preventiva-paradas', (schedules.data ?? []).length);
   return (
     <>
       <div className="tp-kpi-row">
@@ -99,7 +101,7 @@ export function SchedulingPage() {
         {timeline.isPending ? (
           <BrandLoader size={44} label="Carregando" />
         ) : (
-          <><div className="tp-table-wrap">
+          <div className="tp-table-wrap">
             <table className="tp-table">
               <thead>
                 <tr>
@@ -115,7 +117,7 @@ export function SchedulingPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.slice(0, limit).map((r) => (
+                {pager.slice(rows).map((r) => (
                   <tr
                     key={r.vehicleId}
                     className={`is-clickable${r.alert === 'overdue' ? ' is-danger' : r.alert === 'due-soon' ? ' is-warning' : ''}`}
@@ -155,8 +157,8 @@ export function SchedulingPage() {
                 ))}
               </tbody>
             </table>
+            <Pager pager={pager} label="carros" />
           </div>
-            <ShowMore shown={Math.min(limit, rows.length)} total={rows.length} step={40} label="carros" onMore={() => setLimit((l) => l + 40)} onAll={() => setLimit(rows.length)} /></>
         )}
       </section>
 
@@ -181,7 +183,7 @@ export function SchedulingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(schedules.data ?? []).map((s) => (
+                  {schedulePager.slice((schedules.data ?? [])).map((s) => (
                     <tr key={s.id} className="is-clickable" onClick={() => setPanel({ kind: 'detail', id: s.id })} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setPanel({ kind: 'detail', id: s.id })}>
                       <td className="is-strong">{s.vehicleCode}</td>
                       <td>{s.packageName}</td>
@@ -193,6 +195,7 @@ export function SchedulingPage() {
                   ))}
                 </tbody>
               </table>
+              <Pager pager={schedulePager} label="paradas" />
             </div>
           )}
         </section>

@@ -21,7 +21,8 @@ import { Drawer } from '@/components/ui/drawer';
 import { SearchSelect } from '@/components/ui/search-select';
 import { InfoTip } from '@/components/ui/info-tip';
 import { BrandLoader } from '@/components/brand/brand-loader';
-import { ShowMore } from '@/components/ui/show-more';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 const STATUS_LABEL = { OVER: 'acima da vida', NEAR: 'perto do fim', OK: 'dentro da vida' } as const;
 
@@ -33,7 +34,6 @@ const STATUS_LABEL = { OVER: 'acima da vida', NEAR: 'perto do fim', OK: 'dentro 
 export function ComponentsPage() {
   const queryClient = useQueryClient();
   const [kind, setKind] = useState<ComponentKind | ''>('');
-  const [limit, setLimit] = useState(60);
   const [search, setSearch] = useState('');
   const [onlyAttention, setOnlyAttention] = useState(true);
   const [panel, setPanel] = useState<{ vehicleId?: string; kind?: ComponentKind } | null>(null);
@@ -52,6 +52,7 @@ export function ComponentsPage() {
   }, [list.data, kind, onlyAttention, search]);
   const invalidate = () => { void queryClient.invalidateQueries({ queryKey: ['components'] }); void queryClient.invalidateQueries({ queryKey: ['metrics'] }); };
 
+  const pager = usePager('componentes', rows.length, `${kind}|${onlyAttention}|${search}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -120,11 +121,11 @@ export function ComponentsPage() {
           {list.isPending ? <BrandLoader size={44} label="Carregando" /> : rows.length === 0 ? (
             <div className="tp-table__empty">{onlyAttention ? 'Nenhum componente perto do fim da vida. Desmarque o filtro para ver todos.' : 'Nenhum componente rastreado.'}</div>
           ) : (
-            <><div className="tp-table-wrap">
+            <div className="tp-table-wrap">
               <table className="tp-table tp-table--compact cmp-table">
                 <thead><tr><th>Carro</th><th>Componente</th><th>Vida usada</th><th className="is-num">Restante</th><th>Instalado</th><th>Anterior durou</th><th className="is-action" aria-label="Ações" /></tr></thead>
                 <tbody>
-                  {rows.slice(0, limit).map((c) => (
+                  {pager.slice(rows).map((c) => (
                     <tr key={c.id} className={c.status === 'OVER' ? 'is-danger' : undefined}>
                       <td className="is-strong tp-mono">{c.vehicleCode}</td>
                       <td><span className="mat-desc">{c.kindLabel}</span><span className="mat-sub">{c.serialNumber ? `nº ${c.serialNumber}` : 'sem nº de série'} · {c.technology === 'EBUS' ? 'eBUS' : 'diesel'}</span></td>
@@ -142,8 +143,8 @@ export function ComponentsPage() {
                   ))}
                 </tbody>
               </table>
+              <Pager pager={pager} label="componentes" />
             </div>
-              <ShowMore shown={Math.min(limit, rows.length)} total={rows.length} step={60} label="componentes" onMore={() => setLimit((l) => l + 60)} onAll={() => setLimit(rows.length)} /></>
           )}
       </section>
 

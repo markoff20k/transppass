@@ -20,6 +20,8 @@ import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { InfoTip } from '@/components/ui/info-tip';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 const tone = (score: number | null) => (score === null ? '' : score >= 80 ? 'is-good' : score >= 60 ? 'is-warn' : 'is-bad');
 
@@ -47,6 +49,7 @@ export function AuditsPage() {
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['audits'] });
   const s = summary.data;
 
+  const pager = usePager('auditorias', (history.data ?? []).length);
   return (
     <>
       <div className="tp-kpi-row">
@@ -89,7 +92,7 @@ export function AuditsPage() {
             <table className="tp-table tp-table--compact">
               <thead><tr><th>Quando</th><th>Tipo</th><th>Área</th><th className="is-num">Nota</th><th>Pontos fracos</th><th>Plano de ação</th><th>Auditor</th></tr></thead>
               <tbody>
-                {(history.data ?? []).map((a) => {
+                {pager.slice((history.data ?? [])).map((a) => {
                   const weak = a.items.filter((i) => i.score < i.max).sort((x, y) => x.score - y.score).slice(0, 3);
                   return (
                     <tr key={a.id}>
@@ -105,6 +108,7 @@ export function AuditsPage() {
                 })}
               </tbody>
             </table>
+            <Pager pager={pager} label="auditorias" />
           </div>
         )}
       </section>

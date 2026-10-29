@@ -15,6 +15,7 @@ import {
   type HourAvailability,
   type MkbfPoint,
 } from '@app/shared';
+import { IN_SHOP_STATUSES } from '../common/vehicle-status';
 import { PrismaService } from '../prisma/prisma.service';
 import { MetricsService } from '../metrics/metrics.service';
 import { EventsService } from '../events/events.service';
@@ -253,12 +254,17 @@ export class DashboardService {
     return [...counts.entries()].map(([date, count]) => ({ date, count }));
   }
 
+  /**
+   * Fila e oficina contados pelo status do carro — a mesma fonte do fluxo da
+   * garagem e da frota. Uma entrada de fila que ficou para trás nunca faz o
+   * cartão discordar do trilho.
+   */
   private async queue(now: Date) {
     const [waiting, inService, oldest] = await Promise.all([
-      this.prisma.queueEntry.count({ where: { status: QueueStatus.WAITING } }),
-      this.prisma.queueEntry.count({ where: { status: QueueStatus.IN_SERVICE } }),
+      this.prisma.vehicle.count({ where: { isActive: true, status: VehicleStatus.AWAITING_MAINTENANCE } }),
+      this.prisma.vehicle.count({ where: { isActive: true, status: { in: IN_SHOP_STATUSES } } }),
       this.prisma.queueEntry.findFirst({
-        where: { status: QueueStatus.WAITING },
+        where: { status: QueueStatus.WAITING, vehicle: { status: VehicleStatus.AWAITING_MAINTENANCE } },
         orderBy: { enteredAt: 'asc' },
         select: { enteredAt: true },
       }),

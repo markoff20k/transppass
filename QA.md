@@ -155,3 +155,15 @@ Capturas de todas as telas em 1440px (claro e escuro) e 390px, antes e depois.
 - **Continuidade dos dados**: o seed de demonstração calcula o ritmo real (21 quebras/dia em 61 dias) e gera o mês corrente no mesmo ritmo; o MKBF do mês corrente caiu de 8.791 km (salto artificial) para 3.842 km, coerente com agosto (3.785) e setembro (3.888).
 - **Página do carro**: o gráfico de km ocupa a altura do cartão ao lado da ficha (antes sobrava meio cartão vazio). **Plantão**: "Pedir reposição" virou botão secundário visível. **Celular**: frota em duas colunas no Dashboard.
 - QA: `QA_API=1 node tools/qa-smoke.mjs` 87/87 depois das mudanças.
+
+## 4i. Rodada 28/10 (noite) — fonte única, paginação em todo o sistema e correções apontadas pelo cliente
+
+Apontamentos recebidos nas capturas do Dashboard e da Fila, e o que mudou:
+
+- **Fluxo da garagem × cartão "Na fila" (7 × 8)**: o cartão contava entradas da fila e o trilho contava carros por status; o carro 210 estava "aguardando peça" com a entrada da fila ainda em espera. Agora o status do carro é espelho do status da OS (`apps/api/src/common/vehicle-status.ts`, chamado em toda transição: execução, aguardando peça, encerramento técnico, limpeza, reprovação, liberação) e o cartão conta carros pela mesma fonte do trilho. Verificação: Dashboard fila 7, oficina 20 = 10 + 4 + 3 + 3; página Fila 7 aguardando, 20 em atendimento. `qa-smoke` ganhou DASH-01/02/03 para esse cruzamento.
+- **Critério da cor da borda de cada etapa**: é a família do estado (laranja esperando, azul em serviço, vermelho parado por peça, cinza etapa vazia), igual à barra de baixo. A legenda agora aparece no cabeçalho do fluxo e a família entra no tooltip de cada etapa.
+- **Notificação ilegível**: o título herdava a cor clara do cabeçalho escuro; o painel fixa a cor do texto.
+- **Elétricos**: pintura verde no desenho do ônibus (teto, frente, traseira e friso) para EPADRON/EARTICULADO e tecnologia eBUS.
+- **Paginação em todo o sistema**: `usePager`/`pagerOf` (`apps/web/src/lib/pager.ts`) + `<Pager/>` em 27 tabelas: 20 linhas por página, tamanho 10/20/50/100 à escolha e guardado por tabela no navegador. Eventos (9.947) e OS (877) passaram a ser paginados na API, com filtros no servidor (estado, "na liberação", busca por OS/prefixo/placa, só estouradas) e os KPIs do topo contados sobre a base inteira (`GET /events/summary`; OS abertas pelo total da consulta). "Mostrar mais" e rolagem interna de cartão foram removidos.
+- Seed de demonstração: entradas da fila de inspeção e limpeza ficam "em atendimento" até a liberação (eram DONE com OS aberta); posições da fila começam em 1.
+- Verificação: typecheck 0, lint 0, capturas em 1440 px (claro/escuro) e 390 px de Dashboard, Fila, Eventos (página 2 e 50 por página), OS (tabela e "na liberação"), Frota (tabela), Estoque, Catálogo, Preventiva e Carro.

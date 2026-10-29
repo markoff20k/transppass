@@ -11,6 +11,7 @@ import {
   type CreateEventInput,
   type DispatchFieldServiceInput,
   type EventQuery,
+  type EventsSummary,
   type FailureEventSummary,
   type FieldOutcomeInput,
   type FieldStepInput,
@@ -35,6 +36,12 @@ export class EventsController {
     @Query(new ZodValidationPipe(eventQuerySchema)) query: EventQuery,
   ): Promise<Paginated<FailureEventSummary>> {
     return this.events.list(query);
+  }
+
+  /** Os números do topo da tela, contados sobre toda a base e não sobre a página. */
+  @Get('summary')
+  summary(): Promise<EventsSummary> {
+    return this.events.summary();
   }
 
   @Get(':id')

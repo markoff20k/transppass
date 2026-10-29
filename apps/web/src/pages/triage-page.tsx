@@ -17,6 +17,8 @@ import { Drawer } from '@/components/ui/drawer';
 import { FailureCodePicker, FlagBadges } from '@/components/failure-code/failure-code-picker';
 import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 /**
  * RF-03 — fila de triagem com os três destinos e SLA medido.
@@ -37,13 +39,14 @@ export function TriagePage() {
 
   const events = useQuery({
     queryKey: ['events', 'pending-triage'],
-    queryFn: () => api.get<Paginated<FailureEventSummary>>('/events?pendingTriage=true&perPage=50'),
+    queryFn: () => api.get<Paginated<FailureEventSummary>>('/events?pendingTriage=true&perPage=100'),
     refetchInterval: 20_000,
   });
 
   const rows = events.data?.data ?? [];
   const oldest = rows[0]?.waitingSeconds ?? 0;
 
+  const pager = usePager('triagem', rows.length);
   return (
     <>
       <div className="tp-kpi-row">
@@ -90,7 +93,7 @@ export function TriagePage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((event) => (
+                {pager.slice(rows).map((event) => (
                   <tr
                     key={event.id}
                     className={`is-clickable${event.catalog?.isSafety ? ' is-danger' : ''}${selected?.id === event.id ? ' is-selected' : ''}`}
@@ -117,6 +120,7 @@ export function TriagePage() {
                 ))}
               </tbody>
             </table>
+            <Pager pager={pager} label="eventos" />
           </div>
         )}
       </section>

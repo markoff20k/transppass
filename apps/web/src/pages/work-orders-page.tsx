@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Clock3, LayoutGrid, List, Search } from 'lucide-react';
 import {
   WORK_ORDER_STATUS_LABELS,
@@ -15,8 +15,9 @@ import { formatDateTime, formatMinutes } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusRender } from '@/components/bus/bus-render';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { pagerOf, usePagerState } from '@/lib/pager';
 
-const FINISHED: string[] = [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED];
 
 /** Filtro virtual: os três portões antes de liberar o carro (RN-04). */
 const RELEASING = 'RELEASING';
@@ -87,14 +88,28 @@ export function WorkOrdersPage() {
     ),
   });
 
-  const { data, isPending } = useQuery({
-    queryKey: ['work-orders'],
-    queryFn: () => api.get<Paginated<WorkOrderSummary>>('/work-orders?perPage=100'),
+  // Quadro e KPIs: as OS que prendem carro agora. Tabela: paginada na API com os filtros.
+  const openQuery = useQuery({
+    queryKey: ['work-orders', 'open'],
+    queryFn: () => api.get<Paginated<WorkOrderSummary>>('/work-orders?onlyOpen=true&perPage=100'),
     refetchInterval: 30_000,
   });
+  const term = useDeferredValue(search.trim());
+  const paging = usePagerState('work-orders', `${status}|${term}|${onlyOverdue}`);
+  const listQuery = useQuery({
+    queryKey: ['work-orders', 'list', paging.page, paging.pageSize, status, term, onlyOverdue],
+    queryFn: () =>
+      api.get<Paginated<WorkOrderSummary>>(
+        `/work-orders?page=${paging.page}&perPage=${paging.pageSize}${status === RELEASING ? '&releasing=true' : status ? `&status=${status}` : ''}${term ? `&search=${encodeURIComponent(term)}` : ''}${onlyOverdue ? '&onlyOverdue=true' : ''}`,
+      ),
+    placeholderData: keepPreviousData,
+    refetchInterval: 30_000,
+    enabled: view === 'table',
+  });
+  const isPending = view === 'board' ? openQuery.isPending : listQuery.isPending;
 
-  const all = data?.data ?? [];
-  const open = all.filter((r) => !FINISHED.includes(r.status));
+  const open = openQuery.data?.data ?? [];
+  const openTotal = openQuery.data?.meta.total ?? open.length;
   const inProgress = open.filter((r) => r.status === WorkOrderStatus.IN_PROGRESS).length;
   const waitingPart = open.filter((r) => r.status === WorkOrderStatus.WAITING_PART).length;
   const overdue = open.filter((r) => r.isOverdue).length;
@@ -103,9 +118,8 @@ export function WorkOrdersPage() {
   const q = search.trim().toLowerCase();
   const matches = (r: WorkOrderSummary) => (!q || r.code.toLowerCase().includes(q) || r.vehicleCode.toLowerCase().includes(q) || r.vehiclePlate.toLowerCase().includes(q)) && (!onlyOverdue || r.isOverdue);
 
-  const rows = all
-    .filter((r) => (status === RELEASING ? RELEASING_STATUSES.includes(r.status) : status ? r.status === status : true))
-    .filter(matches);
+  const rows = listQuery.data?.data ?? [];
+  const pager = pagerOf(paging, listQuery.data?.meta.total ?? 0);
 
   const board = useMemo(() => {
     const byColumn = new Map<ColumnKey, WorkOrderSummary[]>(COLUMNS.map((c) => [c.key, []]));
@@ -116,7 +130,7 @@ export function WorkOrdersPage() {
     for (const list of byColumn.values()) list.sort((a, b) => Number(b.isOverdue) - Number(a.isOverdue) || b.downtimeMinutes - a.downtimeMinutes);
     return byColumn;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [all, q, onlyOverdue]);
+  }, [open, q, onlyOverdue]);
   const focus = statusToColumn(status);
 
   return (
@@ -124,7 +138,7 @@ export function WorkOrdersPage() {
       <div className="tp-kpi-row">
         <div className="tp-kpi tp-kpi--brand">
           <span className="tp-kpi__label">OS abertas</span>
-          <strong className="tp-kpi__value">{open.length}</strong>
+          <strong className="tp-kpi__value">{openTotal}</strong>
           <span className="tp-kpi__note">carros presos na garagem</span>
         </div>
         <div className="tp-kpi">
@@ -171,7 +185,7 @@ export function WorkOrdersPage() {
           <label className="tp-check tp-check--inline">
             <input type="checkbox" checked={onlyOverdue} onChange={(e) => setOnlyOverdue(e.target.checked)} /> só estouradas
           </label>
-          <span className="tp-muted tp-toolbar__count">{view === 'board' ? `${[...board.values()].reduce((s, l) => s + l.length, 0)} OS no quadro` : `${rows.length} OS`}</span>
+          <span className="tp-muted tp-toolbar__count">{view === 'board' ? `${[...board.values()].reduce((s, l) => s + l.length, 0)} OS no quadro` : `${pager.total.toLocaleString('pt-BR')} OS`}</span>
         </div>
 
         {isPending ? (
@@ -251,6 +265,7 @@ export function WorkOrdersPage() {
                 })}
               </tbody>
             </table>
+            <Pager pager={pager} label="OS" />
           </div>
         )}
       </section>

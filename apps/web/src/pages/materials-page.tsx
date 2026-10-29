@@ -7,6 +7,8 @@ import { ApiError, api } from '@/lib/api-client';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; material: MaterialRow };
 
@@ -21,7 +23,6 @@ export function MaterialsPage() {
   const [search, setSearch] = useState('');
   const [group, setGroup] = useState('');
   const [onlyPreventive, setOnlyPreventive] = useState(false);
-  const [limit, setLimit] = useState(150);
 
   usePageHeader({
     eyebrow: 'Cadastros',
@@ -40,7 +41,6 @@ export function MaterialsPage() {
     .filter((m) => !q || `${m.code} ${m.description} ${m.manufacturerRef ?? ''} ${m.location ?? ''}`.toLowerCase().includes(q))
     .filter((m) => !group || (m.classCode ?? '').startsWith(group))
     .filter((m) => !onlyPreventive || m.isPreventive);
-  const shown = rows.slice(0, limit);
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['plans'] });
     void queryClient.invalidateQueries({ queryKey: ['materials'] });
@@ -55,6 +55,7 @@ export function MaterialsPage() {
   const stockValue = activeAll.reduce((sum, m) => sum + (m.avgCost ?? 0) * m.stockQty, 0);
   const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
+  const pager = usePager('materiais', rows.length);
   return (
     <>
       <div className="tp-kpi-row">
@@ -111,7 +112,7 @@ export function MaterialsPage() {
                 <tr><th>Código</th><th>Descrição</th><th>Grupo</th><th>Local</th><th className="is-num">Saldo</th><th className="is-num">Custo médio</th><th className="is-num">Em kits</th><th>Situação</th><th className="is-action" aria-label="Ações" /></tr>
               </thead>
               <tbody>
-                {shown.map((m) => (
+                {pager.slice(rows).map((m) => (
                   <tr key={m.id} className={`is-clickable${m.isActive ? '' : ' is-inactive'}`} tabIndex={0} onClick={() => setMode({ kind: 'edit', material: m })} onKeyDown={(e) => e.key === 'Enter' && setMode({ kind: 'edit', material: m })}>
                     <td className="is-strong tp-mono">{m.code}{m.abcClass && <span className={`mat-abc mat-abc--${m.abcClass.toLowerCase()}`} title={`Curva ABC: ${m.abcClass}`}>{m.abcClass}</span>}</td>
                     <td>
@@ -132,11 +133,9 @@ export function MaterialsPage() {
                   </tr>
                 ))}
                 {rows.length === 0 && <tr><td colSpan={9} className="tp-table__empty">Nenhum material.</td></tr>}
-                {rows.length > shown.length && (
-                  <tr><td colSpan={9} className="tp-table__more"><button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setLimit((l) => l + 300)}>Mostrar mais {Math.min(300, rows.length - shown.length)} de {rows.length - shown.length} restantes</button></td></tr>
-                )}
               </tbody>
             </table>
+            <Pager pager={pager} label="materiais" />
           </div>
         )}
       </section>

@@ -13,6 +13,8 @@ import {
 import { ApiError, api } from '@/lib/api-client';
 import { todayLocalIso } from '@/lib/format';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 /**
  * RF-14 — lançamento diário de km da frota diesel, em lote.
@@ -83,6 +85,8 @@ export function OdometerEntryPage() {
     });
   };
 
+  const pager = usePager('km-lancamento', vehicles.length);
+
   if (isPending) return <BrandLoader size={44} label="Carregando frota" />;
 
   return (
@@ -152,7 +156,7 @@ export function OdometerEntryPage() {
                 </tr>
               </thead>
               <tbody>
-                {vehicles.map((vehicle) => {
+                {pager.slice(vehicles).map((vehicle) => {
                   const entry = entries.find((e) => e.vehicle.id === vehicle.id);
                   const tone =
                     entry?.status === OdometerStatus.REJECTED
@@ -204,6 +208,7 @@ export function OdometerEntryPage() {
                 })}
               </tbody>
             </table>
+            <Pager pager={pager} label="carros" />
           </div>
         )}
 

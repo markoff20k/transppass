@@ -27,6 +27,8 @@ import { FailureCodeRules } from '@/components/failure-code/failure-code-rules';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { SearchSelect } from '@/components/ui/search-select';
 import { formatNumber } from '@/lib/format';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 type Panel = { kind: 'closed' } | { kind: 'item' } | { kind: 'reason'; list: ReasonCodeList } | { kind: 'kit'; item: FailureCatalogItem };
 
@@ -75,6 +77,7 @@ export function CatalogPage() {
   const kits = useQuery({ queryKey: ['plans', 'catalog-kits'], queryFn: () => api.get<CatalogKitRow[]>('/plans/catalog-kits') });
   const kitOf = (itemId: string) => (kits.data ?? []).find((k) => k.catalogItemId === itemId) ?? null;
 
+  const pager = usePager('catalogo', (items.data?.data ?? []).length, search);
   return (
     <>
       <CatalogVersions items={items.data?.data ?? []} onPublished={invalidate} />
@@ -101,7 +104,7 @@ export function CatalogPage() {
                 </tr>
               </thead>
               <tbody>
-                {(items.data?.data ?? []).map((item) => (
+                {pager.slice((items.data?.data ?? [])).map((item) => (
                   <tr key={item.id} className={item.isActive ? undefined : 'is-inactive'}>
                     <td className="is-strong">{item.code}</td>
                     <td>{item.description}</td>
@@ -131,6 +134,7 @@ export function CatalogPage() {
                 ))}
               </tbody>
             </table>
+            <Pager pager={pager} label="itens" />
           </div>
         )}
       </section>
@@ -426,6 +430,7 @@ function TransppassCodes() {
   const [kind, setKind] = useState<'ALEGADO' | 'CONSTATADO'>('CONSTATADO');
   const [q, setQ] = useState('');
   const rows = (codes.data ?? []).filter((c) => c.kind === kind && (!q || c.code.includes(q) || c.description.toLowerCase().includes(q.toLowerCase()) || (c.group ?? '').toLowerCase().includes(q.toLowerCase())));
+  const codesPager = usePager('codigos-transppass', rows.length, `${kind}|${q}`);
   if (!codes.data || codes.data.length === 0) return null;
   const fichas = codes.data.filter((c) => c.kind === 'FICHA');
   return (
@@ -441,15 +446,16 @@ function TransppassCodes() {
         <input type="search" className="tp-input" style={{ maxWidth: 320 }} placeholder="Código, descrição ou grupo" aria-label="Buscar código" value={q} onChange={(e) => setQ(e.target.value)} />
         <span className="tp-muted tp-toolbar__count">{rows.length} código(s)</span>
       </div>
-      <div className="tp-table-wrap" style={{ maxHeight: 420, overflowY: 'auto' }}>
+      <div className="tp-table-wrap">
         <table className="tp-table tp-table--compact">
           <thead><tr><th>Código</th><th>Descrição</th><th>Grupo</th></tr></thead>
           <tbody>
-            {rows.map((c) => (
+            {codesPager.slice(rows).map((c) => (
               <tr key={`${c.kind}-${c.code}`}><td className="tp-mono is-strong">{c.code}</td><td>{c.description}</td><td className="tp-muted">{c.group ?? '—'}</td></tr>
             ))}
           </tbody>
         </table>
+        <Pager pager={codesPager} label="códigos" />
       </div>
       {fichas.length > 0 && <p className="tp-muted" style={{ margin: 0, fontSize: 'var(--tp-text-xs)' }}>Tipos de ficha: {fichas.map((f) => `${f.code} ${f.description}`).join(' · ')}</p>}
     </section>

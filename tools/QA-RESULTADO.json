@@ -1,7 +1,7 @@
 {
-  "ranAt": "2026-10-28T21:31:53.930Z",
+  "ranAt": "2026-10-29T02:28:17.375Z",
   "base": "http://localhost:5173",
-  "passed": 87,
+  "passed": 90,
   "failed": 0,
   "results": [
     {
@@ -110,7 +110,7 @@
       "id": "DASH-06",
       "name": "Legenda das famílias de estado filtra a frota e volta ao todo",
       "ok": true,
-      "detail": "31 → 11 (esperado 11) → 31"
+      "detail": "34 → 13 (esperado 13) → 34"
     },
     {
       "id": "DASH-07",
@@ -325,6 +325,24 @@
     {
       "id": "PLT-02",
       "name": "Painel da demanda abre",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "DASH-01",
+      "name": "Cartão \"Na fila\" = carros aguardando manutenção no fluxo",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "DASH-02",
+      "name": "Cartão \"na oficina\" = oficina + peça + liberação do fluxo",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "DASH-03",
+      "name": "Página Fila lista os mesmos carros que o fluxo conta na fila",
       "ok": true,
       "detail": ""
     },

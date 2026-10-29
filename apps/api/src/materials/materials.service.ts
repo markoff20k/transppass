@@ -28,6 +28,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit.service';
 import { DowntimeService } from '../common/downtime.service';
+import { syncVehicleWithWorkOrder } from '../common/vehicle-status';
 import { NotificationsService } from '../common/notifications.service';
 
 /**
@@ -218,6 +219,7 @@ export class MaterialsService {
           data: { status: WorkOrderStatus.WAITING_PART },
         });
         await this.downtime.switchCause(tx, request.workOrderId, DowntimeCause.MATERIAL);
+        await syncVehicleWithWorkOrder(tx, request.workOrderId);
       }
 
       if (request.workOrderTaskId) {
@@ -601,6 +603,7 @@ export class MaterialsService {
         data: { status: WorkOrderStatus.IN_PROGRESS },
       });
       await this.downtime.switchCause(tx, workOrderId, DowntimeCause.EXECUTION);
+      await syncVehicleWithWorkOrder(tx, workOrderId);
     }
   }
 }

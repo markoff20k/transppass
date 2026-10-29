@@ -24,6 +24,8 @@ import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { SearchSelect } from '@/components/ui/search-select';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 type Panel = { kind: 'closed' } | { kind: 'create'; originVehicleId?: string } | { kind: 'demand'; id: string };
 
@@ -70,6 +72,8 @@ export function OperationsPage() {
   const onStreet = rows.filter((d) => d.assignment && !d.assignment.returnedAt);
   const missed = rows.filter((d) => d.status === ReplacementDemandStatus.MISSED).length;
 
+  const pager = usePager('operacao-demandas', rows.length);
+  const returnsPager = usePager('operacao-retornos', (returns.data ?? []).length);
   return (
     <>
       <div className="tp-kpi-row">
@@ -116,7 +120,7 @@ export function OperationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((d) => {
+                {pager.slice(rows).map((d) => {
                   const left = Math.round((new Date(d.windowEndsAt).getTime() - Date.now()) / 1000);
                   const isOpen = d.status === ReplacementDemandStatus.OPEN;
                   return (
@@ -155,6 +159,7 @@ export function OperationsPage() {
                 })}
               </tbody>
             </table>
+            <Pager pager={pager} label="demandas" />
           </div>
         )}
       </section>
@@ -180,7 +185,7 @@ export function OperationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(returns.data ?? []).map((r) => (
+                {returnsPager.slice((returns.data ?? [])).map((r) => (
                   <tr key={r.workOrderId} className={r.isOverdue ? 'is-danger' : undefined}>
                     <td className="is-strong">{r.vehicleCode} <span className="tp-muted">{r.vehiclePlate}</span></td>
                     <td><Link to={`/os/${r.workOrderId}`}>{r.workOrderCode}</Link></td>
@@ -200,6 +205,7 @@ export function OperationsPage() {
                 ))}
               </tbody>
             </table>
+            <Pager pager={returnsPager} label="retornos" />
           </div>
         )}
       </section>

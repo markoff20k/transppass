@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import {
@@ -8,6 +8,7 @@ import {
   EventOrigin,
   EventStatus,
   type CreateEventInput,
+  type EventsSummary,
   type FailureCatalogItem,
   type FailureEventSummary,
   type Paginated,
@@ -20,6 +21,8 @@ import { Drawer } from '@/components/ui/drawer';
 import { FailureCodePicker } from '@/components/failure-code/failure-code-picker';
 import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { pagerOf, usePagerState } from '@/lib/pager';
 
 /**
  * RF-01/RF-02 — registro do evento pelo CCO.
@@ -44,19 +47,19 @@ export function EventsPage() {
     ),
   });
 
+  // A tabela vem paginada da API (são milhares de eventos); os números do topo contam a base inteira.
+  const paging = usePagerState('events', status);
   const events = useQuery({
-    queryKey: ['events', 'recent'],
-    queryFn: () => api.get<Paginated<FailureEventSummary>>('/events?perPage=50'),
+    queryKey: ['events', 'list', paging.page, paging.pageSize, status],
+    queryFn: () => api.get<Paginated<FailureEventSummary>>(`/events?page=${paging.page}&perPage=${paging.pageSize}${status ? `&status=${status}` : ''}`),
+    placeholderData: keepPreviousData,
     refetchInterval: 30_000,
   });
+  const summary = useQuery({ queryKey: ['events', 'summary'], queryFn: () => api.get<EventsSummary>('/events/summary'), refetchInterval: 30_000 });
 
-  const all = events.data?.data ?? [];
-  const rows = status ? all.filter((e) => e.status === status) : all;
-  const today = new Date().toDateString();
-  const registeredToday = all.filter((e) => new Date(e.reportedAt).toDateString() === today).length;
-  const awaitingTriage = all.filter((e) => e.status === EventStatus.REGISTERED || e.status === EventStatus.IN_TRIAGE).length;
-  const safetyOpen = all.filter((e) => e.flags.isSafety && e.status !== EventStatus.CLOSED && e.status !== EventStatus.CANCELLED).length;
-  const deferred = all.filter((e) => e.status === EventStatus.DEFERRED).length;
+  const rows = events.data?.data ?? [];
+  const pager = pagerOf(paging, events.data?.meta.total ?? 0);
+  const { registeredToday = 0, awaitingTriage = 0, safetyOpen = 0, deferred = 0 } = summary.data ?? {};
 
   return (
     <>
@@ -87,7 +90,7 @@ export function EventsPage() {
         <div className="tp-card__head">
           <div>
             <h3>Eventos</h3>
-            <span className="chart__hint">últimos 50 registros — o mais recente primeiro</span>
+            <span className="chart__hint">o mais recente primeiro — 20 por página, mude o tamanho no rodapé</span>
           </div>
           <div className="tp-card__tools">
             <select className="tp-select" style={{ maxWidth: 220 }} value={status} onChange={(e) => setStatus(e.target.value as EventStatus | '')}>
@@ -96,7 +99,7 @@ export function EventsPage() {
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
-            <span className="tp-muted">{rows.length} evento(s)</span>
+            <span className="tp-muted">{pager.total.toLocaleString('pt-BR')} evento(s)</span>
           </div>
         </div>
 
@@ -146,6 +149,7 @@ export function EventsPage() {
                 ))}
               </tbody>
             </table>
+            <Pager pager={pager} label="eventos" />
           </div>
         )}
       </section>

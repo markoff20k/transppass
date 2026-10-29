@@ -1199,3 +1199,38 @@
 @media (prefers-reduced-motion: reduce) {
   .tp-toast, .tp-toast.is-leaving { animation: none; }
 }
+
+/* ---- Paginação (toda tabela: 20 por página, tamanho à escolha) ---------- */
+.tp-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tp-space-2) var(--tp-space-4);
+  flex-wrap: wrap;
+  padding: var(--tp-space-3) var(--tp-space-2) var(--tp-space-1);
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-secondary);
+}
+.tp-pager b { color: var(--color-text); font-weight: var(--tp-weight-semibold); font-variant-numeric: tabular-nums; }
+.tp-pager__size { display: inline-flex; align-items: center; gap: var(--tp-space-2); white-space: nowrap; }
+.tp-pager__size .tp-select { height: 30px; min-height: 0; width: auto; min-width: 0; padding-top: 0; padding-bottom: 0; font-size: var(--tp-text-xs); }
+.tp-pager__nav { display: inline-flex; align-items: center; gap: 2px; }
+.tp-pager__page { padding: 0 var(--tp-space-2); white-space: nowrap; }
+.tp-pager__btn {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--tp-radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--tp-duration-fast) var(--tp-ease), color var(--tp-duration-fast) var(--tp-ease);
+}
+.tp-pager__btn:hover:not(:disabled) { background: var(--color-surface-sunken); color: var(--color-text); }
+.tp-pager__btn:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 1px; }
+.tp-pager__btn:disabled { opacity: 0.35; cursor: default; }
+/* Dentro do cartão rolável da tabela a barra acompanha a janela, não a largura da tabela. */
+.tp-table-wrap > .tp-pager { position: sticky; left: 0; }

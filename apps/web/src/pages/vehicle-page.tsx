@@ -19,6 +19,8 @@ import { BusRender } from '@/components/bus/bus-render';
 import { familyOf } from '@/components/fleet/fleet-legend.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { InfoTip } from '@/components/ui/info-tip';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 /**
  * A página do carro: o veículo como produto. Render grande com a ficha ao
@@ -37,6 +39,10 @@ export function VehiclePage() {
     actions: <Link to="/frota" className="tp-btn tp-btn--secondary tp-btn--sm"><ArrowLeft size={14} /> Painel da frota</Link>,
   });
 
+  const recordsPager = usePager('carro-fichas', o?.records.length ?? 0);
+  const linesPager = usePager('carro-linhas', o?.lines30.length ?? 0);
+  const eventsPager = usePager('carro-eventos', o?.recentEvents.length ?? 0);
+  const woPager = usePager('carro-os', o?.recentWorkOrders.length ?? 0);
   if (q.isPending) return <BrandLoader size={48} label="Carregando o carro" />;
   if (!o || !v) return <div className="tp-table__empty">Carro não encontrado.</div>;
   const fam = familyOf(v.status);
@@ -149,7 +155,7 @@ export function VehiclePage() {
             <table className="tp-table tp-table--compact">
               <thead><tr><th>Quando</th><th>OS</th><th>Tipo</th><th>Alegado</th><th>Constatado</th><th>Providência</th><th>Peças</th><th>Mecânico</th></tr></thead>
               <tbody>
-                {o.records.map((r) => (
+                {recordsPager.slice(o.records).map((r) => (
                   <tr key={r.id}>
                     <td className="tp-muted">{formatDateTime(r.openedAt)}</td>
                     <td className="tp-mono">{r.externalOs}</td>
@@ -163,6 +169,7 @@ export function VehiclePage() {
                 ))}
               </tbody>
             </table>
+            <Pager pager={recordsPager} label="fichas" />
           </div>
         </section>
       )}
@@ -174,11 +181,12 @@ export function VehiclePage() {
             <table className="tp-table tp-table--compact">
               <thead><tr><th>Linha</th><th className="is-num">Dias</th><th className="is-num">Km em linha</th><th className="is-num">Km ocioso</th><th className="is-num">Viagens</th></tr></thead>
               <tbody>
-                {o.lines30.map((l) => (
+                {linesPager.slice(o.lines30).map((l) => (
                   <tr key={l.line}><td className="is-strong">{l.line}</td><td className="is-num">{l.days}</td><td className="is-num">{formatNumber(l.kmInLine)}</td><td className="is-num tp-muted">{formatNumber(l.kmIdle)}</td><td className="is-num">{formatNumber(l.trips)}</td></tr>
                 ))}
               </tbody>
             </table>
+            <Pager pager={linesPager} label="dias" />
           </div>
         </section>
       )}
@@ -191,7 +199,7 @@ export function VehiclePage() {
               <table className="tp-table tp-table--compact">
                 <thead><tr><th>Quando</th><th>Ocorrência</th><th>Código</th><th>Situação</th></tr></thead>
                 <tbody>
-                  {o.recentEvents.map((e) => (
+                  {eventsPager.slice(o.recentEvents).map((e) => (
                     <tr key={e.id}>
                       <td className="tp-muted">{formatDateTime(e.reportedAt)}</td>
                       <td style={{ whiteSpace: 'normal', minWidth: 200 }}><span className="mat-desc">{e.description}</span>{e.isUnscheduledReturn && <span className="mat-sub">retorno não programado</span>}</td>
@@ -201,6 +209,7 @@ export function VehiclePage() {
                   ))}
                 </tbody>
               </table>
+              <Pager pager={eventsPager} label="eventos" />
             </div>
           )}
         </section>
@@ -211,7 +220,7 @@ export function VehiclePage() {
               <table className="tp-table tp-table--compact">
                 <thead><tr><th>OS</th><th>Tipo</th><th>Abertura</th><th>Liberação</th><th>Situação</th></tr></thead>
                 <tbody>
-                  {o.recentWorkOrders.map((w) => (
+                  {woPager.slice(o.recentWorkOrders).map((w) => (
                     <tr key={w.id}>
                       <td><Link to={`/os/${w.id}`} className="is-strong">{w.code}</Link></td>
                       <td className="tp-muted">{w.type === 'PREVENTIVE' ? 'preventiva' : w.type === 'CORRECTIVE' ? 'corretiva' : w.type.toLowerCase()}</td>
@@ -222,6 +231,7 @@ export function VehiclePage() {
                   ))}
                 </tbody>
               </table>
+              <Pager pager={woPager} label="OS" />
             </div>
           )}
         </section>

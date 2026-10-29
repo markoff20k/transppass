@@ -112,8 +112,16 @@ export function DashboardPage() {
 
         <div className="dash-flow-wrap">
           <div className="dash-flow-wrap__head">
-            <h3>{t.dash.flowTitle}</h3>
-            <span className="chart__hint">{t.dash.flowHint}</span>
+            <div>
+              <h3>{t.dash.flowTitle}</h3>
+              <span className="chart__hint">{t.dash.flowHint}</span>
+            </div>
+            <ul className="dash-flow-legend" aria-label={t.dash.legendLabel}>
+              <li className="dash-flow-legend__item dash-flow-legend__item--waiting">{t.dash.flowLegend.waiting}</li>
+              <li className="dash-flow-legend__item dash-flow-legend__item--working">{t.dash.flowLegend.working}</li>
+              <li className="dash-flow-legend__item dash-flow-legend__item--stopped">{t.dash.flowLegend.stopped}</li>
+              <li className="dash-flow-legend__item dash-flow-legend__item--empty">{t.dash.flowLegend.empty}</li>
+            </ul>
           </div>
           <GarageFlow byStatus={data.fleet.byStatus} />
           <StatusSummary byStatus={data.fleet.byStatus} total={data.fleet.total} />
@@ -352,6 +360,8 @@ function GarageFlow({ byStatus }: { byStatus: Record<VehicleStatus, number> }) {
             <span className="tp-tip__body">{t.dash.stageHelp[s.key]}</span>
             <span className="tp-tip__meta">
               {t.dash.stageStates}: {s.statuses.map((st) => VEHICLE_STATUS_LABELS[st]).join(' · ')}
+              {' · '}
+              {t.dash.flowFamily}: {t.dash[s.family]}
             </span>
             <span className="tp-tip__foot">{t.dash.stageOpen} {s.label} ↗</span>
           </InfoTip>

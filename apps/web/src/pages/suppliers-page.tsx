@@ -6,6 +6,8 @@ import { ApiError, api } from '@/lib/api-client';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; supplier: SupplierRow };
 
@@ -34,6 +36,7 @@ export function SuppliersPage() {
   const claimsOpen = active.reduce((sum, s) => sum + s.claimsOpen, 0);
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['suppliers'] });
 
+  const pager = usePager('fornecedores', rows.length);
   return (
     <>
       <div className="tp-kpi-row">
@@ -63,7 +66,7 @@ export function SuppliersPage() {
             <table className="tp-table">
               <thead><tr><th>Fornecedor</th><th>Contato</th><th className="is-num">SLA garantia (dias)</th><th className="is-num">Materiais</th><th className="is-num">Reprovações 90 d</th><th className="is-num">Reclamações abertas</th><th className="is-action" aria-label="Ações" /></tr></thead>
               <tbody>
-                {rows.map((s) => (
+                {pager.slice(rows).map((s) => (
                   <tr key={s.id} className={`is-clickable${s.isActive ? '' : ' is-inactive'}`} tabIndex={0} onClick={() => setMode({ kind: 'edit', supplier: s })} onKeyDown={(e) => e.key === 'Enter' && setMode({ kind: 'edit', supplier: s })}>
                     <td className="is-strong">{s.name}{s.cnpj && <span className="mat-sub">{s.cnpj}</span>}</td>
                     <td className="tp-muted">{s.contact ?? '—'}</td>
@@ -77,6 +80,7 @@ export function SuppliersPage() {
                 {rows.length === 0 && <tr><td colSpan={7} className="tp-table__empty">Nenhum fornecedor.</td></tr>}
               </tbody>
             </table>
+            <Pager pager={pager} label="fornecedores" />
           </div>
         )}
       </section>

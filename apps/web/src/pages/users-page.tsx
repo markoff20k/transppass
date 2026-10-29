@@ -19,6 +19,8 @@ import { useAuth } from '@/features/auth/use-auth';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; user: PublicUser };
 
@@ -58,6 +60,7 @@ export function UsersPage() {
   const admins = activeRows.filter((u) => u.role === 'ADMIN').length;
   const operational = activeRows.filter((u) => u.role !== 'ADMIN' && u.role !== 'GESTAO').length;
 
+  const pager = usePager('usuarios', rows.length, String(showInactive));
   return (
     <>
       <div className="tp-kpi-row">
@@ -111,7 +114,7 @@ export function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((u) => (
+                {pager.slice(rows).map((u) => (
                   <tr
                     key={u.id}
                     className={`is-clickable${u.isActive ? '' : ' is-inactive'}`}
@@ -141,6 +144,7 @@ export function UsersPage() {
                 )}
               </tbody>
             </table>
+            <Pager pager={pager} label="usuários" />
           </div>
         )}
       </section>

@@ -15,6 +15,8 @@ import {
 import { ApiError, api } from '@/lib/api-client';
 import { Drawer } from '@/components/ui/drawer';
 import { useFailureRules } from './failure-code.utils';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 const POSITION_TYPE_LABELS = { NONE: 'nenhuma', AXLE: 'só eixo', SIDE: 'só lado', AXLE_SIDE: 'eixo × lado' } as const;
 
@@ -44,6 +46,7 @@ export function FailureCodeRules() {
     return '—';
   };
 
+  const pager = usePager('regras-criticidade', (rules.data ?? []).length);
   return (
     <section className="tp-card fcode-rules">
       <div className="tp-card__head">
@@ -64,7 +67,7 @@ export function FailureCodeRules() {
             <table className="tp-table tp-table--compact">
               <thead><tr><th>Aplica-se a</th><th>Código</th><th>Flags</th><th>Observação</th><th /></tr></thead>
               <tbody>
-                {(rules.data ?? []).map((r) => (
+                {pager.slice(rules.data ?? []).map((r) => (
                   <tr key={r.id} className={r.isActive ? undefined : 'is-inactive'}>
                     <td>{describe(r)}</td>
                     <td><code className="fcode__inline">{[r.failureModeCode ?? '**', r.subsystemCode ?? '***-***'].join('-')}</code></td>
@@ -84,6 +87,7 @@ export function FailureCodeRules() {
                 {(rules.data ?? []).length === 0 && <tr><td colSpan={5} className="tp-table__empty">Nenhuma regra — tudo resolve pelo item do catálogo ou pelo padrão (deferível).</td></tr>}
               </tbody>
             </table>
+            <Pager pager={pager} label="regras" />
           </div>
           {error && <p className="tp-error">{error}</p>}
         </div>

@@ -13,6 +13,8 @@ import { formatDateTime } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 /**
  * RF-07/08/09 — a fila de manutenção.
@@ -41,6 +43,7 @@ export function QueuePage() {
   const waiting = rows.filter((r) => r.status === 'WAITING');
   const inService = rows.filter((r) => r.status === 'IN_SERVICE');
 
+  const pager = usePager('fila', rows.length);
   return (
     <>
       <div className="tp-kpi-row">
@@ -89,7 +92,7 @@ export function QueuePage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {pager.slice(rows).map((row) => (
                   <tr
                     key={row.id}
                     className={`is-clickable${row.isSafety ? ' is-danger' : ''}${selected?.id === row.id ? ' is-selected' : ''}`}
@@ -129,6 +132,7 @@ export function QueuePage() {
                 ))}
               </tbody>
             </table>
+            <Pager pager={pager} label="carros" />
           </div>
         )}
       </section>

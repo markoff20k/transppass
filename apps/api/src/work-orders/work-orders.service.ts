@@ -36,6 +36,7 @@ import { NotificationsService } from '../common/notifications.service';
 import { QueueService } from '../queue/queue.service';
 import { MaterialsService } from '../materials/materials.service';
 import { nextSequentialCode } from '../common/sequence';
+import { syncVehicleWithWorkOrder } from '../common/vehicle-status';
 
 /** Checklist mínimo de limpeza, conforme o padrão do contrato (RF-21). */
 const CLEANING_CHECKLIST = [
@@ -342,6 +343,7 @@ export class WorkOrdersService {
         data: { status: WorkOrderStatus.TECH_CLOSED, techClosedAt: new Date() },
       });
       await this.downtime.switchCause(tx, id, DowntimeCause.RELEASE_WAIT);
+      await syncVehicleWithWorkOrder(tx, id);
 
       // A limpeza é pré-requisito da liberação, então nasce junto com o
       // encerramento técnico em vez de depender de alguém lembrar de criá-la.
@@ -442,6 +444,7 @@ export class WorkOrdersService {
           data: { status: WorkOrderStatus.IN_PROGRESS, techClosedAt: null },
         });
         await this.downtime.switchCause(tx, task.workOrderId, DowntimeCause.EXECUTION);
+        await syncVehicleWithWorkOrder(tx, task.workOrderId);
 
         await this.notifications.notify(tx, {
           role: UserRole.MANUTENCAO,
@@ -488,6 +491,7 @@ export class WorkOrdersService {
         data: { status: WorkOrderStatus.IN_CLEANING },
       });
       await this.downtime.switchCause(tx, workOrderId, DowntimeCause.CLEANING);
+      await syncVehicleWithWorkOrder(tx, workOrderId);
     });
 
     return this.findOne(workOrderId);
@@ -528,6 +532,7 @@ export class WorkOrdersService {
         data: { status: WorkOrderStatus.TECH_CLOSED },
       });
       await this.downtime.switchCause(tx, workOrderId, DowntimeCause.RELEASE_WAIT);
+      await syncVehicleWithWorkOrder(tx, workOrderId);
     });
 
     await this.audit.write({
@@ -881,6 +886,19 @@ export class WorkOrdersService {
       ...(query.vehicleId ? { vehicleId: query.vehicleId } : {}),
       ...(query.onlyOpen
         ? { status: { notIn: [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] } }
+        : {}),
+      ...(query.releasing
+        ? { status: { in: [WorkOrderStatus.TECH_CLOSED, WorkOrderStatus.IN_INSPECTION, WorkOrderStatus.IN_CLEANING] } }
+        : {}),
+      ...(query.onlyOverdue ? { releasedAt: null, estimatedCompletionAt: { lt: new Date() } } : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { code: { contains: query.search, mode: 'insensitive' } },
+              { vehicle: { code: { contains: query.search } } },
+              { vehicle: { plate: { contains: query.search, mode: 'insensitive' } } },
+            ],
+          }
         : {}),
     };
 

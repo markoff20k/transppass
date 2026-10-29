@@ -21,6 +21,7 @@ import {
   type CreateEventInput,
   type DispatchFieldServiceInput,
   type EventQuery,
+  type EventsSummary,
   type FailureEventSummary,
   type FieldOutcomeInput,
   type FieldStepInput,
@@ -537,6 +538,29 @@ export class EventsService {
 
     const rules = await this.rules();
     return paginate(rows.map((r) => toSummary(r, rules)), total, { page: query.page, perPage: query.perPage });
+  }
+
+  async summary(): Promise<EventsSummary> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const [registeredToday, awaitingTriage, deferred, openRows, rules] = await Promise.all([
+      this.prisma.failureEvent.count({ where: { reportedAt: { gte: startOfToday } } }),
+      this.prisma.failureEvent.count({ where: { status: { in: [EventStatus.REGISTERED, EventStatus.IN_TRIAGE] } } }),
+      this.prisma.failureEvent.count({ where: { status: EventStatus.DEFERRED } }),
+      this.prisma.failureEvent.findMany({
+        where: { status: { notIn: [EventStatus.CLOSED, EventStatus.CANCELLED] } },
+        include: {
+          vehicle: { select: { code: true, plate: true } },
+          catalogItem: true,
+          triage: true,
+          fieldService: true,
+          workOrder: { select: { id: true, code: true } },
+        },
+      }),
+      this.rules(),
+    ]);
+    const safetyOpen = openRows.filter((r) => toSummary(r, rules).flags.isSafety).length;
+    return { registeredToday, awaitingTriage, safetyOpen, deferred };
   }
 
   private rules(): Promise<FailureCodeRule[]> {

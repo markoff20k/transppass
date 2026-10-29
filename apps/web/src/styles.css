@@ -1568,8 +1568,36 @@ small.muted {
   gap: var(--tp-space-4);
 }
 
-.dash-flow-wrap__head { display: grid; gap: 2px; }
+.dash-flow-wrap__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--tp-space-3); flex-wrap: wrap; }
+.dash-flow-wrap__head > div { display: grid; gap: 2px; min-width: 0; }
 .dash-flow-wrap__head h3 { margin: 0; font-size: var(--tp-text-sm); }
+
+/* Legenda do trilho: a cor do nó é a família do estado, igual à barra abaixo. */
+.dash-flow-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tp-space-1) var(--tp-space-3);
+  font-size: var(--tp-text-2xs);
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+}
+.dash-flow-legend__item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dash-flow-legend__item::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--legend-color, var(--dash-ring-track));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--legend-color, transparent) 18%, transparent);
+  background: var(--color-surface);
+}
+.dash-flow-legend__item--waiting { --legend-color: var(--color-state-waiting); }
+.dash-flow-legend__item--working { --legend-color: var(--color-state-working); }
+.dash-flow-legend__item--stopped { --legend-color: var(--color-state-stopped); }
+.dash-flow-legend__item--empty::before { box-shadow: none; }
 
 .dash-flow {
   list-style: none;
@@ -3719,12 +3747,8 @@ small.muted {
 .bus-card--summary .bus-card__text { grid-template-rows: auto auto; gap: 4px; align-content: center; }
 
 /* Estoque: a lista de ferramentas (FR.168) tem 50 linhas — rola dentro do cartão, sem esticar a página. */
-.stock-tools .tp-table-wrap { max-height: 560px; overflow: auto; }
 
 /* Listas longas: rodapé com o que falta ver. */
-.tp-showmore { display: flex; align-items: center; justify-content: space-between; gap: var(--tp-space-3); flex-wrap: wrap; padding: var(--tp-space-3) var(--tp-space-1) 0; font-size: var(--tp-text-xs); }
-.tp-showmore b { color: var(--color-text); font-variant-numeric: tabular-nums; }
-.tp-showmore__actions { display: flex; gap: var(--tp-space-2); }
 
 /* Página do carro: o gráfico de km ocupa toda a altura do cartão ao lado da ficha. */
 .vpage__kmcard .vpage__kmbars { flex: 1; height: auto; min-height: 160px; }

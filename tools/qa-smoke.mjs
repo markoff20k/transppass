@@ -319,6 +319,14 @@ async function run() {
   await shot(page, 'plantao-demanda');
   await closeDrawer(page);
   if (qaDemandId) await apiFetch(`/operations/demands/${qaDemandId}/cancel`, { method: 'POST' }).catch(() => {});
+  if (API_MODE) {
+    const dash = await apiFetch('/dashboard').then((r) => r.json()).catch(() => null);
+    const waitingRows = await apiFetch('/queue?status=WAITING').then((r) => r.json()).catch(() => null);
+    const inShop = dash ? ['IN_MAINTENANCE', 'AWAITING_PART', 'IN_INSPECTION', 'IN_CLEANING'].reduce((n, k) => n + (dash.fleet.byStatus[k] ?? 0), 0) : -1;
+    record('CONS-02', 'Cartão "Na fila" = carros aguardando manutenção no fluxo', !!dash && dash.queue.waiting === dash.fleet.byStatus.AWAITING_MAINTENANCE);
+    record('CONS-03', 'Cartão "na oficina" = oficina + peça + liberação do fluxo', !!dash && dash.queue.inService === inShop);
+    record('CONS-04', 'Página Fila lista os mesmos carros que o fluxo conta na fila', !!dash && Array.isArray(waitingRows) && waitingRows.length === dash.fleet.byStatus.AWAITING_MAINTENANCE);
+  }
 
   // OS: painéis de sub-OS
   await page.goto(`${BASE}/os`, { waitUntil: 'networkidle0' });

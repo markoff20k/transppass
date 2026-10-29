@@ -117,10 +117,21 @@ export function BusRender({ vehicleClass, technology, status, code, width = 320,
           <stop offset="0.55" stopColor="#f3f3f1" />
           <stop offset="1" stopColor="#d9d9d6" />
         </linearGradient>
+        {/* Pintura: laranja Transppass no diesel, verde no elétrico */}
         <linearGradient id={`${id}-orange`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ff9a3c" />
-          <stop offset="0.5" stopColor="#f87509" />
-          <stop offset="1" stopColor="#d35f05" />
+          {electric ? (
+            <>
+              <stop offset="0" stopColor="#4ad39b" />
+              <stop offset="0.5" stopColor="#1fa37a" />
+              <stop offset="1" stopColor="#147a5b" />
+            </>
+          ) : (
+            <>
+              <stop offset="0" stopColor="#ff9a3c" />
+              <stop offset="0.5" stopColor="#f87509" />
+              <stop offset="1" stopColor="#d35f05" />
+            </>
+          )}
         </linearGradient>
         <linearGradient id={`${id}-glass`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#6b7480" />
@@ -249,8 +260,8 @@ function Body({ id, seg, spec, electric, code }: { id: string; seg: Segment & { 
         {isFront && <rect x={right - 44} y={ROOF_Y} width={44} height={BODY_H} fill={`url(#${id}-orange)`} />}
         {/* Saia: sombra de volume e friso laranja */}
         <rect x={x} y={SKIRT_Y + 6} width={w} height={ROOF_Y + BODY_H - SKIRT_Y - 6} fill="#000" opacity="0.08" />
-        <rect x={x + (isRear ? 16 : 0)} y={SKIRT_Y - 1} width={w - (isRear ? 16 : 0) - (isFront ? 44 : 0)} height={3} fill="#f87509" />
-        {electric && <rect x={x + (isRear ? 16 : 0)} y={electricStripeY - 3} width={w - (isRear ? 16 : 0) - (isFront ? 44 : 0)} height={2} fill="#1fa37a" />}
+        <rect x={x + (isRear ? 16 : 0)} y={SKIRT_Y - 1} width={w - (isRear ? 16 : 0) - (isFront ? 44 : 0)} height={3} fill={electric ? '#1fa37a' : '#f87509'} />
+        {electric && <rect x={x + (isRear ? 16 : 0)} y={electricStripeY - 3} width={w - (isRear ? 16 : 0) - (isFront ? 44 : 0)} height={2} fill="#8bf0c8" />}
 
         {/* Vidro corrido com reflexo diagonal */}
         <rect x={glassStart} y={WINDOW_Y} width={glassEnd - glassStart} height={WINDOW_H} rx={2.5} fill={`url(#${id}-glass)`} />

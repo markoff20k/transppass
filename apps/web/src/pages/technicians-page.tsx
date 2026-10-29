@@ -19,6 +19,8 @@ import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { formatDate } from '@/lib/format';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; technician: TechnicianRow };
 
@@ -57,6 +59,7 @@ export function TechniciansPage() {
   const ebus = active.filter((t) => t.technologies.includes(VehicleTechnology.EBUS)).length;
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['technicians'] });
 
+  const pager = usePager('tecnicos', rows.length);
   return (
     <>
       <div className="tp-kpi-row">
@@ -120,7 +123,7 @@ export function TechniciansPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((t) => (
+                {pager.slice(rows).map((t) => (
                   <tr key={t.id} className={`is-clickable${t.isActive ? '' : ' is-inactive'}`} tabIndex={0} onClick={() => setMode({ kind: 'edit', technician: t })} onKeyDown={(e) => e.key === 'Enter' && setMode({ kind: 'edit', technician: t })}>
                     <td className="tp-mono">{t.registration}</td>
                     <td className="is-strong">{t.name}{!t.isActive && <span className="tp-badge tp-badge--status" style={{ marginLeft: 6 }}>desativado</span>}</td>
@@ -140,6 +143,7 @@ export function TechniciansPage() {
                 {rows.length === 0 && <tr><td colSpan={9} className="tp-table__empty">Nenhum técnico. A base vem da Manutenção (Kaizen 16).</td></tr>}
               </tbody>
             </table>
+            <Pager pager={pager} label="técnicos" />
           </div>
         )}
       </section>

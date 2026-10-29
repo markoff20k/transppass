@@ -23,6 +23,8 @@ import { FleetLegend } from '@/components/fleet/fleet-legend';
 import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { InfoTip } from '@/components/ui/info-tip';
+import { Pager } from '@/components/ui/pager';
+import { pagerOf, usePagerState } from '@/lib/pager';
 
 interface PanelResponse {
   summary: FleetPanelSummary;
@@ -165,6 +167,8 @@ export function FleetPanelPage() {
     refetchInterval: 30_000,
   });
 
+  const tablePaging = usePagerState('frota-tabela', `${technology}|${status}|${search}|${vehicleClass}|${lot}|${onlyStale}|${family}`);
+
   if (isPending) return <BrandLoader size={44} label="Carregando painel" />;
   if (isError) return <div className="tp-alert tp-alert--danger">{(error as Error).message}</div>;
 
@@ -182,6 +186,7 @@ export function FleetPanelPage() {
   const stale = summary.degradedKmCount;
   const staleTone = stale === 0 ? 'tp-kpi--good' : stale >= Math.max(3, rows.length * 0.25) ? 'tp-kpi--danger' : 'tp-kpi--warn';
 
+  const pager = pagerOf(tablePaging, visible.length);
   return (
     <>
       <div className="tp-kpi-row">
@@ -391,7 +396,7 @@ export function FleetPanelPage() {
                 </tr>
               </thead>
               <tbody>
-                {visible.map((row) => {
+                {pager.slice(visible).map((row) => {
                   const fam = familyOf(row.status);
                   const reading = readingOf(row);
                   return (
@@ -421,6 +426,7 @@ export function FleetPanelPage() {
                 })}
               </tbody>
             </table>
+            <Pager pager={pager} label="carros" />
           </div>
         )}
       </section>

@@ -219,6 +219,7 @@ export const r1Handlers = [
     if (status === EventStatus.FIELD_SERVICE && rows.length === 0) rows = [{ ...all[2]!, id: 'ev-field', code: 'EV-2026-000144', status: EventStatus.FIELD_SERVICE, vehicleCode: '10006', vehiclePlate: 'ABC1D28', reportedAt: ago(1.2), fieldService: { id: 'fs-1', dispatchedAt: ago(1.1), arrivedAt: ago(0.7), startedAt: null, finishedAt: null, outcome: null, supportVehicleCode: 'APOIO-2', confirmedFailureCode: null } }];
     return HttpResponse.json(pageOf(rows, url));
   }),
+  http.get('*/api/events/summary', () => HttpResponse.json({ registeredToday: 4, awaitingTriage: 1, safetyOpen: 2, deferred: 6 })),
   http.post('*/api/events', () => HttpResponse.json(buildDashboard().recentEvents[0], { status: 201 })),
   http.post('*/api/events/:id/triage', () => HttpResponse.json(buildDashboard().recentEvents[0], { status: 201 })),
   http.post('*/api/events/:id/field/step', () => HttpResponse.json(buildDashboard().recentEvents[2], { status: 201 })),

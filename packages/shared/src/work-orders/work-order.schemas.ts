@@ -212,6 +212,11 @@ export const workOrderQuerySchema = z.object({
   vehicleId: z.string().uuid().optional(),
   /** Só as que ainda prendem o carro. */
   onlyOpen: z.coerce.boolean().default(false),
+  /** Os três portões antes de liberar: encerrada, em inspeção, em limpeza. */
+  releasing: z.coerce.boolean().default(false),
+  onlyOverdue: z.coerce.boolean().default(false),
+  /** Código da OS, prefixo ou placa. */
+  search: z.string().trim().max(40).optional(),
 });
 
 export type OpenWorkOrderInput = z.infer<typeof openWorkOrderSchema>;

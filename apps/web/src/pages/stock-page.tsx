@@ -18,6 +18,8 @@ import { useAuth } from '@/features/auth/use-auth';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { Pager } from '@/components/ui/pager';
+import { usePager } from '@/lib/pager';
 
 /**
  * E5 — a tela do Estoque.
@@ -67,8 +69,6 @@ export function StockPage() {
   });
 
   const [tool, setTool] = useState<ToolRow | null>(null);
-  const [showAllKanban, setShowAllKanban] = useState(false);
-  const KANBAN_PREVIEW = 10;
   const [component, setComponent] = useState<PoolComponentRow | null>(null);
 
   const pool = useQuery({
@@ -93,6 +93,10 @@ export function StockPage() {
 
   const rows = requests.data ?? [];
 
+  const pager = usePager('estoque-pedidos', rows.length);
+  const kanbanPager = usePager('estoque-kanban', (kanban.data ?? []).length);
+  const poolPager = usePager('estoque-pool', (pool.data ?? []).length);
+  const toolsPager = usePager('estoque-ferramentas', (tools.data ?? []).length);
   return (
     <>
       {notice && <div className="tp-alert tp-alert--info">{notice}</div>}
@@ -122,7 +126,7 @@ export function StockPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {pager.slice(rows).map((row) => (
                   <tr
                     key={row.id}
                     className={`is-clickable${row.partWaiting?.isOverdue ? ' is-danger' : ''}${selected?.id === row.id ? ' is-selected' : ''}`}
@@ -159,6 +163,7 @@ export function StockPage() {
                 ))}
               </tbody>
             </table>
+            <Pager pager={pager} label="pedidos" />
           </div>
         )}
       </section>
@@ -179,7 +184,7 @@ export function StockPage() {
                 <tr><th>Código</th><th>Material</th><th>Local</th><th className="is-num">Saldo</th><th className="is-num">Ponto</th><th className="is-num">Repor</th><th>Fornecedor</th><th className="is-num">Pedidos abertos</th></tr>
               </thead>
               <tbody>
-                {(showAllKanban ? (kanban.data ?? []) : (kanban.data ?? []).slice(0, KANBAN_PREVIEW)).map((k) => (
+                {kanbanPager.slice((kanban.data ?? [])).map((k) => (
                   <tr key={k.id} className={k.stockQty <= 0 ? 'is-danger' : undefined}>
                     <td className="is-strong tp-mono">{k.code}</td>
                     <td style={{ whiteSpace: 'normal', minWidth: 220 }}>
@@ -196,13 +201,7 @@ export function StockPage() {
                 ))}
               </tbody>
             </table>
-            {(kanban.data ?? []).length > KANBAN_PREVIEW && (
-              <div className="tp-row tp-row--end" style={{ paddingTop: 8 }}>
-                <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setShowAllKanban((v) => !v)}>
-                  {showAllKanban ? 'Mostrar só os mais críticos' : `Mostrar todos (${kanban.data?.length})`}
-                </button>
-              </div>
-            )}
+            <Pager pager={kanbanPager} label="itens" />
           </div>
         )}
       </section>
@@ -229,7 +228,7 @@ export function StockPage() {
                 </tr>
               </thead>
               <tbody>
-                {(pool.data ?? []).map((c) => (
+                {poolPager.slice((pool.data ?? [])).map((c) => (
                   <tr key={c.id} className="is-clickable" tabIndex={0} onClick={() => setComponent(c)} onKeyDown={(e) => e.key === 'Enter' && setComponent(c)}>
                     <td className="is-strong">{c.serialNumber}</td>
                     <td>{c.materialDescription}</td>
@@ -251,6 +250,7 @@ export function StockPage() {
                 )}
               </tbody>
             </table>
+            <Pager pager={poolPager} label="componentes" />
           </div>
         </section>
 
@@ -272,7 +272,7 @@ export function StockPage() {
                 </tr>
               </thead>
               <tbody>
-                {(tools.data ?? []).map((t) => (
+                {toolsPager.slice((tools.data ?? [])).map((t) => (
                   <tr key={t.id} className={t.isCalibrationExpired ? 'is-danger' : undefined}>
                     <td className="is-strong">{t.code}</td>
                     <td>{t.description}</td>
@@ -304,6 +304,7 @@ export function StockPage() {
                 )}
               </tbody>
             </table>
+            <Pager pager={toolsPager} label="ferramentas" />
           </div>
         </section>
       </div>
