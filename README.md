@@ -37,6 +37,8 @@ Para colocar em produção num servidor Ubuntu (DigitalOcean), siga [DEPLOY.md](
 
 O passo a passo completo — pré-requisitos, banco, `.env`, credenciais do seed, roteiro de verificação e problemas comuns — está em **[COMO-RODAR.md](COMO-RODAR.md)**.
 
+O **roteiro de validação para o cliente** — 17 blocos de teste com resultado esperado, operação assistida de dez dias, matriz de rastreabilidade e termo de aceite — está em [docs/Roteiro-de-Validacao-Modulo-PCM.pdf](docs/Roteiro-de-Validacao-Modulo-PCM.pdf). A fonte é [docs/roteiro-validacao/roteiro.html](docs/roteiro-validacao/roteiro.html); `node tools/roteiro-validacao.mjs` refaz as capturas (web em :5173 com a API real) e o PDF.
+
 Resumo, para quem já configurou o `.env` e o banco:
 
 ```bash

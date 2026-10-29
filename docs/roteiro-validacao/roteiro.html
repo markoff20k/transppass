@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Roteiro de Validação — Módulo PCM Transppass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ink: #1f2020;
+    --ink-2: #444544;
+    --ink-3: #6b6c6b;
+    --line: #d9d9d6;
+    --line-2: #ebebe8;
+    --paper: #ffffff;
+    --paper-2: #f6f6f3;
+    --brand: #f87509;
+    --brand-soft: #fff1e6;
+    --brand-ink: #9a4300;
+    --ok: #1b7f4b;
+    --ok-soft: #e6f4ec;
+    --warn: #b45309;
+    --warn-soft: #fff4e0;
+    --bad: #b42318;
+    --bad-soft: #fde8e6;
+    --info: #1d4ed8;
+    --info-soft: #e8eefc;
+  }
+  @page { size: A4; margin: 16mm 15mm 18mm 15mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Barlow', 'Segoe UI', system-ui, sans-serif;
+    font-size: 10pt; line-height: 1.45; color: var(--ink); background: var(--paper);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  h1, h2, h3, h4 { font-family: 'Barlow Condensed', 'Barlow', 'Segoe UI', sans-serif; margin: 0; text-wrap: balance; line-height: 1.1; }
+  h1 { font-size: 30pt; font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: 20pt; font-weight: 700; color: var(--ink); margin: 0 0 3mm; padding-bottom: 2mm; border-bottom: 2.5px solid var(--brand); }
+  h3 { font-size: 13.5pt; font-weight: 700; margin: 6mm 0 2mm; }
+  h4 { font-size: 11pt; font-weight: 600; margin: 4mm 0 1.5mm; color: var(--ink-2); }
+  p { margin: 0 0 2.4mm; }
+  p.lead { font-size: 11pt; color: var(--ink-2); }
+  code, .mono { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 8.8pt; }
+  code { background: var(--paper-2); padding: 0 3px; border-radius: 3px; border: 1px solid var(--line-2); }
+  a { color: var(--brand-ink); text-decoration: none; }
+  strong { font-weight: 600; }
+  ul, ol { margin: 0 0 2.4mm; padding-left: 5mm; }
+  li { margin-bottom: 0.9mm; }
+  .eyebrow { font-family: 'Barlow Condensed'; font-weight: 600; font-size: 9pt; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brand); }
+  .muted { color: var(--ink-3); }
+  .small { font-size: 8.8pt; }
+  .section { page-break-before: always; }
+  .section:first-child { page-break-before: auto; }
+  .avoid { page-break-inside: avoid; }
+  .nobreak { page-break-inside: avoid; }
+
+  /* Capa */
+  .cover { height: 258mm; display: grid; grid-template-rows: auto 1fr auto; page-break-after: always; }
+  .cover__top { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 5mm; }
+  .cover__brand { display: flex; align-items: center; gap: 4mm; }
+  .cover__mark { width: 11mm; height: 11mm; border-radius: 3mm; background: var(--brand); display: grid; place-items: center; }
+  .cover__mark span { font-family: 'Barlow Condensed'; font-weight: 700; font-size: 16pt; color: #1f2020; }
+  .cover__name { font-family: 'Barlow Condensed'; font-weight: 700; font-size: 16pt; letter-spacing: 0.04em; line-height: 1; }
+  .cover__name small { display: block; font-family: 'Barlow'; font-weight: 400; font-size: 8.5pt; letter-spacing: 0; color: var(--ink-3); margin-top: 1.2mm; }
+  .cover__doc { text-align: right; font-size: 9pt; color: var(--ink-3); line-height: 1.4; }
+  .cover__body { padding: 22mm 0 0; }
+  .cover__body h1 { font-size: 40pt; max-width: 150mm; margin: 4mm 0 5mm; }
+  .cover__body .sub { font-size: 14pt; color: var(--ink-2); max-width: 150mm; font-weight: 500; line-height: 1.3; }
+  .cover__band { margin-top: 10mm; background: #2a2b2a; color: #fff; border-radius: 4mm; padding: 8mm 9mm; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6mm; }
+  .cover__band div b { display: block; font-family: 'Barlow Condensed'; font-weight: 700; font-size: 20pt; line-height: 1; color: var(--brand); }
+  .cover__band div span { display: block; font-size: 8.5pt; color: #c9c9c6; margin-top: 1.4mm; line-height: 1.3; }
+  .cover__points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; margin-top: 14mm; font-size: 9.4pt; color: var(--ink-2); line-height: 1.45; }
+  .cover__points div { border-top: 2px solid var(--brand); padding-top: 3mm; }
+  .cover__points b { display: block; font-family: 'Barlow Condensed'; font-size: 12.5pt; font-weight: 700; color: var(--ink); margin-bottom: 1.2mm; }
+  .cover__meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; border-top: 1px solid var(--line); padding-top: 5mm; font-size: 9pt; }
+  .cover__meta b { display: block; font-size: 8pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin-bottom: 1mm; }
+
+  /* Sumário */
+  .toc { columns: 2; column-gap: 10mm; }
+  .toc ol { list-style: none; padding: 0; margin: 0; }
+  .toc li { display: flex; gap: 2mm; align-items: baseline; margin-bottom: 1.6mm; break-inside: avoid; }
+  .toc li .n { font-family: 'Barlow Condensed'; font-weight: 700; color: var(--brand); min-width: 8mm; }
+  .toc li.sub { padding-left: 8mm; font-size: 9.2pt; color: var(--ink-2); }
+  .toc li.sub .n { color: var(--ink-3); font-weight: 600; }
+
+  /* Tabelas */
+  table { width: 100%; border-collapse: collapse; font-size: 9.2pt; margin: 2mm 0 4mm; }
+  th, td { border: 1px solid var(--line); padding: 1.6mm 2.2mm; vertical-align: top; text-align: left; }
+  th { background: #2a2b2a; color: #fff; font-family: 'Barlow Condensed'; font-weight: 600; font-size: 9.2pt; letter-spacing: 0.06em; text-transform: uppercase; }
+  tbody tr:nth-child(even) td { background: var(--paper-2); }
+  tr { page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  table.plain th { background: var(--paper-2); color: var(--ink-2); }
+  td.n { font-family: 'Barlow Condensed'; font-weight: 700; color: var(--ink-2); text-align: center; white-space: nowrap; width: 9mm; }
+  td.n.star::after { content: '★'; color: var(--brand); font-size: 8pt; margin-left: 1px; vertical-align: top; }
+  td.chk { width: 21mm; white-space: nowrap; text-align: center; }
+  .box { display: inline-block; width: 3.6mm; height: 3.6mm; border: 1.2px solid var(--ink-2); border-radius: 0.7mm; vertical-align: -0.6mm; margin: 0 0.8mm 0 0; }
+  .chk .lab { font-size: 8pt; color: var(--ink-3); margin-right: 1.5mm; }
+
+  /* Bloco de teste */
+  .block { page-break-before: always; }
+  .block__head { display: grid; grid-template-columns: 22mm 1fr; gap: 4mm; align-items: start; border-bottom: 2.5px solid var(--brand); padding-bottom: 3mm; margin-bottom: 3mm; }
+  .block__id { font-family: 'Barlow Condensed'; font-weight: 700; font-size: 26pt; color: var(--brand); line-height: 1; }
+  .block__head h2 { border: 0; padding: 0; margin: 0 0 1mm; font-size: 20pt; }
+  .block__goal { color: var(--ink-2); font-size: 10pt; margin: 0; }
+  .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5mm; margin: 3mm 0 4mm; }
+  .meta div { background: var(--paper-2); border: 1px solid var(--line-2); border-radius: 2mm; padding: 2mm 2.6mm; font-size: 9pt; }
+  .meta b { display: block; font-size: 7.6pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin-bottom: 0.8mm; }
+  .pre { background: var(--info-soft); border-left: 3px solid var(--info); padding: 2mm 3mm; border-radius: 0 2mm 2mm 0; margin: 0 0 3mm; font-size: 9.4pt; }
+  .pre b { color: var(--info); }
+  .proof { background: var(--ok-soft); border-left: 3px solid var(--ok); padding: 2mm 3mm; border-radius: 0 2mm 2mm 0; margin: 3mm 0; font-size: 9.4pt; }
+  .proof b { color: var(--ok); }
+  .note { background: var(--warn-soft); border-left: 3px solid var(--warn); padding: 2mm 3mm; border-radius: 0 2mm 2mm 0; margin: 3mm 0; font-size: 9.4pt; }
+  .note b { color: var(--warn); }
+  .steps td:nth-child(2) { width: 46%; }
+  .steps td:nth-child(3) { width: 40%; }
+  .steps td .path { font-family: 'Barlow Condensed'; font-weight: 600; color: var(--brand-ink); font-size: 9.4pt; letter-spacing: 0.02em; }
+  .kw { font-weight: 600; }
+
+  /* Figuras */
+  figure { margin: 3mm 0 4mm; page-break-inside: avoid; }
+  figure img { width: 100%; display: block; border: 1px solid var(--line); border-radius: 2mm; }
+  figure.tall img { max-height: 150mm; object-fit: cover; object-position: top; }
+  figure.h120 img { max-height: 120mm; object-fit: cover; object-position: top; }
+  figure.h60 img { max-height: 62mm; object-fit: cover; object-position: top; }
+  figcaption { font-size: 8.6pt; color: var(--ink-3); margin-top: 1.4mm; }
+  figcaption b { color: var(--ink-2); font-weight: 600; }
+  .figrow { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; page-break-inside: avoid; }
+  .figrow.phone { grid-template-columns: 1fr 1fr 1fr; }
+  .figrow.phone figure img { max-height: 95mm; width: auto; margin: 0 auto; }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin: 2mm 0 4mm; }
+  .cards.two { grid-template-columns: 1fr 1fr; }
+  .card { border: 1px solid var(--line); border-radius: 2mm; padding: 2.6mm 3mm; page-break-inside: avoid; }
+  .card b.t { display: block; font-family: 'Barlow Condensed'; font-size: 11pt; font-weight: 700; margin-bottom: 1mm; }
+  .card .k { font-family: 'Barlow Condensed'; font-size: 20pt; font-weight: 700; color: var(--brand); line-height: 1; }
+  .card p { margin: 0; font-size: 9pt; color: var(--ink-2); }
+  .legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin: 2mm 0 4mm; }
+  .legend div { border: 1px solid var(--line); border-radius: 2mm; padding: 2.4mm 3mm; font-size: 9pt; }
+  .legend div b { display: block; font-family: 'Barlow Condensed'; font-size: 11pt; margin-bottom: 0.8mm; }
+  .pill { display: inline-block; font-family: 'Barlow Condensed'; font-weight: 600; font-size: 8.4pt; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.4mm 2mm; border-radius: 999px; border: 1px solid; line-height: 1.5; vertical-align: middle; }
+  .pill.s1 { color: var(--bad); border-color: var(--bad); background: var(--bad-soft); }
+  .pill.s2 { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
+  .pill.s3 { color: var(--info); border-color: var(--info); background: var(--info-soft); }
+  .pill.ok { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
+
+  /* Fluxo */
+  .flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2mm; margin: 2mm 0 4mm; }
+  .flow div { background: var(--paper-2); border: 1px solid var(--line); border-radius: 2mm; padding: 2mm; text-align: center; font-size: 8.8pt; position: relative; }
+  .flow div b { display: block; font-family: 'Barlow Condensed'; font-size: 11.5pt; color: var(--brand-ink); }
+  .flow div small { display: block; color: var(--ink-3); font-size: 8pt; margin-top: 0.6mm; }
+
+  /* Assinaturas */
+  .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm 10mm; margin-top: 8mm; }
+  .sign div { border-top: 1px solid var(--ink-2); padding-top: 2mm; font-size: 9pt; min-height: 22mm; }
+  .sign div b { display: block; font-weight: 600; }
+  .sign div span { color: var(--ink-3); }
+  .nc-form td { height: 9mm; }
+  .fill { border-bottom: 1px dotted var(--ink-3); display: inline-block; min-width: 40mm; }
+</style>
+</head>
+<body>
+
+<!-- ======================= CAPA ======================= -->
+<section class="cover">
+  <div class="cover__top">
+    <div class="cover__brand">
+      <div class="cover__mark"><span>T</span></div>
+      <div class="cover__name">TRANSPPASS<small>Transporte de Passageiros · Módulo PCM</small></div>
+    </div>
+    <div class="cover__doc">Documento TPP-PCM-VAL-001 · Versão 1.0<br>29 de outubro de 2026 · Uso interno Transppass / ProAero</div>
+  </div>
+  <div class="cover__body">
+    <div class="eyebrow">Protocolo de homologação</div>
+    <h1>Roteiro de Validação Operacional do Módulo PCM</h1>
+    <p class="sub">Passo a passo para a Transppass testar, validar e aceitar o sistema que sustenta o Kaizen MKBF: do checklist da manhã à liberação do carro, com o MKBF calculado pelo próprio processo.</p>
+    <div class="cover__points">
+      <div><b>Operação sustentada</b>Checklist, evento, triagem, fila, socorro, OS, portões, preventiva, plantão e estoque executados no sistema, com as regras do Kaizen aplicadas pela ferramenta.</div>
+      <div><b>MKBF pelo processo</b>Calculado dos estados da garagem com os dados reais de agosto e setembro, pelo critério da carta de 28/10: quebra é ficha A, S ou T.</div>
+      <div><b>Kaizen dentro do sistema</b>Daily de 15 min, auditorias 5S e de conformidade, treinamentos, laboratório de peças, kanban e vida de componentes, sem planilha paralela.</div>
+    </div>
+    <div class="cover__band">
+      <div><b>17</b><span>blocos de teste, 120 passos com resultado esperado e campo de registro</span></div>
+      <div><b>460</b><span>carros da frota real da Transppass carregados, com km e quebras de agosto e setembro</span></div>
+      <div><b>3.888 km</b><span>MKBF de setembro/2026 calculado pelo sistema a partir das fichas A, S e T</span></div>
+      <div><b>3 + 10</b><span>dias: três de testes dirigidos e dez dias úteis de operação assistida</span></div>
+    </div>
+  </div>
+  <div class="cover__meta">
+    <div><b>Cliente</b>Transppass Transporte de Passageiros<br>Manutenção · PCM · CCO · Estoque · Operação</div>
+    <div><b>Fornecedor</b>ProAero<br>Engenharia de software e confiabilidade</div>
+    <div><b>Ambiente de homologação</b>https://transppass.online<br>Dados reais da Transppass (ago–set/2026)</div>
+  </div>
+</section>
+
+<!-- ======================= SUMÁRIO ======================= -->
+<section>
+  <h2>Sumário</h2>
+  <div class="toc">
+    <ol>
+      <li><span class="n">1</span><span>Sobre este documento</span></li>
+      <li><span class="n">2</span><span>O que está sendo validado: o sistema a serviço do Kaizen MKBF</span></li>
+      <li><span class="n">3</span><span>Preparação: ambiente, acessos, dados e equipe</span></li>
+      <li><span class="n">4</span><span>Blocos de teste dirigidos</span></li>
+      <li class="sub"><span class="n">B1</span><span>Acesso, perfis e segurança</span></li>
+      <li class="sub"><span class="n">B2</span><span>Dashboard, Painel da frota e página do carro</span></li>
+      <li class="sub"><span class="n">B3</span><span>MKBF e indicadores calculados pelo processo</span></li>
+      <li class="sub"><span class="n">B4</span><span>Quilometragem diesel e telemetria eBUS</span></li>
+      <li class="sub"><span class="n">B5</span><span>Checklist diário de conservação</span></li>
+      <li class="sub"><span class="n">B6</span><span>Evento, triagem e fila</span></li>
+      <li class="sub"><span class="n">B7</span><span>Socorro na rua</span></li>
+      <li class="sub"><span class="n">B8</span><span>Ordem de serviço: execução, portões e liberação</span></li>
+      <li class="sub"><span class="n">B9</span><span>Estoque, kanban e ferramental</span></li>
+      <li class="sub"><span class="n">B10</span><span>Preventiva por km: linha do tempo, parada e kit D-1</span></li>
+      <li class="sub"><span class="n">B11</span><span>Plantão e reposição de carro na linha</span></li>
+      <li class="sub"><span class="n">B12</span><span>Daily 15 min</span></li>
+      <li class="sub"><span class="n">B13</span><span>Qualidade de peças, fornecedores e garantia</span></li>
+      <li class="sub"><span class="n">B14</span><span>Auditorias 5S e de conformidade</span></li>
+      <li class="sub"><span class="n">B15</span><span>Vida de componentes por km</span></li>
+      <li class="sub"><span class="n">B16</span><span>Cadastros e governança</span></li>
+      <li class="sub"><span class="n">B17</span><span>Celular, tema e acessibilidade</span></li>
+      <li><span class="n">5</span><span>Operação assistida: dez dias úteis rodando o Kaizen no sistema</span></li>
+      <li><span class="n">6</span><span>Matriz de rastreabilidade: requisito → bloco de teste</span></li>
+      <li><span class="n">7</span><span>Registro de não conformidades</span></li>
+      <li><span class="n">8</span><span>Premissas e pendências conhecidas</span></li>
+      <li><span class="n">9</span><span>Termo de aceite</span></li>
+      <li><span class="n">A</span><span>Anexo A: perfis, credenciais e menus</span></li>
+      <li><span class="n">B</span><span>Anexo B: glossário</span></li>
+    </ol>
+  </div>
+
+  <h3>Como ler este roteiro</h3>
+  <div class="legend">
+    <div><b>Passo ★</b>Passo crítico. Todos os passos marcados com estrela precisam estar OK para o aceite. Os demais podem ter não conformidade de severidade 2 ou 3 com plano de correção.</div>
+    <div><b>Resultado esperado</b>O que a tela ou o sistema deve mostrar. Se o que você vê é diferente, registre no formulário da seção 7 com a captura da tela.</div>
+    <div><b>Campo OK / NOK</b>Marque no papel ou no PDF. Ao final de cada bloco há a evidência que comprova o bloco e o nome de quem validou.</div>
+  </div>
+  <p class="small muted">Siglas: MKBF (quilômetros médios entre falhas), OS (ordem de serviço), PCM (planejamento e controle da manutenção), CCO (centro de controle operacional), eBUS (ônibus elétrico), RF (requisito funcional do PRD v1.0), RN (regra de negócio da especificação do MVP). O glossário completo está no Anexo B.</p>
+</section>
+
+<!-- ======================= 1. SOBRE ======================= -->
+<section class="section">
+  <div class="eyebrow">Seção 1</div>
+  <h2>Sobre este documento</h2>
+  <p class="lead">Este roteiro é o instrumento de homologação do Módulo PCM pela Transppass. Ele foi escrito para ser executado pelas próprias equipes de Manutenção, PCM, CCO, Estoque e Operação, com acompanhamento da ProAero, e para produzir uma evidência objetiva de que o sistema sustenta a operação da garagem e a execução do Kaizen MKBF.</p>
+
+  <h3>Objetivo</h3>
+  <ul>
+    <li><strong>Comprovar que o sistema suporta a operação</strong>: cada etapa do processo PCM (checklist, evento, triagem, fila, socorro, OS, portões de liberação, preventiva, plantão, estoque) é executada no sistema, com as regras de negócio do Kaizen aplicadas pela própria ferramenta.</li>
+    <li><strong>Comprovar que o MKBF é calculado pelo processo</strong>, com os dados reais da Transppass, pelo critério da carta de 28/10/2026 (quebra = ficha de tipo A, S ou T; frota em operação com STATUS 0; guinchos e treinamento fora do km).</li>
+    <li><strong>Validar que o Kaizen roda dentro do sistema</strong>: a Daily de 15 minutos, as auditorias 5S e de conformidade, a matriz de treinamentos, o laboratório de peças, o kanban do almoxarifado e a vida de componentes nascem do movimento real da garagem, sem planilhas paralelas.</li>
+    <li><strong>Produzir o aceite formal</strong> do MVP (releases R0, R1 e R2 do PRD v1.0) com registro de não conformidades e plano de correção.</li>
+  </ul>
+
+  <h3>Para quem</h3>
+  <table class="plain">
+    <thead><tr><th style="width:30mm">Papel</th><th>Quem na Transppass</th><th>Blocos sob sua responsabilidade</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Patrocinador</strong></td><td>Diretoria de Manutenção / Gestão</td><td>Seções 2, 5 e 9; blocos B3 e B12</td></tr>
+      <tr><td><strong>Líder da validação</strong></td><td>Coordenação do PCM</td><td>Agenda, consolidação das não conformidades, B6, B10, B16</td></tr>
+      <tr><td><strong>Manutenção</strong></td><td>Encarregados, mecânicos e inspetores</td><td>B5, B8, B14, B15, B17</td></tr>
+      <tr><td><strong>CCO e Plantão</strong></td><td>Despachantes e plantonistas</td><td>B4, B6 (registro), B7, B11</td></tr>
+      <tr><td><strong>Estoque / Almoxarifado</strong></td><td>Suprimentos e almoxarifado</td><td>B9, B13</td></tr>
+      <tr><td><strong>ProAero</strong></td><td>Engenharia</td><td>Preparação do ambiente, suporte durante a execução, correções</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Critério de aprovação</h3>
+  <div class="cards">
+    <div class="card"><b class="t">Aprovado</b><p>Todos os passos ★ OK, nenhuma não conformidade de severidade 1 em aberto e as de severidade 2 com prazo acordado. Segue para operação assistida (seção 5).</p></div>
+    <div class="card"><b class="t">Aprovado com ressalvas</b><p>Passos ★ OK, mas há severidade 2 sem prazo ou volume de severidade 3 que compromete o uso. A ProAero corrige e o bloco é reexecutado.</p></div>
+    <div class="card"><b class="t">Reprovado</b><p>Qualquer passo ★ NOK ou uma severidade 1 (bloqueia a operação ou produz um indicador errado). O bloco inteiro volta após a correção.</p></div>
+  </div>
+  <p class="small muted">Severidades: <span class="pill s1">S1</span> bloqueia a operação ou produz indicador errado · <span class="pill s2">S2</span> comportamento incorreto com contorno conhecido · <span class="pill s3">S3</span> cosmético ou de conveniência.</p>
+</section>
+
+<!-- ======================= 2. KAIZEN ======================= -->
+<section class="section">
+  <div class="eyebrow">Seção 2</div>
+  <h2>O que está sendo validado: o sistema a serviço do Kaizen MKBF</h2>
+  <p class="lead">O A3 "Kaizen Estruturante" (03/06/2026) e os Fluxos de Processo PCM (Rev. 00, agosto/2026) são o desenho. O Módulo PCM é onde esse desenho roda. A tabela abaixo liga cada frente do Kaizen ao lugar do sistema em que ela acontece e ao bloco deste roteiro que a comprova.</p>
+
+  <table>
+    <thead><tr><th style="width:44mm">Frente do Kaizen</th><th>Onde roda no sistema</th><th style="width:48mm">O que comprova</th><th style="width:14mm">Bloco</th></tr></thead>
+    <tbody>
+      <tr><td><strong>MKBF como métrica norte</strong></td><td>Indicadores e Dashboard: km rodados ÷ retornos não programados, calculados dos estados do processo. Ninguém digita o MKBF.</td><td>Setembro/2026 = 3.888 km, conferível contra a apuração da Transppass</td><td>B3</td></tr>
+      <tr><td><strong>Daily de 15 min</strong></td><td>Daily 15 min: MKBF, disponibilidade, retrabalho, viagens perdidas e OS, com falhas da semana, carros reincidentes e rotina do dia.</td><td>A reunião em pé é conduzida pela tela, sem planilha</td><td>B12</td></tr>
+      <tr><td><strong>Manutenção diária (Fluxos p.8)</strong></td><td>Checklist diário por tecnologia; item reprovado vira evento corretivo com código composto e entra na triagem.</td><td>Reprovação → evento → triagem no mesmo minuto</td><td>B5</td></tr>
+      <tr><td><strong>Lançamento de km diesel</strong></td><td>Quilometragem: lote da garagem, validação de delta na origem, odômetro atrasado sinalizado ao PCM.</td><td>Delta absurdo recusado antes de gravar</td><td>B4</td></tr>
+      <tr><td><strong>Triagem e priorização com motivo</strong></td><td>Eventos, Triagem e Fila: código Modo × Subsistema × Posição, flags de segurança e fast-track, mudança de fila só com código de motivo.</td><td>Fila não muda sem motivo; registro imutável</td><td>B6</td></tr>
+      <tr><td><strong>Portões de liberação</strong></td><td>Página da OS: serviço → encerramento técnico → inspeção → limpeza → liberação. Só a Manutenção libera.</td><td>Nenhum carro liberado sem inspeção e limpeza</td><td>B8</td></tr>
+      <tr><td><strong>Decomposição da indisponibilidade (RF-39)</strong></td><td>Indicadores: fila, material, execução, inspeção, limpeza e aguardando liberação, medidos pelo relógio da OS-mãe.</td><td>Onde o tempo de carro parado foi</td><td>B3, B8</td></tr>
+      <tr><td><strong>Preventiva por km</strong></td><td>Preventiva: linha do tempo por km projetado, parada com escopo do pacote + backlog, travas de kit e equipe, kit D-1.</td><td>Parada não sai da escala sem kit e equipe</td><td>B10</td></tr>
+      <tr><td><strong>Reposição de carro na linha</strong></td><td>Plantão: demanda com janela de 40 min, reserva com matriz de habilitações, retorno do titular ao vivo da OS.</td><td>Operador sem habilitação é bloqueado</td><td>B11</td></tr>
+      <tr><td><strong>Kit corretivo e ferramental (FR.168)</strong></td><td>Catálogo e Planos: kit por falha pedido inteiro ao Estoque; ferramenta por tarefa; suficiência de carregadores eBUS.</td><td>Sub-OS pede o kit; insuficiência visível antes de faltar</td><td>B9, B16</td></tr>
+      <tr><td><strong>Kanban do almoxarifado</strong></td><td>Estoque › Kanban: ponto de pedido e lote no cadastro; o que está no ponto aparece com fornecedor, SLA e pedidos abertos.</td><td>Reposição sinalizada e contada na Daily</td><td>B9</td></tr>
+      <tr><td><strong>Laboratório de peças e fornecedores</strong></td><td>Qualidade de peças: inspeção de recebimento, falha prematura, garantia aberta → aceita/negada; reincidência por fornecedor.</td><td>Reclamação de garantia rastreada</td><td>B13</td></tr>
+      <tr><td><strong>Auditorias 5S e de conformidade (A3 §9)</strong></td><td>Auditorias: dez critérios, nota calculada, plano de ação, próxima data por calendário, trajetória por área.</td><td>Auditoria devendo aparece na Daily</td><td>B14</td></tr>
+      <tr><td><strong>Matriz de treinamentos</strong></td><td>Técnicos: especialidade, tecnologia, nível 1–3, treinamentos e vencimentos; quem atua em eBUS sem alta tensão é sinalizado.</td><td>Lacuna de alta tensão visível</td><td>B16</td></tr>
+      <tr><td><strong>Vida de componentes</strong></td><td>Vida de componentes: compressor, turbina, bicos, cubos, motor de partida, alternador e baterias, carro a carro, contra a vida esperada.</td><td>A troca encerra o anterior com a vida real</td><td>B15</td></tr>
+    </tbody>
+  </table>
+
+  <h3>O ciclo do carro que o sistema controla</h3>
+  <div class="flow">
+    <div><b>Checklist</b><small>motorista, antes da saída</small></div>
+    <div><b>Evento</b><small>código composto, origem</small></div>
+    <div><b>Triagem</b><small>PCM decide: socorro, recolher, deferir</small></div>
+    <div><b>Fila → OS</b><small>OS-mãe é o relógio</small></div>
+    <div><b>Portões</b><small>técnico, inspeção, limpeza</small></div>
+    <div><b>Liberação</b><small>Manutenção libera; carro disponível</small></div>
+  </div>
+  <div class="proof"><b>O que torna isso uma prova e não uma demonstração.</b> Os indicadores do bloco B3 não são digitados nem importados: nascem dos estados que o próprio validador vai criar nos blocos B5 a B11. Se o processo é executado no sistema, o MKBF, a disponibilidade e a decomposição da indisponibilidade saem corretos por construção.</div>
+</section>
+
+<!-- ======================= 3. PREPARAÇÃO ======================= -->
+<section class="section">
+  <div class="eyebrow">Seção 3</div>
+  <h2>Preparação: ambiente, acessos, dados e equipe</h2>
+
+  <h3>3.1 Ambiente</h3>
+  <table class="plain">
+    <tbody>
+      <tr><td style="width:38mm"><strong>Endereço</strong></td><td><span class="mono">https://transppass.online</span> (ambiente de homologação, HTTPS). Em rede local da garagem, o endereço alternativo será informado pela ProAero.</td></tr>
+      <tr><td><strong>Navegadores</strong></td><td>Microsoft Edge ou Google Chrome atualizados no desktop. No celular, Chrome (Android) ou Safari (iOS). O bloco B17 cobre a largura de celular.</td></tr>
+      <tr><td><strong>Dados</strong></td><td>Bases reais entregues pela Transppass em 28/10/2026 (frota, km, fichas, OS, peças, viagens, linhas). O simulador de demonstração fica <strong>desligado</strong> na homologação; qualquer movimento de exemplo que ainda exista será removido pela ProAero antes da operação assistida (seção 5).</td></tr>
+      <tr><td><strong>Horário</strong></td><td>Os testes dirigidos podem ocorrer em qualquer horário. A operação assistida segue o horário da garagem, incluindo o lançamento de km da manhã.</td></tr>
+      <tr><td><strong>Suporte</strong></td><td>Engenheiro da ProAero presente (ou em chamada) durante os três dias de testes dirigidos e de prontidão nos dez dias de operação assistida.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.2 Acessos por perfil</h3>
+  <p>Cada perfil enxerga um menu diferente e a API recusa o que o perfil não pode fazer (RF-36). As contas abaixo existem no ambiente de homologação. Antes da operação assistida, o administrador da Transppass cria contas nominais para cada pessoa (bloco B16) e as contas genéricas são desativadas.</p>
+  <table>
+    <thead><tr><th style="width:44mm">Usuário</th><th style="width:26mm">Senha inicial</th><th style="width:24mm">Perfil</th><th>Autoridade no processo</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">admin@transppass.local</td><td class="mono">admin123</td><td>Administrador</td><td>Tudo, inclusive usuários e design kit</td></tr>
+      <tr><td class="mono">pcm@transppass.local</td><td class="mono">transppass123</td><td>PCM</td><td>Triagem, fila, preventiva, cadastros, indicadores. Não libera carro nem reserva equipe.</td></tr>
+      <tr><td class="mono">manutencao@transppass.local</td><td class="mono">transppass123</td><td>Manutenção</td><td>OS, sub-OS, inspeção, limpeza, liberação do carro, equipe da parada</td></tr>
+      <tr><td class="mono">cco@transppass.local</td><td class="mono">transppass123</td><td>CCO</td><td>Registro de eventos, socorro, plantão, km</td></tr>
+      <tr><td class="mono">plantao@transppass.local</td><td class="mono">transppass123</td><td>Plantão</td><td>Demandas de reposição, reservas, fila (leitura)</td></tr>
+      <tr><td class="mono">estoque@transppass.local</td><td class="mono">transppass123</td><td>Estoque</td><td>Solicitações, kits D-1, kanban, materiais, fornecedores, laboratório de peças</td></tr>
+    </tbody>
+  </table>
+  <p class="small muted">Perfis adicionais disponíveis para contas nominais: Socorro, Mecânico, Inspetor, Limpeza e Gestão (somente leitura de indicadores, Daily, auditorias e componentes). O Anexo A traz a matriz perfil × menu.</p>
+
+  <h3>3.3 O que já está carregado</h3>
+  <div class="cards">
+    <div class="card"><b class="t">Frota</b><div class="k">460</div><p>carros do VBM0208 sem data de desligamento: 455 em operação (STATUS 0), 2 guinchos (7) e 3 de treinamento (17). Guincho e treinamento ficam fora do km do MKBF, como a carta orienta.</p></div>
+    <div class="card"><b class="t">Quilometragem</b><div class="k">22.015</div><p>leituras diárias de agosto e setembro (VBM0406), 4.932.412 km. Hodômetro ancorado no KM CHASSI do cadastro.</p></div>
+    <div class="card"><b class="t">Quebras</b><div class="k">1.284</div><p>fichas de tipo A, S e T (recolhida anormal, socorro, troca de carro) de agosto e setembro: 659 + 625. As 5.714 ocorrências do CCO sem ficha ficam registradas sem contar como quebra.</p></div>
+    <div class="card"><b class="t">Fichas e OS</b><div class="k">17.536</div><p>registros de manutenção (VBM0503 e VBM0805): 15.693 fichas com defeito alegado, constatado, providência e mecânico; 1.241 preventivas por km pela regra KM LIM &gt; 0.</p></div>
+    <div class="card"><b class="t">Peças</b><div class="k">21.759</div><p>linhas do VBM0404, R$ 4,7 milhões ligados às OS. Almoxarifado com 2.496 materiais, classe, prateleira, saldo e custo.</p></div>
+    <div class="card"><b class="t">Operação</b><div class="k">5.411</div><p>linha-dia-sentido de viagens da SPTrans (programadas × monitoradas) e 46.563 registros de km por carro, linha e dia. 907 motoristas e 864 cobradores.</p></div>
+  </div>
+  <p>Também estão carregados os 52 modelos de chassi, os planos preventivos IT.MAN-01 (diesel), IT.MAN-54 (Scania), IT.MAN-60 (VW) e IT.MAN-16 (Eletra) com tarefas, kits e ferramental, as 47 ferramentas da FR.168, a classificação de falhas da Transppass (215 defeitos alegados, 240 constatados) e o padrão de codificação Modo × Sistema/Subsistema × Posição da Engenharia de Confiabilidade.</p>
+
+  <h3>3.4 Agenda sugerida</h3>
+  <table>
+    <thead><tr><th style="width:22mm">Quando</th><th style="width:44mm">Blocos</th><th>Quem participa</th><th style="width:22mm">Duração</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Dia 1</strong></td><td>B1, B2, B3, B4, B5</td><td>PCM, Manutenção, CCO. Acesso, leitura da garagem, MKBF e a rotina da manhã.</td><td>4 h</td></tr>
+      <tr><td><strong>Dia 2</strong></td><td>B6, B7, B8, B9, B10, B11</td><td>PCM, Manutenção, Estoque, CCO, Plantão. O ciclo corretivo completo, a preventiva e a reposição.</td><td>6 h</td></tr>
+      <tr><td><strong>Dia 3</strong></td><td>B12 a B17 e revisão</td><td>Gestão, PCM, Manutenção, Estoque. Daily, qualidade, auditorias, componentes, cadastros, celular. Consolidação das não conformidades.</td><td>4 h</td></tr>
+      <tr><td><strong>Dias 4 a 13</strong></td><td>Operação assistida (seção 5)</td><td>Todas as áreas, no ritmo real da garagem, com a Daily de 15 min todo dia.</td><td>10 dias úteis</td></tr>
+      <tr><td><strong>Dia 14</strong></td><td>Reunião de aceite (seção 9)</td><td>Patrocinador, líder da validação, ProAero.</td><td>1 h</td></tr>
+    </tbody>
+  </table>
+  </section>
+
+<!-- ======================= 4. BLOCOS ======================= -->
+<section class="section">
+  <div class="eyebrow">Seção 4</div>
+  <h2>Blocos de teste dirigidos</h2>
+  <p class="lead">Dezessete blocos, na ordem em que o processo acontece na garagem. Cada bloco diz o perfil que executa, a duração estimada, o pré-requisito e a evidência que o comprova. Os passos com ★ são obrigatórios para o aceite.</p>
+  <figure class="tall"><img src="shots/dashboard.png" alt="Dashboard"><figcaption><b>Dashboard.</b> Disponibilidade contra a meta, fluxo da garagem por etapa, MKBF do mês, fila, OS abertas, o que precisa de atenção e a frota carro a carro.</figcaption></figure>
+  <p>Convenção dos caminhos: <span class="path">Menu › Tela › Ação</span>. Os nomes são os que aparecem na tela em português. Quando o passo exige um perfil específico, ele vem indicado na ação.</p>
+  <div class="note"><b>Antes de começar o Dia 2.</b> Escolha um carro diesel e um eBUS que não estejam em OS. Eles serão os "carros de teste" dos blocos B5 a B11 e aparecerão nos indicadores do B3 ao final. Anote os prefixos aqui: diesel <span class="fill"></span> · eBUS <span class="fill"></span></div>
+</section>
+
+<!-- B1 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B1</div><div><h2>Acesso, perfis e segurança</h2><p class="block__goal">Comprovar que a autoridade de cada área virou permissão de sistema e que a conta é protegida.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>Administrador e PCM</div><div><b>Duração</b>30 min</div><div><b>Pré-requisito</b>Credenciais da seção 3.2</div><div><b>Evidência</b>Capturas dos menus por perfil; link de redefinição usado</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td>Abra <span class="path">https://transppass.online</span>. Entre com <code>admin@transppass.local</code>.</td><td>Tela de login com a marca Transppass. Após entrar, o Dashboard abre com os quatro números da garagem.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Saia (menu <span class="path">Sair</span>) e entre como <code>pcm@transppass.local</code>, depois como <code>estoque@</code>, <code>cco@</code> e <code>manutencao@</code>.</td><td>O menu lateral muda a cada perfil. Estoque não vê Triagem nem Usuários; CCO não vê Estoque; Manutenção não vê Indicadores. Confira com a matriz do Anexo A.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>Como PCM, digite na barra de endereço <span class="path">/cadastros/usuarios</span>.</td><td>A tela não abre dados: o acesso é recusado. A proteção não é só do menu, é da API.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">4</td><td>No cabeçalho, troque o tema (sol/lua), o idioma (bandeira) e o contraste.</td><td>Tema escuro, inglês e alto contraste aplicados na hora e lembrados ao reabrir o navegador.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">5</td><td>Saia, clique em <span class="path">Esqueci a senha</span> e informe um e-mail inexistente.</td><td>A resposta é a mesma de um e-mail válido ("se existir, enviamos"). O sistema não revela quem tem conta.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">6</td><td>Como Administrador, em <span class="path">Cadastros › Usuários</span>, gere o link de redefinição para o usuário <code>cco@</code>. Abra o link em outra aba e defina uma senha nova.</td><td>O link abre a tela de redefinição e aceita a senha. Reabrir o mesmo link é recusado: o link é de uso único.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">7</td><td>Entre como <code>cco@</code> com a senha nova em dois navegadores. Em um deles, em <span class="path">Perfil</span>, troque a senha.</td><td>O outro navegador perde a sessão na próxima ação: trocar a senha revoga as sessões abertas.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">8</td><td>Como Administrador, desative e reative um usuário de teste.</td><td>Desativar derruba a sessão dele na hora. A troca fica registrada na auditoria do usuário (RF-36).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B2 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B2</div><div><h2>Dashboard, Painel da frota e página do carro</h2><p class="block__goal">Comprovar que a garagem inteira é lida em uma tela e que qualquer carro é aberto em dois cliques, com a frota real.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>PCM ou Manutenção</div><div><b>Duração</b>40 min</div><div><b>Pré-requisito</b>B1</div><div><b>Evidência</b>Captura do Dashboard e da página de um carro real</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Dashboard</span>. Leia o anel de disponibilidade e o "Fluxo da garagem agora".</td><td>Disponibilidade com a meta de 85% marcada; seis etapas (triagem, socorro, fila, oficina, peça, liberação) com a contagem de carros em cada uma. Clicar numa etapa abre a tela correspondente.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Leia os cartões MKBF, Na fila e OS abertas, e a faixa "Precisa de atenção".</td><td>MKBF do mês em km com tendência; fila com o mais antigo; OS abertas com as estouradas. Cada aviso de atenção (segurança em aberto, peça vencida, OS estourada, evento aguardando triagem, carro sem km) leva à lista filtrada.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">3</td><td>Em "A frota agora", clique na legenda <span class="kw">Esperando</span>, depois <span class="kw">Parado</span>.</td><td>A grade filtra pela família de estado. O chip de cada card e o instrumento desenhado no ônibus (pisca-alerta, elevador, lanterna, scanner, lavagem, giroflex) dizem o estado sem precisar ler.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">4</td><td>Clique na chave (canto do card) de um carro com OS aberta.</td><td>O card vira e mostra a manutenção sem sair da tela: OS aberta com código e estado, MKBF 30 dias, retornos, OS e horas parado, atalho "Ficha completa do carro". O X ou Esc volta a frente.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">5</td><td>Role até os gráficos de baixo: "Quebras por dia" e "MKBF por mês".</td><td>Quebras por dia conta só retornos não programados, com média móvel de 7 dias. MKBF por mês mostra agosto, setembro e o mês corrente com a média.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">6</td><td><span class="path">Painel da frota</span>. Busque pelo prefixo de um carro real da sua garagem; depois filtre por tecnologia <span class="kw">elétrico</span>, por classe e por lote.</td><td>KPIs do topo: Frota 460 (350 diesel, 110 elétricos), Disponíveis, Disponibilidade, Odômetro atrasado. A busca acha o carro pelo prefixo ou pela placa; os filtros combinam entre si e o total de carros atualiza.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">7</td><td>Alterne <span class="kw">Grade</span> e <span class="kw">Tabela</span>; mude a página e o tamanho da página (20/50/100).</td><td>As duas vistas respeitam o mesmo filtro. A paginação mostra "x–y de N" e o tamanho escolhido é lembrado.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">8</td><td>Abra um carro (clique no card). Confira a ficha com o cadastro da Transppass.</td><td>Prefixo, placa, chassi, modelo, classe, lote, tecnologia, km atual e média diária batem com o VBM0208. KPIs de 30 dias: disponibilidade, km, retornos, MKBF do carro.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">9</td><td>Na página do carro, role até "Ocorrências" e "OS" e abra uma ficha de setembro.</td><td>A ficha mostra defeito alegado → constatado → providência → peças aplicadas → mecânico, como no VBM0503. As linhas em que o carro rodou no dia aparecem ao lado.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">10</td><td>Confira "O que vence primeiro": preventiva e componentes.</td><td>Barra até a próxima preventiva (pacote e km faltantes) e os componentes mais próximos do fim da vida esperada.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <div class="figrow">
+    <figure><img src="shots/frota-verso.png" alt="Painel da frota com card virado"><figcaption><b>Painel da frota.</b> O card virado mostra a manutenção do carro sem sair da tela.</figcaption></figure>
+    <figure><img src="shots/carro.png" alt="Página do carro"><figcaption><b>Página do carro.</b> KPIs de 30 dias, ficha, o que vence primeiro, km por dia, ocorrências e OS.</figcaption></figure>
+  </div>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B3 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B3</div><div><h2>MKBF e indicadores calculados pelo processo</h2><p class="block__goal">Comprovar que o MKBF do sistema reproduz a apuração da Transppass pelo critério da carta de 28/10 e que a indisponibilidade é decomposta por causa.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>PCM ou Gestão</div><div><b>Duração</b>40 min</div><div><b>Pré-requisito</b>Planilha de apuração do MKBF de setembro da Transppass em mãos</div><div><b>Evidência</b>Captura dos Indicadores com o MKBF de setembro</div></div>
+  <div class="pre"><b>Critério implementado.</b> MKBF = km rodados pela frota em operação (STATUS 0; guinchos e treinamento fora) ÷ retornos não programados (fichas de tipo A, S e T). Ocorrências do CCO sem ficha ficam registradas, mas não contam como quebra. Dias sem leitura de km são dias em que o carro não rodou; nada é interpolado.</div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Indicadores</span>. Leia "MKBF, métrica norte".</td><td>Quatro números do mês corrente: MKBF, km rodados, retornos não programados e OS liberadas. O subtítulo diz "calculado dos estados do processo, ninguém digita".</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Em "Histórico mensal", localize setembro/2026 no gráfico de MKBF. Compare com a apuração da Transppass.</td><td><strong>Setembro: 2.430.114 km ÷ 625 quebras = 3.888 km.</strong> Agosto: 2.497.733 ÷ 659 = 3.790 km. Diferenças acima de 1% devem ser registradas com a planilha de origem.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>Escolha um carro que tenha ficha de tipo A, S ou T em setembro (sua planilha). Abra-o no Painel da frota e confira as ocorrências.</td><td>A ficha aparece como <strong>retorno não programado</strong>, casada com o registro do CCO do mesmo dia quando ele existe (viagens perdidas, local, linha).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">4</td><td>Escolha um carro com ocorrência no CCO em setembro <em>sem</em> ficha A/S/T (por exemplo um FRO ou PAM). Abra-o.</td><td>A ocorrência está registrada, mas não marcada como retorno não programado. Ela não entra no divisor do MKBF.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">5</td><td>Abra um guincho (STATUS 7) e um carro de treinamento (STATUS 17) no Painel da frota.</td><td>Aparecem como apoio, disponíveis fora da operação. O km deles não compõe o MKBF.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">6</td><td>Leia "Indisponibilidade por causa (RF-39)".</td><td>Tabela com Material, Execução, Fila, Inspeção, Limpeza e Aguardando liberação, em horas e fatia. A soma é 100%. É a tabela que o PRD usa para reduzir fila e material a cada trimestre.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">7</td><td>Leia "SLA de triagem", "Resolução em campo e retrabalho" e "Alinhamento origem × diagnóstico".</td><td>Triagens com mediana e P90 em minutos; resolvido em campo (% dos socorros); retrabalho interno (reprovações ÷ inspeções); aderência à preventiva; adoção do processo (OS com inspeção e limpeza); alinhamento entre o código registrado e o constatado.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">8</td><td>Volte aqui ao final do Dia 2, depois de executar B5 a B11.</td><td>Os carros de teste aparecem nos retornos do mês, nas OS liberadas e nas fatias de indisponibilidade. Os indicadores mudaram sem que ninguém digitasse nada.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="h120"><img src="shots/indicadores.png" alt="Indicadores"><figcaption><b>Indicadores.</b> MKBF do mês, decomposição da indisponibilidade por causa, SLA de triagem, retrabalho, alinhamento e histórico mensal.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B4 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B4</div><div><h2>Quilometragem diesel e telemetria eBUS</h2><p class="block__goal">Comprovar a disciplina do lançamento de km: validação na origem, odômetro atrasado sinalizado, eBUS por telemetria.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>CCO ou PCM</div><div><b>Duração</b>25 min</div><div><b>Pré-requisito</b>Leituras de hodômetro de 3 carros diesel de hoje</div><div><b>Evidência</b>Captura da recusa de delta e do painel com odômetro atrasado</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Quilometragem</span>. Observe a lista.</td><td>Só carros diesel aparecem. Os eBUS são lidos por telemetria (RF-15) e não entram na digitação.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Lance a leitura real de hoje para três carros e envie o lote.</td><td>Toast de sucesso. No Painel da frota, o km atual e "odômetro lido hoje" aparecem nesses carros.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>Para um carro, digite um valor 2.500 km acima da leitura anterior.</td><td>A linha fica vermelha antes do envio: "delta inviável para um dia de operação". O lote não é aceito com essa linha. Acima de 2.000 km é recusa.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">4</td><td>Digite um valor 800 km acima da anterior.</td><td>Aceito com marcação de suspeita ("acima do esperado, confirme a leitura"). Entre 600 e 2.000 km é suspeita, não recusa.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">5</td><td>Digite um valor menor que a leitura anterior.</td><td>Marcado como suspeito (provável erro de digitação ou hodômetro trocado). A leitura crua fica gravada e o offset de hodômetro preserva a série.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">6</td><td>No <span class="path">Painel da frota</span>, marque "só odômetro atrasado".</td><td>Lista os carros sem leitura há mais de 2 dias, com a idade da leitura no rodapé do card e o atalho "lançar km". O KPI "Odômetro atrasado" mostra a contagem, e o PCM recebe notificação (sino do cabeçalho).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">7</td><td>Abra um eBUS na página do carro e olhe "km por dia".</td><td>As leituras vêm da telemetria, com a mesma série diária dos diesel. Nenhum lançamento manual é pedido.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="h120"><img src="shots/km.png" alt="Quilometragem"><figcaption><b>Quilometragem.</b> Lançamento em lote da garagem com validação do delta antes de enviar.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B5 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B5</div><div><h2>Checklist diário de conservação</h2><p class="block__goal">Comprovar a "Manutenção diária" dos Fluxos de Processo (p.8): checklist antes da saída, reprovação vira evento corretivo e cai na triagem.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>Manutenção, Mecânico ou Inspetor</div><div><b>Duração</b>25 min</div><div><b>Pré-requisito</b>Carros de teste escolhidos (seção 3.4)</div><div><b>Evidência</b>Código do evento gerado pela reprovação</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Checklist diário › Novo checklist</span>. Escolha o carro diesel de teste e o motorista. Marque todos os itens como aprovados, informe o odômetro e salve.</td><td>Itens: faróis e lanternas; limpadores e lavador; iluminação interna e letreiro; avarias de carroceria e vidros; pneus; portas e rampa/elevador; níveis de água e óleo; bancos, balaústres e lixeiras. O checklist entra em "Checklists de hoje" como aprovado e o KPI "Aprovados" sobe.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Faça o checklist do eBUS de teste.</td><td>Além dos itens comuns, aparece "Nível BTMS e carga da bateria". Os itens mudam com a tecnologia do carro.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>Faça um terceiro checklist e <span class="kw">reprove</span> o item "Limpadores e lavador" com uma observação.</td><td>Ao salvar, o sistema abre um <strong>evento corretivo</strong> no código composto e o checklist mostra o código do evento (EV-2026-…). KPI "Reprovados" sobe.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">4</td><td>Abra <span class="path">Triagem</span>.</td><td>O evento da reprovação está na fila de triagem, com o carro, a falha e a origem "checklist". Anote o código: ele será triado no bloco B6.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">5</td><td>Volte ao <span class="path">Checklist diário</span> e use "Registrar anomalia" para um relato do motorista durante o dia (ex.: ruído na suspensão).</td><td>Um evento é criado com o relato do motorista, sem precisar refazer o checklist. Aparece em Eventos e na Triagem.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">6</td><td>Abra <span class="path">Daily 15 min</span> e leia a rotina de hoje.</td><td>A linha "carros com checklist diário feito" conta os checklists que você acabou de fazer sobre a frota de 460.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="h120"><img src="shots/checklist.png" alt="Checklist diário"><figcaption><b>Checklist diário.</b> Aprovados e reprovados do dia; o item reprovado vira evento corretivo.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B6 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B6</div><div><h2>Evento, triagem e fila</h2><p class="block__goal">Comprovar o registro no código composto, a decisão do PCM com flags de segurança e fast-track, a abertura automática da OS-mãe e a fila que só muda com motivo.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>CCO registra; PCM tria e ordena</div><div><b>Duração</b>50 min</div><div><b>Pré-requisito</b>B5 (evento do checklist na triagem)</div><div><b>Evidência</b>Histórico de posição da fila com o motivo</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td>Como CCO, <span class="path">Eventos › Registrar evento</span>. Escolha o carro diesel de teste e uma "falha frequente" do catálogo (ex.: alternador não carrega).</td><td>O atalho pré-preenche o código Modo × Sistema/Subsistema × Posição. "O que o catálogo sabe (RF-02)" mostra causa provável, reparo estimado e se resolve em campo.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Registre um segundo evento, agora por "Escolher pelo código": modo <span class="kw">SF (sem função)</span>, sistema Freios, uma posição válida. Informe linha, origem (CCO) e local.</td><td>O evento nasce com flag de <strong>segurança</strong> resolvida pela regra de criticidade do catálogo. Em Eventos, o KPI "Segurança em aberto" sobe.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">3</td><td>Tente uma posição incompatível com o subsistema escolhido (ex.: posição de pneu num subsistema elétrico).</td><td>O formulário recusa: a posição tem de pertencer ao tipo do subsistema.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">4</td><td>Como PCM, <span class="path">Triagem</span>. Abra o evento de segurança e tente o destino <span class="kw">Deferir</span>.</td><td>Recusado: falha de segurança não é deferível (RF-05). A triagem mostra o SLA correndo desde o registro.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">5</td><td>Decida <span class="kw">Recolher</span> para o evento de segurança, reclassificando o subsistema se necessário.</td><td>A <strong>OS-mãe é aberta sozinha</strong> e o carro entra na fila. O relógio de indisponibilidade começa a contar.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">6</td><td>Trie o evento do checklist (B5) como <span class="kw">Recolher</span> e o evento do alternador como <span class="kw">Socorro</span>.</td><td>O do checklist vai para a fila com OS. O do alternador aparece em Socorro como "aguardando chegada" (bloco B7).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">7</td><td>Registre um evento cujo código tenha regra de <span class="kw">fast-track</span> e trie como Recolher.</td><td>Na Fila, a entrada aparece marcada como fast-track e sobe pela criticidade (RF-07).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">8</td><td><span class="path">Fila</span>. Abra um carro, clique em "Mover na fila (RF-08)", escolha nova posição e tente confirmar <strong>sem</strong> motivo.</td><td>Recusado. A tela diz "Sem motivo, a fila não muda".</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">9</td><td>Repita com um código de motivo da lista e uma observação.</td><td>A fila reordena. Em "Histórico de posição" a mudança aparece com quem, quando e o motivo. O registro é imutável (nada de editar ou apagar).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">10</td><td>Volte ao <span class="path">Dashboard</span>.</td><td>"Fluxo da garagem agora" conta os carros de teste em Fila e Socorro. "Precisa de atenção" não mostra mais o evento aguardando triagem.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <div class="figrow">
+    <figure><img src="shots/triagem.png" alt="Triagem"><figcaption><b>Triagem.</b> Aguardando decisão, espera mais longa, falhas de segurança, fast-track e o destino (RF-03).</figcaption></figure>
+    <figure><img src="shots/fila.png" alt="Fila"><figcaption><b>Fila.</b> Ordem pela criticidade; mover exige código de motivo e fica no histórico.</figcaption></figure>
+  </div>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B7 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B7</div><div><h2>Socorro na rua</h2><p class="block__goal">Comprovar o atendimento de campo: despacho, constatação no código composto, material da viatura e o desfecho (resolvido na rua ou recolhido).</p></div></div>
+  <div class="meta"><div><b>Perfil</b>Socorro ou CCO</div><div><b>Duração</b>25 min</div><div><b>Pré-requisito</b>B6 passo 6 (evento do alternador em Socorro)</div><div><b>Evidência</b>Evento fechado em campo e indicador "resolvido em campo"</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Socorro</span>. Localize o atendimento do carro diesel de teste.</td><td>KPIs: atendimentos em curso, aguardando chegada, em reparo na rua, despacho mais antigo. O atendimento mostra o carro, a falha, a linha e o local informados no registro.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Marque a chegada da viatura e abra "O que aconteceu na rua?". Informe a constatação pelo código composto, o material usado da viatura (RF-27) e a viatura de apoio. Conclua como <span class="kw">resolvido em campo</span>.</td><td>O evento fecha sem abrir OS. O material sai do estoque da viatura. O carro volta a disponível.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>Registre outro evento para o eBUS de teste, trie como Socorro e, na rua, conclua como <span class="kw">não resolvido, recolher</span>.</td><td>A OS-mãe é aberta e o carro entra na fila. O tempo de socorro fica no histórico do evento.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">4</td><td><span class="path">Indicadores</span>: "Resolução em campo".</td><td>O percentual considera o socorro resolvido do passo 2 e o não resolvido do passo 3.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="h120"><img src="shots/socorro.png" alt="Socorro"><figcaption><b>Socorro.</b> Atendimentos em curso, chegada, reparo na rua e a constatação no código composto.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B8 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B8</div><div><h2>Ordem de serviço: execução, portões e liberação</h2><p class="block__goal">Comprovar que a OS-mãe é o único relógio de indisponibilidade (RN-02), que nenhum carro é liberado sem inspeção e limpeza e que só a Manutenção libera.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>Manutenção executa; Estoque atende; PCM tenta liberar</div><div><b>Duração</b>60 min</div><div><b>Pré-requisito</b>B6 (OS do carro diesel na fila)</div><div><b>Evidência</b>"Onde o tempo foi" da OS liberada; recusa ao PCM</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Ordens de serviço</span>. Leia o quadro.</td><td>Quatro colunas: aberta, em execução, aguardando peça, liberação. Cada card tem o carro, o motivo, o relógio, a previsão e o avanço das sub-OS. As estouradas ficam no topo. "Tabela" mostra a mesma lista paginada.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Abra a OS do carro diesel de teste.</td><td>Topo com o render do carro e a ficha (relógio de indisponibilidade, estado, motivo, tipo, abertura, previsão, sub-OS) ao lado do "Caminho até liberar o carro": Serviço → Encerramento técnico → Inspeção → Limpeza → Liberação. O botão "próximo passo" diz o que falta.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>"Adicionar sub-OS": especialidade, técnico responsável (Kaizen 16), serviço a executar e checklist.</td><td>A sub-OS nasce pendente, atribuída ao técnico. O estado da OS vai para "em execução" e a causa de indisponibilidade passa de fila para execução.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">4</td><td>Na sub-OS, peça o <span class="kw">kit corretivo</span> da falha ao Estoque e marque "aguardando peça" com previsão.</td><td>A solicitação aparece em <span class="path">Estoque › Fila de solicitações</span> com o kit inteiro (todos os itens do kit da falha). A OS muda para "aguardando peça" e o relógio passa a contar como material.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">5</td><td>Como Estoque, atenda a solicitação.</td><td>A OS volta para "em execução". Em "Onde o tempo foi" o trecho de material fica registrado.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">6</td><td>Tente concluir a sub-OS <strong>sem</strong> informar a causa constatada.</td><td>Recusado (RN-13): a causa constatada é de lista, no código composto, ou por atalho do catálogo.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">7</td><td>Conclua a sub-OS com a causa constatada e encaminhe à inspeção. Como Inspetor ou Manutenção, <span class="kw">reprove</span> com motivo.</td><td>A sub-OS reabre como pendente e o retrabalho é contado (RF-20). Conclua de novo e <span class="kw">aprove</span>.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">8</td><td>Clique em "Encerrar tecnicamente".</td><td>Portão 1 só libera com todas as sub-OS concluídas e inspecionadas. Antes disso o botão explica o que falta.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">9</td><td>"Iniciar limpeza", marque o checklist de limpeza, registre uma avaria (ex.: banco rasgado) e "Concluir limpeza".</td><td>A avaria vira <strong>backlog do carro</strong> sem prender a liberação. A causa de indisponibilidade registra o trecho de limpeza.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">10</td><td>Como <strong>PCM</strong>, tente "Liberar carro".</td><td>Recusado: PCM não libera carro. A tela diz "Aguardando a Manutenção liberar".</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">11</td><td>Como <strong>Manutenção</strong>, "Liberar carro".</td><td>O relógio para e a indisponibilidade total é gravada. "Onde o tempo foi" mostra fila, material, execução, inspeção, limpeza e aguardando liberação. No Painel da frota o carro está <strong>Disponível</strong>.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">12</td><td>Na OS do eBUS (B7 passo 3), use "Quem executa" = terceiro e informe o fornecedor (Kaizen 6). Repactue a previsão.</td><td>A OS registra o fornecedor e a nova previsão com o motivo. A OS de terceiro aparece no quadro como as demais.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="h60"><img src="shots/os.png" alt="Quadro de ordens de serviço"><figcaption><b>Ordens de serviço.</b> Quadro da garagem em quatro colunas; as estouradas e as mais antigas no topo.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B9 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B9</div><div><h2>Estoque, kanban e ferramental</h2><p class="block__goal">Comprovar a fila de solicitações, o kanban por ponto de pedido, o pool rotativo e a suficiência do ferramental da FR.168, incluindo os carregadores eBUS.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>Estoque</div><div><b>Duração</b>30 min</div><div><b>Pré-requisito</b>B8 passo 4</div><div><b>Evidência</b>Captura do Kanban e da suficiência de ferramentas</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Estoque › Fila de solicitações</span>.</td><td>Cada solicitação traz carro, material, estado, pendência e quando foi pedida. As da OS de teste aparecem com o kit inteiro.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Marque uma solicitação com pendência (sem saldo) e informe o prazo.</td><td>A OS correspondente mostra "aguardando peça" com o prazo. No Dashboard, "peça com prazo vencido" só conta as que passaram do prazo.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>"Kanban, repor".</td><td>Materiais no ponto de pedido ou abaixo, com código, local, saldo, ponto, quantidade a repor, fornecedor e pedidos abertos. O total aparece na rotina da Daily.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">4</td><td>Em <span class="path">Cadastros › Materiais</span>, altere o ponto de pedido de um material para acima do saldo atual.</td><td>O material entra no Kanban na hora. Os pontos atuais são assumidos a partir do saldo até Suprimentos definir.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">5</td><td>"Pool rotativo".</td><td>Componentes recondicionáveis por série, estado e carro em que estão.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">6</td><td>"Ferramentas".</td><td>As 47 ferramentas da FR.168 com calibração e "com quem". Os <strong>carregadores eBUS</strong> aparecem como recurso com quantidade necessária × disponível; a insuficiência fica em vermelho antes de faltar carga de manhã.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="h120"><img src="shots/estoque.png" alt="Estoque"><figcaption><b>Estoque.</b> Fila de solicitações, Kanban por ponto de pedido, pool rotativo e ferramentas.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B10 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B10</div><div><h2>Preventiva por km: linha do tempo, parada e kit D-1</h2><p class="block__goal">Comprovar a preventiva planejada pelo km projetado, o escopo montado do pacote e as travas de kit e equipe antes de a parada sair da escala.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>PCM programa; Estoque separa; Manutenção reserva equipe</div><div><b>Duração</b>45 min</div><div><b>Pré-requisito</b>Carro sem parada aberta</div><div><b>Evidência</b>Parada confirmada e OS preventiva com o escopo</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Preventiva</span>. Leia os KPIs e a "Linha do tempo por km projetado (RF-10)".</td><td>Janelas estouradas, vencem em 1.000 km, paradas programadas, kits para hoje. A linha do tempo mostra por carro: km atual, projetado, próxima janela, faltam, chega em (data pela média diária), backlog, parada.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Como PCM, programe uma parada para um carro com janela projetada e "Sem parada".</td><td>O escopo é montado do pacote do plano (RF-11) mais o backlog do carro; o kit do pacote é associado automaticamente. A parada nasce <strong>travada</strong>: kit e equipe pendentes (RF-12).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">3</td><td>Tente programar uma segunda parada para o mesmo carro.</td><td>Recusada: um carro tem uma parada aberta por vez.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">4</td><td>Tente <span class="kw">Confirmar</span> a parada agora.</td><td>Recusado (RN-10): falta kit e equipe. A tela lista o que bloqueia.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">5</td><td>Como Estoque, em "Kits em D-1 (RF-25)", separe o kit da parada.</td><td>A trava de kit cai. Ainda falta equipe.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">6</td><td>Como PCM, tente reservar a equipe.</td><td>Recusado: equipe é a Manutenção quem reserva (RF-12).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">7</td><td>Como Manutenção, reserve a equipe. Como PCM, confirme a parada.</td><td>Com kit e equipe a parada pode sair da escala; estado "confirmada".</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">8</td><td>Tente reprogramar a data <strong>sem</strong> motivo; depois com motivo.</td><td>Sem motivo é recusado (RF-13). Com motivo a nova data é gravada com o registro.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">9</td><td>Registre a "entrada na garagem".</td><td>Uma OS do tipo <strong>Preventiva</strong> é aberta e cada item do escopo vira sub-OS. Antes da confirmação a entrada era recusada.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">10</td><td>Abra a OS preventiva e confira o ferramental.</td><td>Cada tarefa traz as ferramentas da FR.168 vinculadas no plano (B16).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="h120"><img src="shots/preventiva.png" alt="Preventiva"><figcaption><b>Preventiva.</b> Linha do tempo por km projetado, paradas programadas e kits em D-1.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B11 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B11</div><div><h2>Plantão e reposição de carro na linha</h2><p class="block__goal">Comprovar a demanda de reposição com janela, a reserva com matriz de habilitações e o retorno do titular ao vivo da OS.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>Plantão ou CCO</div><div><b>Duração</b>30 min</div><div><b>Pré-requisito</b>Carro com OS aberta (B8 ou B10)</div><div><b>Evidência</b>Demanda atendida com reserva e retorno registrados</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Plantão</span>. Leia os KPIs e "Retornos previstos ao vivo (RF-31)".</td><td>Linhas descobertas, reservas na rua, janelas estouradas, retornos previstos. A lista mostra cada carro com OS aberta, estado, previsão e cobertura, lida da própria OS.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Abra uma demanda de reposição: linha, janela em minutos, carro que saiu da linha, observação.</td><td>A demanda nasce com a janela de 40 min correndo (RF-29) e aparece em "Demandas de reposição" com o tempo restante.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>Designe um carro reserva e um operador <strong>sem</strong> habilitação para a classe do carro.</td><td>Bloqueado (RF-30): a matriz de habilitações (CNH e classes permitidas dos 907 motoristas) impede a designação.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">4</td><td>Designe um operador habilitado.</td><td>A reserva sai para a linha; o Painel da frota mostra o reserva em linha e o titular na OS.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">5</td><td>Deixe a janela estourar numa segunda demanda (ou use uma janela curta).</td><td>A demanda aparece como janela estourada; a Daily conta a viagem perdida até a Operação apurar.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">6</td><td>Registre o retorno da reserva.</td><td>A demanda fica "atendida" com o retorno registrado. O retorno do titular continua previsto ao vivo pela OS.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="h120"><img src="shots/plantao.png" alt="Plantão"><figcaption><b>Plantão.</b> Demandas de reposição com janela e retornos previstos ao vivo da OS.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B12 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B12</div><div><h2>Daily 15 min</h2><p class="block__goal">Comprovar que a reunião em pé do Kaizen é conduzida pela tela, com os cinco KPIs do A3 e a rotina do dia ligada às ações.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>Gestão, PCM, Manutenção</div><div><b>Duração</b>15 min de reunião + 15 min de conferência</div><div><b>Pré-requisito</b>B5 a B11 executados</div><div><b>Evidência</b>Daily realizada com a equipe, ata de uma linha por item da rotina</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Daily 15 min</span>. Leia os cinco cartões e passe o mouse no "i" de cada um.</td><td>MKBF 30 dias (com km e retornos), disponibilidade agora (meta, média 7 dias, fila, peça, odômetro atrasado), retrabalho 30 dias (reprovações ÷ inspeções), viagens perdidas (ontem, semana, mês; SPTrans 30 dias) e OS (abertas, estouradas, ontem). O "i" explica a conta.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>"Falhas da semana".</td><td>Ranking do que mais trouxe carro para a garagem em 7 dias, com o código da falha e a contagem. A falha registrada em B6 está lá.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>"Carros reincidentes". Clique num prefixo.</td><td>Carros com dois ou mais retornos em 30 dias, candidatos a análise de causa raiz. O clique abre a página do carro.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">4</td><td>"Rotina de hoje". Clique em cada link.</td><td>Checklists feitos, OS paradas por peça, OS estouradas, carros na fila, carros sem km, materiais no kanban, componentes além da vida, auditorias devendo. Cada link abre a tela já filtrada no que precisa de ação.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">5</td><td>Conduza uma Daily real com a equipe, em pé, na frente da tela, em até 15 minutos.</td><td>A reunião percorre os cinco KPIs e a rotina sem abrir planilha. Cada item da rotina sai com um responsável. Registre o horário de início e fim.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="tall"><img src="shots/daily.png" alt="Daily 15 min"><figcaption><b>Daily 15 min.</b> Os cinco indicadores do Kaizen, as falhas da semana, os carros reincidentes e a rotina de hoje.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B13 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B13</div><div><h2>Qualidade de peças, fornecedores e garantia</h2><p class="block__goal">Comprovar o laboratório de inspeção de peças: reprovação no recebimento, falha prematura, reclamação de garantia e reincidência por fornecedor.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>Estoque, Inspetor ou Manutenção</div><div><b>Duração</b>25 min</div><div><b>Pré-requisito</b>Nenhum</div><div><b>Evidência</b>Inspeção registrada com garantia aceita ou negada</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Cadastros › Fornecedores</span>. Abra um fornecedor.</td><td>Fornecedor com SLA de resposta, garantia em meses e km, e os materiais vinculados. Os 19 fornecedores iniciais derivam da referência de fabricante do inventário (SLA assumido até Suprimentos confirmar).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td><span class="path">Qualidade de peças › Nova inspeção</span>. Registre uma peça <span class="kw">reprovada</span> no recebimento (peça, fornecedor, motivo).</td><td>Entra na tabela com resultado, motivo e garantia "não se aplica". KPI "Reprovadas" sobe.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>Registre uma <span class="kw">falha prematura</span>: peça, fornecedor, carro, km em serviço, e abra reclamação de garantia.</td><td>A garantia nasce "aberta" e conta em "Garantias em aberto".</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">4</td><td>Na própria tabela, mude a garantia para <span class="kw">aceita</span>; depois registre outra e marque <span class="kw">negada</span>.</td><td>A mudança é gravada na linha, com toast de sucesso. "Garantias em aberto" desce.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">5</td><td>Leia "Reincidência por fornecedor" e "Por motivo".</td><td>O fornecedor das inspeções acima lidera a reincidência; os motivos são agrupados. O SLA de resposta é comparado com o prazo da garantia aberta.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="h120"><img src="shots/qualidade.png" alt="Qualidade de peças"><figcaption><b>Qualidade de peças.</b> Inspeções, garantias em aberto, reincidência por fornecedor e por motivo.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B14 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B14</div><div><h2>Auditorias 5S e de conformidade</h2><p class="block__goal">Comprovar a auditoria 5S mensal e a de conformidade trimestral do A3 §9, com nota calculada, plano de ação e calendário.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>PCM, Gestão ou Manutenção</div><div><b>Duração</b>25 min</div><div><b>Pré-requisito</b>Nenhum</div><div><b>Evidência</b>Auditoria registrada e "devendo" reduzido na Daily</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Auditorias</span>. Leia os cards por área.</td><td>Para cada área (ferramentaria, almoxarifado, oficina, pátio…): última nota, tendência de três meses e próxima data. KPI "Auditorias devendo" lista área sem auditoria ou com a próxima data vencida.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>"Nova auditoria 5S" numa área devendo. Pontue os dez critérios (0 a 4): utilização, organização, limpeza, padronização e disciplina, dois critérios cada. Escreva o plano de ação.</td><td>A nota é <strong>calculada</strong> (máximo 40 = 100%), nunca digitada. A próxima data é marcada para 30 dias. O card da área atualiza a trajetória.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>"Nova auditoria de conformidade" na mesma área.</td><td>Dez POPs: IT.MAN-01, IT.MAN-54/60, IT.MAN-03 pneus, FR.168 ferramental, checklist diário, triagem com motivo, portões de liberação, padrão de limpeza, aguardando peça com prazo, lançamento de km. Próxima data em 90 dias.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">4</td><td>Abra <span class="path">Daily 15 min</span>.</td><td>"Auditorias devendo" na rotina de hoje diminuiu de acordo com as auditorias feitas.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">5</td><td>Leia o "Histórico".</td><td>Quando, tipo, área, nota, pontos fracos (critérios com nota baixa), plano de ação e auditor, paginado.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="h120"><img src="shots/auditorias.png" alt="Auditorias"><figcaption><b>Auditorias.</b> Nota por área com tendência, conformidade de POPs, auditorias devendo e histórico.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B15 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B15</div><div><h2>Vida de componentes por km</h2><p class="block__goal">Comprovar que a vida de compressor, turbina, bicos, cubos, motor de partida, alternador e baterias é acompanhada carro a carro e que a troca "zera" o relógio com a vida real.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>Manutenção ou PCM</div><div><b>Duração</b>20 min</div><div><b>Pré-requisito</b>Nenhum</div><div><b>Evidência</b>Troca registrada com "Anterior durou"</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Vida de componentes</span>. Filtre por "Compressor".</td><td>Lista por carro: vida usada, restante, instalado em, "anterior durou". KPIs: vida por km e "acima da vida esperada". "Por componente" compara a vida média real nas trocas com a esperada.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>"Trocar" num componente além da vida: por que trocou (falha, preventiva, garantia), número de série, km na instalação, vida esperada.</td><td>O componente anterior é encerrado com a vida real que fez; o novo começa no km atual do carro. A linha mostra "anterior durou" com o valor real.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">3</td><td>Abra a página do carro em "O que vence primeiro".</td><td>O componente trocado saiu da lista do que vence primeiro.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">4</td><td>Compare "Por componente" com o intervalo do plano preventivo.</td><td>Se a vida média real nas trocas for menor que a esperada, a preventiva está no km errado. As vidas esperadas são assumidas até a Manutenção fixar por modelo (seção 8).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <figure class="h120"><img src="shots/componentes.png" alt="Vida de componentes"><figcaption><b>Vida de componentes.</b> Vida usada contra a esperada, carro a carro, com o histórico das trocas.</figcaption></figure>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B16 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B16</div><div><h2>Cadastros e governança</h2><p class="block__goal">Comprovar os cadastros que o Kaizen exige e as regras de governança: catálogo versionado, criticidade, planos com kits e ferramental, técnicos com treinamentos, usuários com auditoria.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>Administrador e PCM</div><div><b>Duração</b>45 min</div><div><b>Pré-requisito</b>Nenhum</div><div><b>Evidência</b>Contas nominais criadas; regra de criticidade criada</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td><span class="path">Cadastros › Frota › Novo carro</span>. Escolha o modelo de chassi pelo código da Transppass.</td><td>Fabricante, modelo, classe e tecnologia são preenchidos pelo código (52 modelos). Prefixo e placa duplicados são recusados. Status 0, 7 e 17 disponíveis.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td><span class="path">Cadastros › Catálogo de falhas</span>. Leia as regras de criticidade e crie uma regra (modo × subsistema) com fast-track.</td><td>A regra entra na lista. Criar a mesma combinação de novo é recusada (duplicada). Uma regra de segurança marcada como deferível é recusada.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">3</td><td>No Catálogo, abra a classificação da Transppass e os kits corretivos por falha.</td><td>215 defeitos alegados e 240 constatados do arquivo "Serviços"; kits corretivos cruzados com o inventário. A versão publicada do catálogo é imutável; edição só no rascunho (RF-32).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">4</td><td><span class="path">Cadastros › Planos preventivos</span>. Abra o IT.MAN-01 e um pacote (7.500 km).</td><td>Gatilho por km com tolerância dupla, tarefas por seção, kit cruzado com o inventário e ferramental por tarefa (FR.168). Cadastre uma tarefa e exclua-a; uma tarefa já usada em parada não pode ser excluída.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">5</td><td>Abra o IT.MAN-54 (Scania), IT.MAN-60 (VW) e IT.MAN-16 (Eletra).</td><td>Os planos eBUS trazem os itens de alta tensão. Pacotes por tempo ficam fora da linha do km.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">6</td><td><span class="path">Cadastros › Técnicos</span>. Abra um técnico que atua em eBUS sem alta tensão vigente e registre o treinamento (NR-10 e alta tensão) com validade.</td><td>A sinalização "sem alta tensão" some. A lista mostra vencimentos em 30 dias. Técnicos têm especialidade, tecnologia e nível 1–3; os 16 iniciais são exemplo até a lista da Manutenção.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">7</td><td><span class="path">Cadastros › Usuários</span>. Crie as contas nominais da equipe de validação, uma por pessoa, com o perfil da área. Troque o perfil de uma delas.</td><td>Não há auto-cadastro. A troca de perfil vira registro de auditoria com quem e quando (RF-36).</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">8</td><td><span class="path">Cadastros › Materiais</span>. Busque um material pela referência e confira classe, prateleira, saldo, custo, fornecedor e garantia.</td><td>Os 2.496 materiais do Almoxarifado, com os 380 da lista preventiva marcados. Ponto de pedido e lote editáveis.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <div class="figrow">
+    <figure><img src="shots/catalogo.png" alt="Catálogo de falhas"><figcaption><b>Catálogo de falhas.</b> Código composto, regras de criticidade, atalhos e classificação da Transppass.</figcaption></figure>
+    <figure><img src="shots/tecnicos.png" alt="Técnicos"><figcaption><b>Técnicos.</b> Especialidade, tecnologia, nível, treinamentos e a lacuna de alta tensão.</figcaption></figure>
+  </div>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- B17 -->
+<section class="block">
+  <div class="block__head"><div class="block__id">B17</div><div><h2>Celular, tema e acessibilidade</h2><p class="block__goal">Comprovar que as telas do chão de oficina funcionam no celular e que o sistema respeita tema, contraste e redução de movimento.</p></div></div>
+  <div class="meta"><div><b>Perfil</b>Mecânico, Inspetor, Socorro</div><div><b>Duração</b>25 min</div><div><b>Pré-requisito</b>Um celular com Chrome ou Safari</div><div><b>Evidência</b>Capturas do celular</div></div>
+  <table class="steps">
+    <thead><tr><th>#</th><th>Ação</th><th>Resultado esperado</th><th>Registro</th></tr></thead>
+    <tbody>
+      <tr><td class="n star">1</td><td>No celular, entre como Manutenção. Abra o menu pelo botão do cabeçalho.</td><td>O menu abre como gaveta sobre o conteúdo. Nada rola na horizontal. Toda ação é um alvo de largura cheia.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">2</td><td>Faça um checklist diário pelo celular, ao lado do carro.</td><td>Itens em lista com aprovar/reprovar por toque; odômetro e observação; salva com toast.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n star">3</td><td>Abra uma OS e conclua uma sub-OS pelo celular.</td><td>O caminho até liberar e os botões de próximo passo cabem na tela; a causa constatada é escolhida por lista.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">4</td><td>Como Socorro, registre a constatação de um atendimento pelo celular.</td><td>Formulário "O que aconteceu na rua?" utilizável com uma mão.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">5</td><td>No desktop, ative o tema escuro e o alto contraste; depois ative "reduzir movimento" no sistema operacional.</td><td>Todas as telas legíveis nos dois temas; texto sobre o laranja da marca é grafite (contraste AA). Com redução de movimento, nada se mexe e o chip de estado continua dizendo o estado do carro.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+      <tr><td class="n">6</td><td>Navegue pelo Painel da frota só com o teclado (Tab, Enter, Esc).</td><td>O foco é visível; a chave vira o card, Esc volta e o foco retorna ao botão.</td><td class="chk"><span class="box"></span><span class="lab">OK</span><span class="box"></span><span class="lab">NOK</span></td></tr>
+    </tbody>
+  </table>
+  <div class="figrow phone">
+    <figure><img src="shots/checklist-390.png" alt="Checklist no celular"><figcaption><b>Checklist no celular</b> (390 px).</figcaption></figure>
+    <figure><img src="shots/os-390.png" alt="Ordens de serviço no celular"><figcaption><b>Ordens de serviço no celular.</b></figcaption></figure>
+    <figure><img src="shots/dashboard-verso.png" alt="Dashboard com card virado"><figcaption><b>Dashboard</b>, card virado para a manutenção.</figcaption></figure>
+  </div>
+  <p class="small">Validado por: <span class="fill"></span> &nbsp; Data: <span class="fill" style="min-width:25mm"></span> &nbsp; Resultado do bloco: <span class="box"></span> Aprovado <span class="box"></span> Com ressalvas <span class="box"></span> Reprovado</p>
+</section>
+
+<!-- ======================= 5. OPERAÇÃO ASSISTIDA ======================= -->
+<section class="section">
+  <div class="eyebrow">Seção 5</div>
+  <h2>Operação assistida: dez dias úteis rodando o Kaizen no sistema</h2>
+  <p class="lead">Os testes dirigidos provam que cada regra funciona. A operação assistida prova que o sistema aguenta o ritmo da garagem: 460 carros, o lançamento de km da manhã, dezenas de eventos por dia, a Daily todo dia. Durante dez dias úteis a Transppass opera no sistema, com a ProAero de prontidão, e ao final compara o que o sistema calculou com o que a Operação apurou.</p>
+
+  <h3>5.1 Antes de começar</h3>
+  <ul>
+    <li>A ProAero remove qualquer movimento de demonstração; ficam só as bases reais de agosto e setembro e o que a Transppass criou nos testes dirigidos.</li>
+    <li>Contas nominais criadas para todos (B16). As contas genéricas da seção 3.2 são desativadas.</li>
+    <li>Carros de teste dos blocos B5 a B11 liberados e com OS encerradas.</li>
+    <li>Um responsável por área assina a rotina abaixo e um ponto focal da ProAero fica disponível no horário da garagem.</li>
+  </ul>
+
+  <h3>5.2 Rotina diária por papel</h3>
+  <table>
+    <thead><tr><th style="width:18mm">Hora</th><th style="width:28mm">Quem</th><th>O que faz no sistema</th><th style="width:40mm">O que o sistema deve mostrar</th></tr></thead>
+    <tbody>
+      <tr><td>04:00–06:00</td><td>Motoristas / Inspetores</td><td>Checklist diário antes da saída (desktop no pátio ou celular). Reprovação abre evento.</td><td>Checklists de hoje subindo; eventos do checklist na triagem</td></tr>
+      <tr><td>06:00–07:00</td><td>CCO / PCM</td><td>Lançamento de km diesel em lote (leitura do hodômetro de ontem).</td><td>Odômetro atrasado próximo de zero; projeções atualizadas</td></tr>
+      <tr><td>07:30</td><td>Gestão, PCM, Manutenção, Estoque</td><td><strong>Daily 15 min</strong>, em pé, na frente da tela. Um responsável por item da rotina.</td><td>Cinco KPIs, falhas da semana, reincidentes, rotina</td></tr>
+      <tr><td>Contínuo</td><td>CCO</td><td>Registra todo evento da rua no código composto (ou atalho). Despacha socorro quando a triagem decidir.</td><td>Eventos com origem e local; socorro em curso</td></tr>
+      <tr><td>Contínuo</td><td>PCM</td><td>Tria dentro do SLA; ordena a fila com motivo; programa preventivas pela linha do tempo; acompanha previsões.</td><td>Triagem vazia ao fim do turno; fila com histórico</td></tr>
+      <tr><td>Contínuo</td><td>Manutenção</td><td>Abre sub-OS com técnico, pede kit, conclui com causa constatada, inspeciona, limpa e libera.</td><td>OS andando no quadro; "Onde o tempo foi" em cada liberação</td></tr>
+      <tr><td>Contínuo</td><td>Estoque</td><td>Atende a fila de solicitações, informa prazo nas pendências, separa kits D-1, trabalha o kanban.</td><td>Nenhuma OS parada por material sem prazo</td></tr>
+      <tr><td>Contínuo</td><td>Plantão</td><td>Abre demanda de reposição, designa reserva habilitado, registra retornos.</td><td>Linhas descobertas e janelas estouradas visíveis</td></tr>
+      <tr><td>Semanal</td><td>PCM / Gestão</td><td>Uma auditoria 5S e a conferência de vida de componentes; registra inspeções de peças do período.</td><td>Auditorias devendo caindo; garantias acompanhadas</td></tr>
+      <tr><td>Madrugada</td><td>Sistema</td><td>Grava o snapshot mensal dos indicadores (E8) e recalcula projeções.</td><td>Histórico mensal consistente</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="page-break-before: always; margin-top: 0">5.3 O que medir durante os dez dias</h3>
+  <table>
+    <thead><tr><th>Medida</th><th>Como obter</th><th style="width:40mm">Critério de saída</th></tr></thead>
+    <tbody>
+      <tr><td>Eventos registrados no sistema ÷ ocorrências do CCO</td><td>Eventos (filtro por período) contra a planilha do CCO</td><td>≥ 95%</td></tr>
+      <tr><td>Carros com km lançado por dia (diesel)</td><td>KPI "Odômetro atrasado" ao fim da manhã</td><td>≤ 5 carros por dia a partir do 3º dia</td></tr>
+      <tr><td>Checklists feitos ÷ carros que saíram</td><td>Rotina da Daily</td><td>≥ 90% a partir do 5º dia</td></tr>
+      <tr><td>OS liberadas com inspeção e limpeza</td><td>Indicadores › "Adoção do processo"</td><td>100% (o sistema não permite o contrário)</td></tr>
+      <tr><td>Mudanças de fila com motivo</td><td>Fila › histórico de posição</td><td>100% (o sistema não permite o contrário)</td></tr>
+      <tr><td>OS aguardando peça sem prazo</td><td>Dashboard › "peça com prazo vencido" e Estoque</td><td>Zero ao fim de cada dia</td></tr>
+      <tr><td>Daily realizada em até 15 min</td><td>Horário anotado pelo líder</td><td>10 de 10 dias</td></tr>
+      <tr><td>Retornos não programados do período: sistema × apuração da Operação (fichas A/S/T)</td><td>Indicadores × planilha da Transppass no último dia</td><td>Diferença ≤ 2%, com toda diferença explicada</td></tr>
+      <tr><td>Km do período: sistema × apuração</td><td>Indicadores × VBM0406 do período</td><td>Diferença ≤ 1%</td></tr>
+      <tr><td>Não conformidades S1 abertas</td><td>Formulário da seção 7</td><td>Zero</td></tr>
+    </tbody>
+  </table>
+  <div class="proof"><b>Prova final.</b> No último dia, a Transppass apura o MKBF do período pelo método atual (planilha) e compara com o número do sistema. Se as duas apurações coincidem dentro da tolerância e o sistema explica cada diferença carro a carro, o MKBF passa a ser lido do sistema.</div>
+</section>
+
+<!-- ======================= 6. MATRIZ ======================= -->
+<section class="section">
+  <div class="eyebrow">Seção 6</div>
+  <h2>Matriz de rastreabilidade: requisito → bloco de teste</h2>
+  <p>Requisitos do PRD v1.0 e regras da especificação do MVP, com o bloco e o passo deste roteiro que os comprovam. Todos os itens abaixo também são exercitados pela suíte automatizada da ProAero (78 verificações ponta a ponta contra o banco e 90 verificações de interface), cujo relatório acompanha a entrega.</p>
+  <table>
+    <thead><tr><th style="width:26mm">Requisito</th><th>O que exige</th><th style="width:28mm">Bloco · passo</th></tr></thead>
+    <tbody>
+      <tr><td>RF-02</td><td>O catálogo informa causa provável, reparo estimado e resolução em campo no registro</td><td>B6 · 1</td></tr>
+      <tr><td>RF-03</td><td>Triagem decide o destino: socorro, recolher, deferir</td><td>B6 · 4–6</td></tr>
+      <tr><td>RF-05 / RF-06</td><td>Falha de segurança não é deferível; fast-track pela regra de criticidade</td><td>B6 · 4, 7 · B16 · 2</td></tr>
+      <tr><td>RF-07 / RF-08</td><td>Ordem da fila pela criticidade; desvio manual só com motivo e registro imutável</td><td>B6 · 8–9</td></tr>
+      <tr><td>RF-10 / RF-11</td><td>Linha do tempo por km projetado; escopo da parada = pacote + backlog</td><td>B10 · 1–2</td></tr>
+      <tr><td>RF-12 / RN-10</td><td>Parada só sai da escala com kit e equipe; equipe é da Manutenção</td><td>B10 · 4–7</td></tr>
+      <tr><td>RF-13</td><td>Reprogramação exige motivo</td><td>B10 · 8</td></tr>
+      <tr><td>RF-14 / RF-15</td><td>Km diesel validado na origem; odômetro atrasado sinalizado; eBUS por telemetria</td><td>B4 · 1–7</td></tr>
+      <tr><td>RF-20</td><td>Reprovação na inspeção reabre a sub-OS e conta retrabalho</td><td>B8 · 7</td></tr>
+      <tr><td>RF-25</td><td>Kit D-1 separado pelo Estoque</td><td>B10 · 5</td></tr>
+      <tr><td>RF-27</td><td>Material usado da viatura no socorro</td><td>B7 · 2</td></tr>
+      <tr><td>RF-29 / RF-30 / RF-31</td><td>Demanda com janela de 40 min; reserva com habilitação; retorno ao vivo</td><td>B11 · 2–6</td></tr>
+      <tr><td>RF-32 / RF-33</td><td>Catálogo versionado e imutável; códigos de motivo desativados, nunca excluídos</td><td>B16 · 2–3</td></tr>
+      <tr><td>RF-36</td><td>Autoridade vira permissão; troca de perfil auditada; sem auto-cadastro</td><td>B1 · 2–3, 8 · B16 · 7</td></tr>
+      <tr><td>RF-38 / RF-39</td><td>MKBF e decomposição da indisponibilidade derivados do processo</td><td>B3 · 1–6 · B8 · 11</td></tr>
+      <tr><td>RN-02</td><td>A OS-mãe é o único relógio de indisponibilidade</td><td>B8 · 2–11</td></tr>
+      <tr><td>RN-13</td><td>Concluir sub-OS exige causa constatada no código composto</td><td>B8 · 6</td></tr>
+      <tr><td>Portões</td><td>Encerramento técnico, inspeção e limpeza antes da liberação; só a Manutenção libera</td><td>B8 · 8–11</td></tr>
+      <tr><td>Codificação §8.2</td><td>Alinhamento origem × diagnóstico medido</td><td>B3 · 7</td></tr>
+      <tr><td>Carta 28/10 (2.1.8, 3.1.5, 6)</td><td>Hodômetro ancorado no KM CHASSI; quebra = ficha A/S/T; preventiva = KM LIM &gt; 0; frota 0/7/17</td><td>B3 · 2–5</td></tr>
+      <tr><td>A3 §9</td><td>Daily, auditorias 5S e conformidade, treinamentos, kanban, laboratório de peças, vida de componentes</td><td>B9, B12–B16</td></tr>
+      <tr><td>Fluxos p.8</td><td>Manutenção diária: checklist antes da saída; carregadores eBUS como recurso</td><td>B5 · B9 · 6</td></tr>
+      <tr><td>PRD §8</td><td>Telas do chão mobile-first</td><td>B17</td></tr>
+    </tbody>
+  </table>
+  <p class="small muted">Fora do MVP, por decisão do PRD: RF-16, RF-40 e RF-41 (Fase 2). Não fazem parte deste aceite.</p>
+</section>
+
+<!-- ======================= 7. NÃO CONFORMIDADES ======================= -->
+<section class="section">
+  <div class="eyebrow">Seção 7</div>
+  <h2>Registro de não conformidades</h2>
+  <p>Toda diferença entre o resultado esperado e o observado é registrada aqui, com a captura de tela. A ProAero responde a cada registro com causa, correção e prazo. Copie esta página quantas vezes precisar.</p>
+  <table class="plain">
+    <thead><tr><th style="width:16mm">Nº</th><th style="width:22mm">Bloco · passo</th><th style="width:16mm">Severidade</th><th>O que foi observado (e o que era esperado)</th><th style="width:30mm">Quem / quando</th></tr></thead>
+    <tbody class="nc-form">
+      <tr><td>NC-01</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>NC-02</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>NC-03</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>NC-04</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>NC-05</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>NC-06</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>NC-07</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>NC-08</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>NC-09</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>NC-10</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>NC-11</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>NC-12</td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+  <h3>Severidade e prazo de resposta</h3>
+  <table>
+    <thead><tr><th style="width:22mm">Severidade</th><th>Definição</th><th style="width:34mm">Resposta da ProAero</th><th style="width:34mm">Efeito no aceite</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill s1">S1</span></td><td>Bloqueia uma etapa do processo, perde dado ou produz indicador errado (MKBF, disponibilidade, retornos).</td><td>Correção em até 2 dias úteis; bloco reexecutado</td><td>Impede o aceite enquanto aberta</td></tr>
+      <tr><td><span class="pill s2">S2</span></td><td>Comportamento incorreto com contorno conhecido; não altera indicador.</td><td>Correção em até 10 dias úteis</td><td>Aceite com ressalva e prazo</td></tr>
+      <tr><td><span class="pill s3">S3</span></td><td>Cosmético, texto, conveniência.</td><td>Próxima entrega</td><td>Não impede o aceite</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ======================= 8. PREMISSAS ======================= -->
+<section class="section">
+  <div class="eyebrow">Seção 8</div>
+  <h2>Premissas e pendências conhecidas</h2>
+  <p class="lead">Transparência sobre o que o sistema assume enquanto a Transppass não define, e sobre o que depende de dado ainda não entregue. Nenhum item abaixo impede a validação; todos estão marcados na tela como "assumido" onde aparecem.</p>
+  <table>
+    <thead><tr><th style="width:52mm">Item</th><th>Situação atual</th><th style="width:40mm">Quem fecha</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Flags de fast-track e segurança do catálogo</strong></td><td>Proposta a partir do ranking IIO. A estrutura e as regras por combinação existem (B16 · 2).</td><td>Manutenção + PCM</td></tr>
+      <tr><td><strong>Listas de códigos de motivo (RF-33)</strong></td><td>Exemplos estruturais nas cinco listas.</td><td>PCM, Manutenção, Estoque, Operação</td></tr>
+      <tr><td><strong>Valores-alvo de SLA de triagem e socorro</strong></td><td>O tempo é medido (mediana e P90); falta o limite para comparar.</td><td>PCM + Operação</td></tr>
+      <tr><td><strong>De-para "grupo do defeito constatado" → Modo × Subsistema</strong></td><td>Aproximado. Afeta só a classificação das fichas históricas, não a contagem de quebras.</td><td>Manutenção (Eng. de Confiabilidade)</td></tr>
+      <tr><td><strong>VBM0805 de agosto/2026</strong></td><td>O arquivo recebido traz as linhas de "agosto" datadas de 08/2021 (série D). Só setembro foi carregado. Pedida a reexportação.</td><td>Transppass (TI / Controladoria)</td></tr>
+      <tr><td><strong>Vidas esperadas dos componentes</strong></td><td>Assumidas por tipo até a Manutenção fixar por modelo.</td><td>Manutenção</td></tr>
+      <tr><td><strong>Ponto de pedido e lote de reposição</strong></td><td>Assumidos a partir do saldo até Suprimentos definir material a material.</td><td>Suprimentos</td></tr>
+      <tr><td><strong>SLA e garantia dos fornecedores</strong></td><td>19 fornecedores derivados da referência de fabricante; SLA assumido.</td><td>Suprimentos</td></tr>
+      <tr><td><strong>Carregadores eBUS</strong></td><td>34 baias necessárias × 32 disponíveis, assumido para mostrar a insuficiência.</td><td>Manutenção eBUS</td></tr>
+      <tr><td><strong>Lista de técnicos e inspetores</strong></td><td>16 técnicos de exemplo. A lista real entra por cadastro ou importação.</td><td>Manutenção (RH)</td></tr>
+      <tr><td><strong>Espelhamento no JB</strong></td><td>O vínculo (número da OS no JB) existe; o que espelhar é decisão da Controladoria.</td><td>Controladoria</td></tr>
+      <tr><td><strong>Reservas e dias sem leitura</strong></td><td>Para o movimento de demonstração, ~8% de reservas foi assumido. Não afeta agosto e setembro reais.</td><td>Operação</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><b>Achado para a Transppass.</b> O critério antigo de quebra (toda ocorrência do CCO) daria um MKBF de 2.297 km em setembro. Pelo critério da carta (fichas A, S e T), o MKBF é 3.888 km. A diferença não é do sistema: é do critério. O sistema registra as duas populações e conta só a segunda.</div>
+</section>
+
+<!-- ======================= 9. TERMO DE ACEITE ======================= -->
+<section class="section">
+  <div class="eyebrow">Seção 9</div>
+  <h2>Termo de aceite</h2>
+  <p>Pelo presente, as partes registram o resultado da validação do Módulo PCM (MVP: releases R0, R1 e R2 do PRD v1.0), executada conforme este roteiro.</p>
+
+  <h3>Resultado dos blocos</h3>
+  <table>
+    <thead><tr><th style="width:14mm">Bloco</th><th>Nome</th><th style="width:22mm">Resultado</th><th style="width:14mm">Bloco</th><th>Nome</th><th style="width:22mm">Resultado</th></tr></thead>
+    <tbody>
+      <tr><td>B1</td><td>Acesso, perfis e segurança</td><td></td><td>B10</td><td>Preventiva por km</td><td></td></tr>
+      <tr><td>B2</td><td>Dashboard, frota e carro</td><td></td><td>B11</td><td>Plantão e reposição</td><td></td></tr>
+      <tr><td>B3</td><td>MKBF e indicadores</td><td></td><td>B12</td><td>Daily 15 min</td><td></td></tr>
+      <tr><td>B4</td><td>Quilometragem</td><td></td><td>B13</td><td>Qualidade de peças</td><td></td></tr>
+      <tr><td>B5</td><td>Checklist diário</td><td></td><td>B14</td><td>Auditorias</td><td></td></tr>
+      <tr><td>B6</td><td>Evento, triagem e fila</td><td></td><td>B15</td><td>Vida de componentes</td><td></td></tr>
+      <tr><td>B7</td><td>Socorro</td><td></td><td>B16</td><td>Cadastros e governança</td><td></td></tr>
+      <tr><td>B8</td><td>OS, portões e liberação</td><td></td><td>B17</td><td>Celular e acessibilidade</td><td></td></tr>
+      <tr><td>B9</td><td>Estoque e kanban</td><td></td><td>OA</td><td>Operação assistida (seção 5)</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Decisão</h3>
+  <p><span class="box"></span> <strong>Aprovado.</strong> Todos os passos ★ OK; nenhuma S1 aberta; S2 com prazo acordado. O MKBF passa a ser lido do sistema a partir de <span class="fill" style="min-width:30mm"></span>.</p>
+  <p><span class="box"></span> <strong>Aprovado com ressalvas.</strong> Não conformidades <span class="fill"></span> a corrigir até <span class="fill" style="min-width:30mm"></span>, com reexecução dos blocos <span class="fill" style="min-width:30mm"></span>.</p>
+  <p><span class="box"></span> <strong>Reprovado.</strong> Motivo: <span class="fill" style="min-width:110mm"></span></p>
+  <p>Não conformidades registradas: S1 <span class="fill" style="min-width:12mm"></span> · S2 <span class="fill" style="min-width:12mm"></span> · S3 <span class="fill" style="min-width:12mm"></span></p>
+
+  <div class="sign">
+    <div><b>Transppass · Diretoria de Manutenção (patrocinador)</b><span>Nome, cargo, data e assinatura</span></div>
+    <div><b>Transppass · Coordenação do PCM (líder da validação)</b><span>Nome, cargo, data e assinatura</span></div>
+    <div><b>Transppass · Operação / CCO</b><span>Nome, cargo, data e assinatura</span></div>
+    <div><b>Transppass · Suprimentos / Almoxarifado</b><span>Nome, cargo, data e assinatura</span></div>
+    <div><b>ProAero · Engenharia</b><span>Nome, cargo, data e assinatura</span></div>
+    <div><b>ProAero · Direção</b><span>Nome, cargo, data e assinatura</span></div>
+  </div>
+</section>
+
+<!-- ======================= ANEXO A ======================= -->
+<section class="section">
+  <div class="eyebrow">Anexo A</div>
+  <h2>Perfis, credenciais e menus</h2>
+  <p>Matriz do que cada perfil enxerga no menu. A API recusa o que não está marcado, mesmo que o endereço seja digitado. ● acesso · — sem acesso.</p>
+  <table style="font-size:8.4pt">
+    <thead><tr><th>Tela</th><th>Admin</th><th>PCM</th><th>Manut.</th><th>CCO</th><th>Plantão</th><th>Socorro</th><th>Mecân.</th><th>Inspetor</th><th>Estoque</th><th>Limpeza</th><th>Gestão</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td></tr>
+      <tr><td>Daily 15 min</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>●</td></tr>
+      <tr><td>Painel da frota</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td></tr>
+      <tr><td>Checklist diário</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>—</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Eventos</td><td>●</td><td>●</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>●</td><td>—</td><td>●</td><td>—</td></tr>
+      <tr><td>Triagem</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Fila</td><td>●</td><td>●</td><td>●</td><td>—</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Socorro</td><td>●</td><td>●</td><td>—</td><td>●</td><td>—</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Preventiva</td><td>●</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>●</td><td>—</td><td>—</td></tr>
+      <tr><td>Plantão</td><td>●</td><td>●</td><td>—</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Ordens de serviço</td><td>●</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>●</td><td>●</td><td>—</td><td>●</td><td>—</td></tr>
+      <tr><td>Estoque</td><td>●</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>●</td><td>—</td><td>—</td></tr>
+      <tr><td>Qualidade de peças</td><td>●</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>●</td><td>●</td><td>—</td><td>—</td></tr>
+      <tr><td>Vida de componentes</td><td>●</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>●</td></tr>
+      <tr><td>Indicadores</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>●</td></tr>
+      <tr><td>Quilometragem</td><td>●</td><td>●</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Auditorias</td><td>●</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>●</td><td>—</td><td>●</td></tr>
+      <tr><td>Cadastros › Frota</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Cadastros › Catálogo de falhas</td><td>●</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Cadastros › Planos preventivos</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Cadastros › Materiais</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>●</td><td>—</td><td>—</td></tr>
+      <tr><td>Cadastros › Técnicos</td><td>●</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>Cadastros › Fornecedores</td><td>●</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>●</td><td>—</td><td>—</td></tr>
+      <tr><td>Cadastros › Usuários</td><td>●</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <h3>Ações que a API reserva a um perfil</h3>
+  <ul>
+    <li><strong>Liberar carro</strong>: Manutenção (e Administrador). PCM recebe recusa (B8 · 10).</li>
+    <li><strong>Reservar equipe da parada</strong>: Manutenção. PCM recebe recusa (B10 · 6).</li>
+    <li><strong>Separar kit D-1 e atender solicitação</strong>: Estoque.</li>
+    <li><strong>Triar e mover a fila</strong>: PCM.</li>
+    <li><strong>Criar usuário, gerar link de redefinição, trocar perfil</strong>: Administrador.</li>
+  </ul>
+</section>
+
+<!-- ======================= ANEXO B ======================= -->
+<section class="section">
+  <div class="eyebrow">Anexo B</div>
+  <h2>Glossário</h2>
+  <table class="plain">
+    <tbody>
+      <tr><td style="width:40mm"><strong>MKBF</strong></td><td>Quilômetros médios entre falhas. Km rodados pela frota em operação ÷ retornos não programados no período. Métrica norte do Kaizen.</td></tr>
+      <tr><td><strong>Retorno não programado</strong></td><td>Quebra. Pela carta da Transppass de 28/10/2026, toda ficha de tipo A (recolhida anormal), S (socorro) ou T (troca de carro).</td></tr>
+      <tr><td><strong>Código composto</strong></td><td>Modo de Falha × Sistema/Subsistema (VMRS) × Posição, ex. <code>IN-174-011-FD</code>. Padrão da Engenharia de Confiabilidade usado no registro, na triagem e na constatação.</td></tr>
+      <tr><td><strong>Evento</strong></td><td>Toda ocorrência registrada sobre um carro (CCO, checklist, motorista, inspeção). Pode ou não virar quebra.</td></tr>
+      <tr><td><strong>Triagem</strong></td><td>Decisão do PCM sobre o evento: socorro na rua, recolher para a garagem ou deferir (quando a regra permite).</td></tr>
+      <tr><td><strong>Fast-track</strong></td><td>Combinação de código que, pela regra de criticidade, sobe na fila sem passar pela ordem padrão.</td></tr>
+      <tr><td><strong>OS-mãe</strong></td><td>A ordem de serviço do carro. Único relógio de indisponibilidade: tudo que prende o carro é um trecho dela com causa (fila, material, execução, inspeção, limpeza, aguardando liberação).</td></tr>
+      <tr><td><strong>Sub-OS</strong></td><td>Cada serviço dentro da OS-mãe, com especialidade, técnico, causa constatada e inspeção.</td></tr>
+      <tr><td><strong>Portões</strong></td><td>Etapas obrigatórias antes da liberação: encerramento técnico (todas as sub-OS concluídas e inspecionadas), limpeza e liberação pela Manutenção.</td></tr>
+      <tr><td><strong>Retrabalho interno</strong></td><td>Sub-OS reprovada na inspeção ÷ inspeções do período.</td></tr>
+      <tr><td><strong>Parada programada</strong></td><td>Preventiva planejada pela linha do tempo de km. Escopo = pacote do plano + backlog do carro. Sai da escala só com kit e equipe.</td></tr>
+      <tr><td><strong>Kit D-1</strong></td><td>Materiais da parada separados pelo Estoque no dia anterior.</td></tr>
+      <tr><td><strong>Backlog do carro</strong></td><td>Serviços pendentes que não prendem o carro (ex.: avaria encontrada na limpeza), executados na próxima parada.</td></tr>
+      <tr><td><strong>Demanda de reposição</strong></td><td>Pedido do Plantão para cobrir uma linha com carro reserva, com janela de 40 minutos.</td></tr>
+      <tr><td><strong>Matriz de habilitações</strong></td><td>Categoria de CNH e classes de carro permitidas por motorista. Bloqueia a designação de reserva sem habilitação.</td></tr>
+      <tr><td><strong>Odômetro atrasado</strong></td><td>Carro diesel sem leitura de km há mais de 2 dias. A projeção continua, marcada como degradada, e o PCM é notificado.</td></tr>
+      <tr><td><strong>Kanban</strong></td><td>Materiais no ponto de pedido ou abaixo, com lote de reposição, fornecedor, SLA e pedidos abertos.</td></tr>
+      <tr><td><strong>FR.168</strong></td><td>Lista de ferramental da Transppass. Cada tarefa do plano tem as ferramentas necessárias; os carregadores eBUS entram como recurso.</td></tr>
+      <tr><td><strong>IT.MAN-01 / 54 / 60 / 16</strong></td><td>Planos preventivos por modelo: diesel, Scania eBUS, VW eBUS e Eletra.</td></tr>
+      <tr><td><strong>5S</strong></td><td>Utilização, organização, limpeza, padronização e disciplina. Auditoria mensal com dois critérios por senso, nota 0 a 4.</td></tr>
+      <tr><td><strong>Daily 15 min</strong></td><td>Reunião diária em pé do Kaizen: MKBF, disponibilidade, retrabalho, viagens perdidas e OS, mais a rotina do dia.</td></tr>
+      <tr><td><strong>Snapshot mensal</strong></td><td>Foto dos indicadores gravada toda madrugada para o histórico. O mês corrente é recalculado ao abrir.</td></tr>
+    </tbody>
+  </table>
+  <p class="small muted" style="margin-top:8mm">Documento TPP-PCM-VAL-001 · Versão 1.0 · 29/10/2026 · ProAero para Transppass Transporte de Passageiros. As capturas de tela deste documento foram feitas no ambiente de homologação com os dados reais da Transppass e contêm prefixos e placas da frota; trate o documento como interno.</p>
+</section>
+
+</body>
+</html>

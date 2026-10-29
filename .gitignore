@@ -18,3 +18,4 @@ apps/api/prisma/data/viagens.json
 apps/api/prisma/data/linhas-dia.json
 apps/api/prisma/data/codigos-transppass.json
 apps/api/prisma/data/eventos.json
+docs/roteiro-validacao/shots/
