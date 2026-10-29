@@ -36,6 +36,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      # Fuso da garagem: "hoje" e "este mês" (MKBF, km do dia, checklist,
+      # snapshot das 02:10) são calculados na hora local do processo.
+      TZ: America/Sao_Paulo
       DATABASE_URL: postgresql://${POSTGRES_USER:-transppass}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-transppass_pcm}?schema=public
     depends_on:
       postgres:
