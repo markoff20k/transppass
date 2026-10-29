@@ -15,6 +15,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-transppass_pcm}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Porta publicada para o banco ser alcançado de fora (replicação e
+    # desenvolvimento contra o banco do servidor). Restrinja no firewall do
+    # droplet ao IP de quem acessa: ufw allow from SEU_IP to any port 5432
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-transppass} -d ${POSTGRES_DB:-transppass_pcm}']
       interval: 5s
