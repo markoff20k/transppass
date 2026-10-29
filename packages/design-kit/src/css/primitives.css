@@ -36,6 +36,7 @@
      700 é a cor do logo. É a cor estrutural do sistema: cabeçalhos, textos,
      superfícies escuras. */
   --tp-graphite-50: #f6f7f6;
+  --tp-graphite-75: #f1f2f1;
   --tp-graphite-100: #ebecea;
   --tp-graphite-200: #d6d8d5;
   --tp-graphite-300: #b5b8b4;
@@ -154,16 +155,16 @@
 
   /* ---- Raio, borda, elevação -------------------------------------------- */
   --tp-radius-sm: 4px;
-  --tp-radius-md: 6px;
-  --tp-radius-lg: 10px;
+  --tp-radius-md: 8px;
+  --tp-radius-lg: 12px;
   --tp-radius-xl: 14px;
   --tp-radius-full: 999px;
 
   --tp-border-thin: 1px;
   --tp-border-thick: 3px;
 
-  --tp-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
-  --tp-shadow-md: 0 2px 8px rgb(0 0 0 / 0.08);
+  --tp-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.03), 0 6px 18px rgb(0 0 0 / 0.05);
+  --tp-shadow-md: 0 2px 6px rgb(0 0 0 / 0.04), 0 10px 28px rgb(0 0 0 / 0.08);
   --tp-shadow-lg: 0 8px 24px rgb(0 0 0 / 0.12);
   --tp-shadow-overlay: 0 16px 48px rgb(0 0 0 / 0.2);
 

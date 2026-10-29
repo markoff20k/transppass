@@ -20,7 +20,7 @@
   /* ---- Superfícies -------------------------------------------------------
      Três níveis: o fundo da página, o cartão que se destaca dele, e o realce
      dentro do cartão (cabeçalho de tabela, bloco de apoio). */
-  --color-bg: var(--tp-graphite-50);
+  --color-bg: var(--tp-graphite-75);
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: var(--tp-graphite-100);
@@ -31,6 +31,9 @@
   --color-border: var(--tp-graphite-200);
   --color-border-strong: var(--tp-graphite-300);
   --color-border-subtle: var(--tp-graphite-100);
+  /* Borda de cartão: quase invisível no claro, a sombra difusa dá o contorno. */
+  --color-card-border: var(--tp-graphite-100);
+  --color-table-head: var(--tp-graphite-50);
 
   /* ---- Texto -------------------------------------------------------------
      Quatro níveis. `muted` é o limite do que ainda passa em AA (4,6:1);
@@ -112,6 +115,15 @@
   --color-neutral-text: var(--tp-graphite-600);
   --color-neutral-soft: var(--tp-graphite-100);
   --color-neutral-border: var(--tp-graphite-200);
+
+  /* Preenchimento sólido (badge de estado): tom escuro, texto branco (>= 4.8:1). */
+  --color-on-solid: #ffffff;
+  --color-success-solid: var(--tp-green-600);
+  --color-warning-solid: var(--tp-amber-700);
+  --color-danger-solid: var(--tp-red-600);
+  --color-info-solid: var(--tp-blue-600);
+  --color-neutral-solid: var(--tp-graphite-500);
+  --color-brand-solid: var(--tp-orange-700);
 
   /* ---- Estados do carro (RF-37) ------------------------------------------
      O painel da frota mostra dez estados ao vivo. Eles se agrupam em quatro
@@ -198,6 +210,8 @@
     --color-border: var(--tp-graphite-800);
     --color-border-strong: var(--tp-graphite-600);
     --color-border-subtle: var(--tp-graphite-900);
+    --color-card-border: var(--tp-graphite-800);
+    --color-table-head: var(--tp-graphite-900);
 
     --color-text: var(--tp-graphite-50);
     --color-text-secondary: var(--tp-graphite-300);
@@ -255,6 +269,14 @@
     --color-neutral-text: var(--tp-graphite-300);
     --color-neutral-soft: var(--tp-graphite-800);
     --color-neutral-border: var(--tp-graphite-700);
+
+    --color-on-solid: var(--tp-graphite-950);
+    --color-success-solid: var(--tp-green-400);
+    --color-warning-solid: var(--tp-amber-400);
+    --color-danger-solid: var(--tp-red-400);
+    --color-info-solid: var(--tp-blue-400);
+    --color-neutral-solid: var(--tp-graphite-300);
+    --color-brand-solid: var(--tp-orange-400);
 
     --color-state-running: var(--tp-green-400);
     --color-state-waiting: var(--tp-amber-400);
@@ -316,6 +338,8 @@
   --color-border: var(--tp-graphite-800);
   --color-border-strong: var(--tp-graphite-600);
   --color-border-subtle: var(--tp-graphite-900);
+  --color-card-border: var(--tp-graphite-800);
+  --color-table-head: var(--tp-graphite-900);
 
   --color-text: var(--tp-graphite-50);
   --color-text-secondary: var(--tp-graphite-300);
@@ -370,6 +394,14 @@
   --color-neutral-text: var(--tp-graphite-300);
   --color-neutral-soft: var(--tp-graphite-800);
   --color-neutral-border: var(--tp-graphite-700);
+
+  --color-on-solid: var(--tp-graphite-950);
+  --color-success-solid: var(--tp-green-400);
+  --color-warning-solid: var(--tp-amber-400);
+  --color-danger-solid: var(--tp-red-400);
+  --color-info-solid: var(--tp-blue-400);
+  --color-neutral-solid: var(--tp-graphite-300);
+  --color-brand-solid: var(--tp-orange-400);
 
   --color-state-running: var(--tp-green-400);
   --color-state-waiting: var(--tp-amber-400);

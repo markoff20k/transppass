@@ -14,6 +14,7 @@ import {
 } from '@app/shared';
 import { api } from '@/lib/api-client';
 import { formatDate, formatDateTime, formatNumber } from '@/lib/format';
+import { workOrderStatusTone } from '@/lib/tones';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusRender } from '@/components/bus/bus-render';
 import { familyOf } from '@/components/fleet/fleet-legend.utils';
@@ -226,7 +227,7 @@ export function VehiclePage() {
                       <td className="tp-muted">{w.type === 'PREVENTIVE' ? 'preventiva' : w.type === 'CORRECTIVE' ? 'corretiva' : w.type.toLowerCase()}</td>
                       <td className="tp-muted">{formatDateTime(w.openedAt)}</td>
                       <td className="tp-muted">{w.releasedAt ? formatDateTime(w.releasedAt) : '—'}</td>
-                      <td><span className="tp-badge tp-badge--status">{WORK_ORDER_STATUS_LABELS[w.status as WorkOrderStatus] ?? w.status}</span></td>
+                      <td><span className={`tp-badge tp-badge--status ${workOrderStatusTone(w.status)}`}>{WORK_ORDER_STATUS_LABELS[w.status as WorkOrderStatus] ?? w.status}</span></td>
                     </tr>
                   ))}
                 </tbody>

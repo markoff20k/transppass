@@ -12,6 +12,7 @@ import {
 } from '@app/shared';
 import { api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes } from '@/lib/format';
+import { workOrderStatusTone } from '@/lib/tones';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusRender } from '@/components/bus/bus-render';
 import { BrandLoader } from '@/components/brand/brand-loader';
@@ -246,7 +247,7 @@ export function WorkOrdersPage() {
                       <td className="tp-muted" style={{ whiteSpace: 'normal', maxWidth: 260 }}>{row.reason ?? '—'}</td>
                       <td className="tp-muted">{WORK_ORDER_TYPE_LABELS[row.type]}</td>
                       <td>
-                        <span className="tp-badge tp-badge--status">{WORK_ORDER_STATUS_LABELS[row.status]}</span>
+                        <span className={`tp-badge tp-badge--status ${workOrderStatusTone(row.status)}`}>{WORK_ORDER_STATUS_LABELS[row.status]}</span>
                         {row.execution === WorkOrderExecution.THIRD_PARTY && <span className="tp-badge tp-badge--status tp-badge--warning" style={{ marginLeft: 6 }} title={row.supplierName ?? undefined}>terceiro</span>}
                       </td>
                       <td className={`is-num${row.isOverdue ? ' tp-error' : ''}`}>{formatMinutes(row.downtimeMinutes)}</td>

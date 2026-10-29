@@ -14,6 +14,7 @@ import {
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate, formatDateTime, formatNumber } from '@/lib/format';
+import { materialRequestStatusTone } from '@/lib/tones';
 import { useAuth } from '@/features/auth/use-auth';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
@@ -142,7 +143,7 @@ export function StockPage() {
                     </td>
                     <td className="is-num">{row.quantity}</td>
                     <td>
-                      <span className="tp-badge tp-badge--status">
+                      <span className={`tp-badge tp-badge--status ${materialRequestStatusTone(row.status)}`}>
                         {MATERIAL_REQUEST_STATUS_LABELS[row.status]}
                       </span>
                     </td>
@@ -564,7 +565,7 @@ function RequestDrawer({
         <div>
           <dt>Estado</dt>
           <dd>
-            <span className="tp-badge tp-badge--status">{MATERIAL_REQUEST_STATUS_LABELS[request.status]}</span>
+            <span className={`tp-badge tp-badge--status ${materialRequestStatusTone(request.status)}`}>{MATERIAL_REQUEST_STATUS_LABELS[request.status]}</span>
           </dd>
         </div>
         <div>
