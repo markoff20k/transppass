@@ -19,6 +19,8 @@ import { InfoTip } from '@/components/ui/info-tip';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { FleetLegend } from '@/components/fleet/fleet-legend';
 import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
+import { BackFoot, BackHead, FlipButton, MaintenanceBack } from '@/components/fleet/fleet-card';
+import { useFlip } from '@/components/fleet/use-flip';
 import {
   AvailabilityByHourChart,
   DowntimeDonut,
@@ -477,21 +479,38 @@ function reasonPhase(status: DashboardVehicle['status']): string {
   return '';
 }
 
+/**
+ * Card de um carro na garagem. A frente é o estado de relance; a chave vira o
+ * card e mostra a manutenção (OS aberta e os números de 30 dias) sem sair do
+ * Dashboard. Clicar no card continua abrindo o carro.
+ */
 function BusCard({ vehicle }: { vehicle: DashboardVehicle }) {
   const family = VEHICLE_STATE_FAMILY[vehicle.status] ?? 'waiting';
+  const f = useFlip(vehicle.id);
   return (
-    <Link to={`/frota/${vehicle.id}`} className={`bus-card bus-card--${family}`}>
-      <BusRender vehicleClass={vehicle.vehicleClass} technology={vehicle.technology} status={vehicle.status} code={vehicle.code} width={260} />
-      <div className="bus-card__text">
-        <div className="bus-card__row">
-          <b>{vehicle.code}</b>
-          <span className="tp-muted">{vehicle.plate}</span>
+    <article className={`bus-stage ${f.stageClass}`} onKeyDown={f.onKeyDown}>
+      <div className="flip__inner" onTransitionEnd={f.onTransitionEnd}>
+        <div className={`bus-card bus-card--${family} flip__face`} aria-hidden={f.flipped} inert={f.flipped}>
+          <Link to={`/frota/${vehicle.id}`} className="flip__link" aria-label={`Abrir o carro ${vehicle.code}`} />
+          <FlipButton code={vehicle.code} flip={f} corner />
+          <BusRender vehicleClass={vehicle.vehicleClass} technology={vehicle.technology} status={vehicle.status} code={vehicle.code} width={260} />
+          <div className="bus-card__text">
+            <div className="bus-card__row">
+              <b>{vehicle.code}</b>
+              <span className="tp-muted">{vehicle.plate}</span>
+            </div>
+            <span className={`tp-state tp-state--${family}`}>{VEHICLE_STATUS_LABELS[vehicle.status]}</span>
+            <span className="bus-card__reason" title={vehicle.reason ?? undefined}>{vehicle.reason ? `${reasonPhase(vehicle.status)}${vehicle.reason}` : ' '}</span>
+            <span className="bus-card__since tp-muted">{vehicle.hoursInState !== null ? `há ${vehicle.hoursInState.toLocaleString('pt-BR')}h` : ' '}</span>
+          </div>
         </div>
-        <span className={`tp-state tp-state--${family}`}>{VEHICLE_STATUS_LABELS[vehicle.status]}</span>
-        <span className="bus-card__reason" title={vehicle.reason ?? undefined}>{vehicle.reason ? `${reasonPhase(vehicle.status)}${vehicle.reason}` : ' '}</span>
-        <span className="bus-card__since tp-muted">{vehicle.hoursInState !== null ? `há ${vehicle.hoursInState.toLocaleString('pt-BR')}h` : ' '}</span>
+        <div className={`bus-card bus-card--${family} bus-card--back flip__face flip__face--back`} aria-hidden={!f.flipped} inert={!f.flipped}>
+          <BackHead code={vehicle.code} flip={f} />
+          <MaintenanceBack id={vehicle.id} enabled={f.flipped} compact />
+          <BackFoot id={vehicle.id} />
+        </div>
       </div>
-    </Link>
+    </article>
   );
 }
 

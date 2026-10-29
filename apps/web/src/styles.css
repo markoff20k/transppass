@@ -2292,10 +2292,8 @@ small.muted {
   transition: border-color var(--tp-duration-fast), transform var(--tp-duration-fast) var(--tp-ease);
 }
 
-.bus-card:hover {
-  border-color: var(--color-border-strong);
-  transform: translateY(-1px);
-}
+.bus-card:hover { border-color: var(--color-border-strong); }
+a.bus-card:hover { transform: translateY(-1px); }
 
 .bus-card .bus { width: 100%; height: auto; }
 
@@ -2386,37 +2384,76 @@ small.muted {
 }
 
 /*
- * O card é um palco 3D: `.fleet-card` dá a perspectiva, `.fleet-card__inner`
- * gira, e as duas faces ocupam a mesma célula da grade (a altura é a da face
- * mais alta, sem posicionamento absoluto). O verso nasce virado em 180°.
+ * Card que vira (frota e garagem). `.flip` é o palco com perspectiva,
+ * `.flip__inner` gira, e as duas faces ocupam a mesma célula da grade: a
+ * altura é a da face mais alta, sem posicionamento absoluto. O verso nasce
+ * virado em 180° e só aparece quando o miolo gira.
  */
-.fleet-card {
-  --fleet-color: var(--color-border-strong);
+.flip {
   --flip-duration: calc(var(--tp-duration-slow) * 2.2); /* 616ms; zero em reduced motion */
   position: relative;
   min-width: 0;
-  border-radius: var(--tp-radius-lg);
   perspective: 1600px;
-  transition: opacity var(--tp-duration-normal) var(--tp-ease);
 }
-
-.fleet-card--running { --fleet-color: var(--color-state-running); }
-.fleet-card--waiting { --fleet-color: var(--color-state-waiting); }
-.fleet-card--working { --fleet-color: var(--color-state-working); }
-.fleet-card--stopped { --fleet-color: var(--color-state-stopped); }
-
-.fleet-card__inner {
+.flip__inner {
   position: relative;
   display: grid;
   height: 100%;
   transform-style: preserve-3d;
   transition: transform var(--flip-duration) cubic-bezier(0.45, 0.05, 0.15, 1);
 }
-.fleet-card.is-flipped .fleet-card__inner { transform: rotateY(180deg); }
-.fleet-card.is-moving, .fleet-card.is-flipped, .fleet-card:hover { z-index: 2; }
+.flip.is-flipped .flip__inner { transform: rotateY(180deg); }
+.flip.is-moving, .flip.is-flipped, .flip:hover { z-index: 2; }
+.flip__face {
+  grid-area: 1 / 1;
+  min-width: 0;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip__face--back { transform: rotateY(180deg); }
+.flip__face > *:not(.flip__link) { position: relative; }
+.flip__link { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.flip__link:focus-visible { outline: 2px solid var(--color-brand); outline-offset: -2px; }
+/* Enquanto gira, o card sai do plano: sombra funda e por cima dos vizinhos. */
+.flip.is-moving .flip__face { box-shadow: 0 32px 56px -28px rgb(0 0 0 / 0.5); }
+.flip:hover:not(.is-flipped) .flip__inner { transform: translateY(-2px); }
+
+/* Botão que vira o card: discreto na frente, ganha a cor da marca no hover */
+.flip__btn {
+  display: inline-grid; place-items: center; flex-shrink: 0;
+  width: 28px; height: 28px; min-height: 0; padding: 0; margin: -2px -4px 0 0;
+  border: var(--tp-border-thin) solid var(--color-border);
+  border-radius: var(--tp-radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  position: relative; z-index: 2;
+  transition: color var(--tp-duration-fast), border-color var(--tp-duration-fast), background var(--tp-duration-fast), transform var(--tp-duration-fast) var(--tp-ease);
+}
+.flip__btn:hover { color: var(--color-brand); border-color: var(--color-brand); background: var(--color-brand-soft); transform: scale(1.06); }
+.flip__btn:active { transform: scale(0.96); }
+.flip__btn:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.flip__btn--corner { position: absolute; top: 8px; right: 8px; margin: 0; }
+.flip__face--back .flip__btn:hover { color: var(--color-text); border-color: var(--color-border-strong); background: var(--color-surface-sunken); }
+
+/* Verso: dossiê de manutenção, tingido de leve pela família do carro */
+.flip__face--back {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fleet-color) 10%, var(--color-surface)) 0, var(--color-surface) 46%);
+}
+
+.fleet-card {
+  --fleet-color: var(--color-border-strong);
+  border-radius: var(--tp-radius-lg);
+  transition: opacity var(--tp-duration-normal) var(--tp-ease);
+}
+
+.fleet-card--running, .bus-card--running { --fleet-color: var(--color-state-running); }
+.fleet-card--waiting, .bus-card--waiting { --fleet-color: var(--color-state-waiting); }
+.fleet-card--working, .bus-card--working { --fleet-color: var(--color-state-working); }
+.fleet-card--stopped, .bus-card--stopped { --fleet-color: var(--color-state-stopped); }
 
 .fleet-card__face {
-  grid-area: 1 / 1;
   display: flex;
   flex-direction: column;
   gap: var(--tp-space-2);
@@ -2425,16 +2462,10 @@ small.muted {
   border-radius: var(--tp-radius-md);
   background: var(--color-surface);
   color: var(--color-text);
-  min-width: 0;
-  overflow: hidden;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
   transition:
     border-color var(--tp-duration-fast),
-    box-shadow var(--tp-duration-normal) var(--tp-ease),
-    transform var(--tp-duration-fast) var(--tp-ease);
+    box-shadow var(--tp-duration-normal) var(--tp-ease);
 }
-.fleet-card__face--back { transform: rotateY(180deg); }
 
 .fleet-card:hover .fleet-card__face { border-color: var(--color-border-strong); }
 .fleet-card.is-stale .fleet-card__face--front { border-color: var(--color-warning-border); }
@@ -3593,34 +3624,6 @@ small.muted {
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
 }
 .fleet-card:hover .fleet-card__face { box-shadow: 0 14px 30px -18px rgb(0 0 0 / 0.35); }
-.fleet-card:hover:not(.is-flipped) .fleet-card__inner { transform: translateY(-2px); }
-/* Enquanto gira, o card sai do plano: sombra funda e por cima dos vizinhos. */
-.fleet-card.is-moving .fleet-card__face { box-shadow: 0 32px 56px -28px rgb(0 0 0 / 0.5); }
-.fleet-card__link { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
-.fleet-card__link:focus-visible { outline: 2px solid var(--color-brand); outline-offset: -2px; }
-.fleet-card__face > *:not(.fleet-card__link) { position: relative; }
-
-/* Botão que vira o card: discreto na frente, ganha a cor da marca no hover */
-.fleet-card__flip {
-  display: inline-grid; place-items: center; flex-shrink: 0;
-  width: 28px; height: 28px; min-height: 0; padding: 0; margin: -2px -4px 0 0;
-  border: var(--tp-border-thin) solid var(--color-border);
-  border-radius: var(--tp-radius-full);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  position: relative; z-index: 2;
-  transition: color var(--tp-duration-fast), border-color var(--tp-duration-fast), background var(--tp-duration-fast), transform var(--tp-duration-fast) var(--tp-ease);
-}
-.fleet-card__flip:hover { color: var(--color-brand); border-color: var(--color-brand); background: var(--color-brand-soft); transform: scale(1.06); }
-.fleet-card__flip:active { transform: scale(0.96); }
-.fleet-card__flip:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
-.fleet-card__face--back .fleet-card__flip:hover { color: var(--color-text); border-color: var(--color-border-strong); background: var(--color-surface-sunken); }
-
-/* Verso: dossiê de manutenção, tingido de leve pela família do carro */
-.fleet-card__face--back {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--fleet-color) 10%, var(--color-surface)) 0, var(--color-surface) 46%);
-}
 .fleet-back__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--tp-space-2); }
 .fleet-back__eyebrow {
   font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.1em; text-transform: uppercase;
@@ -3825,6 +3828,25 @@ small.muted {
 .bus-card__since { font-size: var(--tp-text-2xs); line-height: 18px; }
 .bus-card--summary { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
 .bus-card--summary .bus-card__text { grid-template-rows: auto auto; gap: 4px; align-content: center; }
+.bus-stage { border-radius: var(--tp-radius-lg); }
+.bus-stage .bus-card { --fleet-color: var(--color-border-strong); transition: border-color var(--tp-duration-fast), box-shadow var(--tp-duration-normal) var(--tp-ease); }
+.bus-stage:hover .bus-card { border-color: var(--color-border-strong); }
+.bus-stage .flip__btn--corner { top: 6px; right: 6px; width: 26px; height: 26px; }
+/* No Dashboard a frente tem altura fixa; o verso cabe nela (absoluto) e nunca estica a linha da grade. */
+.bus-stage .flip__face--back { position: absolute; inset: 0; }
+.bus-card--back { display: flex; flex-direction: column; gap: 6px; padding-bottom: 0; }
+.bus-card--back .fleet-back__head { align-items: center; }
+.bus-card--back .fleet-card__title { gap: 0; }
+.bus-card--back .fleet-card__code { font-size: var(--tp-text-md); }
+.bus-card--back .flip__btn { width: 26px; height: 26px; margin: 0; }
+.bus-card--back .fleet-back__now { padding: 6px 10px; gap: 3px; }
+.bus-card--back .fleet-back__row { flex-wrap: nowrap; gap: 6px; }
+.bus-card--back .fleet-back__os { font-size: var(--tp-text-xs); }
+.bus-card--back .fleet-back__row .fleet-chip { padding: 2px 8px; overflow: hidden; text-overflow: ellipsis; }
+.bus-card--back .fleet-back__foot { margin: auto calc(-1 * var(--tp-space-3)) 0; padding: 7px var(--tp-space-3); }
+.fleet-back__stats--compact { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px var(--tp-space-2); }
+.fleet-back__stats--compact > div { gap: 0; }
+.fleet-back__stats--compact dd { line-height: 1.25; }
 
 /* Estoque: a lista de ferramentas (FR.168) tem 50 linhas — rola dentro do cartão, sem esticar a página. */
 

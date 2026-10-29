@@ -1,4 +1,12 @@
-import type { FleetPanelRow } from '@app/shared';
+import type { FleetPanelRow, VehicleOverview } from '@app/shared';
+import { api } from '@/lib/api-client';
+
+/** A ficha do carro: mesma consulta da página do carro, então o cache é compartilhado. */
+export const overviewQuery = (id: string) => ({
+  queryKey: ['vehicle', 'overview', id] as const,
+  queryFn: () => api.get<VehicleOverview>(`/vehicles/${id}/overview`),
+  staleTime: 30_000,
+});
 
 export type ReadingTone = 'fresh' | 'aging' | 'stale';
 

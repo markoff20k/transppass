@@ -189,15 +189,15 @@ async function run() {
   record('DASH-04', 'Bloco de atenção com links', (await page.$$('.attention-item a')).length >= 1);
   {
     const items = await page.$$('.fleet-legend__item');
-    const before = (await page.$$('.bus-grid .bus-card:not(.bus-card--summary)')).length;
+    const before = (await page.$$('.bus-grid .bus-stage')).length;
     const waiting = await page.$('.fleet-legend__item--waiting');
     const expected = Number(await waiting.$eval('.fleet-legend__count', (el) => el.textContent));
     await waiting.click();
     await new Promise((r) => setTimeout(r, 300));
-    const filtered = (await page.$$('.bus-grid .bus-card:not(.bus-card--summary)')).length;
+    const filtered = (await page.$$('.bus-grid .bus-stage')).length;
     await page.click('.fleet-legend__item--all');
     await new Promise((r) => setTimeout(r, 300));
-    const restored = (await page.$$('.bus-grid .bus-card:not(.bus-card--summary)')).length;
+    const restored = (await page.$$('.bus-grid .bus-stage')).length;
     record('DASH-06', 'Legenda das famílias de estado filtra a frota e volta ao todo', items.length === 5 && filtered === expected && restored === before, `${before} → ${filtered} (esperado ${expected}) → ${restored}`);
   }
   {
@@ -355,7 +355,7 @@ async function run() {
   // Frota: o card abre a página do carro
   await page.goto(`${BASE}/frota`, { waitUntil: 'networkidle0' });
   await sleep(600);
-  const cardLink = await page.$('.fleet-card .fleet-card__link');
+  const cardLink = await page.$('.fleet-card .flip__link');
   if (cardLink) {
     await cardLink.click();
     await page.waitForSelector('.vpage', { timeout: 20000 }).catch(() => {});

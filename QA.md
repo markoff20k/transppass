@@ -176,4 +176,6 @@ Apontamentos recebidos nas capturas do Dashboard e da Fila, e o que mudou:
 
 **Verificação.** Typecheck e lint sem erros. QA smoke 90/90. Capturas em 1440px (claro e escuro) e 390px: frente, hover do botão, meio do giro, verso com OS aberta e sem OS, dois cards virados ao mesmo tempo, Esc voltando com o foco no botão. Frente e verso com a mesma altura (345,5px em 1440; 342,5px em 390). Sem erros de console.
 
+**Dashboard (mesma rodada, apontamento do cliente).** Os cards da garagem do Dashboard também viram: chave no canto superior esquerdo, verso compacto (OS aberta com código e estado, MKBF, retornos, OS e horas parado em 30 dias, atalho para a ficha). A frente do Dashboard tem altura fixa, então o verso é absoluto e cabe nela (222 px de conteúdo em 224 px): virar um card nunca estica a linha da grade. Mecânica compartilhada em `apps/web/src/components/fleet/use-flip.ts` e classes genéricas `.flip*` no CSS. Verificado em 1440 claro e escuro: 33 cards com botão, dois virados ao mesmo tempo sem mudar a grade, Esc volta com o foco no botão, sem erros de console.
+
 **Risco.** `color-mix()` no tingimento do verso exige navegador de 2023 em diante (Edge/Chrome 111+, Safari 16.2+); em navegador mais antigo o verso fica sem o tom da família, sem quebrar nada.
