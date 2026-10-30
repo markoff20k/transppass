@@ -147,6 +147,7 @@ export function buildDashboard(): DashboardData {
 
   return {
     generatedAt: now().toISOString(),
+    period: { days: 30, from: new Date(now().getTime() - 29 * 86_400_000).toISOString(), to: now().toISOString() },
     fleet: {
       total: vs.length,
       available,
@@ -162,11 +163,13 @@ export function buildDashboard(): DashboardData {
         unscheduledReturns: 11 + (i % 3),
         mkbf,
       })),
+      period: { kmTraveled: 412_300, unscheduledReturns: 106, mkbf: 3_890 },
     },
     availabilityByHour: Array.from({ length: 24 }, (_, hour) => ({ hour, rate: availabilityCurve(hour), today: hour <= 17 ? availabilityCurve(hour) - 0.02 : null })),
     downtimeByCause: downtime.map((d) => ({ ...d, share: d.minutes / totalDowntime })),
     totalDowntimeMinutes: totalDowntime,
     eventsPerDay,
+    eventsBucket: 'day',
     queue: { waiting: 2, inService: 1, oldestWaitingHours: 3.1 },
     workOrders: { open: 4, overdue: 1, averageDowntimeMinutes: 386 },
     materials: { pending: 3, overdueParts: 1 },

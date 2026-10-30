@@ -10,6 +10,13 @@ import {
   type UpdateProfileInput,
   type UpdateUserInput,
   type UserQuery,
+  type AccountActivity,
+  type AccountActivityCategory,
+  type AccountActivityQuery,
+  type AccountSummary,
+  type UpdatePreferencesInput,
+  type UserPreferences,
+  userPreferencesSchema,
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit.service';
@@ -131,6 +138,66 @@ export class UsersService {
     return toPublicUser(user);
   }
 
+  /** Preferências da própria pessoa: o que vier substitui só as chaves enviadas. */
+  async updatePreferences(id: string, input: UpdatePreferencesInput, meta: { ip?: string; userAgent?: string } = {}): Promise<PublicUser> {
+    const current = await this.prisma.user.findUnique({ where: { id }, select: { preferences: true } });
+    if (!current) throw new NotFoundException('Usuário não encontrado');
+    const next = userPreferencesSchema.parse({ ...parsePreferences(current.preferences), ...input });
+    const user = await this.prisma.user.update({ where: { id }, data: { preferences: next } });
+    await this.audit.write({
+      actorId: id,
+      action: 'user.preferences',
+      entity: 'User',
+      entityId: id,
+      after: input,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+    return toPublicUser(user);
+  }
+
+  /** Números da própria conta para o resumo do perfil. */
+  async summary(id: string): Promise<AccountSummary> {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [user, actionsThisMonth, eventsThisMonth, lastLogin, activeSessions] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id }, select: { createdAt: true } }),
+      this.prisma.auditLog.count({ where: { actorId: id, createdAt: { gte: monthStart }, NOT: { action: { startsWith: 'auth.' } } } }),
+      this.prisma.failureEvent.count({ where: { reportedById: id, reportedAt: { gte: monthStart } } }),
+      this.prisma.auditLog.findFirst({ where: { actorId: id, action: 'auth.login' }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } }),
+      this.prisma.refreshToken.count({ where: { userId: id, revokedAt: null, expiresAt: { gt: now } } }),
+    ]);
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    return {
+      actionsThisMonth,
+      eventsThisMonth,
+      lastLoginAt: lastLogin?.createdAt.toISOString() ?? null,
+      activeSessions,
+      memberSince: user.createdAt.toISOString(),
+    };
+  }
+
+  /** A trilha de auditoria vista pela própria pessoa: o que ela fez e o que fizeram na conta dela. */
+  async activity(id: string, query: AccountActivityQuery): Promise<AccountActivity[]> {
+    const rows = await this.prisma.auditLog.findMany({
+      where: { OR: [{ actorId: id }, { entity: 'User', entityId: id }] },
+      orderBy: { createdAt: 'desc' },
+      take: query.category ? 400 : query.limit,
+      select: { id: true, action: true, entity: true, entityId: true, ip: true, userAgent: true, createdAt: true },
+    });
+    const mapped = rows.map((r) => ({
+      id: r.id,
+      action: r.action,
+      category: activityCategory(r.action),
+      entity: r.entity,
+      entityId: r.entityId,
+      ip: r.ip,
+      userAgent: r.userAgent,
+      createdAt: r.createdAt.toISOString(),
+    }));
+    return (query.category ? mapped.filter((m) => m.category === query.category) : mapped).slice(0, query.limit);
+  }
+
   /** Troca de senha pela própria pessoa: exige a atual e derruba as outras sessões. */
   async changePassword(id: string, input: ChangePasswordInput): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id } });
@@ -178,6 +245,19 @@ export class UsersService {
   }
 }
 
+/** Categoria de cada ação da trilha, para a aba de atividades da conta. */
+export function activityCategory(action: string): AccountActivityCategory {
+  if (action.startsWith('auth.') || action === 'user.password' || action === 'user.password-reset' || action === 'user.reset-link') return 'security';
+  if (action === 'user.profile') return 'profile';
+  if (action === 'user.preferences') return 'preferences';
+  return 'system';
+}
+
+function parsePreferences(raw: unknown): UserPreferences {
+  const parsed = userPreferencesSchema.safeParse(raw ?? {});
+  return parsed.success ? parsed.data : userPreferencesSchema.parse({});
+}
+
 export function toPublicUser(user: User): PublicUser {
   return {
     id: user.id,
@@ -188,6 +268,7 @@ export function toPublicUser(user: User): PublicUser {
     garageId: user.garageId,
     phone: user.phone,
     avatarUrl: user.avatarUrl,
+    preferences: parsePreferences(user.preferences),
     isActive: user.isActive,
     createdAt: user.createdAt.toISOString(),
   };

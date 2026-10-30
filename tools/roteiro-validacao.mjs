@@ -16,7 +16,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DOC_DIR = path.join(ROOT, 'docs', 'roteiro-validacao');
 const SHOTS = path.join(DOC_DIR, 'shots');
 const PDF = path.join(ROOT, 'docs', 'Roteiro-de-Validacao-Modulo-PCM.pdf');
-const BASE = 'http://localhost:5173';
+const BASE = process.env.ROTEIRO_BASE ?? 'http://localhost:5173';
 const pdfOnly = process.argv.includes('--pdf-only');
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

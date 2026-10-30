@@ -43,13 +43,21 @@ export class DashboardService {
   async build(query: DashboardQuery): Promise<DashboardData> {
     const now = new Date();
 
+    // A janela do histórico: do início do dia de (days - 1) dias atrás até agora.
+    // O "agora" da garagem (anel, fluxo, fila, alertas) não depende dela.
+    const days = query.days;
+    const from = new Date(now.getTime() - (days - 1) * DAY_MS);
+    from.setHours(0, 0, 0, 0);
+    const months = query.months ?? Math.max(6, Math.ceil(days / 30) + 1);
+
     const [
       vehicles,
       mkbfSeries,
+      periodMkbf,
       availabilityByHour,
       availabilityDelta,
       r1,
-      eventsPerDay,
+      perDay,
       queue,
       workOrders,
       materials,
@@ -57,16 +65,17 @@ export class DashboardService {
       recent,
     ] = await Promise.all([
       this.vehicles(now),
-      this.mkbfSeries(now, query.months),
-      this.availabilityByHour(now),
+      this.mkbfSeries(now, months),
+      this.metrics.mkbf(from, now),
+      this.availabilityByHour(now, from),
       this.availabilityDelta(now),
-      this.metrics.r1({}),
-      this.eventsPerDay(now),
+      this.metrics.r1({ from, to: now }),
+      this.eventsPerDay(now, from, days),
       this.queue(now),
-      this.workOrders(now),
+      this.workOrders(now, from),
       this.materials(now),
       this.alerts(),
-      this.events.list({ page: 1, perPage: 6 }),
+      this.events.list({ page: 1, perPage: 6, from }),
     ]);
 
     const byStatus = Object.fromEntries(
@@ -79,6 +88,7 @@ export class DashboardService {
 
     return {
       generatedAt: now.toISOString(),
+      period: { days, from: from.toISOString(), to: now.toISOString() },
       fleet: {
         total: vehicles.length,
         available,
@@ -86,11 +96,20 @@ export class DashboardService {
         byStatus,
         availabilityDelta,
       },
-      mkbf: { current, series: mkbfSeries },
+      mkbf: {
+        current,
+        series: mkbfSeries,
+        period: {
+          kmTraveled: periodMkbf.kmTraveled,
+          unscheduledReturns: periodMkbf.unscheduledReturns,
+          mkbf: periodMkbf.mkbf,
+        },
+      },
       availabilityByHour,
       downtimeByCause: r1.downtimeByCause,
       totalDowntimeMinutes: r1.totalDowntimeMinutes,
-      eventsPerDay,
+      eventsPerDay: perDay.points,
+      eventsBucket: perDay.bucket,
       queue,
       workOrders,
       materials,
@@ -161,13 +180,15 @@ export class DashboardService {
 
   /**
    * Para cada hora do dia, a fração de carros disponíveis naquele instante,
-   * na média dos últimos 7 dias (amostra em hh:30). Carro parado é o mesmo
+   * na média do período escolhido (amostra em hh:30; janelas longas amostram
+   * um dia a cada poucos, até ~60 dias). Carro parado é o mesmo
    * do anel de disponibilidade: da quebra (retorno não programado em aberto,
    * ainda na fila ou no socorro) até a liberação da OS — não só enquanto a
    * OS existe. Um carro com evento e OS ao mesmo tempo conta uma vez.
    */
-  private async availabilityByHour(now: Date): Promise<HourAvailability[]> {
-    const windowStart = new Date(now.getTime() - 7 * DAY_MS);
+  private async availabilityByHour(now: Date, windowStart: Date): Promise<HourAvailability[]> {
+    const totalDays = Math.max(1, Math.round((now.getTime() - windowStart.getTime()) / DAY_MS));
+    const step = Math.max(1, Math.ceil(totalDays / 60));
 
     const [fleetSize, workOrders, returns] = await Promise.all([
       this.prisma.vehicle.count({ where: { isActive: true } }),
@@ -213,7 +234,7 @@ export class DashboardService {
       let sum = 0;
       let samples = 0;
 
-      for (let day = 1; day <= 7; day += 1) {
+      for (let day = 1; day <= totalDays; day += step) {
         const t = new Date(now);
         t.setDate(t.getDate() - day);
         t.setHours(hour, 30, 0, 0);
@@ -257,27 +278,38 @@ export class DashboardService {
     return Math.round((rateNow - rateThen) * 1000) / 10;
   }
 
-  private async eventsPerDay(now: Date): Promise<DayCount[]> {
-    const start = new Date(now.getTime() - 29 * DAY_MS);
-    start.setHours(0, 0, 0, 0);
+  /**
+   * Quebras por dia no período; acima de 120 dias, por semana (senão são
+   * centenas de barras num cartão). Só o que tirou carro da rua: é a série
+   * que explica o MKBF, não o volume de registros.
+   */
+  private async eventsPerDay(
+    now: Date,
+    from: Date,
+    days: number,
+  ): Promise<{ points: DayCount[]; bucket: 'day' | 'week' }> {
+    const bucket: 'day' | 'week' = days > 120 ? 'week' : 'day';
+    const size = bucket === 'week' ? 7 : 1;
 
-    // Só o que tirou carro da rua: é a série que explica o MKBF, não o volume de registros.
     const rows = await this.prisma.failureEvent.findMany({
-      where: { reportedAt: { gte: start }, isUnscheduledReturn: true },
+      where: { reportedAt: { gte: from, lte: now }, isUnscheduledReturn: true },
       select: { reportedAt: true },
     });
 
-    const counts = new Map<string, number>();
-    for (let i = 0; i < 30; i += 1) {
-      const d = new Date(start.getTime() + i * DAY_MS);
-      counts.set(d.toISOString().slice(0, 10), 0);
-    }
+    const n = Math.ceil(days / size);
+    const counts = Array.from({ length: n }, () => 0);
     for (const r of rows) {
-      const key = r.reportedAt.toISOString().slice(0, 10);
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      const idx = Math.floor((r.reportedAt.getTime() - from.getTime()) / (DAY_MS * size));
+      if (idx >= 0 && idx < n) counts[idx] = (counts[idx] ?? 0) + 1;
     }
 
-    return [...counts.entries()].map(([date, count]) => ({ date, count }));
+    const points = counts.map((count, i) => {
+      const d = new Date(from.getTime() + i * size * DAY_MS);
+      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return { date, count };
+    });
+
+    return { points, bucket };
   }
 
   /**
@@ -305,7 +337,7 @@ export class DashboardService {
     };
   }
 
-  private async workOrders(now: Date) {
+  private async workOrders(now: Date, from: Date) {
     const [open, overdue, released] = await Promise.all([
       this.prisma.workOrder.count({
         where: { status: { notIn: [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] } },
@@ -319,7 +351,7 @@ export class DashboardService {
       this.prisma.workOrder.findMany({
         where: {
           status: WorkOrderStatus.RELEASED,
-          releasedAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) },
+          releasedAt: { gte: from },
         },
         select: { downtimeMinutes: true },
       }),

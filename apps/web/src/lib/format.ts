@@ -37,3 +37,25 @@ export function todayLocalIso(): string {
 export function formatNumber(value: number): string {
   return value.toLocaleString('pt-BR');
 }
+
+/** "há 2 minutos", "há cerca de 1 hora", "ontem", "há 3 dias" — para trilhas e históricos. */
+export function formatRelative(iso: string, now: Date = new Date()): string {
+  const diff = Math.max(0, now.getTime() - new Date(iso).getTime());
+  const min = Math.round(diff / 60_000);
+  if (min < 1) return 'agora';
+  if (min < 60) return `há ${min} ${min === 1 ? 'minuto' : 'minutos'}`;
+  const h = Math.round(min / 60);
+  if (h < 24) return h === 1 ? 'há cerca de 1 hora' : `há ${h} horas`;
+  const d = Math.round(h / 24);
+  if (d === 1) return 'ontem';
+  if (d < 30) return `há ${d} dias`;
+  const m = Math.round(d / 30);
+  if (m < 12) return `há ${m} ${m === 1 ? 'mês' : 'meses'}`;
+  const y = Math.round(m / 12);
+  return `há ${y} ${y === 1 ? 'ano' : 'anos'}`;
+}
+
+/** "janeiro de 2026" — para "membro desde". */
+export function formatMonthYear(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: TZ, month: 'long', year: 'numeric' });
+}

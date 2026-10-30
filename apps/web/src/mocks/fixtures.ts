@@ -31,6 +31,7 @@ export const baseMockUser = {
   garageId: null,
   phone: null,
   avatarUrl: null,
+  preferences: { shortcuts: [], notifications: true, toastPosition: 'bottom-right' as const },
   isActive: true,
   createdAt: new Date('2026-01-01T00:00:00Z').toISOString(),
 };
@@ -40,6 +41,7 @@ const baseUser = {
   garageId: null,
   phone: null,
   avatarUrl: null,
+  preferences: { shortcuts: [], notifications: true, toastPosition: 'bottom-right' as const },
   isActive: true,
   createdAt: new Date('2026-01-01T00:00:00Z').toISOString(),
 };

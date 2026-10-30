@@ -179,9 +179,12 @@ export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
 export function AvailabilityByHourChart({
   data,
   target = 0.85,
+  days = 7,
 }: {
   data: HourAvailability[];
   target?: number;
+  /** Dias da média, para a legenda. */
+  days?: number;
 }) {
   const rows = data.map((d) => ({
     hour: `${String(d.hour).padStart(2, '0')}h`,
@@ -205,7 +208,7 @@ export function AvailabilityByHourChart({
       <Legend
         items={[
           { kind: 'area', color, label: 'hoje' },
-          { kind: 'line', color: 'var(--chart-2)', label: 'média 7 dias' },
+          { kind: 'line', color: 'var(--chart-2)', label: `média ${days} dias` },
           { kind: 'dash', color: 'var(--color-text-muted)', label: `meta ${targetPct}%` },
         ]}
         note={worst ? <>pior faixa de hoje <b>{worst.hour}</b> · {(worst.today as number).toLocaleString('pt-BR')}%</> : undefined}
@@ -266,37 +269,40 @@ export function AvailabilityByHourChart({
 
 // --- Eventos por dia -------------------------------------------------------
 
-export function EventsPerDayChart({ data }: { data: DayCount[] }) {
-  // Barras = quebras do dia; linha = média móvel de 7 dias, que tira o ruído do fim de semana.
+export function EventsPerDayChart({ data, bucket = 'day' }: { data: DayCount[]; bucket?: 'day' | 'week' }) {
+  // Barras = quebras do dia (ou da semana); linha = média móvel de 7 dias (4 semanas), que tira o ruído.
+  const win = bucket === 'week' ? 4 : 7;
   const rows = data.map((d, i) => {
     const dt = new Date(`${d.date}T12:00:00`);
-    const win = data.slice(Math.max(0, i - 6), i + 1);
-    const avg = Math.round((win.reduce((s, x) => s + x.count, 0) / win.length) * 10) / 10;
+    const slice = data.slice(Math.max(0, i - (win - 1)), i + 1);
+    const avg = Math.round((slice.reduce((s, x) => s + x.count, 0) / slice.length) * 10) / 10;
     return { ...d, avg, label: `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}` };
   });
   const last = rows[rows.length - 1];
   const total = rows.reduce((s, r) => s + r.count, 0);
+  const unit = bucket === 'week' ? 'semana' : 'dia';
+  const tick = Math.max(0, Math.ceil(rows.length / 7) - 1);
 
   return (
     <div className="chart chart--fill">
       <Legend
         items={[
-          { kind: 'bar', color: 'var(--chart-3)', label: 'quebras no dia' },
-          { kind: 'line', color: 'var(--chart-1)', label: 'média de 7 dias' },
+          { kind: 'bar', color: 'var(--chart-3)', label: `quebras na ${unit}` },
+          { kind: 'line', color: 'var(--chart-1)', label: bucket === 'week' ? 'média de 4 semanas' : 'média de 7 dias' },
         ]}
-        note={last ? <>hoje <b>{last.count}</b> · 30 dias {formatNumber(total)}</> : undefined}
+        note={last ? <>{bucket === 'week' ? 'semana atual' : 'hoje'} <b>{last.count}</b> · período {formatNumber(total)}</> : undefined}
       />
       <ResponsiveContainer>
         <ComposedChart data={rows} margin={{ top: 16, right: 12, left: 0, bottom: 0 }} barCategoryGap="35%">
           <CartesianGrid vertical={false} />
-          <XAxis dataKey="label" axisLine={false} tickLine={false} interval={6} />
+          <XAxis dataKey="label" axisLine={false} tickLine={false} interval={tick} />
           <YAxis axisLine={false} tickLine={false} width={30} allowDecimals={false} />
           <Tooltip
             cursor={{ fill: 'var(--color-surface-hover)' }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const p = payload[0]!.payload as (typeof rows)[number];
-              return <Tip title={p.label} rows={[{ label: 'Quebras', value: String(p.count), color: 'var(--chart-3)' }, { label: 'Média 7 dias', value: p.avg.toLocaleString('pt-BR'), color: 'var(--chart-1)' }]} />;
+              return <Tip title={bucket === 'week' ? `semana de ${p.label}` : p.label} rows={[{ label: 'Quebras', value: String(p.count), color: 'var(--chart-3)' }, { label: bucket === 'week' ? 'Média 4 semanas' : 'Média 7 dias', value: p.avg.toLocaleString('pt-BR'), color: 'var(--chart-1)' }]} />;
             }}
           />
           <Bar dataKey="count" radius={[4, 4, 0, 0]} isAnimationActive={false}>

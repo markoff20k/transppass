@@ -45,6 +45,8 @@ model User {
   phone        String?  @db.VarChar(32)
   /// Foto de perfil como data URL (JPEG 256px, redimensionada no navegador).
   avatarUrl    String?  @db.Text
+  /// Preferências da própria pessoa (atalhos do cabeçalho, avisos, notificações).
+  preferences  Json     @default("{}")
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -113,6 +115,7 @@ model AuditLog {
   after     Json?
   reason    String?  @db.VarChar(255)
   ip        String?  @db.VarChar(64)
+  userAgent String?  @db.VarChar(255)
   createdAt DateTime @default(now())
 
   @@index([entity, entityId])
@@ -1711,4 +1714,17 @@ model Notification {
   @@index([userId, readAt])
   @@index([role, readAt])
   @@map("notifications")
+}
+
+// ===========================================================================
+// Ajustes de operação feitos de dentro do sistema
+// ===========================================================================
+
+/// Chave/valor para o que precisa sobreviver a um reinício da API sem passar
+/// pelo .env (ex.: simulador de demonstração ligado pelo cabeçalho).
+model AppSetting {
+  key       String   @id @db.VarChar(80)
+  value     String   @db.VarChar(400)
+  updatedBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt
 }

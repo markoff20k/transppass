@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
+import type { DemoStatus } from '@app/shared';
 import {
   EventOrigin,
   EventStatus,
@@ -54,6 +55,9 @@ function rnd(...seeds: (number | string)[]): number {
 const pick = <T,>(arr: readonly T[], ...seeds: (number | string)[]): T => arr[Math.floor(rnd(...seeds) * arr.length)]!;
 /** Minutos decorridos, já acelerados pelo DEMO_SPEED (variável de módulo, para os helpers fora da classe). */
 let SPEED = 1;
+
+/** Chave do ajuste persistido: ligado/desligado de dentro do sistema. */
+const SETTING_KEY = 'demo.simulator';
 const minutesSince = (d: Date | null | undefined, now: Date) => (d ? ((now.getTime() - d.getTime()) / MIN) * SPEED : Infinity);
 
 type Users = Record<'admin' | 'cco' | 'pcm' | 'manut' | 'estoque' | 'plantao', { id: string; role: UserRole }>;
@@ -80,8 +84,11 @@ type Users = Record<'admin' | 'cco' | 'pcm' | 'manut' | 'estoque' | 'plantao', {
 export class DemoSimulatorService implements OnModuleInit {
   private readonly log = new Logger('Simulador');
   private enabled = false;
+  private source: DemoStatus['source'] = 'env';
   private allHours = false;
   private busy = false;
+  private lastPulseAt: Date | null = null;
+  private lastSteps: string[] = [];
   private users: Users | null = null;
 
   constructor(
@@ -94,12 +101,20 @@ export class DemoSimulatorService implements OnModuleInit {
     private readonly operations: OperationsService,
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     this.enabled = this.config.get<string>('DEMO_SIMULATOR') === 'true';
     this.allHours = this.config.get<string>('DEMO_ALL_HOURS') === 'true';
     SPEED = Number(this.config.get('DEMO_SPEED') ?? 1) || 1;
+
+    // O ajuste feito pelo cabeçalho prevalece sobre o .env e sobrevive a reinícios.
+    const saved = await this.prisma.appSetting.findUnique({ where: { key: SETTING_KEY } }).catch(() => null);
+    if (saved) {
+      this.enabled = saved.value === 'true';
+      this.source = 'setting';
+    }
+
     if (this.enabled) {
-      this.log.log(`ligado — a garagem anda sozinha a cada 5 minutos${SPEED !== 1 ? ` (acelerado ${SPEED}×)` : ''}${this.allHours ? ' (sem horário de operação)' : ''}`);
+      this.log.log(`ligado${this.source === 'setting' ? ' pelo sistema' : ''} — a garagem anda sozinha a cada 5 minutos${SPEED !== 1 ? ` (acelerado ${SPEED}×)` : ''}${this.allHours ? ' (sem horário de operação)' : ''}`);
       // Primeiro pulso logo após subir, para a demonstração não esperar o relógio.
       setTimeout(() => void this.pulse(), 20_000);
     }
@@ -107,6 +122,36 @@ export class DemoSimulatorService implements OnModuleInit {
 
   get isEnabled(): boolean {
     return this.enabled;
+  }
+
+  status(): DemoStatus {
+    return {
+      enabled: this.enabled,
+      source: this.source,
+      allHours: this.allHours,
+      speed: SPEED,
+      lastPulseAt: this.lastPulseAt?.toISOString() ?? null,
+      lastSteps: this.lastSteps,
+    };
+  }
+
+  /** Liga ou desliga de dentro do sistema; o estado fica gravado para o próximo reinício. */
+  async setEnabled(enabled: boolean, userId?: string): Promise<DemoStatus> {
+    await this.prisma.appSetting.upsert({
+      where: { key: SETTING_KEY },
+      create: { key: SETTING_KEY, value: String(enabled), updatedBy: userId ?? null },
+      update: { value: String(enabled), updatedBy: userId ?? null },
+    });
+    const was = this.enabled;
+    this.enabled = enabled;
+    this.source = 'setting';
+    if (enabled && !was) {
+      this.log.log('ligado pelo sistema — primeiro pulso em instantes');
+      setTimeout(() => void this.pulse(), 3_000);
+    } else if (!enabled && was) {
+      this.log.log('desligado pelo sistema');
+    }
+    return this.status();
   }
 
   /** Hora "de operação": o simulador respeita a jornada, salvo DEMO_ALL_HOURS. */
@@ -132,6 +177,8 @@ export class DemoSimulatorService implements OnModuleInit {
       await this.step(out, 'oficina', () => this.workshop(now, users));
       await this.step(out, 'plantão', () => this.reserves(now, users));
       if (out.length) this.log.log(out.join(' · '));
+      this.lastPulseAt = now;
+      this.lastSteps = out;
       return out;
     } finally {
       this.busy = false;

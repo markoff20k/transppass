@@ -1,105 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import {
-  Activity,
-  BarChart3,
-  BookOpen,
-  Boxes,
-  Bus,
-  CalendarClock,
-  ClipboardCheck,
-  LifeBuoy,
-  ChevronsLeft,
-  LogOut,
-  ClipboardList,
-  Gauge,
-  LayoutDashboard,
-  ListOrdered,
-  Package,
-  Palette,
-  Siren,
-  Stethoscope,
-  Users,
-  Wrench,
-  X,
-  type LucideIcon, HardHat, Sunrise, ListChecks, FlaskConical, Truck, ShieldCheck, Cog } from 'lucide-react';
-import { USER_ROLE_LABELS, UserRole } from '@app/shared';
+import { ChevronsLeft, LogOut, X } from 'lucide-react';
+import { USER_ROLE_LABELS } from '@app/shared';
 import { useAuth } from '@/features/auth/use-auth';
 import { useI18n } from '@/i18n/i18n.context';
 import { TransppassLogo } from '@/components/brand/transppass-logo';
-
-const {
-  ADMIN, PCM, CCO, PLANTAO, SOCORRO, MANUTENCAO, MECANICO, INSPETOR, ESTOQUE, LIMPEZA, GESTAO,
-} = UserRole;
-
-interface NavItem {
-  to: string;
-  key: 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'scheduling' | 'operations' | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'users' | 'plans' | 'materials' | 'designKit' | 'technicians' | 'daily' | 'dailyCheck' | 'partsLab' | 'suppliers' | 'audits' | 'components';
-  icon: LucideIcon;
-  roles?: UserRole[];
-  /** Contador ao lado do item, quando a tela tem fila. */
-  count?: number;
-}
-
-interface NavGroup {
-  key: 'operation' | 'execution' | 'management' | 'registers' | 'system';
-  items: NavItem[];
-}
-
-/**
- * A navegação é a primeira camada em que a autoridade de área vira permissão
- * de sistema (RF-36). O bloqueio real é do RolesGuard na API — aqui só se
- * evita oferecer o que o perfil não pode fazer.
- */
-const GROUPS: NavGroup[] = [
-  {
-    key: 'operation',
-    items: [
-      { to: '/', key: 'dashboard', icon: LayoutDashboard },
-      { to: '/daily', key: 'daily', icon: Sunrise, roles: [ADMIN, PCM, MANUTENCAO, CCO, PLANTAO, GESTAO] },
-      { to: '/frota', key: 'fleet', icon: Bus },
-      { to: '/checklist', key: 'dailyCheck', icon: ListChecks, roles: [ADMIN, PCM, MANUTENCAO, MECANICO, INSPETOR, CCO, PLANTAO] },
-      { to: '/eventos', key: 'events', icon: Activity, roles: [ADMIN, CCO, PCM, MANUTENCAO, INSPETOR, LIMPEZA] },
-      { to: '/triagem', key: 'triage', icon: Stethoscope, roles: [ADMIN, PCM] },
-      { to: '/fila', key: 'queue', icon: ListOrdered, roles: [ADMIN, PCM, MANUTENCAO, PLANTAO] },
-      { to: '/socorro', key: 'field', icon: Siren, roles: [ADMIN, SOCORRO, PCM, CCO] },
-      { to: '/preventiva', key: 'scheduling', icon: CalendarClock, roles: [ADMIN, PCM, MANUTENCAO, ESTOQUE] },
-      { to: '/plantao', key: 'operations', icon: LifeBuoy, roles: [ADMIN, PLANTAO, CCO, PCM] },
-    ],
-  },
-  {
-    key: 'execution',
-    items: [
-      { to: '/os', key: 'workOrders', icon: Wrench, roles: [ADMIN, MANUTENCAO, MECANICO, INSPETOR, PCM, LIMPEZA] },
-      { to: '/estoque', key: 'stock', icon: Package, roles: [ADMIN, ESTOQUE, MANUTENCAO, PCM] },
-      { to: '/qualidade-pecas', key: 'partsLab', icon: FlaskConical, roles: [ADMIN, ESTOQUE, MANUTENCAO, PCM, INSPETOR] },
-      { to: '/componentes', key: 'components', icon: Cog, roles: [ADMIN, PCM, MANUTENCAO, GESTAO] },
-    ],
-  },
-  {
-    key: 'management',
-    items: [
-      { to: '/indicadores', key: 'metrics', icon: BarChart3, roles: [ADMIN, PCM, GESTAO] },
-      { to: '/km', key: 'km', icon: Gauge, roles: [ADMIN, PCM, CCO, MANUTENCAO] },
-      { to: '/auditorias', key: 'audits', icon: ShieldCheck, roles: [ADMIN, PCM, GESTAO, MANUTENCAO, ESTOQUE] },
-    ],
-  },
-  {
-    key: 'registers',
-    items: [
-      { to: '/cadastros/frota', key: 'vehicles', icon: ClipboardList, roles: [ADMIN, PCM] },
-      { to: '/cadastros/catalogo', key: 'catalog', icon: BookOpen, roles: [ADMIN, PCM, MANUTENCAO] },
-      { to: '/cadastros/planos', key: 'plans', icon: ClipboardCheck, roles: [ADMIN, PCM] },
-      { to: '/cadastros/materiais', key: 'materials', icon: Boxes, roles: [ADMIN, PCM, ESTOQUE] },
-      { to: '/cadastros/tecnicos', key: 'technicians', icon: HardHat, roles: [ADMIN, PCM, MANUTENCAO] },
-      { to: '/cadastros/fornecedores', key: 'suppliers', icon: Truck, roles: [ADMIN, PCM, ESTOQUE] },
-      { to: '/cadastros/usuarios', key: 'users', icon: Users, roles: [ADMIN] },
-    ],
-  },
-  {
-    key: 'system',
-    items: [{ to: '/design', key: 'designKit', icon: Palette, roles: [ADMIN] }],
-  },
-];
+import { NAV_GROUPS, type NavItem } from './nav';
 
 interface Props {
   collapsed: boolean;
@@ -115,7 +20,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, drawer, onClo
   const { user, logout } = useAuth();
   const { t } = useI18n();
 
-  const groups = GROUPS.map((g) => ({
+  const groups = NAV_GROUPS.map((g) => ({
     ...g,
     items: g.items.filter((i) => !i.roles || (user && i.roles.includes(user.role))),
   })).filter((g) => g.items.length > 0);

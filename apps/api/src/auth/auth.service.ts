@@ -40,7 +40,16 @@ export class AuthService {
       throw new UnauthorizedException('E-mail ou senha invalidos');
     }
 
-    return { user: toPublicUser(user), tokens: await this.issueTokens(user, meta) };
+    const tokens = await this.issueTokens(user, meta);
+    await this.audit.write({
+      actorId: user.id,
+      action: 'auth.login',
+      entity: 'User',
+      entityId: user.id,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+    return { user: toPublicUser(user), tokens };
   }
 
   /** Rotaciona o refresh token: o antigo e revogado a cada uso. */
@@ -72,11 +81,25 @@ export class AuthService {
     return this.issueTokens(stored.user, meta);
   }
 
-  async logout(refreshToken: string): Promise<void> {
+  async logout(refreshToken: string, meta: SessionMeta = {}): Promise<void> {
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: hashToken(refreshToken) },
+      select: { userId: true, revokedAt: true },
+    });
     await this.prisma.refreshToken.updateMany({
       where: { tokenHash: hashToken(refreshToken), revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (stored && !stored.revokedAt) {
+      await this.audit.write({
+        actorId: stored.userId,
+        action: 'auth.logout',
+        entity: 'User',
+        entityId: stored.userId,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+    }
   }
 
   async revokeAllForUser(userId: string): Promise<void> {

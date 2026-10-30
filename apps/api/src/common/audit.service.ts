@@ -10,6 +10,7 @@ interface AuditInput {
   after?: unknown;
   reason?: string;
   ip?: string;
+  userAgent?: string;
 }
 
 /**
@@ -31,6 +32,7 @@ export class AuditService {
         after: input.after === undefined ? undefined : (input.after as object),
         reason: input.reason?.slice(0, 255),
         ip: input.ip?.slice(0, 64),
+        userAgent: input.userAgent?.slice(0, 255),
       },
     });
   }

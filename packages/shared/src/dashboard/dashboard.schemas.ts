@@ -11,9 +11,20 @@ import type { FailureEventSummary } from '../events/event.schemas.js';
  * é digitado — é o princípio do PRD (seção 1) aplicado à tela principal.
  */
 
+/** Janelas de histórico que o Dashboard oferece, em dias. */
+export const DASHBOARD_PERIODS = [7, 30, 90, 180, 365] as const;
+export type DashboardPeriodDays = (typeof DASHBOARD_PERIODS)[number];
+export const DEFAULT_DASHBOARD_PERIOD: DashboardPeriodDays = 30;
+
 export const dashboardQuerySchema = z.object({
-  /** Meses de histórico para a série do MKBF. */
-  months: z.coerce.number().int().min(3).max(24).default(6),
+  /** Janela do histórico (MKBF do período, quebras, tempo parado, eventos). */
+  days: z.coerce
+    .number()
+    .int()
+    .refine((d) => (DASHBOARD_PERIODS as readonly number[]).includes(d), 'Período inválido')
+    .default(DEFAULT_DASHBOARD_PERIOD),
+  /** Meses da série mensal do MKBF; por padrão cobre o período com folga. */
+  months: z.coerce.number().int().min(3).max(24).optional(),
 });
 
 export type DashboardQuery = z.infer<typeof dashboardQuerySchema>;
@@ -28,7 +39,7 @@ export interface MkbfPoint {
 
 export interface HourAvailability {
   hour: number;
-  /** Fração de carros disponíveis naquela faixa, média dos últimos 7 dias. */
+  /** Fração de carros disponíveis naquela faixa, média do período escolhido. */
   rate: number;
   /** A mesma fração hoje, nessa faixa; null para as horas que ainda não chegaram. */
   today: number | null;
@@ -55,6 +66,9 @@ export interface DashboardVehicle {
 export interface DashboardData {
   generatedAt: string;
 
+  /** Janela do histórico pedida (o "agora" da garagem não depende dela). */
+  period: { days: number; from: string; to: string };
+
   fleet: {
     total: number;
     available: number;
@@ -65,14 +79,19 @@ export interface DashboardData {
   };
 
   mkbf: {
+    /** MKBF do mês corrente (último ponto da série). */
     current: number | null;
     series: MkbfPoint[];
+    /** MKBF da janela escolhida: km rodados ÷ retornos não programados. */
+    period: { kmTraveled: number; unscheduledReturns: number; mkbf: number | null };
   };
 
   availabilityByHour: HourAvailability[];
   downtimeByCause: DowntimeByCause[];
   totalDowntimeMinutes: number;
   eventsPerDay: DayCount[];
+  /** Até 120 dias cada ponto é um dia; acima disso, uma semana. */
+  eventsBucket: 'day' | 'week';
 
   queue: {
     waiting: number;

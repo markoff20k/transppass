@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { Link, useSearchParams } from 'react-router-dom';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronRight, Gauge, Hourglass, Inbox, Minus, PackageX, ShieldAlert } from 'lucide-react';
 import {
+  DASHBOARD_PERIODS,
+  DEFAULT_DASHBOARD_PERIOD,
   EVENT_STATUS_LABELS,
   VEHICLE_STATUS_LABELS,
   type VehicleStatus,
@@ -56,17 +58,21 @@ const STAGES: { key: StageKey; statuses: VehicleStatus[]; family: Family; to: st
 
 export function DashboardPage() {
   const { t } = useI18n();
+  const [days] = useDashboardPeriod();
+  const periodLabel = t.dash.periodDays.replace('{n}', String(days));
 
   usePageHeader({
     eyebrow: t.dash.eyebrow,
     title: t.dash.title,
-    description: t.dash.subtitle,
+    description: t.dash.subtitle.replace('{n}', String(days)),
+    actions: <PeriodControl />,
   });
 
   const { data, isPending, isError } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: () => api.get<DashboardData>('/dashboard'),
+    queryKey: ['dashboard', days],
+    queryFn: () => api.get<DashboardData>(`/dashboard?days=${days}`),
     refetchInterval: 60_000,
+    placeholderData: keepPreviousData,
   });
 
   if (isPending) return <DashboardSkeleton />;
@@ -137,12 +143,16 @@ export function DashboardPage() {
         <div className="dash-hero__kpis">
           <Kpi
             label={t.dash.mkbf}
-            hint={t.dash.mkbfHint}
-            value={data.mkbf.current === null ? '—' : `${formatNumber(data.mkbf.current)} km`}
+            hint={`${t.dash.mkbfHint} · ${periodLabel}`}
+            value={data.mkbf.period.mkbf === null ? '—' : `${formatNumber(data.mkbf.period.mkbf)} km`}
             tone="brand"
             spark={data.mkbf.series.map((p) => p.mkbf)}
             sparkColor="var(--chart-1)"
-            note={data.mkbf.current === null ? t.dash.noReturns : undefined}
+            note={
+              data.mkbf.period.mkbf === null
+                ? t.dash.noReturns
+                : `${formatNumber(data.mkbf.period.kmTraveled)} km ÷ ${formatNumber(data.mkbf.period.unscheduledReturns)} ${t.dash.breakdowns}`
+            }
           />
           <Kpi
             label={t.dash.inQueue}
@@ -228,9 +238,9 @@ export function DashboardPage() {
         <div className="tp-card dash-glass">
           <div className="chart__title">
             <h3>{t.dash.availByHour}</h3>
-            <span className="chart__hint">{t.dash.availByHourHint}</span>
+            <span className="chart__hint">{t.dash.availByHourHint.replace('{n}', String(days))}</span>
           </div>
-          <AvailabilityByHourChart data={data.availabilityByHour} />
+          <AvailabilityByHourChart data={data.availabilityByHour} days={days} />
         </div>
       </section>
 
@@ -245,15 +255,18 @@ export function DashboardPage() {
 
         <div className="tp-card dash-glass">
           <div className="chart__title">
-            <h3>{t.dash.eventsPerDay}</h3>
-            <span className="chart__hint">{t.dash.eventsPerDayHint}</span>
+            <h3>{data.eventsBucket === 'week' ? t.dash.eventsPerWeek : t.dash.eventsPerDay}</h3>
+            <span className="chart__hint">{(data.eventsBucket === 'week' ? t.dash.eventsPerWeekHint : t.dash.eventsPerDayHint).replace('{n}', String(days))}</span>
           </div>
-          <EventsPerDayChart data={data.eventsPerDay} />
+          <EventsPerDayChart data={data.eventsPerDay} bucket={data.eventsBucket} />
         </div>
 
         <div className="tp-card dash-glass">
           <div className="tp-card__head">
-            <h3>{t.dash.recentEvents}</h3>
+            <div className="chart__title">
+              <h3>{t.dash.recentEvents}</h3>
+              <span className="chart__hint">{periodLabel}</span>
+            </div>
             <Link to="/eventos" className="tp-btn tp-btn--ghost tp-btn--sm">
               {t.dash.seeAll}
             </Link>
@@ -554,6 +567,65 @@ function DashboardSkeleton() {
         <BrandLoader size={64} label={t.dash.loading.replace(/…$/, '')} />
       </section>
       <section className="tp-card skeleton" style={{ minHeight: 260 }} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Período do histórico: na URL (?dias=90) para ser compartilhável, e lembrado
+// no navegador para a pessoa não escolher de novo a cada visita.
+
+const PERIOD_KEY = 'tp.dash.days';
+
+function isPeriod(n: number): n is (typeof DASHBOARD_PERIODS)[number] {
+  return (DASHBOARD_PERIODS as readonly number[]).includes(n);
+}
+
+function readPeriod(raw: string | null): number {
+  const fromUrl = Number(raw);
+  if (raw && isPeriod(fromUrl)) return fromUrl;
+  try {
+    const saved = Number(localStorage.getItem(PERIOD_KEY));
+    if (isPeriod(saved)) return saved;
+  } catch {
+    /* sem storage */
+  }
+  return DEFAULT_DASHBOARD_PERIOD;
+}
+
+function useDashboardPeriod(): [number, (days: number) => void] {
+  const [params, setParams] = useSearchParams();
+  const days = readPeriod(params.get('dias'));
+  const set = (d: number) => {
+    try {
+      localStorage.setItem(PERIOD_KEY, String(d));
+    } catch {
+      /* sem storage */
+    }
+    const next = new URLSearchParams(params);
+    next.set('dias', String(d));
+    setParams(next, { replace: true });
+  };
+  return [days, set];
+}
+
+function PeriodControl() {
+  const { t } = useI18n();
+  const [days, setDays] = useDashboardPeriod();
+  return (
+    <div className="tp-segmented" role="radiogroup" aria-label={t.dash.period}>
+      {DASHBOARD_PERIODS.map((d) => (
+        <button
+          key={d}
+          type="button"
+          role="radio"
+          aria-checked={d === days}
+          className={`tp-segmented__item${d === days ? ' is-active' : ''}`}
+          onClick={() => setDays(d)}
+        >
+          {t.dash.periodDays.replace('{n}', String(d))}
+        </button>
+      ))}
     </div>
   );
 }

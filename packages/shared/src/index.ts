@@ -14,6 +14,7 @@ export * from './work-orders/work-order.schemas.js';
 export * from './materials/material.schemas.js';
 export * from './metrics/metrics.schemas.js';
 export * from './dashboard/dashboard.schemas.js';
+export * from './demo/demo.schemas.js';
 export * from './scheduling/scheduling.schemas.js';
 export * from './operations/operations.schemas.js';
 export * from './plans/plans.schemas.js';

@@ -55,6 +55,29 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
   GESTAO: 'Gestão',
 };
 
+/** Onde os avisos rápidos (toasts) aparecem na tela. */
+export const TOAST_POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const;
+export type ToastPosition = (typeof TOAST_POSITIONS)[number];
+
+/** Máximo de atalhos no cabeçalho. */
+export const MAX_SHORTCUTS = 4;
+
+/**
+ * Preferências da própria pessoa — guardadas na conta, não no navegador, para
+ * seguirem o usuário de uma máquina a outra.
+ */
+export const userPreferencesSchema = z.object({
+  /** Chaves de navegação (as mesmas do menu lateral), na ordem do cabeçalho. */
+  shortcuts: z.array(z.string().min(1).max(40)).max(MAX_SHORTCUTS).default([]),
+  notifications: z.boolean().default(true),
+  toastPosition: z.enum(TOAST_POSITIONS).default('bottom-right'),
+});
+
+export type UserPreferences = z.infer<typeof userPreferencesSchema>;
+
+export const updatePreferencesSchema = userPreferencesSchema.partial();
+export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
+
 export const publicUserSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -64,9 +87,45 @@ export const publicUserSchema = z.object({
   garageId: z.string().uuid().nullable(),
   phone: z.string().nullable(),
   avatarUrl: z.string().nullable(),
+  preferences: userPreferencesSchema,
   isActive: z.boolean(),
   createdAt: z.string().datetime(),
 });
+
+// --- Resumo e atividades da própria conta ----------------------------------
+
+export const ACCOUNT_ACTIVITY_CATEGORIES = ['security', 'profile', 'preferences', 'system'] as const;
+export type AccountActivityCategory = (typeof ACCOUNT_ACTIVITY_CATEGORIES)[number];
+
+export const accountActivityQuerySchema = z.object({
+  category: z.enum(ACCOUNT_ACTIVITY_CATEGORIES).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(60),
+});
+
+export type AccountActivityQuery = z.infer<typeof accountActivityQuerySchema>;
+
+/** Um registro da trilha de auditoria visto pela própria pessoa. */
+export interface AccountActivity {
+  id: string;
+  action: string;
+  category: AccountActivityCategory;
+  entity: string;
+  entityId: string | null;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface AccountSummary {
+  /** Ações registradas na trilha de auditoria pela pessoa, no mês corrente. */
+  actionsThisMonth: number;
+  /** Eventos de falha abertos pela pessoa no mês corrente. */
+  eventsThisMonth: number;
+  lastLoginAt: string | null;
+  /** Sessões (refresh tokens) ainda válidas. */
+  activeSessions: number;
+  memberSince: string;
+}
 
 export const authTokensSchema = z.object({
   accessToken: z.string(),

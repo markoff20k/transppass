@@ -56,6 +56,7 @@
   color: var(--color-sidebar-text);
   overflow: hidden;
   z-index: var(--tp-z-sticky);
+  box-shadow: var(--shadow-sidebar);
   width: var(--shell-sidebar-w);
   transition: width var(--tp-duration-slow) var(--tp-ease);
 }
@@ -709,6 +710,8 @@
 }
 
 @media (max-width: 639px) {
+  .header__sim-label { display: none; }
+  .header__shortcut { display: none; }
   :root {
     --shell-gutter: var(--tp-space-4);
     --shell-header-h: 56px;
@@ -862,8 +865,76 @@
 .header__profile {
   width: 36px;
   padding: 0;
-  border-radius: 50%;
+  background: var(--color-sidebar-active-bg);
+  color: var(--color-sidebar-text-strong);
 }
+
+.header__shortcut { color: var(--color-sidebar-muted); }
+.header__shortcut:hover { color: var(--color-sidebar-text-strong); }
+.header__shortcut-add { color: var(--color-sidebar-muted); }
+
+/* Simulador: pílula discreta; acesa em âmbar quando a garagem anda sozinha. */
+.header__sim {
+  gap: 6px;
+  padding: 0 var(--tp-space-3) 0 var(--tp-space-2);
+  border: 1px solid transparent;
+  color: var(--color-sidebar-muted);
+}
+
+.header__sim-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tp-graphite-500);
+}
+
+.header__sim.is-on {
+  background: color-mix(in srgb, var(--tp-amber-500) 16%, transparent);
+  border-color: color-mix(in srgb, var(--tp-amber-500) 40%, transparent);
+  color: var(--tp-amber-300);
+}
+
+.header__sim.is-on:hover { background: color-mix(in srgb, var(--tp-amber-500) 24%, transparent); }
+.header__sim--passive { cursor: default; }
+
+.header__sim.is-on .header__sim-dot {
+  background: var(--tp-amber-400);
+  animation: sim-pulse 2.2s ease-out infinite;
+}
+
+@keyframes sim-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tp-amber-400) 55%, transparent); }
+  70% { box-shadow: 0 0 0 7px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header__sim.is-on .header__sim-dot { animation: none; }
+}
+
+.sim-menu { min-width: 340px; max-width: min(400px, calc(100vw - 32px)); padding: var(--tp-space-4); gap: var(--tp-space-3); color: var(--color-text); }
+.sim-menu__head b { display: block; font-size: var(--tp-text-sm); }
+.sim-menu__head p { margin: 4px 0 0; font-size: var(--tp-text-xs); color: var(--color-text-muted); line-height: 1.45; }
+
+.sim-menu__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tp-space-3);
+  padding: var(--tp-space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--tp-radius-md);
+  cursor: pointer;
+}
+
+.sim-menu__row > span { display: grid; gap: 2px; }
+.sim-menu__row b { font-size: var(--tp-text-sm); font-weight: var(--tp-weight-semibold); }
+.sim-menu__row small { font-size: 11px; color: var(--color-text-muted); }
+.sim-menu__meta { font-size: var(--tp-text-xs); color: var(--color-text-muted); line-height: 1.45; }
+.sim-menu__advance { width: 100%; justify-content: center; gap: 6px; }
+.sim-menu__hint { margin: 0; font-size: 11px; color: var(--color-text-muted); }
+.menu__link { color: var(--color-brand-text); font-weight: var(--tp-weight-semibold); text-decoration: none; }
+.menu__link:hover { text-decoration: underline; }
 
 .header__avatar {
   overflow: hidden;

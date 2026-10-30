@@ -46,8 +46,8 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UsePipes(new ZodValidationPipe(refreshSchema))
-  logout(@Body() body: RefreshInput): Promise<void> {
-    return this.auth.logout(body.refreshToken);
+  logout(@Req() req: Request, @Body() body: RefreshInput): Promise<void> {
+    return this.auth.logout(body.refreshToken, sessionMeta(req));
   }
 
   @Public()

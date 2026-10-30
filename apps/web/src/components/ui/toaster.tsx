@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast, type ToastItem } from '@/lib/toast';
+import { useAuth } from '@/features/auth/use-auth';
 
 /**
  * Pilha de toasts no canto inferior direito. Região `aria-live` para o leitor
  * de tela anunciar; passar o mouse pausa o relógio; Esc fecha o mais recente.
  */
 export function Toaster() {
+  const { user } = useAuth();
+  const position = user?.preferences.toastPosition ?? 'bottom-right';
   const [list, setList] = useState<ToastItem[]>([]);
   useEffect(() => toast.subscribe(setList), []);
   useEffect(() => {
@@ -18,7 +21,7 @@ export function Toaster() {
   }, [list]);
 
   return (
-    <div className="tp-toaster" role="region" aria-label="Notificações">
+    <div className={`tp-toaster tp-toaster--${position}`} role="region" aria-label="Notificações">
       <div aria-live="polite" aria-atomic="false">
         {list.map((t) => <ToastCard key={t.id} item={t} />)}
       </div>
