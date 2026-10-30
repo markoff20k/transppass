@@ -1,7 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import type { DemoStatus } from '@app/shared';
+import { buildDemoScenario, clearDemoMovement } from './demo-scenario';
 import {
   EventOrigin,
   EventStatus,
@@ -89,6 +90,9 @@ export class DemoSimulatorService implements OnModuleInit {
   private busy = false;
   private lastPulseAt: Date | null = null;
   private lastSteps: string[] = [];
+  /** Montando ou limpando a garagem de demonstração (demora; roda em segundo plano). */
+  private phase: DemoStatus['phase'] = null;
+  private phaseError: string | null = null;
   private users: Users | null = null;
 
   constructor(
@@ -132,11 +136,19 @@ export class DemoSimulatorService implements OnModuleInit {
       speed: SPEED,
       lastPulseAt: this.lastPulseAt?.toISOString() ?? null,
       lastSteps: this.lastSteps,
+      phase: this.phase,
+      phaseError: this.phaseError,
     };
   }
 
-  /** Liga ou desliga de dentro do sistema; o estado fica gravado para o próximo reinício. */
+  /**
+   * Liga ou desliga de dentro do sistema; o estado fica gravado para o próximo
+   * reinício. Ligar monta a garagem de demonstração (histórico e a garagem
+   * agora) em segundo plano; desligar apaga tudo que é demonstração e devolve
+   * a frota ao estado só com dados reais.
+   */
   async setEnabled(enabled: boolean, userId?: string): Promise<DemoStatus> {
+    if (this.phase) throw new ConflictException(this.phase === 'building' ? 'A demonstração ainda está sendo montada' : 'A demonstração ainda está sendo limpa');
     await this.prisma.appSetting.upsert({
       where: { key: SETTING_KEY },
       create: { key: SETTING_KEY, value: String(enabled), updatedBy: userId ?? null },
@@ -146,12 +158,29 @@ export class DemoSimulatorService implements OnModuleInit {
     this.enabled = enabled;
     this.source = 'setting';
     if (enabled && !was) {
-      this.log.log('ligado pelo sistema — primeiro pulso em instantes');
-      setTimeout(() => void this.pulse(), 3_000);
+      this.log.log('ligado pelo sistema — montando a garagem de demonstração');
+      void this.runPhase('building', () => buildDemoScenario(this.prisma, (m) => this.log.log(m)), () => setTimeout(() => void this.pulse(), 3_000));
     } else if (!enabled && was) {
-      this.log.log('desligado pelo sistema');
+      this.log.log('desligado pelo sistema — limpando a demonstração');
+      void this.runPhase('clearing', () => clearDemoMovement(this.prisma, (m) => this.log.log(m)));
     }
     return this.status();
+  }
+
+  private async runPhase(phase: NonNullable<DemoStatus['phase']>, work: () => Promise<void>, after?: () => void) {
+    this.phase = phase;
+    this.phaseError = null;
+    const started = Date.now();
+    try {
+      await work();
+      this.log.log(`${phase === 'building' ? 'demonstração montada' : 'demonstração limpa'} em ${Math.round((Date.now() - started) / 1000)} s`);
+      after?.();
+    } catch (err) {
+      this.phaseError = err instanceof Error ? err.message : String(err);
+      this.log.error(`${phase} falhou: ${this.phaseError}`);
+    } finally {
+      this.phase = null;
+    }
   }
 
   /** Hora "de operação": o simulador respeita a jornada, salvo DEMO_ALL_HOURS. */
@@ -161,7 +190,7 @@ export class DemoSimulatorService implements OnModuleInit {
 
   @Cron('*/5 * * * *', { name: 'demo-pulse' })
   async pulse(): Promise<string[]> {
-    if (!this.enabled || this.busy) return [];
+    if (!this.enabled || this.busy || this.phase) return [];
     this.busy = true;
     const now = new Date();
     const out: string[] = [];

@@ -896,6 +896,12 @@
 
 .header__sim.is-on:hover { background: color-mix(in srgb, var(--tp-amber-500) 24%, transparent); }
 .header__sim--passive { cursor: default; }
+.header__sim.is-busy { color: var(--color-sidebar-text-strong); }
+.header__sim .is-spinning { animation: tp-spin 1s linear infinite; }
+
+@keyframes tp-spin {
+  to { transform: rotate(360deg); }
+}
 
 .header__sim.is-on .header__sim-dot {
   background: var(--tp-amber-400);

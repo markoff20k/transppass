@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, BellOff, ChevronRight, FastForward, FlaskConical, GripVertical, Menu, Minus, Moon, Plus, Sun, UserRound } from 'lucide-react';
+import { Bell, BellOff, ChevronRight, FastForward, FlaskConical, GripVertical, Loader2, Menu, Minus, Moon, Plus, Sun, UserRound } from 'lucide-react';
 import { MAX_SHORTCUTS, type DemoPulseResult, type DemoStatus, type PublicUser } from '@app/shared';
 import { Theme } from '@app/design-kit';
 import { useAuth } from '@/features/auth/use-auth';
@@ -256,18 +256,33 @@ function SimulatorMenu() {
   const queryClient = useQueryClient();
   const canToggle = user?.role === 'ADMIN' || user?.role === 'PCM';
 
+  // Montar ou limpar a garagem demora: enquanto houver fase, consulta a cada 3 s
+  // e, quando terminar, recarrega tudo que está na tela.
   const status = useQuery({
     queryKey: ['demo-status'],
     queryFn: () => api.get<DemoStatus>('/demo'),
-    refetchInterval: 60_000,
+    refetchInterval: (q) => (q.state.data?.phase ? 3_000 : 60_000),
   });
+  const phase = status.data?.phase ?? null;
+  const prevPhase = useRef<DemoStatus['phase']>(null);
+  useEffect(() => {
+    if (prevPhase.current && !phase) {
+      const error = status.data?.phaseError;
+      if (error) toast.error(t.header.simulatorPhaseFailed, { description: error });
+      else toast.success(prevPhase.current === 'building' ? t.header.simulatorBuilt : t.header.simulatorCleared);
+      void queryClient.invalidateQueries();
+    }
+    prevPhase.current = phase;
+  }, [phase, status.data?.phaseError, queryClient, t]);
 
   const toggle = useMutation({
     mutationFn: (enabled: boolean) => api.patch<DemoStatus>('/demo', { enabled }),
-    meta: { success: (d) => ((d as DemoStatus).enabled ? t.header.simulatorToastOn : t.header.simulatorToastOff) },
+    meta: {
+      success: (d) => ((d as DemoStatus).enabled ? t.header.simulatorToastOn : t.header.simulatorToastOff),
+      description: t.header.simulatorToastHint,
+    },
     onSuccess: (d) => {
       queryClient.setQueryData(['demo-status'], d);
-      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 
@@ -286,37 +301,39 @@ function SimulatorMenu() {
 
   const pill = (
     <>
-      <FlaskConical />
-      <span className="header__sim-label">{on ? t.header.simulatorOn : t.header.simulator}</span>
+      {phase ? <Loader2 className="is-spinning" /> : <FlaskConical />}
+      <span className="header__sim-label">
+        {phase === 'building' ? t.header.simulatorBuilding : phase === 'clearing' ? t.header.simulatorClearing : on ? t.header.simulatorOn : t.header.simulator}
+      </span>
       <i className="header__sim-dot" aria-hidden />
     </>
   );
 
   if (!canToggle) {
     return (
-      <span className={`header__btn header__sim header__sim--passive${on ? ' is-on' : ''}`} title={t.header.simulatorOn}>
+      <span className={`header__btn header__sim header__sim--passive${on ? ' is-on' : ''}${phase ? ' is-busy' : ''}`} title={t.header.simulatorOn}>
         {pill}
       </span>
     );
   }
 
   return (
-    <Dropdown label={t.header.simulatorTitle} triggerClass={`header__sim${on ? ' is-on' : ''}`} panelClass="sim-menu" trigger={pill}>
+    <Dropdown label={t.header.simulatorTitle} triggerClass={`header__sim${on ? ' is-on' : ''}${phase ? ' is-busy' : ''}`} panelClass="sim-menu" trigger={pill}>
       <div className="sim-menu__head">
         <b>{t.header.simulatorTitle}</b>
         <p>{t.header.simulatorHelp}</p>
       </div>
       <label className="sim-menu__row">
         <span>
-          <b>{on ? t.header.simulatorOn : t.header.simulatorOff}</b>
-          <small>{t.header.simulatorSwitchHint}</small>
+          <b>{phase === 'building' ? t.header.simulatorBuilding : phase === 'clearing' ? t.header.simulatorClearing : on ? t.header.simulatorOn : t.header.simulatorOff}</b>
+          <small>{phase ? t.header.simulatorPhaseHint : t.header.simulatorSwitchHint}</small>
         </span>
         <button
           type="button"
           role="switch"
           aria-checked={on}
           className={`tp-switch${on ? ' is-on' : ''}`}
-          disabled={toggle.isPending}
+          disabled={toggle.isPending || Boolean(phase)}
           onClick={() => toggle.mutate(!on)}
         >
           <i className="tp-switch__knob" />
@@ -327,7 +344,7 @@ function SimulatorMenu() {
           ? `${t.header.simulatorLastPulse} ${formatDateTime(data.lastPulseAt)}${data.lastSteps.length ? ` · ${data.lastSteps.join(' · ')}` : ''}`
           : t.header.simulatorNoPulse}
       </div>
-      <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm sim-menu__advance" disabled={!on || pulse.isPending} onClick={() => pulse.mutate()}>
+      <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm sim-menu__advance" disabled={!on || pulse.isPending || Boolean(phase)} onClick={() => pulse.mutate()}>
         <FastForward size={14} />
         {pulse.isPending ? t.header.simulatorAdvancing : t.header.simulatorAdvance}
       </button>

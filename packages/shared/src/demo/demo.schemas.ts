@@ -13,6 +13,10 @@ export interface DemoStatus {
   lastPulseAt: string | null;
   /** O que o último pulso fez ("telemetria: 387 · oficina: 1"). */
   lastSteps: string[];
+  /** Montando (ligar) ou limpando (desligar) a garagem de demonstração; null quando parado. */
+  phase: 'building' | 'clearing' | null;
+  /** Mensagem da última montagem/limpeza que falhou, se houver. */
+  phaseError: string | null;
 }
 
 export const demoToggleSchema = z.object({
