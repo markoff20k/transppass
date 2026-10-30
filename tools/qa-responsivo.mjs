@@ -37,12 +37,18 @@ for (const width of WIDTHS) {
   for (const p of PAGES) {
     await page.goto(`${BASE}${p}`, { waitUntil: 'networkidle0', timeout: 60000 }).catch(() => {});
     await new Promise((r) => setTimeout(r, 1200));
+    // Dashboard e Painel da frota: vira alguns cards para checar o verso também.
+    if (p === '/' || p === '/frota') {
+      const btns = await page.$$('.flip__btn');
+      for (const b of btns.slice(0, 8)) await b.click().catch(() => {});
+      await new Promise((r) => setTimeout(r, 1800));
+    }
     const res = await page.evaluate(() => {
       const out = [];
       const doc = document.documentElement;
       if (doc.scrollWidth > window.innerWidth + 1) out.push({ kind: 'page-hscroll', sel: 'html', text: `${doc.scrollWidth} > ${window.innerWidth}` });
       const containers = '.tp-card, .dash-kpi, .tp-kpi, .bus-card, .fleet-card__face, .dash-alert, .tp-table-wrap, .recent-list > li, .account__card, .account__tile, .tp-modal, .menu, .subheader, .tp-toolbar, .dash-hero, .wob-card, .vpage__card, .tp-drawer';
-      const targets = document.querySelectorAll('.tp-badge, .tp-state, .tp-btn, .tp-kpi__note, .dash-kpi__value, .chart__hint, .tp-kpi__label, .tp-segmented, .tp-pager, .tp-input, .tp-select, h1, h2, h3, .bus-card__text, .fleet-card__text, .dash-alert__body, .recent-list__meta, .account__fields, .pref__positions, img, svg.busr, table');
+      const targets = document.querySelectorAll('.tp-badge, .tp-state, .fleet-chip, .fleet-back__os, .fleet-back__row, .tp-btn, .tp-kpi__note, .dash-kpi__value, .chart__hint, .tp-kpi__label, .tp-segmented, .tp-pager, .tp-input, .tp-select, h1, h2, h3, .bus-card__text, .fleet-card__text, .dash-alert__body, .recent-list__meta, .account__fields, .pref__positions, img, svg.busr, table');
       const seen = new Set();
       for (const el of targets) {
         const r = el.getBoundingClientRect();

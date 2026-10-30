@@ -4224,9 +4224,10 @@ a.bus-card:hover { transform: translateY(-1px); }
 .bus-card--back .fleet-card__code { font-size: var(--tp-text-md); }
 .bus-card--back .flip__btn { width: 26px; height: 26px; margin: 0; }
 .bus-card--back .fleet-back__now { padding: 6px 10px; gap: 3px; }
-.bus-card--back .fleet-back__row { flex-wrap: nowrap; gap: 6px; }
+/* Código da OS e chip de estado: quando não cabem lado a lado, o chip desce de linha em vez de ser cortado. */
+.bus-card--back .fleet-back__row { flex-wrap: wrap; gap: 4px 6px; }
 .bus-card--back .fleet-back__os { font-size: var(--tp-text-xs); }
-.bus-card--back .fleet-back__row .fleet-chip { padding: 2px 8px; overflow: hidden; text-overflow: ellipsis; }
+.bus-card--back .fleet-back__row .fleet-chip { padding: 2px 8px; max-width: 100%; }
 .bus-card--back .fleet-back__foot { margin: auto calc(-1 * var(--tp-space-3)) 0; padding: 7px var(--tp-space-3); }
 .fleet-back__stats--compact { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px var(--tp-space-2); }
 .fleet-back__stats--compact > div { gap: 0; }
