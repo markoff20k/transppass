@@ -3034,9 +3034,59 @@ a.bus-card:hover { transform: translateY(-1px); }
 }
 
 .login__bus {
-  width: min(560px, 100%);
+  width: min(460px, 100%);
   height: auto;
-  filter: drop-shadow(0 30px 40px rgb(0 0 0 / 0.45));
+  overflow: visible;
+}
+
+/* ---- A cena: o ônibus surge da escuridão e dá farol alto ------------------ */
+
+.busf { display: block; overflow: visible; }
+.busf__sign { font-family: var(--tp-font-mono); font-size: 15px; font-weight: 700; letter-spacing: 2.5px; fill: #ffb347; }
+.busf__brand { font-family: var(--tp-font-display); font-size: 11px; font-weight: 700; letter-spacing: 2px; fill: #6b6f74; }
+.busf__plate { font-family: var(--tp-font-mono); font-size: 12px; font-weight: 700; letter-spacing: 1px; fill: #2b2f35; }
+
+.busf__bus {
+  transform-origin: 320px 480px;
+  animation: busf-arrive 1.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes busf-arrive {
+  from { opacity: 0; transform: translateY(70px) scale(0.68); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Farol alto: dois lampejos quando o carro chega, depois marcha lenta e repete a cada 9 s. */
+.busf__beams, .busf__glow, .busf__ground, .busf__high {
+  opacity: 0;
+  animation: busf-highbeam 9s linear 1.7s infinite;
+}
+
+.busf__high { animation-name: busf-highbeam-lens; }
+
+@keyframes busf-highbeam {
+  0%, 3% { opacity: 0; }
+  5% { opacity: 1; }
+  8% { opacity: 0.05; }
+  10% { opacity: 1; }
+  17% { opacity: 1; }
+  26% { opacity: 0.14; }
+  100% { opacity: 0.14; }
+}
+
+@keyframes busf-highbeam-lens {
+  0%, 3% { opacity: 0.15; }
+  5% { opacity: 1; }
+  8% { opacity: 0.2; }
+  10% { opacity: 1; }
+  17% { opacity: 1; }
+  26% { opacity: 0.35; }
+  100% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .busf__bus { animation: none; }
+  .busf__beams, .busf__glow, .busf__ground, .busf__high { animation: none; opacity: 0.3; }
 }
 
 /* ---- O formulário: um cartão sobre o fundo neutro ------------------------ */
@@ -3242,7 +3292,7 @@ a.bus-card:hover { transform: translateY(-1px); }
   .login__kicker { margin-bottom: var(--tp-space-2); }
   .login__watermark { display: none; }
   .login__road { flex: none; width: 46%; }
-  .login__bus { width: 100%; filter: none; }
+  .login__bus { width: min(100%, 300px); }
   .login__form-col { padding: var(--tp-space-6) var(--tp-space-4); justify-content: flex-start; }
 }
 

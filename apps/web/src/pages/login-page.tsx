@@ -3,17 +3,18 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, TimerOff } from 'lucide-react';
-import { loginSchema, VehicleStatus, type LoginInput } from '@app/shared';
+import { loginSchema, type LoginInput } from '@app/shared';
 import { ApiError } from '@/lib/api-client';
 import { useAuth } from '@/features/auth/use-auth';
 import { TransppassMark } from '@/components/brand/transppass-logo';
-import { BusRender } from '@/components/bus/bus-render';
+import { BusFront } from '@/components/bus/bus-front';
 
 /**
  * Login — a única tela sem o shell.
  *
- * À esquerda, a imagem da marca: o ônibus da Transppass em linha sobre a
- * garagem à noite, com a luz laranja da marca e o símbolo como marca d'água.
+ * À esquerda, a imagem da marca: o ônibus da Transppass de frente, saindo da
+ * garagem à noite e dando farol alto, com a luz laranja da marca e o símbolo
+ * como marca d'água.
  * À direita, o formulário, sempre. No celular a imagem vira uma faixa curta
  * no topo e o formulário toma a tela.
  */
@@ -56,7 +57,7 @@ export function LoginPage() {
           </p>
         </div>
         <div className="login__road">
-          <BusRender vehicleClass="PADRON_13M" status={VehicleStatus.IN_LINE} code="82001" width={560} className="login__bus" />
+          <BusFront className="login__bus" />
         </div>
       </aside>
 
