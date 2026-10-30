@@ -462,7 +462,10 @@ export async function buildDemoScenario(prisma: PrismaClient, log: Log = console
   for (let i = 0; i < readings.length; i += 5000) await prisma.odometerReading.createMany({ data: readings.slice(i, i + 5000) });
   log(`  ${readings.length} leituras de km`);
 
+  // Outra instância da API (ou o cron horário) pode ter recriado projeções entre a limpeza e aqui.
+  await prisma.kmProjection.deleteMany();
   await prisma.kmProjection.createMany({
+    skipDuplicates: true,
     data: VEHICLES.map((v) => ({
       vehicleId: vid(v.code),
       avgDailyKm: v.avgDailyKm,

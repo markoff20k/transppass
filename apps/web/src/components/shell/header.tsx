@@ -299,11 +299,12 @@ function SimulatorMenu() {
   const on = data.enabled;
   if (!canToggle && !on) return null;
 
+  const failed = !phase && Boolean(data.phaseError);
   const pill = (
     <>
       {phase ? <Loader2 className="is-spinning" /> : <FlaskConical />}
       <span className="header__sim-label">
-        {phase === 'building' ? t.header.simulatorBuilding : phase === 'clearing' ? t.header.simulatorClearing : on ? t.header.simulatorOn : t.header.simulator}
+        {phase === 'building' ? t.header.simulatorBuilding : phase === 'clearing' ? t.header.simulatorClearing : failed ? t.header.simulatorFailed : on ? t.header.simulatorOn : t.header.simulator}
       </span>
       <i className="header__sim-dot" aria-hidden />
     </>
@@ -318,7 +319,7 @@ function SimulatorMenu() {
   }
 
   return (
-    <Dropdown label={t.header.simulatorTitle} triggerClass={`header__sim${on ? ' is-on' : ''}${phase ? ' is-busy' : ''}`} panelClass="sim-menu" trigger={pill}>
+    <Dropdown label={t.header.simulatorTitle} triggerClass={`header__sim${on ? ' is-on' : ''}${phase ? ' is-busy' : ''}${failed ? ' is-failed' : ''}`} panelClass="sim-menu" trigger={pill}>
       <div className="sim-menu__head">
         <b>{t.header.simulatorTitle}</b>
         <p>{t.header.simulatorHelp}</p>
@@ -348,6 +349,7 @@ function SimulatorMenu() {
         <FastForward size={14} />
         {pulse.isPending ? t.header.simulatorAdvancing : t.header.simulatorAdvance}
       </button>
+      {failed && <p className="sim-menu__error"><b>{t.header.simulatorFailedHint}</b> {data.phaseError}</p>}
       {data.source === 'env' && <p className="sim-menu__hint">{t.header.simulatorEnvHint}</p>}
     </Dropdown>
   );

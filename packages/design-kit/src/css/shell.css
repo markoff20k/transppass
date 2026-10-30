@@ -897,6 +897,9 @@
 .header__sim.is-on:hover { background: color-mix(in srgb, var(--tp-amber-500) 24%, transparent); }
 .header__sim--passive { cursor: default; }
 .header__sim.is-busy { color: var(--color-sidebar-text-strong); }
+.header__sim.is-failed { color: var(--tp-red-300, #f5a3a3); border-color: color-mix(in srgb, var(--tp-red-500) 40%, transparent); }
+.header__sim.is-failed .header__sim-dot { background: var(--tp-red-400, #ef6a6a); }
+.sim-menu__error { margin: 0; padding: var(--tp-space-2) var(--tp-space-3); border-radius: var(--tp-radius-md); background: var(--color-danger-soft); color: var(--color-danger-text, var(--color-text)); font-size: var(--tp-text-xs); line-height: 1.45; }
 .header__sim .is-spinning { animation: tp-spin 1s linear infinite; }
 
 @keyframes tp-spin {

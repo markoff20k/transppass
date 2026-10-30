@@ -59,6 +59,10 @@ let SPEED = 1;
 
 /** Chave do ajuste persistido: ligado/desligado de dentro do sistema. */
 const SETTING_KEY = 'demo.simulator';
+/** Fase em curso (building/clearing), gravada para as outras instâncias da API não pulsarem no meio. */
+const PHASE_KEY = 'demo.phase';
+/** Uma fase mais velha que isso é lixo de uma instância que caiu no meio. */
+const PHASE_STALE_MS = 30 * 60_000;
 const minutesSince = (d: Date | null | undefined, now: Date) => (d ? ((now.getTime() - d.getTime()) / MIN) * SPEED : Infinity);
 
 type Users = Record<'admin' | 'cco' | 'pcm' | 'manut' | 'estoque' | 'plantao', { id: string; role: UserRole }>;
@@ -148,7 +152,8 @@ export class DemoSimulatorService implements OnModuleInit {
    * a frota ao estado só com dados reais.
    */
   async setEnabled(enabled: boolean, userId?: string): Promise<DemoStatus> {
-    if (this.phase) throw new ConflictException(this.phase === 'building' ? 'A demonstração ainda está sendo montada' : 'A demonstração ainda está sendo limpa');
+    const running = this.phase ?? (await this.phaseElsewhere());
+    if (running) throw new ConflictException(running === 'building' ? 'A demonstração ainda está sendo montada' : 'A demonstração ainda está sendo limpa');
     await this.prisma.appSetting.upsert({
       where: { key: SETTING_KEY },
       create: { key: SETTING_KEY, value: String(enabled), updatedBy: userId ?? null },
@@ -171,16 +176,36 @@ export class DemoSimulatorService implements OnModuleInit {
     this.phase = phase;
     this.phaseError = null;
     const started = Date.now();
+    await this.prisma.appSetting
+      .upsert({ where: { key: PHASE_KEY }, create: { key: PHASE_KEY, value: phase }, update: { value: phase } })
+      .catch(() => undefined);
     try {
       await work();
       this.log.log(`${phase === 'building' ? 'demonstração montada' : 'demonstração limpa'} em ${Math.round((Date.now() - started) / 1000)} s`);
       after?.();
     } catch (err) {
-      this.phaseError = err instanceof Error ? err.message : String(err);
+      this.phaseError = err instanceof Error ? err.message.split('\n').slice(-3).join(' ').trim() : String(err);
       this.log.error(`${phase} falhou: ${this.phaseError}`);
+      if (phase === 'building') {
+        // Montagem pela metade é pior que nada: volta ao estado só-real e desliga.
+        this.log.warn('desfazendo a montagem parcial');
+        await clearDemoMovement(this.prisma, (m) => this.log.log(m)).catch((e) => this.log.error(`limpeza após falha: ${e instanceof Error ? e.message : String(e)}`));
+        this.enabled = false;
+        await this.prisma.appSetting
+          .upsert({ where: { key: SETTING_KEY }, create: { key: SETTING_KEY, value: 'false' }, update: { value: 'false' } })
+          .catch(() => undefined);
+      }
     } finally {
       this.phase = null;
+      await this.prisma.appSetting.deleteMany({ where: { key: PHASE_KEY } }).catch(() => undefined);
     }
+  }
+
+  /** Fase em curso em OUTRA instância da API (mesmo banco), ignorando marcas velhas. */
+  private async phaseElsewhere(): Promise<DemoStatus['phase']> {
+    const row = await this.prisma.appSetting.findUnique({ where: { key: PHASE_KEY } }).catch(() => null);
+    if (!row || Date.now() - row.updatedAt.getTime() > PHASE_STALE_MS) return null;
+    return row.value === 'building' || row.value === 'clearing' ? row.value : null;
   }
 
   /** Hora "de operação": o simulador respeita a jornada, salvo DEMO_ALL_HOURS. */
@@ -195,6 +220,14 @@ export class DemoSimulatorService implements OnModuleInit {
     const now = new Date();
     const out: string[] = [];
     try {
+      // Outra instância pode estar montando ou limpando a demonstração: não pulsar por cima.
+      if (await this.phaseElsewhere()) return out;
+      const saved = await this.prisma.appSetting.findUnique({ where: { key: SETTING_KEY } }).catch(() => null);
+      if (saved && saved.value !== 'true') {
+        this.enabled = false;
+        this.source = 'setting';
+        return out;
+      }
       const users = await this.loadUsers();
       if (!users) return out;
       await this.step(out, 'telemetria', () => this.telemetry(now, users));
