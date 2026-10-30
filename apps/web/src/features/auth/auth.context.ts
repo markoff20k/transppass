@@ -4,6 +4,8 @@ import type { LoginInput, PublicUser } from '@app/shared';
 export interface AuthContextValue {
   user: PublicUser | null;
   isLoading: boolean;
+  /** A ultima sessao caiu sozinha (token expirado/revogado), nao por "Sair". */
+  expired: boolean;
   login: (input: LoginInput) => Promise<void>;
   logout: () => Promise<void>;
   /** Atualiza o usuário em memória depois de editar o perfil. */

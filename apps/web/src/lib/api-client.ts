@@ -23,6 +23,26 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
 
 let refreshInFlight: Promise<boolean> | null = null;
 
+type SessionListener = () => void;
+const sessionListeners = new Set<SessionListener>();
+
+/**
+ * Chamado quando um 401 nao pode ser recuperado pelo refresh (token expirado,
+ * revogado ou o servidor nao o reconhece mais). Quem assina — o AuthProvider —
+ * derruba o usuario em memoria e a rota protegida leva ao login.
+ */
+export function onSessionExpired(listener: SessionListener): () => void {
+  sessionListeners.add(listener);
+  return () => {
+    sessionListeners.delete(listener);
+  };
+}
+
+function sessionExpired() {
+  tokenStorage.clear();
+  for (const l of sessionListeners) l();
+}
+
 async function refreshTokens(): Promise<boolean> {
   const refreshToken = tokenStorage.get()?.refreshToken;
   if (!refreshToken) return false;
@@ -67,8 +87,11 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   let res = await send();
 
-  if (res.status === 401 && !skipAuth && (await refreshTokens())) {
-    res = await send();
+  if (res.status === 401 && !skipAuth) {
+    const hadSession = tokenStorage.get() !== null;
+    if (await refreshTokens()) res = await send();
+    // Sem refresh possivel, ou 401 mesmo depois dele: a sessao acabou.
+    if (res.status === 401 && hadSession) sessionExpired();
   }
 
   if (res.status === 204) return undefined as T;

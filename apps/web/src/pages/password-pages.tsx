@@ -136,7 +136,7 @@ function PasswordShell({ children }: { children: React.ReactNode }) {
     <div className="login login--single">
       <section className="login__form-col">
         <div className="login__brand"><TransppassLogo height={48} /></div>
-        <div className="login__form">{children}</div>
+        <div className="login__card">{children}</div>
         <p className="login__foot tp-muted">Transppass · Transporte de Passageiros · São Paulo</p>
       </section>
     </div>

@@ -3035,64 +3035,95 @@ a.bus-card:hover { transform: translateY(-1px); }
   filter: drop-shadow(0 30px 40px rgb(0 0 0 / 0.45));
 }
 
-/* ---- O formulário ------------------------------------------------------- */
+/* ---- O formulário: um cartão sobre o fundo neutro ------------------------ */
 
 .login__form-col {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: var(--tp-space-8);
-  padding: var(--tp-space-8) clamp(var(--tp-space-6), 6vw, var(--tp-space-16));
-  background: var(--color-surface);
+  justify-content: center;
+  align-items: center;
+  gap: var(--tp-space-6);
+  padding: var(--tp-space-8) clamp(var(--tp-space-5), 6vw, var(--tp-space-16));
+  background:
+    radial-gradient(700px 420px at 50% 0%, color-mix(in srgb, var(--tp-orange-500) 5%, transparent), transparent 70%),
+    var(--color-bg);
 }
 
-/* Sobre fundo claro o logo é grafite — a cor do arquivo original. */
-.login__brand .tp-logo {
-  color: var(--tp-graphite-700);
-}
-
-.login__brand .tp-logo__tag {
-  color: var(--color-text-muted);
-}
-
-:root[data-theme='dark'] .login__brand .tp-logo,
-:root:not([data-theme='light']) .login__brand .tp-logo {
-  color: var(--color-text);
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme='dark']) .login__brand .tp-logo {
-    color: var(--tp-graphite-700);
-  }
-}
-
-.login__form {
+.login__card {
   display: grid;
   gap: var(--tp-space-5);
   width: 100%;
-  max-width: 400px;
-  margin: 0 auto;
+  max-width: 440px;
+  padding: clamp(var(--tp-space-6), 4vw, var(--tp-space-10)) clamp(var(--tp-space-5), 4vw, var(--tp-space-8));
+  background: var(--color-surface);
+  border: var(--tp-border-thin) solid var(--color-card-border);
+  border-radius: var(--tp-radius-xl);
+  box-shadow: var(--tp-shadow-md);
 }
 
-.login__intro { display: grid; gap: var(--tp-space-1); }
+.login__intro {
+  display: grid;
+  justify-items: center;
+  gap: var(--tp-space-1);
+  text-align: center;
+  margin-bottom: var(--tp-space-2);
+}
+
 .login__intro p { margin: 0; }
+
+/* A marca como moeda: grafite escuro, o ponto laranja da marca e um halo da cor. */
+.login__coin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--tp-space-3);
+  border-radius: var(--tp-radius-full);
+  background: linear-gradient(160deg, var(--tp-graphite-800), var(--tp-graphite-950));
+  color: #fff;
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--tp-orange-500) 12%, transparent),
+    0 8px 20px rgb(0 0 0 / 0.18);
+}
+
+.login__coin svg { height: auto; }
 
 .login__title {
   font-family: var(--tp-font-display);
-  font-size: clamp(30px, 3vw, 38px);
+  font-size: clamp(28px, 2.6vw, 32px);
   font-weight: 600;
   line-height: 1.05;
   margin: var(--tp-space-1) 0 0;
   text-wrap: balance;
 }
 
-.login__password {
+/* Campo com ícone à esquerda; o de senha ganha o olho à direita. */
+.login__control {
   position: relative;
 }
 
-.login__password .tp-input {
-  padding-right: 48px;
+/* O seletor global de input (input:not(...):not(...)) pesa mais que uma classe; o id-free `input.tp-input` empata e vence pela ordem. */
+.login__control input.tp-input.tp-input--touch {
   width: 100%;
+  padding-left: 42px;
+}
+
+.login__control--password input.tp-input.tp-input--touch {
+  padding-right: 48px;
+}
+
+.login__control-icon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.login__control:focus-within .login__control-icon {
+  color: var(--color-brand);
 }
 
 .login__eye {
@@ -3119,21 +3150,76 @@ a.bus-card:hover { transform: translateY(-1px); }
   color: var(--color-text);
 }
 
-.login__submit { width: 100%; }
+.login__notice {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--tp-space-2);
+}
+
+.login__submit {
+  width: 100%;
+  gap: var(--tp-space-2);
+  margin-top: var(--tp-space-1);
+}
+
+.login__forgot {
+  justify-self: center;
+  font-size: var(--tp-text-sm);
+  font-weight: var(--tp-weight-semibold);
+  color: var(--color-brand-text);
+  text-decoration: none;
+}
+
+.login__forgot:hover { text-decoration: underline; }
+
+.login__restricted {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding-top: var(--tp-space-5);
+  border-top: var(--tp-border-thin) solid var(--color-border);
+  text-align: center;
+}
+
+.login__restricted small {
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-muted);
+}
 
 .login__help {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: var(--tp-text-xs);
-  color: var(--color-text-muted);
+  font-size: var(--tp-text-sm);
+  color: var(--color-text);
 }
+
+.login__help svg { color: var(--color-brand); }
 
 .login__foot {
   font-size: var(--tp-text-xs);
   text-align: center;
+  margin: 0;
 }
+
+.login__brand { display: flex; justify-content: center; }
+.login__brand .tp-logo { color: var(--tp-graphite-700); }
+.login__brand .tp-logo__tag { color: var(--color-text-muted); }
+
+:root[data-theme='dark'] .login__brand .tp-logo,
+:root:not([data-theme='light']) .login__brand .tp-logo {
+  color: var(--color-text);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .login__brand .tp-logo {
+    color: var(--tp-graphite-700);
+  }
+}
+
+.login__form { display: grid; gap: var(--tp-space-5); }
+.login__form .login__intro { justify-items: start; text-align: left; }
 
 @media (max-width: 900px) {
   .login { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
@@ -3153,7 +3239,7 @@ a.bus-card:hover { transform: translateY(-1px); }
   .login__watermark { display: none; }
   .login__road { flex: none; width: 46%; }
   .login__bus { width: 100%; filter: none; }
-  .login__form-col { padding: var(--tp-space-6) var(--tp-space-5); }
+  .login__form-col { padding: var(--tp-space-6) var(--tp-space-4); justify-content: flex-start; }
 }
 
 @media (max-width: 560px) {
@@ -3441,11 +3527,8 @@ a.bus-card:hover { transform: translateY(-1px); }
 }
 
 /* Login: link de "esqueci" + ajuda */
-.login__links { display: grid; gap: var(--tp-space-2); }
-.login__forgot { font-size: var(--tp-text-sm); font-weight: var(--tp-weight-semibold); color: var(--color-brand-text); text-decoration: none; justify-self: start; }
-.login__forgot:hover { text-decoration: underline; }
 .login--single { grid-template-columns: minmax(0, 1fr); }
-.login--single .login__form-col { max-width: 560px; margin: 0 auto; width: 100%; }
+.login--single .login__form-col { width: 100%; }
 .password__ok { color: var(--color-success); }
 
 /* Usuários: link de redefinição */
