@@ -95,17 +95,17 @@ export function FailureCodeRules() {
         <div className="fcode-ref">
           <details>
             <summary>Modos de falha ({FAILURE_MODES.length})</summary>
-            <table className="tp-table tp-table--compact">
+            <div className="tp-table-wrap tp-table-wrap--flat"><table className="tp-table tp-table--compact">
               <tbody>
                 {FAILURE_MODES.map((m) => (
                   <tr key={m.code}><td className="is-strong">{m.code}</td><td>{m.name}<span className="tp-help" style={{ display: 'block' }}>{m.description}</span></td></tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </details>
           <details>
             <summary>Sistemas e subsistemas VMRS ({VMRS_SYSTEMS.length} / {VMRS_SUBSYSTEMS.length})</summary>
-            <table className="tp-table tp-table--compact">
+            <div className="tp-table-wrap tp-table-wrap--flat"><table className="tp-table tp-table--compact">
               <tbody>
                 {VMRS_SYSTEMS.map((sys) => (
                   <Fragment key={sys.code}>
@@ -116,15 +116,15 @@ export function FailureCodeRules() {
                   </Fragment>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </details>
           <details>
             <summary>Posições</summary>
-            <table className="tp-table tp-table--compact">
+            <div className="tp-table-wrap tp-table-wrap--flat"><table className="tp-table tp-table--compact">
               <tbody>
                 {POSITION_OPTIONS.AXLE_SIDE.map((p) => <tr key={p.code}><td className="is-strong">{p.code}</td><td>{p.name}</td></tr>)}
               </tbody>
-            </table>
+            </table></div>
           </details>
         </div>
       </div>

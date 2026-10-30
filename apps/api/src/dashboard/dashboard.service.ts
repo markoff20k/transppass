@@ -362,6 +362,7 @@ export class DashboardService {
     return {
       open,
       overdue,
+      releasedInPeriod: released.length,
       averageDowntimeMinutes: minutes.length
         ? Math.round(minutes.reduce((a, b) => a + b, 0) / minutes.length)
         : null,

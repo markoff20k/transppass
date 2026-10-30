@@ -102,6 +102,8 @@ export interface DashboardData {
   workOrders: {
     open: number;
     overdue: number;
+    /** Liberadas na janela escolhida. */
+    releasedInPeriod: number;
     averageDowntimeMinutes: number | null;
   };
 

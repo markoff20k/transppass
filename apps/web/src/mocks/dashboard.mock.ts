@@ -171,7 +171,7 @@ export function buildDashboard(): DashboardData {
     eventsPerDay,
     eventsBucket: 'day',
     queue: { waiting: 2, inService: 1, oldestWaitingHours: 3.1 },
-    workOrders: { open: 4, overdue: 1, averageDowntimeMinutes: 386 },
+    workOrders: { open: 4, overdue: 1, releasedInPeriod: 23, averageDowntimeMinutes: 386 },
     materials: { pending: 3, overdueParts: 1 },
     alerts: { degradedKm: 1, pendingTriage: 1, safetyEventsOpen: 2 },
     recentEvents: recentEvents(),

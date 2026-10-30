@@ -66,7 +66,7 @@
 
 @media (max-width: 900px) {
   .split {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1003,7 +1003,7 @@ small.muted {
    Um cartão por carro na rua; a linha do tempo do socorro é o instrumento. */
 .field-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
   gap: var(--tp-space-4);
 }
 
@@ -1769,6 +1769,9 @@ small.muted {
 
 .tp-tip--center .tp-tip__panel { left: 50%; transform: translate(-50%, -6px); }
 .tp-tip--center .tp-tip__panel::before { left: calc(50% - 5px); }
+/* Fechado, o painel sai do fluxo: invisível ainda alargava a página no celular. */
+.tp-tip:not(:hover):not(:focus-within):not(.is-open) .tp-tip__panel { display: none; }
+.tp-tip:hover .tp-tip__panel, .tp-tip:focus-within .tp-tip__panel, .tp-tip.is-open .tp-tip__panel { animation: tp-fade-in var(--tp-duration-fast) var(--tp-ease); }
 .tp-tip--start .tp-tip__panel { left: calc(50% - 20px); transform: translate(0, -6px); }
 .tp-tip--start .tp-tip__panel::before { left: 15px; }
 .tp-tip--end .tp-tip__panel { right: calc(50% - 20px); transform: translate(0, -6px); }
@@ -2441,7 +2444,8 @@ a.bus-card:hover { transform: translateY(-1px); }
   letter-spacing: -0.01em;
 }
 @media (max-width: 480px) {
-  .bus-card--summary { grid-column: span 1; grid-template-columns: 1fr; }
+  .bus-card--summary { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr); }
+  .bus-card--summary .bus-card__row { flex-wrap: wrap; }
 }
 
 .bus-grid--panel { grid-template-columns: repeat(auto-fill, minmax(188px, 1fr)); gap: var(--tp-space-3); }
@@ -2900,20 +2904,20 @@ a.bus-card:hover { transform: translateY(-1px); }
 
 @media (max-width: 1023px) {
   .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dash-row--fleet { grid-template-columns: 1fr; }
-  .dash-row--charts { grid-template-columns: 1fr; }
+  .dash-row--fleet { grid-template-columns: minmax(0, 1fr); }
+  .dash-row--charts { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 639px) {
-  .dash-kpis { grid-template-columns: 1fr; }
-  .dash-row--bottom { grid-template-columns: 1fr; }
-  .dash-kpi__body { grid-template-columns: 1fr; }
+  .dash-kpis { grid-template-columns: minmax(0, 1fr); }
+  .dash-row--bottom { grid-template-columns: minmax(0, 1fr); }
+  .dash-kpi__body { grid-template-columns: minmax(0, 1fr); }
   .dash-kpi__body .spark { display: none; }
   .dash-kpi__value { font-size: 30px; }
-  .bus-grid { grid-template-columns: 1fr; }
+  .bus-grid { grid-template-columns: minmax(0, 1fr); }
   .fleet-legend { order: 1; flex: 1 1 100%; margin-left: 0; flex-wrap: wrap; overflow: visible; border-radius: var(--tp-radius-lg); }
   .dash-fleet__head > .tp-btn { order: 2; }
-  .status-summary__legend { grid-template-columns: 1fr; }
+  .status-summary__legend { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* =========================================================================
@@ -3222,7 +3226,7 @@ a.bus-card:hover { transform: translateY(-1px); }
 .login__form .login__intro { justify-items: start; text-align: left; }
 
 @media (max-width: 900px) {
-  .login { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .login { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
   .login__art {
     flex-direction: row;
     align-items: flex-end;
@@ -4096,7 +4100,7 @@ a.bus-card:hover { transform: translateY(-1px); }
 .bus-card--summary .busr { width: 100%; height: auto; }
 
 /* --- Página do carro --------------------------------------------------------------- */
-.vpage { display: grid; gap: var(--tp-space-4); }
+.vpage { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--tp-space-4); }
 .vpage__main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: var(--tp-space-4); align-items: stretch; }
 .vpage__row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: var(--tp-space-4); align-items: stretch; }
 .vpage__row--even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -4107,7 +4111,7 @@ a.bus-card:hover { transform: translateY(-1px); }
 .vpage__sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .vpage__sheet-title { font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); }
 .vpage__sheet-list { margin: 0; display: grid; gap: 8px; }
-.vpage__sheet-list > div { display: grid; grid-template-columns: 1fr; gap: 1px; padding-bottom: 8px; border-bottom: var(--tp-border-thin) solid var(--color-border-subtle); }
+.vpage__sheet-list > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; padding-bottom: 8px; border-bottom: var(--tp-border-thin) solid var(--color-border-subtle); }
 .vpage__sheet-list > div:last-child { border-bottom: 0; padding-bottom: 0; }
 .vpage__sheet-list dt { font-size: var(--tp-text-2xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); font-weight: var(--tp-weight-semibold); }
 .vpage__sheet-list dd { margin: 0; font-size: var(--tp-text-sm); font-variant-numeric: tabular-nums; }

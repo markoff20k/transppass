@@ -170,13 +170,13 @@ export function DashboardPage() {
             hint={t.dash.openWoHint}
             value={String(data.workOrders.open)}
             tone={data.workOrders.overdue > 0 ? 'danger' : 'neutral'}
-            note={
-              data.workOrders.overdue > 0
-                ? `${data.workOrders.overdue} ${t.dash.overdue}`
-                : data.workOrders.averageDowntimeMinutes !== null
-                  ? `${t.dash.avg} ${formatMinutes(data.workOrders.averageDowntimeMinutes)} ${t.dash.perWo}`
-                  : undefined
-            }
+            note={[
+              data.workOrders.overdue > 0 ? `${data.workOrders.overdue} ${t.dash.overdue}` : null,
+              `${data.workOrders.releasedInPeriod} ${t.dash.releasedIn.replace('{n}', String(days))}`,
+              data.workOrders.averageDowntimeMinutes !== null ? `${t.dash.avg} ${formatMinutes(data.workOrders.averageDowntimeMinutes)} ${t.dash.perWo}` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           />
         </div>
 

@@ -312,7 +312,7 @@
 
 .tp-kpi-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
   gap: var(--tp-space-3);
 }
 
@@ -515,6 +515,9 @@
   background: var(--color-surface);
 }
 
+/* Tabela dentro de um cartão: só ganha a rolagem, sem moldura própria. */
+.tp-table-wrap--flat { border: 0; border-radius: 0; background: transparent; }
+
 .tp-table {
   width: 100%;
   border-collapse: collapse;
@@ -531,6 +534,9 @@
 /* Célula de texto corrido: quebra em vez de empurrar a tabela para fora do cartão. */
 .tp-table td.is-wrap { white-space: normal; min-width: 180px; }
 .tp-table td.is-wrap .tp-badge { white-space: nowrap; }
+/* Tabelas compactas são de referência: texto longo quebra em vez de rolar o cartão. */
+.tp-table--compact td:not(.is-num):not(.is-strong) { white-space: normal; }
+.tp-table--compact td .tp-badge, .tp-table--compact td .tp-btn { white-space: nowrap; }
 
 .tp-table th {
   position: sticky;
@@ -888,14 +894,14 @@
 
 @media (max-width: 900px) {
   .tp-split {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 /* No celular, tudo que é ação vira alvo de largura cheia. */
 @media (max-width: 640px) {
   .tp-grid-cards {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .tp-btn--touch {
@@ -1085,7 +1091,7 @@
   }
 
   .tp-facts {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

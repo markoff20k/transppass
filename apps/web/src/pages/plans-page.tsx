@@ -124,7 +124,7 @@ export function PlansPage() {
                       {pkg.tasks.length === 0 ? (
                         <p className="tp-muted">Nenhuma tarefa.</p>
                       ) : (
-                        <table className="tp-table tp-table--compact plan-tasks">
+                        <div className="tp-table-wrap tp-table-wrap--flat"><table className="tp-table tp-table--compact plan-tasks">
                           <thead><tr><th>Cód.</th><th>Seção</th><th>Tarefa</th><th>Especialidade</th><th className="is-num">Min</th></tr></thead>
                           <tbody>
                             {pkg.tasks.map((t) => (
@@ -137,7 +137,7 @@ export function PlansPage() {
                               </tr>
                             ))}
                           </tbody>
-                        </table>
+                        </table></div>
                       )}
                     </div>
 
@@ -151,7 +151,7 @@ export function PlansPage() {
                       {!pkg.kit || pkg.kit.items.length === 0 ? (
                         <p className="tp-muted">Sem kit — o Estoque não tem o que separar em D-1 (RF-25).</p>
                       ) : (
-                        <table className="tp-table tp-table--compact plan-kit">
+                        <div className="tp-table-wrap tp-table-wrap--flat"><table className="tp-table tp-table--compact plan-kit">
                           <thead><tr><th>Material</th><th className="is-num">Qtd</th></tr></thead>
                           <tbody>
                             {pkg.kit.items.map((i) => (
@@ -161,7 +161,7 @@ export function PlansPage() {
                               </tr>
                             ))}
                           </tbody>
-                        </table>
+                        </table></div>
                       )}
                     </div>
                   </div>
