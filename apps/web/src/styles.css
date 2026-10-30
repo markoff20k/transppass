@@ -3041,55 +3041,109 @@ a.bus-card:hover { transform: translateY(-1px); }
   overflow: visible;
 }
 
-/* ---- A fila do pátio: entra carro a carro; o da frente dá farol alto ------- */
+/* ---- A fila do pátio: o carro da frente chega, freia e dá farol alto -------- */
 
 .busl { display: block; overflow: visible; }
-.busl__sign { font-family: var(--tp-font-mono); font-size: 14px; font-weight: 700; letter-spacing: 2px; fill: #f3f6ff; }
+.busl__sign { font-family: var(--tp-font-mono); font-size: 14px; font-weight: 700; letter-spacing: 2px; fill: #f6f8ff; }
 .busl__plate { font-family: var(--tp-font-mono); font-size: 10px; font-weight: 700; letter-spacing: 1px; fill: #1d2024; }
 
-/* Cada carro desliza para o lugar, do fundo para a frente. */
-.busl__bus > g {
-  animation: busl-arrive 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 0.14s);
+/* Letreiro do carro da frente rola o texto. */
+.busl__sign--scroll { animation: busl-sign 14s linear 2.8s infinite; }
+@keyframes busl-sign { from { transform: translateX(170px); } to { transform: translateX(-640px); } }
+
+/* Luzes de posição dos estacionados respiram, cada uma no seu tempo. */
+.busl__marker { animation: busl-marker 3.6s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -0.7s); }
+@keyframes busl-marker { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+/* Chegada: vem do fundo, desacelerando; a suspensão balança e assenta no freio. */
+.busl__hero {
+  transform-box: fill-box;
+  transform-origin: 40% 100%;
+  animation: busl-approach 2.7s cubic-bezier(0.12, 0.78, 0.2, 1) both;
 }
 
-@keyframes busl-arrive {
-  from { opacity: 0; transform: translateX(-70px); }
+@keyframes busl-approach {
+  from { opacity: 0; transform: translate(210px, -118px) scale(0.4); }
+  12% { opacity: 1; }
   to { opacity: 1; transform: none; }
 }
 
-/* Farol alto: o da frente lampeja duas vezes ao chegar; depois o lampejo corre pela fila a cada 10 s. */
-.busl__beam, .busl__glow, .busl__high {
+.busl__body {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: busl-ride 2.9s ease-out both;
+}
+
+@keyframes busl-ride {
+  0% { transform: translateY(0); }
+  12% { transform: translateY(-2.2px); }
+  24% { transform: translateY(1.6px); }
+  36% { transform: translateY(-1.8px); }
+  48% { transform: translateY(1.2px); }
+  60% { transform: translateY(-1.2px); }
+  72% { transform: translateY(0.8px); }
+  84% { transform: translateY(0); }
+  /* freia: o carro mergulha de frente e volta */
+  90% { transform: translateY(3px) rotate(0.9deg); }
+  96% { transform: translateY(-0.8px) rotate(-0.25deg); }
+  100% { transform: translateY(0) rotate(0); }
+}
+
+/* Rodas: giram rápido e param junto com o carro (a animação desacelera). */
+.busl__spin {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: busl-spin 2.9s cubic-bezier(0.1, 0.6, 0.15, 1) both;
+}
+@keyframes busl-spin { from { transform: rotate(0deg); } to { transform: rotate(-1260deg); } }
+
+.busl__tread { animation: busl-tread 2.9s cubic-bezier(0.1, 0.6, 0.15, 1) both; }
+@keyframes busl-tread { from { transform: translateY(0); } to { transform: translateY(224px); } }
+
+/* Os estacionados não se mexem, mas chegam na tela um a um. */
+.busl__parked { animation: busl-fade 0.9s ease-out both; animation-delay: calc(var(--i, 0) * 0.12s); }
+@keyframes busl-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Farol baixo: acende quando o carro se aproxima e fica. */
+.busl__lo { opacity: 0; animation: busl-low 1.2s ease-out 0.6s both; }
+@keyframes busl-low { to { opacity: 1; } }
+
+/*
+ * Farol alto: dois lampejos logo após frear (3,0 s), depois a cada 11 s.
+ * Lampejo real tem ataque instantâneo e decaimento curto: liga em 60 ms,
+ * segura 120 ms, apaga em 140 ms. O clarão na cena, os feixes, os raios e
+ * o reflexo no piso seguem a mesma curva.
+ */
+.busl__hi {
   opacity: 0;
-  animation: busl-flash 10s linear infinite;
-  animation-delay: calc(1.5s + var(--rev, 0) * 0.22s);
+  animation: busl-high 11s linear 3s infinite;
 }
 
-.busl__high { animation-name: busl-flash-lens; }
-
-@keyframes busl-flash {
-  0%, 2% { opacity: 0; }
-  4% { opacity: 1; }
-  7% { opacity: 0.05; }
-  9% { opacity: 1; }
-  15% { opacity: 1; }
-  22% { opacity: 0.12; }
-  100% { opacity: 0.12; }
+@keyframes busl-high {
+  0% { opacity: 0; }
+  0.5% { opacity: 1; }
+  1.6% { opacity: 1; }
+  2.9% { opacity: 0.04; }
+  3.6% { opacity: 0.04; }
+  4.1% { opacity: 1; }
+  6.4% { opacity: 1; }
+  8.2% { opacity: 0; }
+  100% { opacity: 0; }
 }
 
-@keyframes busl-flash-lens {
-  0%, 2% { opacity: 0.1; }
-  4% { opacity: 1; }
-  7% { opacity: 0.15; }
-  9% { opacity: 1; }
-  15% { opacity: 1; }
-  22% { opacity: 0.3; }
-  100% { opacity: 0.3; }
+.busl__rays { transform-box: fill-box; transform-origin: 50% 50%; }
+
+/* Piso molhado: o reflexo acompanha o farol baixo, e o alto por cima dele. */
+.busl__wet { opacity: 0; animation: busl-wet 11s linear 3s infinite, busl-low 1.2s ease-out 0.6s both; }
+@keyframes busl-wet {
+  0% { opacity: 0.35; } 0.5% { opacity: 1; } 1.6% { opacity: 1; } 2.9% { opacity: 0.35; } 4.1% { opacity: 1; } 6.4% { opacity: 1; } 8.2% { opacity: 0.35; } 100% { opacity: 0.35; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .busl__bus > g { animation: none; }
-  .busl__beam, .busl__glow, .busl__high { animation: none; opacity: 0.25; }
+  .busl__hero, .busl__body, .busl__spin, .busl__tread, .busl__parked, .busl__marker, .busl__sign--scroll { animation: none; }
+  .busl__sign--scroll { transform: translateX(-120px); }
+  .busl__lo, .busl__wet { animation: none; opacity: 0.8; }
+  .busl__hi { animation: none; opacity: 0.18; }
 }
 
 /* ---- O formulário: um cartão sobre o fundo neutro ------------------------ */
