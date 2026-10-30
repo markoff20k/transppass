@@ -7,14 +7,14 @@ import { loginSchema, type LoginInput } from '@app/shared';
 import { ApiError } from '@/lib/api-client';
 import { useAuth } from '@/features/auth/use-auth';
 import { TransppassMark } from '@/components/brand/transppass-logo';
-import { BusFront } from '@/components/bus/bus-front';
+import { BusLineup } from '@/components/bus/bus-lineup';
 
 /**
  * Login — a única tela sem o shell.
  *
- * À esquerda, a imagem da marca: o ônibus da Transppass de frente, saindo da
- * garagem à noite e dando farol alto, com a luz laranja da marca e o símbolo
- * como marca d'água.
+ * À esquerda, a imagem da marca: a fila de carros da Transppass no pátio ao
+ * entardecer, de frente, com o da frente dando farol alto, e o símbolo como
+ * marca d'água.
  * À direita, o formulário, sempre. No celular a imagem vira uma faixa curta
  * no topo e o formulário toma a tela.
  */
@@ -57,7 +57,7 @@ export function LoginPage() {
           </p>
         </div>
         <div className="login__road">
-          <BusFront className="login__bus" />
+          <BusLineup className="login__bus" />
         </div>
       </aside>
 

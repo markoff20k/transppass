@@ -3034,59 +3034,62 @@ a.bus-card:hover { transform: translateY(-1px); }
 }
 
 .login__bus {
-  width: min(460px, 100%);
+  width: 100%;
+  max-width: 980px;
   height: auto;
+  max-height: min(52vh, 560px);
   overflow: visible;
 }
 
-/* ---- A cena: o ônibus surge da escuridão e dá farol alto ------------------ */
+/* ---- A fila do pátio: entra carro a carro; o da frente dá farol alto ------- */
 
-.busf { display: block; overflow: visible; }
-.busf__sign { font-family: var(--tp-font-mono); font-size: 15px; font-weight: 700; letter-spacing: 2.5px; fill: #ffb347; }
-.busf__brand { font-family: var(--tp-font-display); font-size: 11px; font-weight: 700; letter-spacing: 2px; fill: #6b6f74; }
-.busf__plate { font-family: var(--tp-font-mono); font-size: 12px; font-weight: 700; letter-spacing: 1px; fill: #2b2f35; }
+.busl { display: block; overflow: visible; }
+.busl__sign { font-family: var(--tp-font-mono); font-size: 14px; font-weight: 700; letter-spacing: 2px; fill: #f3f6ff; }
+.busl__plate { font-family: var(--tp-font-mono); font-size: 10px; font-weight: 700; letter-spacing: 1px; fill: #1d2024; }
 
-.busf__bus {
-  transform-origin: 320px 480px;
-  animation: busf-arrive 1.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+/* Cada carro desliza para o lugar, do fundo para a frente. */
+.busl__bus > g {
+  animation: busl-arrive 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 0.14s);
 }
 
-@keyframes busf-arrive {
-  from { opacity: 0; transform: translateY(70px) scale(0.68); }
+@keyframes busl-arrive {
+  from { opacity: 0; transform: translateX(-70px); }
   to { opacity: 1; transform: none; }
 }
 
-/* Farol alto: dois lampejos quando o carro chega, depois marcha lenta e repete a cada 9 s. */
-.busf__beams, .busf__glow, .busf__ground, .busf__high {
+/* Farol alto: o da frente lampeja duas vezes ao chegar; depois o lampejo corre pela fila a cada 10 s. */
+.busl__beam, .busl__glow, .busl__high {
   opacity: 0;
-  animation: busf-highbeam 9s linear 1.7s infinite;
+  animation: busl-flash 10s linear infinite;
+  animation-delay: calc(1.5s + var(--rev, 0) * 0.22s);
 }
 
-.busf__high { animation-name: busf-highbeam-lens; }
+.busl__high { animation-name: busl-flash-lens; }
 
-@keyframes busf-highbeam {
-  0%, 3% { opacity: 0; }
-  5% { opacity: 1; }
-  8% { opacity: 0.05; }
-  10% { opacity: 1; }
-  17% { opacity: 1; }
-  26% { opacity: 0.14; }
-  100% { opacity: 0.14; }
+@keyframes busl-flash {
+  0%, 2% { opacity: 0; }
+  4% { opacity: 1; }
+  7% { opacity: 0.05; }
+  9% { opacity: 1; }
+  15% { opacity: 1; }
+  22% { opacity: 0.12; }
+  100% { opacity: 0.12; }
 }
 
-@keyframes busf-highbeam-lens {
-  0%, 3% { opacity: 0.15; }
-  5% { opacity: 1; }
-  8% { opacity: 0.2; }
-  10% { opacity: 1; }
-  17% { opacity: 1; }
-  26% { opacity: 0.35; }
-  100% { opacity: 0.35; }
+@keyframes busl-flash-lens {
+  0%, 2% { opacity: 0.1; }
+  4% { opacity: 1; }
+  7% { opacity: 0.15; }
+  9% { opacity: 1; }
+  15% { opacity: 1; }
+  22% { opacity: 0.3; }
+  100% { opacity: 0.3; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .busf__bus { animation: none; }
-  .busf__beams, .busf__glow, .busf__ground, .busf__high { animation: none; opacity: 0.3; }
+  .busl__bus > g { animation: none; }
+  .busl__beam, .busl__glow, .busl__high { animation: none; opacity: 0.25; }
 }
 
 /* ---- O formulário: um cartão sobre o fundo neutro ------------------------ */
@@ -3291,8 +3294,8 @@ a.bus-card:hover { transform: translateY(-1px); }
   .login__headline { font-size: 24px; margin-bottom: 0; }
   .login__kicker { margin-bottom: var(--tp-space-2); }
   .login__watermark { display: none; }
-  .login__road { flex: none; width: 46%; }
-  .login__bus { width: min(100%, 300px); }
+  .login__road { flex: none; width: 56%; }
+  .login__bus { width: 100%; }
   .login__form-col { padding: var(--tp-space-6) var(--tp-space-4); justify-content: flex-start; }
 }
 
