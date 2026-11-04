@@ -10,6 +10,7 @@ import { resolve } from 'node:path';
  *
  *   npm run db:seed:users                      # lê prisma/data/usuarios.json
  *   npm run db:seed:users -- caminho/lista.json
+ *   USERS_ROLE=ADMIN npm run db:seed:users     # todos com o mesmo perfil
  *
  * Toda conta entra com a senha padrão e `mustChangePassword`: a pessoa define
  * a própria senha no primeiro acesso (PasswordChangeGuard + /primeiro-acesso).
@@ -21,6 +22,8 @@ import { resolve } from 'node:path';
 
 const DEFAULT_PASSWORD = 'transppass123';
 const DEFAULT_GARAGE = process.env.USERS_GARAGE ?? '009';
+/** Perfil único para toda a lista (ex.: USERS_ROLE=ADMIN); sem ele, vale o `role` da linha ou o departamento. */
+const FORCED_ROLE = process.env.USERS_ROLE ? UserRole[process.env.USERS_ROLE as keyof typeof UserRole] : undefined;
 
 /** Departamento da listagem → perfil de acesso (RF-36). */
 const DEPARTMENT_ROLES: Record<string, UserRole> = {
@@ -54,6 +57,7 @@ const normalize = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 
 function roleFor(row: UserRow): UserRole | null {
+  if (FORCED_ROLE) return FORCED_ROLE;
   if (row.role) return row.role;
   return DEPARTMENT_ROLES[normalize(row.department ?? '')] ?? null;
 }
@@ -70,6 +74,7 @@ async function main() {
     process.exit(1);
   }
   const rows = JSON.parse(readFileSync(file, 'utf8')) as UserRow[];
+  if (process.env.USERS_ROLE && !FORCED_ROLE) throw new Error(`Perfil inválido em USERS_ROLE: ${process.env.USERS_ROLE}`);
   const prisma = new PrismaClient();
   const garage = await prisma.garage.findUnique({ where: { code: DEFAULT_GARAGE } });
   if (!garage) throw new Error(`Garagem ${DEFAULT_GARAGE} não existe (USERS_GARAGE)`);
