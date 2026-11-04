@@ -42,10 +42,12 @@ export const queryClient = new QueryClient({
       staleTime: 30_000,
       refetchOnWindowFocus: false,
       retry: (failureCount, error) => {
-        // Nao insiste em erro do cliente: so falha de rede/servidor merece retry.
-        if (error instanceof ApiError && error.body.statusCode < 500) return false;
-        return failureCount < 2;
+        // Nao insiste em erro do cliente: so falha de rede/servidor (e a cota
+        // de requisicoes, 429, que passa sozinha) merece retry.
+        if (error instanceof ApiError && error.body.statusCode < 500 && error.body.statusCode !== 429) return false;
+        return failureCount < 3;
       },
+      retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 8_000),
     },
   },
 });

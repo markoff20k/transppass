@@ -278,6 +278,10 @@ const ptBR = {
     stopped: 'Parado',
     loading: 'Montando o dashboard…',
     error: 'Não foi possível carregar o dashboard.',
+    staleError: 'A última atualização falhou; os números abaixo são da anterior.',
+    errorRate: 'Muitas requisições em sequência; aguarde alguns segundos.',
+    errorServer: 'O servidor não respondeu; tente de novo em instantes.',
+    retry: 'Tentar de novo',
   },
 };
 
@@ -544,6 +548,10 @@ const en: Dictionary = {
     stopped: 'Stopped',
     loading: 'Building the dashboard…',
     error: 'Could not load the dashboard.',
+    staleError: 'The last refresh failed; the numbers below are from the previous one.',
+    errorRate: 'Too many requests in a row; wait a few seconds.',
+    errorServer: 'The server did not answer; try again shortly.',
+    retry: 'Try again',
   },
 };
 

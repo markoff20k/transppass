@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronRight, Gauge, Hourglass, Inbox, Minus, PackageX, ShieldAlert } from 'lucide-react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronRight, Gauge, Hourglass, Inbox, Minus, PackageX, RefreshCw, ShieldAlert } from 'lucide-react';
 import {
   DASHBOARD_PERIODS,
   DEFAULT_DASHBOARD_PERIOD,
@@ -12,7 +12,7 @@ import {
   type DashboardVehicle,
 } from '@app/shared';
 import { VEHICLE_STATE_FAMILY } from '@app/design-kit';
-import { api } from '@/lib/api-client';
+import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes, formatNumber } from '@/lib/format';
 import { useI18n } from '@/i18n/i18n.context';
 import { usePageHeader } from '@/components/shell/page-header.context';
@@ -68,15 +68,44 @@ export function DashboardPage() {
     actions: <PeriodControl />,
   });
 
-  const { data, isPending, isError } = useQuery({
+  const { data: fresh, isPending, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['dashboard', days],
     queryFn: () => api.get<DashboardData>(`/dashboard?days=${days}`),
     refetchInterval: 60_000,
     placeholderData: keepPreviousData,
   });
+  // Último dado bom (de qualquer período, no cache): se a consulta do período
+  // novo falhar, o painel anterior continua na tela com o aviso, em vez de sumir.
+  const queryClient = useQueryClient();
+  const data =
+    fresh ??
+    queryClient
+      .getQueriesData<DashboardData>({ queryKey: ['dashboard'] })
+      .map(([, d]) => d)
+      .find((d): d is DashboardData => Boolean(d));
 
-  if (isPending) return <DashboardSkeleton />;
-  if (isError || !data) return <div className="tp-alert tp-alert--danger">{t.dash.error}</div>;
+  if (isPending && !data) return <DashboardSkeleton />;
+  // Sem dado nenhum: erro com o motivo e um botão para tentar de novo. Com dado
+  // na tela, uma atualização que falhou não apaga o painel — só avisa.
+  if (!data) {
+    return (
+      <div className="tp-alert tp-alert--danger dash-error" role="alert">
+        <span>{t.dash.error} {describeError(error, t)}</span>
+        <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm" onClick={() => void refetch()} disabled={isFetching}>
+          <RefreshCw size={14} className={isFetching ? 'is-spinning' : undefined} /> {t.dash.retry}
+        </button>
+      </div>
+    );
+  }
+
+  const staleNotice = isError ? (
+    <div className="tp-alert tp-alert--warning dash-error" role="status">
+      <span>{t.dash.staleError} {describeError(error, t)}</span>
+      <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm" onClick={() => void refetch()} disabled={isFetching}>
+        <RefreshCw size={14} className={isFetching ? 'is-spinning' : undefined} /> {t.dash.retry}
+      </button>
+    </div>
+  ) : null;
 
   const availabilityPct = Math.round(data.fleet.availabilityRate * 1000) / 10;
   const availabilityTone: Tone =
@@ -97,6 +126,7 @@ export function DashboardPage() {
 
   return (
     <div className="dash">
+      {staleNotice}
       {/* ---- Centro de comando: anel, fluxo e os três números ---- */}
       <section className="dash-hero dash-glass" aria-label={t.dash.title}>
         <div className="dash-gauge">
@@ -557,6 +587,14 @@ function badgeFor(status: string): string {
     default:
       return 'tp-badge--warning';
   }
+}
+
+/** Motivo curto do erro, para quem lê saber se é cota, servidor ou rede. */
+function describeError(error: unknown, t: ReturnType<typeof useI18n>['t']): string {
+  if (!(error instanceof ApiError)) return '';
+  if (error.body.statusCode === 429) return t.dash.errorRate;
+  if (error.body.statusCode >= 500) return t.dash.errorServer;
+  return error.message ? `(${error.message})` : '';
 }
 
 function DashboardSkeleton() {

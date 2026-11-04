@@ -3263,6 +3263,10 @@ a.bus-card:hover { transform: translateY(-1px); }
 
 .users__state { display: inline-flex; flex-wrap: wrap; gap: 4px 6px; }
 
+.dash-error { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--tp-space-3); flex-wrap: wrap; }
+.dash-error .tp-btn { flex-shrink: 0; }
+.dash-error .is-spinning { animation: tp-spin 1s linear infinite; }
+
 .login__notice {
   flex-direction: row;
   align-items: center;

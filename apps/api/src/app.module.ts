@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
@@ -28,6 +28,7 @@ import { AuditsModule } from './audits/audits.module';
 import { ComponentsModule } from './components/components.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { PasswordChangeGuard } from './auth/guards/password-change.guard';
+import { ApiThrottlerGuard } from './auth/guards/api-throttler.guard';
 import { envSchema } from './config/env.validation';
 
 @Module({
@@ -37,7 +38,10 @@ import { envSchema } from './config/env.validation';
       envFilePath: ['../../.env', '.env'],
       validate: (raw) => envSchema.parse(raw),
     }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+    // Cota por conta logada (ApiThrottlerGuard): uma pessoa com várias abas e
+    // as telas que se atualizam sozinhas ficam longe de 600/min; login e
+    // esqueci-senha têm limites próprios, por IP, no controller.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 600 }]),
     PrismaModule,
     CommonModule,
     AuthModule,
@@ -78,7 +82,8 @@ import { envSchema } from './config/env.validation';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     // Senha provisória: só a própria conta e a troca de senha passam (@AllowPendingPassword).
     { provide: APP_GUARD, useClass: PasswordChangeGuard },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Depois do JwtAuthGuard, para contar por conta e não por IP.
+    { provide: APP_GUARD, useClass: ApiThrottlerGuard },
   ],
 })
 export class AppModule {}

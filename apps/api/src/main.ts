@@ -15,6 +15,11 @@ async function bootstrap() {
   const config = app.get(ConfigService);
 
   app.use(helmet());
+  // Em produção a API fica atrás de Caddy e nginx (rede interna do Docker):
+  // sem isto, req.ip é o IP do nginx para todo mundo — o limitador de
+  // requisições e a trilha de auditoria tratariam a empresa inteira como um
+  // cliente só. Só endereços de rede privada/loopback são tidos como proxy.
+  app.set('trust proxy', 'loopback, linklocal, uniquelocal');
   app.setGlobalPrefix('api');
   app.enableCors({
     origin: config.get<string>('CORS_ORIGIN', 'http://localhost:5173').split(','),
