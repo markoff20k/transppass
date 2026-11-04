@@ -3261,6 +3261,8 @@ a.bus-card:hover { transform: translateY(-1px); }
   color: var(--color-text);
 }
 
+.users__state { display: inline-flex; flex-wrap: wrap; gap: 4px 6px; }
+
 .login__notice {
   flex-direction: row;
   align-items: center;

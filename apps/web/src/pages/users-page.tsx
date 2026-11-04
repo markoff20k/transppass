@@ -129,7 +129,12 @@ export function UsersPage() {
                       <span className="tp-badge tp-badge--status">{USER_ROLE_LABELS[u.role]}</span>
                     </td>
                     <td>
-                      <span className={`tp-badge tp-badge--status ${u.isActive ? 'tp-badge--success' : ''}`}>{u.isActive ? 'Ativa' : 'Desativada'}</span>
+                      <span className="users__state">
+                        <span className={`tp-badge tp-badge--status ${u.isActive ? 'tp-badge--success' : ''}`}>{u.isActive ? 'Ativa' : 'Desativada'}</span>
+                        {u.isActive && u.mustChangePassword && (
+                          <span className="tp-badge tp-badge--status tp-badge--warning" title="Ainda não definiu a própria senha: entra com a provisória e troca no primeiro acesso">Senha provisória</span>
+                        )}
+                      </span>
                     </td>
                     <td className="tp-muted">{formatDate(u.createdAt)}</td>
                     <td className="is-action">
@@ -278,6 +283,7 @@ function UserDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => void
             <span className="tp-label">{editing ? 'Nova senha (opcional)' : 'Senha inicial'}</span>
             <input className="tp-input" type="password" autoComplete="new-password" {...form.register('password', passwordRules)} />
             {form.formState.errors.password && !editing && <span className="tp-error">{form.formState.errors.password.message}</span>}
+            <span className="tp-help">Provisória: a pessoa define a própria senha no primeiro acesso.</span>
           </label>
         </div>
 

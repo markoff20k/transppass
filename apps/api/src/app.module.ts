@@ -27,6 +27,7 @@ import { QualityModule } from './quality/quality.module';
 import { AuditsModule } from './audits/audits.module';
 import { ComponentsModule } from './components/components.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { PasswordChangeGuard } from './auth/guards/password-change.guard';
 import { envSchema } from './config/env.validation';
 
 @Module({
@@ -75,6 +76,8 @@ import { envSchema } from './config/env.validation';
   providers: [
     // Tudo é protegido por padrão; rotas abertas usam @Public().
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // Senha provisória: só a própria conta e a troca de senha passam (@AllowPendingPassword).
+    { provide: APP_GUARD, useClass: PasswordChangeGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })

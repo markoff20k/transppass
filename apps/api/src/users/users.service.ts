@@ -54,6 +54,7 @@ export class UsersService {
         role: input.role,
         garageId: input.garageId,
         passwordHash: await argon2.hash(input.password, { type: argon2.argon2id }),
+        mustChangePassword: input.mustChangePassword,
       },
     });
 
@@ -62,7 +63,7 @@ export class UsersService {
       action: 'user.create',
       entity: 'User',
       entityId: user.id,
-      after: { email: user.email, role: user.role, garageId: user.garageId },
+      after: { email: user.email, role: user.role, garageId: user.garageId, mustChangePassword: user.mustChangePassword },
     });
 
     return toPublicUser(user);
@@ -80,9 +81,15 @@ export class UsersService {
         role: input.role,
         garageId: input.garageId,
         isActive: input.isActive,
+        // Senha dada pelo administrador é provisória, salvo pedido explícito.
         ...(input.password
-          ? { passwordHash: await argon2.hash(input.password, { type: argon2.argon2id }) }
-          : {}),
+          ? {
+              passwordHash: await argon2.hash(input.password, { type: argon2.argon2id }),
+              mustChangePassword: input.mustChangePassword ?? true,
+            }
+          : input.mustChangePassword !== undefined
+            ? { mustChangePassword: input.mustChangePassword }
+            : {}),
       },
     });
 
@@ -98,6 +105,7 @@ export class UsersService {
         isActive: user.isActive,
         garageId: user.garageId,
         passwordChanged: Boolean(input.password),
+        mustChangePassword: user.mustChangePassword,
       },
     });
 
@@ -205,15 +213,18 @@ export class UsersService {
     if (!(await argon2.verify(user.passwordHash, input.currentPassword))) {
       throw new BadRequestException('Senha atual incorreta');
     }
+    if (input.currentPassword === input.newPassword) {
+      throw new BadRequestException('A nova senha precisa ser diferente da atual');
+    }
     await this.prisma.user.update({
       where: { id },
-      data: { passwordHash: await argon2.hash(input.newPassword, { type: argon2.argon2id }) },
+      data: { passwordHash: await argon2.hash(input.newPassword, { type: argon2.argon2id }), mustChangePassword: false },
     });
     await this.prisma.refreshToken.updateMany({
       where: { userId: id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
-    await this.audit.write({ actorId: id, action: 'user.password', entity: 'User', entityId: id });
+    await this.audit.write({ actorId: id, action: user.mustChangePassword ? 'user.first-access' : 'user.password', entity: 'User', entityId: id });
   }
 
   async list(query: UserQuery): Promise<Paginated<PublicUser>> {
@@ -247,7 +258,7 @@ export class UsersService {
 
 /** Categoria de cada ação da trilha, para a aba de atividades da conta. */
 export function activityCategory(action: string): AccountActivityCategory {
-  if (action.startsWith('auth.') || action === 'user.password' || action === 'user.password-reset' || action === 'user.reset-link') return 'security';
+  if (action.startsWith('auth.') || action === 'user.password' || action === 'user.first-access' || action === 'user.password-reset' || action === 'user.reset-link') return 'security';
   if (action === 'user.profile') return 'profile';
   if (action === 'user.preferences') return 'preferences';
   return 'system';
@@ -270,6 +281,7 @@ export function toPublicUser(user: User): PublicUser {
     avatarUrl: user.avatarUrl,
     preferences: parsePreferences(user.preferences),
     isActive: user.isActive,
+    mustChangePassword: user.mustChangePassword,
     createdAt: user.createdAt.toISOString(),
   };
 }

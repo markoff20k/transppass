@@ -166,7 +166,7 @@ ${url}`,
       throw new BadRequestException('Este link é inválido ou já expirou. Peça um novo.');
     }
     await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: stored.userId }, data: { passwordHash: await argon2.hash(newPassword, { type: argon2.argon2id }) } }),
+      this.prisma.user.update({ where: { id: stored.userId }, data: { passwordHash: await argon2.hash(newPassword, { type: argon2.argon2id }), mustChangePassword: false } }),
       this.prisma.passwordResetToken.update({ where: { id: stored.id }, data: { usedAt: new Date() } }),
       this.prisma.refreshToken.updateMany({ where: { userId: stored.userId, revokedAt: null }, data: { revokedAt: new Date() } }),
     ]);

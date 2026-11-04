@@ -89,6 +89,8 @@ export const publicUserSchema = z.object({
   avatarUrl: z.string().nullable(),
   preferences: userPreferencesSchema,
   isActive: z.boolean(),
+  /** Senha provisória: a pessoa precisa definir a sua antes de usar o sistema. */
+  mustChangePassword: z.boolean(),
   createdAt: z.string().datetime(),
 });
 
@@ -149,6 +151,8 @@ export interface JwtAccessPayload {
   sub: string;
   email: string;
   role: UserRole;
+  /** Preenchido na validação do token: a conta ainda está com senha provisória. */
+  mustChangePassword?: boolean;
 }
 
 // --- Recuperação de senha ----------------------------------------------------
@@ -182,11 +186,15 @@ export const createUserSchema = z.object({
   role: userRoleSchema,
   registration: z.string().trim().max(32).optional(),
   garageId: z.string().uuid().optional(),
+  /** Por padrão a senha inicial é provisória: a pessoa define a sua no primeiro acesso. */
+  mustChangePassword: z.boolean().default(true),
 });
 
 export const updateUserSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   password: passwordSchema.optional(),
+  /** Com nova senha, vale `true` se não vier nada: senha dada pelo administrador é provisória. */
+  mustChangePassword: z.boolean().optional(),
   role: userRoleSchema.optional(),
   registration: z.string().trim().max(32).optional(),
   garageId: z.string().uuid().optional(),
@@ -214,6 +222,9 @@ export const updateProfileSchema = z.object({
     .nullable()
     .optional(),
 });
+
+/** Código de erro da API quando a conta ainda está com senha provisória. */
+export const PASSWORD_CHANGE_REQUIRED = 'PASSWORD_CHANGE_REQUIRED';
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Informe a senha atual'),

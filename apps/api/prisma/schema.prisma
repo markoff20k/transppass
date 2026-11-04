@@ -48,6 +48,8 @@ model User {
   /// Preferências da própria pessoa (atalhos do cabeçalho, avisos, notificações).
   preferences  Json     @default("{}")
   isActive     Boolean  @default(true)
+  /// Senha provisória (conta criada pelo administrador ou importada): a pessoa precisa definir a sua no primeiro acesso.
+  mustChangePassword Boolean @default(false) @map("must_change_password")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

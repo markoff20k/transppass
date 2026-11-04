@@ -16,6 +16,7 @@ import {
 } from '@app/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AllowPendingPassword } from '../auth/decorators/allow-pending-password.decorator';
 import { UsersService } from './users.service';
 
 /**
@@ -30,6 +31,7 @@ export class ProfileController {
   constructor(private readonly users: UsersService) {}
 
   @Get()
+  @AllowPendingPassword()
   me(@CurrentUser('sub') userId: string): Promise<PublicUser> {
     return this.users.findPublic(userId);
   }
@@ -65,8 +67,10 @@ export class ProfileController {
     return this.users.activity(userId, query);
   }
 
+  /** Também é a porta do primeiro acesso: com senha provisória, é a única escrita permitida. */
   @Post('password')
   @HttpCode(204)
+  @AllowPendingPassword()
   async changePassword(
     @CurrentUser('sub') userId: string,
     @Body(new ZodValidationPipe(changePasswordSchema)) body: ChangePasswordInput,

@@ -31,7 +31,7 @@ import { PartsLabPage } from '@/pages/parts-lab-page';
 import { AuditsPage } from '@/pages/audits-page';
 import { ComponentsPage } from '@/pages/components-page';
 import { VehiclePage } from '@/pages/vehicle-page';
-import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-pages';
+import { FirstAccessPage, ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-pages';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -40,6 +40,8 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
+      // Senha provisória: fora do shell, antes de qualquer tela
+      { path: '/primeiro-acesso', element: <FirstAccessPage /> },
       {
         element: <AppShell />,
         children: [

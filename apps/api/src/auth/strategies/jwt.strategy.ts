@@ -22,13 +22,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   async validate(payload: JwtAccessPayload): Promise<JwtAccessPayload> {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, role: true, isActive: true },
+      select: { id: true, email: true, role: true, isActive: true, mustChangePassword: true },
     });
 
     if (!user?.isActive) {
       throw new UnauthorizedException('Sessão inválida');
     }
 
-    return { sub: user.id, email: user.email, role: user.role };
+    return { sub: user.id, email: user.email, role: user.role, mustChangePassword: user.mustChangePassword };
   }
 }

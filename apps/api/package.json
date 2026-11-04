@@ -16,6 +16,7 @@
     "db:seed": "node scripts/with-env.cjs ts-node prisma/seed.ts",
     "db:seed:demo": "node scripts/with-env.cjs ts-node prisma/seed-demo.ts",
     "db:seed:import": "node scripts/with-env.cjs ts-node prisma/seed-import.ts",
+    "db:seed:users": "node scripts/with-env.cjs ts-node prisma/seed-users.ts",
     "test:e2e": "node scripts/with-env.cjs ts-node test/r1-flow.e2e.ts"
   },
   "prisma": {

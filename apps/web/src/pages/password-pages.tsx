@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { forgotPasswordSchema, resetPasswordSchema } from '@app/shared';
+import { ArrowLeft, CheckCircle2, KeyRound, LogOut } from 'lucide-react';
+import { changePasswordSchema, forgotPasswordSchema, resetPasswordSchema } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { TransppassLogo } from '@/components/brand/transppass-logo';
+import { useAuth } from '@/features/auth/use-auth';
 
 /**
  * Recuperação de senha, fora do shell e com o mesmo chão da tela de login.
@@ -127,6 +128,71 @@ export function ResetPasswordPage() {
           <button type="submit" className="tp-btn tp-btn--primary tp-btn--touch login__submit" disabled={pending || !password || !confirm}>{pending ? 'Salvando…' : 'Salvar nova senha'}</button>
         </form>
       )}
+    </PasswordShell>
+  );
+}
+
+/**
+ * Primeiro acesso: a conta veio com a senha padrão (criada pelo administrador
+ * ou importada da listagem de funcionários) e a pessoa define a sua antes de
+ * ver qualquer tela. A troca derruba as sessões antigas, então a tela entra
+ * de novo com a senha nova por baixo dos panos e segue para o painel.
+ */
+export function FirstAccessPage() {
+  const { user, login, logout } = useAuth();
+  const navigate = useNavigate();
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (next !== confirm) return setError('A confirmação não confere com a nova senha.');
+    const parsed = changePasswordSchema.safeParse({ currentPassword: current, newPassword: next });
+    if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'Senha inválida');
+    if (!user) return;
+    setError(null);
+    setPending(true);
+    try {
+      await api.post('/users/me/password', parsed.data);
+      await login({ email: user.email, password: parsed.data.newPassword });
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Não foi possível definir a senha');
+      setPending(false);
+    }
+  }
+
+  return (
+    <PasswordShell>
+      <form className="login__form" onSubmit={submit} noValidate>
+        <div className="login__intro">
+          <span className="subheader__eyebrow">Primeiro acesso</span>
+          <h1 className="login__title">Olá, {user?.name.split(' ')[0]}. Defina a sua senha</h1>
+          <p className="tp-muted">Sua conta foi criada com uma senha provisória. Escolha uma senha só sua, com pelo menos 8 caracteres, para começar a usar o sistema.</p>
+        </div>
+        <div className="tp-field">
+          <label className="tp-label" htmlFor="first-current">Senha provisória</label>
+          <input id="first-current" className="tp-input tp-input--touch" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} autoFocus />
+        </div>
+        <div className="tp-field">
+          <label className="tp-label" htmlFor="first-next">Nova senha</label>
+          <input id="first-next" className="tp-input tp-input--touch" type="password" autoComplete="new-password" minLength={8} value={next} onChange={(e) => setNext(e.target.value)} />
+        </div>
+        <div className="tp-field">
+          <label className="tp-label" htmlFor="first-confirm">Confirmar nova senha</label>
+          <input id="first-confirm" className="tp-input tp-input--touch" type="password" autoComplete="new-password" minLength={8} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        </div>
+        {error && <div className="tp-alert tp-alert--danger">{error}</div>}
+        <button type="submit" className="tp-btn tp-btn--primary tp-btn--touch login__submit" disabled={pending || !current || !next || !confirm}>
+          <KeyRound size={16} /> {pending ? 'Salvando…' : 'Salvar e entrar'}
+        </button>
+        <button type="button" className="tp-btn tp-btn--ghost login__submit" onClick={() => void logout().then(() => navigate('/login', { replace: true }))} disabled={pending}>
+          <LogOut size={14} /> Sair e trocar depois
+        </button>
+      </form>
     </PasswordShell>
   );
 }

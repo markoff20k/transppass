@@ -19,6 +19,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { AllowPendingPassword } from './decorators/allow-pending-password.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -70,6 +71,7 @@ export class AuthController {
 
   @ApiBearerAuth()
   @Get('me')
+  @AllowPendingPassword()
   me(@CurrentUser('sub') userId: string): Promise<PublicUser> {
     return this.auth.me(userId);
   }

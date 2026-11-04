@@ -32,6 +32,7 @@ export const baseMockUser = {
   phone: null,
   avatarUrl: null,
   preferences: { shortcuts: [], notifications: true, toastPosition: 'bottom-right' as const },
+  mustChangePassword: false,
   isActive: true,
   createdAt: new Date('2026-01-01T00:00:00Z').toISOString(),
 };
@@ -42,6 +43,7 @@ const baseUser = {
   phone: null,
   avatarUrl: null,
   preferences: { shortcuts: [], notifications: true, toastPosition: 'bottom-right' as const },
+  mustChangePassword: false,
   isActive: true,
   createdAt: new Date('2026-01-01T00:00:00Z').toISOString(),
 };

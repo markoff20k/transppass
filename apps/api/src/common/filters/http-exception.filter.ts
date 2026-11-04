@@ -33,7 +33,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     } else if (exception instanceof HttpException) {
       status = exception.getStatus();
       const body = exception.getResponse();
-      code = HttpStatus[status] ?? 'HTTP_ERROR';
+      code = (typeof body === 'object' && (body as { code?: string }).code) || HttpStatus[status] || 'HTTP_ERROR';
       message =
         typeof body === 'string'
           ? body
