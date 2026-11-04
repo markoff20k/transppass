@@ -1,4 +1,5 @@
 import { MutationCache, QueryClient } from '@tanstack/react-query';
+import { PASSWORD_CHANGE_REQUIRED } from '@app/shared';
 import { ApiError } from './api-client';
 import { toast } from './toast';
 
@@ -27,6 +28,8 @@ const mutationCache = new MutationCache({
   },
   onError: (error, _v, _c, mutation) => {
     if (mutation.meta?.silentError) return;
+    // Senha provisória: o AuthProvider já leva ao primeiro acesso; não há o que "concluir".
+    if (error instanceof ApiError && error.body.code === PASSWORD_CHANGE_REQUIRED) return;
     const msg = error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'Não foi possível concluir.';
     toast.error('Não foi possível concluir', { description: msg });
   },

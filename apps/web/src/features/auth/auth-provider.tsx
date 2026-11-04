@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AuthResponse, LoginInput, PublicUser } from '@app/shared';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, onSessionExpired } from '@/lib/api-client';
+import { api, onPasswordChangeRequired, onSessionExpired } from '@/lib/api-client';
 import { tokenStorage } from '@/lib/token-storage';
 import { AuthContext } from './auth.context';
 
@@ -11,15 +11,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [expired, setExpired] = useState(false);
   const queryClient = useQueryClient();
 
-  // Sessao caiu no meio do uso (token expirado ou revogado): o usuario sai da
-  // memoria, a rota protegida manda ao login e o cache nao vaza para o proximo.
+  // Sessao caiu (token expirado ou revogado), no meio do uso ou ja na abertura
+  // com tokens velhos: o usuario sai da memoria, a rota protegida manda ao
+  // login com o aviso e o cache nao vaza para o proximo.
   useEffect(
     () =>
       onSessionExpired(() => {
-        setUser((current) => {
-          if (current) setExpired(true);
-          return null;
-        });
+        setUser(null);
+        setExpired(true);
+        queryClient.clear();
+      }),
+    [queryClient],
+  );
+
+  // A API recusou algo por senha provisória: recarrega a conta (vem com a
+  // flag) e a rota protegida leva ao primeiro acesso sem o usuário ver erro.
+  useEffect(
+    () =>
+      onPasswordChangeRequired(() => {
+        setUser((current) => (current && !current.mustChangePassword ? { ...current, mustChangePassword: true } : current));
+        queryClient.cancelQueries();
         queryClient.clear();
       }),
     [queryClient],

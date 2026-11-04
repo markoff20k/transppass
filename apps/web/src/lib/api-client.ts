@@ -1,4 +1,4 @@
-import { isApiErrorBody, type ApiErrorBody } from '@app/shared';
+import { PASSWORD_CHANGE_REQUIRED, isApiErrorBody, type ApiErrorBody } from '@app/shared';
 import { tokenStorage } from './token-storage';
 
 const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
@@ -41,6 +41,22 @@ export function onSessionExpired(listener: SessionListener): () => void {
 function sessionExpired() {
   tokenStorage.clear();
   for (const l of sessionListeners) l();
+}
+
+const passwordListeners = new Set<SessionListener>();
+
+/**
+ * A API recusou a chamada porque a conta está com senha provisória
+ * (PASSWORD_CHANGE_REQUIRED). Acontece quando a sessão já estava aberta
+ * quando a conta foi marcada — administrador deu senha nova, carga da lista
+ * de funcionários, API atualizada no meio do uso. Quem assina — o
+ * AuthProvider — recarrega a conta e a rota protegida leva ao primeiro acesso.
+ */
+export function onPasswordChangeRequired(listener: SessionListener): () => void {
+  passwordListeners.add(listener);
+  return () => {
+    passwordListeners.delete(listener);
+  };
 }
 
 async function refreshTokens(): Promise<boolean> {
@@ -99,6 +115,9 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const payload = await res.json().catch(() => null);
 
   if (!res.ok) {
+    if (isApiErrorBody(payload) && payload.code === PASSWORD_CHANGE_REQUIRED) {
+      for (const l of passwordListeners) l();
+    }
     throw new ApiError(
       isApiErrorBody(payload)
         ? payload
