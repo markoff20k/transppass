@@ -7,7 +7,7 @@ import { loginSchema, type LoginInput } from '@app/shared';
 import { ApiError } from '@/lib/api-client';
 import { useAuth } from '@/features/auth/use-auth';
 import { TransppassMark } from '@/components/brand/transppass-logo';
-import { BusLineup } from '@/components/bus/bus-lineup';
+import { LoginArt } from '@/components/brand/login-art';
 
 /**
  * Login — a única tela sem o shell.
@@ -46,20 +46,7 @@ export function LoginPage() {
 
   return (
     <div className="login">
-      <aside className="login__art" aria-hidden>
-        <TransppassMark size={420} className="login__watermark" />
-        <div className="login__art-copy">
-          <span className="login__kicker">Transppass · Módulo PCM</span>
-          <h2 className="login__headline">A garagem inteira, numa tela.</h2>
-          <p>
-            Do evento na rua à liberação do carro: cada decisão vira registro, e o MKBF sai do
-            próprio processo — ninguém digita.
-          </p>
-        </div>
-        <div className="login__road">
-          <BusLineup className="login__bus" />
-        </div>
-      </aside>
+      <LoginArt />
 
       <section className="login__form-col">
         <form className="login__card" onSubmit={onSubmit} noValidate>

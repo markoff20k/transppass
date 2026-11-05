@@ -72,24 +72,27 @@ await page.goto(`${WEB}/login`, { waitUntil: 'networkidle0', timeout: 60000 });
 await page.type('#login-email', WEB_USER);
 await page.type('#login-password', DEFAULT);
 await page.click('button[type="submit"]');
-await page.waitForSelector('#first-current', { timeout: 30000 }).catch(() => {});
+await page.waitForSelector('.fa', { timeout: 30000 }).catch(() => {});
 record('PW-01', 'Login com senha provisória cai em /primeiro-acesso', new URL(page.url()).pathname === '/primeiro-acesso', page.url());
 await page.screenshot({ path: `${OUT}/primeiro-acesso.png` });
 
 await page.goto(`${WEB}/os`, { waitUntil: 'networkidle0', timeout: 60000 });
 record('PW-02', 'Tentar abrir /os volta para /primeiro-acesso', new URL(page.url()).pathname === '/primeiro-acesso', page.url());
 
-await page.type('#first-current', DEFAULT);
-await page.type('#first-next', 'NovaSenha2026');
-await page.type('#first-confirm', 'OutraSenha2026');
-await page.click('button[type="submit"]');
-await page.waitForSelector('.tp-alert--danger', { timeout: 10000 }).catch(() => {});
-const mismatch = await page.$eval('.tp-alert--danger', (el) => el.textContent).catch(() => '');
-record('PW-03', 'Confirmação diferente mostra erro', /confere/.test(mismatch), mismatch);
+const cur = '.fa input[autocomplete="current-password"]';
+const nxt = '.fa input[placeholder^="Pelo menos"]';
+const cfm = '.fa input[placeholder^="Digite a nova senha"]';
+await page.type(cur, DEFAULT);
+await page.type(nxt, 'NovaSenha2026');
+await page.type(cfm, 'OutraSenha2026');
+const mismatch = await page.$eval('.fa__hint.is-bad', (el) => el.textContent).catch(() => '');
+const disabled = await page.$eval('.login__submit', (el) => el.disabled);
+record('PW-03', 'Confirmação diferente avisa ao vivo e trava o botão', /confere/.test(mismatch) && disabled, mismatch);
 
-await page.$eval('#first-confirm', (el) => { el.value = ''; });
-await page.type('#first-confirm', 'NovaSenha2026');
-await page.click('button[type="submit"]');
+await page.click(cfm);
+await page.keyboard.down('Control'); await page.keyboard.press('KeyA'); await page.keyboard.up('Control'); await page.keyboard.press('Backspace');
+await page.type(cfm, 'NovaSenha2026');
+await page.click('.login__submit');
 await page.waitForSelector('.dash-hero', { timeout: 30000 }).catch(() => {});
 record('PW-04', 'Salvar e entrar leva ao painel', new URL(page.url()).pathname === '/', page.url());
 await page.screenshot({ path: `${OUT}/primeiro-acesso-depois.png` });

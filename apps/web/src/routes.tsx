@@ -31,7 +31,8 @@ import { PartsLabPage } from '@/pages/parts-lab-page';
 import { AuditsPage } from '@/pages/audits-page';
 import { ComponentsPage } from '@/pages/components-page';
 import { VehiclePage } from '@/pages/vehicle-page';
-import { FirstAccessPage, ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-pages';
+import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-pages';
+import { FirstAccessPage } from '@/pages/first-access-page';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },

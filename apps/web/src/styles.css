@@ -3209,10 +3209,11 @@ a.bus-card:hover { transform: translateY(-1px); }
   text-wrap: balance;
 }
 
-/* Campo com ícone à esquerda; o de senha ganha o olho à direita. */
+/* Campo com ícone à esquerda; o de senha ganha o olho à direita (o do navegador some). */
 .login__control {
   position: relative;
 }
+.login__control input::-ms-reveal { display: none; }
 
 /* O seletor global de input (input:not(...):not(...)) pesa mais que uma classe; o id-free `input.tp-input` empata e vence pela ordem. */
 .login__control input.tp-input.tp-input--touch {
@@ -3859,6 +3860,123 @@ a.bus-card:hover { transform: translateY(-1px); }
 }
 
 /* Login: link de "esqueci" + ajuda */
+/* ---- Primeiro acesso: validação ao vivo, força da senha, botão só quando confere ---- */
+
+.fa { position: relative; }
+.fa__eyebrow {
+  font-size: var(--tp-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-brand);
+}
+
+/* Medidor de força: quatro barras que acendem da esquerda para a direita. */
+.fa__meter {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: var(--tp-space-2);
+}
+.fa__meter span {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border-strong);
+  transition: background-color 0.25s ease, box-shadow 0.25s ease;
+}
+.fa__meter--1 span:nth-child(-n + 1) { background: var(--color-danger); }
+.fa__meter--2 span:nth-child(-n + 2) { background: var(--color-warning); }
+.fa__meter--3 span:nth-child(-n + 3) { background: var(--tp-green-500, var(--color-success)); }
+.fa__meter--4 span { background: var(--color-success); box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-success) 25%, transparent); }
+
+.fa__meter-label { min-height: 18px; margin-top: 4px; font-size: var(--tp-text-xs); }
+.fa__strength { font-weight: 600; }
+.fa__strength--1 { color: var(--color-danger-text, var(--color-danger)); }
+.fa__strength--2 { color: var(--color-warning-text); }
+.fa__strength--3, .fa__strength--4 { color: var(--color-success-text); }
+
+/* Requisitos: cinza enquanto não se digitou, vermelho suave quando falta, verde quando ok. */
+.fa__rules {
+  list-style: none;
+  margin: var(--tp-space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.fa__rule {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  font-size: var(--tp-text-xs);
+  color: var(--color-text-muted);
+  transition: color 0.2s ease;
+}
+.fa__rule-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--tp-radius-full);
+  border: 1.5px solid var(--color-border-strong);
+  color: #fff;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.fa__rule--todo .fa__rule-icon { border-color: color-mix(in srgb, var(--color-danger) 55%, transparent); }
+.fa__rule--todo { color: var(--color-text); }
+.fa__rule--ok { color: var(--color-success-text); }
+.fa__rule--ok .fa__rule-icon { background: var(--color-success); border-color: var(--color-success); transform: scale(1.05); }
+
+/* Confirmação: a borda acompanha o estado e o check aparece no lugar do olho. */
+.fa__confirm.is-ok input.tp-input.tp-input--touch { border-color: var(--color-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 15%, transparent); }
+.fa__confirm.is-bad input.tp-input.tp-input--touch { border-color: var(--color-danger); }
+.fa__confirm-state {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  color: var(--color-success);
+  pointer-events: none;
+}
+.fa__hint { display: block; min-height: 18px; margin-top: 4px; font-size: var(--tp-text-xs); color: var(--color-text-muted); }
+.fa__hint.is-ok { color: var(--color-success-text); }
+.fa__hint.is-bad { color: var(--color-danger-text, var(--color-danger)); }
+
+.fa__caps {
+  padding: var(--tp-space-2) var(--tp-space-3);
+  border-radius: var(--tp-radius-md);
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+  font-size: var(--tp-text-xs);
+  font-weight: 600;
+}
+
+.fa__gate { margin: calc(-1 * var(--tp-space-3)) 0 0; text-align: center; font-size: var(--tp-text-xs); }
+.fa__later { width: 100%; gap: var(--tp-space-2); }
+
+/* Confirmação final: o cartão vira um aviso curto antes de entrar. */
+.fa--done { min-height: 320px; align-content: center; }
+.fa__done { display: grid; justify-items: center; gap: var(--tp-space-2); text-align: center; animation: fa-pop 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.fa__done-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--tp-space-2);
+  border-radius: var(--tp-radius-full);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-success) 10%, transparent);
+}
+@keyframes fa-pop { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fa__done { animation: none; }
+}
+
 .login--single { grid-template-columns: minmax(0, 1fr); }
 .login--single .login__form-col { width: 100%; }
 .password__ok { color: var(--color-success); }
