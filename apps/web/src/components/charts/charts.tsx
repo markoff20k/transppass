@@ -584,7 +584,7 @@ export function MetricHistoryChart({
           </defs>
           <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
           <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} interval="preserveStartEnd" />
-          <YAxis width={44} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} tickFormatter={(v: number) => (percent ? `${v}%` : v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))} domain={percent ? [0, 100] : ['auto', 'auto']} />
+          <YAxis width={44} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} tickFormatter={(v: number) => (percent ? `${v}%` : formatNumber(v))} domain={percent ? [0, 100] : ['auto', 'auto']} />
           <Tooltip
             cursor={{ stroke: 'var(--chart-grid)' }}
             content={({ active, payload }) => {

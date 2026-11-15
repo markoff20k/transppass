@@ -1,5 +1,7 @@
+import { useSearchParams } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePageHeader } from '@/components/shell/page-header.context';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { DOWNTIME_CAUSE_LABELS, METRIC_KEY_LABELS, MetricKey, type MetricHistoryPoint, type R1Metrics } from '@app/shared';
 import { MetricHistoryChart } from '@/components/charts/charts';
 import { api } from '@/lib/api-client';
@@ -13,11 +15,20 @@ import { BrandLoader } from '@/components/brand/brand-loader';
  * nesta tela é digitado em lugar nenhum: tudo emerge dos estados do processo.
  */
 export function MetricsPage() {
-  usePageHeader({ eyebrow: 'Gestão', title: 'Indicadores', description: 'MKBF e decomposição da indisponibilidade, derivados do processo.' });
+  usePageHeader({
+    eyebrow: 'Gestão',
+    title: 'Indicadores',
+    description: 'MKBF e decomposição da indisponibilidade, derivados do processo.',
+    actions: <MonthControl />,
+  });
 
+  const [month] = useReferenceMonth();
+  const range = monthRange(month);
+  const monthLabel = formatMonth(month);
   const { data, isPending, isError } = useQuery({
-    queryKey: ['metrics'],
-    queryFn: () => api.get<R1Metrics>('/metrics'),
+    queryKey: ['metrics', month.key],
+    queryFn: () => api.get<R1Metrics>(`/metrics?from=${range.from.toISOString()}${range.to ? `&to=${range.to.toISOString()}` : ''}`),
+    placeholderData: keepPreviousData,
     refetchInterval: 60_000,
   });
   const history = useQuery({
@@ -34,7 +45,10 @@ export function MetricsPage() {
         <div className="tp-card__head">
           <div>
             <h3>MKBF — métrica norte</h3>
-            <span className="chart__hint">mês corrente, calculado dos estados do processo — ninguém digita</span>
+            <span className="chart__hint">
+              {monthLabel}
+              {month.isCurrent ? ' (até agora)' : ''}, calculado dos estados do processo — ninguém digita
+            </span>
           </div>
         </div>
 
@@ -44,6 +58,11 @@ export function MetricsPage() {
             <strong className="tp-kpi__value">
               {data.mkbf.mkbf === null ? '—' : `${formatNumber(data.mkbf.mkbf)} km`}
             </strong>
+            {data.mkbf.mkbf !== null && (
+              <span className="tp-muted">
+                {formatNumber(data.mkbf.kmTraveled)} km ÷ {formatNumber(data.mkbf.unscheduledReturns)} retornos
+              </span>
+            )}
           </div>
           <div className="tp-kpi">
             <span className="tp-kpi__label">Km rodados</span>
@@ -71,7 +90,7 @@ export function MetricsPage() {
         <div className="tp-card__head">
           <div>
             <h3>Indisponibilidade por causa (RF-39)</h3>
-            <span className="chart__hint">onde o relógio das OS do mês ficou</span>
+            <span className="chart__hint">onde o relógio das OS de {monthLabel} ficou</span>
           </div>
         </div>
         {data.downtimeByCause.length === 0 ? (
@@ -215,7 +234,7 @@ export function MetricsPage() {
             O código decidido no registro se sustenta frente ao que a manutenção constata? Compara, por evento com constatação, o Sistema e o Subsistema completo (padrão de codificação, seção 8.2).
           </p>
           {data.codeAlignment.compared === 0 ? (
-            <p className="tp-table__empty">Nenhum evento do mês tem constatação da oficina ainda — a comparação começa quando a primeira OS confirmar o código.</p>
+            <p className="tp-table__empty">Nenhum evento de {monthLabel} tem constatação da oficina — a comparação começa quando a primeira OS confirmar o código.</p>
           ) : (
           <div className="tp-kpi-row">
             <div className="tp-kpi">
@@ -257,5 +276,100 @@ export function MetricsPage() {
         )}
       </section>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Mês de referência: a cadência do indicador é mensal, então a tela fecha um
+// mês civil inteiro (1º ao último dia), não "os últimos N dias". Fica na URL
+// (?mes=2026-09) para o número de um mês ser compartilhável por link.
+
+interface ReferenceMonth {
+  year: number;
+  month: number;
+  /** "2026-09" */
+  key: string;
+  isCurrent: boolean;
+}
+
+function toMonth(year: number, month: number): ReferenceMonth {
+  const d = new Date(year, month, 1);
+  const now = new Date();
+  return {
+    year: d.getFullYear(),
+    month: d.getMonth(),
+    key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+    isCurrent: d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(),
+  };
+}
+
+function parseMonth(raw: string | null): ReferenceMonth {
+  const now = new Date();
+  const m = raw ? /^(\d{4})-(\d{2})$/.exec(raw) : null;
+  if (m) {
+    const year = Number(m[1]);
+    const month = Number(m[2]) - 1;
+    const candidate = new Date(year, month, 1);
+    // Mês futuro não tem dado: cai no corrente.
+    if (month >= 0 && month <= 11 && candidate <= now) return toMonth(year, month);
+  }
+  return toMonth(now.getFullYear(), now.getMonth());
+}
+
+function useReferenceMonth(): [ReferenceMonth, (m: ReferenceMonth) => void] {
+  const [params, setParams] = useSearchParams();
+  const month = parseMonth(params.get('mes'));
+  const set = (m: ReferenceMonth) => {
+    const next = new URLSearchParams(params);
+    if (m.isCurrent) next.delete('mes');
+    else next.set('mes', m.key);
+    setParams(next, { replace: true });
+  };
+  return [month, set];
+}
+
+/** Do primeiro instante do mês ao último; o mês corrente vai até agora (sem `to`). */
+function monthRange(m: ReferenceMonth): { from: Date; to: Date | null } {
+  return {
+    from: new Date(m.year, m.month, 1),
+    to: m.isCurrent ? null : new Date(m.year, m.month + 1, 0, 23, 59, 59, 999),
+  };
+}
+
+function formatMonth(m: ReferenceMonth): string {
+  return new Date(m.year, m.month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+}
+
+function MonthControl() {
+  const [month, setMonth] = useReferenceMonth();
+  const label = formatMonth(month);
+  return (
+    <div className="month-nav" role="group" aria-label="Mês de referência">
+      <button
+        type="button"
+        className="tp-btn tp-btn--ghost month-nav__step"
+        aria-label="Mês anterior"
+        onClick={() => setMonth(toMonth(month.year, month.month - 1))}
+      >
+        <ChevronLeft size={18} aria-hidden />
+      </button>
+      <span className="month-nav__label" aria-live="polite">
+        {label.charAt(0).toUpperCase() + label.slice(1)}
+      </span>
+      <button
+        type="button"
+        className="tp-btn tp-btn--ghost month-nav__step"
+        aria-label="Próximo mês"
+        disabled={month.isCurrent}
+        onClick={() => setMonth(toMonth(month.year, month.month + 1))}
+      >
+        <ChevronRight size={18} aria-hidden />
+      </button>
+      {!month.isCurrent && (
+        <button type="button" className="tp-btn tp-btn--ghost month-nav__now" onClick={() => setMonth(parseMonth(null))}>
+          Mês atual
+        </button>
+      )}
+    </div>
   );
 }

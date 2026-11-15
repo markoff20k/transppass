@@ -4016,6 +4016,21 @@ a.bus-card:hover { transform: translateY(-1px); }
 .field-materials__row--kit { grid-template-columns: minmax(0, 1fr) 84px auto; }
 
 /* Indicadores: histórico mensal */
+/* Indicadores: navegação por mês civil no subheader */
+.month-nav { display: inline-flex; align-items: center; gap: 2px; }
+.month-nav__step { padding: 0; width: 36px; height: 36px; justify-content: center; }
+.month-nav__step:disabled { opacity: 0.35; cursor: default; }
+.month-nav__label {
+  min-width: 11.5em;
+  text-align: center;
+  font-size: var(--tp-text-sm);
+  font-weight: var(--tp-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+.month-nav__now { height: 36px; font-size: var(--tp-text-xs); }
+@media (max-width: 640px) { .month-nav__label { min-width: 9em; } .month-nav__now { display: none; } }
+
 .metrics-history { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--tp-space-4); }
 .metrics-history__item { min-width: 0; }
 

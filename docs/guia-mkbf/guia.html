@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Guia da apresentação — MKBF de setembro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ink: #1f2020; --ink-2: #444544; --ink-3: #6b6c6b;
+    --line: #d9d9d6; --line-2: #ebebe8; --paper: #ffffff; --paper-2: #f6f6f3;
+    --brand: #f87509; --brand-soft: #fff1e6; --brand-ink: #9a4300;
+    --ok: #1b7f4b; --ok-soft: #e6f4ec; --warn: #b45309; --warn-soft: #fff4e0;
+    --bad: #b42318; --bad-soft: #fde8e6; --info: #1d4ed8; --info-soft: #e8eefc;
+  }
+  @page { size: A4; margin: 16mm 15mm 18mm 15mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: 'Barlow', 'Segoe UI', system-ui, sans-serif; font-size: 10.2pt; line-height: 1.45; color: var(--ink); background: var(--paper); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  h1, h2, h3 { font-family: 'Barlow Condensed', 'Barlow', sans-serif; margin: 0; text-wrap: balance; line-height: 1.1; }
+  h1 { font-size: 30pt; font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: 19pt; font-weight: 700; margin: 0 0 3mm; padding-bottom: 2mm; border-bottom: 2.5px solid var(--brand); }
+  h2 .n { color: var(--brand); margin-right: 2mm; }
+  h3 { font-size: 13pt; font-weight: 700; margin: 5mm 0 2mm; }
+  p { margin: 0 0 2.4mm; }
+  .lead { font-size: 11.5pt; color: var(--ink-2); }
+  .mono { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 9pt; }
+  strong { font-weight: 600; }
+  ul, ol { margin: 0 0 2.4mm; padding-left: 5mm; }
+  li { margin-bottom: 1mm; }
+  .eyebrow { font-family: 'Barlow Condensed'; font-weight: 600; font-size: 9pt; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brand); }
+  .muted { color: var(--ink-3); }
+  .small { font-size: 8.8pt; }
+  .section { page-break-before: always; }
+  .avoid { page-break-inside: avoid; }
+
+  .top { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 4mm; margin-bottom: 7mm; }
+  .brand { display: flex; align-items: center; gap: 4mm; }
+  .mark { width: 11mm; height: 11mm; border-radius: 3mm; background: var(--brand); display: grid; place-items: center; }
+  .mark span { font-family: 'Barlow Condensed'; font-weight: 700; font-size: 16pt; color: #1f2020; }
+  .name { font-family: 'Barlow Condensed'; font-weight: 700; font-size: 16pt; letter-spacing: 0.04em; line-height: 1; }
+  .name small { display: block; font-family: 'Barlow'; font-weight: 400; font-size: 8.5pt; letter-spacing: 0; color: var(--ink-3); margin-top: 1.2mm; }
+  .doc { text-align: right; font-size: 9pt; color: var(--ink-3); line-height: 1.4; }
+
+  .band { margin: 6mm 0 5mm; background: #2a2b2a; color: #fff; border-radius: 4mm; padding: 7mm 8mm; display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 6mm; }
+  .band b { display: block; font-family: 'Barlow Condensed'; font-weight: 700; font-size: 22pt; line-height: 1; color: var(--brand); }
+  .band span { display: block; font-size: 8.6pt; color: #c9c9c6; margin-top: 1.4mm; line-height: 1.3; }
+
+  .box { border-left: 3px solid var(--info); background: var(--info-soft); padding: 2.4mm 3.2mm; border-radius: 0 2mm 2mm 0; margin: 3mm 0; }
+  .box b.t { color: var(--info); }
+  .box.ok { border-color: var(--ok); background: var(--ok-soft); } .box.ok b.t { color: var(--ok); }
+  .box.warn { border-color: var(--warn); background: var(--warn-soft); } .box.warn b.t { color: var(--warn); }
+  .box.bad { border-color: var(--bad); background: var(--bad-soft); } .box.bad b.t { color: var(--bad); }
+  .box p:last-child { margin-bottom: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 9.4pt; margin: 2mm 0 4mm; }
+  th, td { border: 1px solid var(--line); padding: 1.8mm 2.4mm; vertical-align: top; text-align: left; }
+  th { background: #2a2b2a; color: #fff; font-family: 'Barlow Condensed'; font-weight: 600; font-size: 9.2pt; letter-spacing: 0.06em; text-transform: uppercase; }
+  tbody tr:nth-child(even) td { background: var(--paper-2); }
+  tr { page-break-inside: avoid; }
+  td.n { font-family: 'Barlow Condensed'; font-weight: 700; color: var(--brand); text-align: center; white-space: nowrap; width: 8mm; font-size: 12pt; }
+  .steps td:nth-child(2) { width: 44%; }
+  .path { font-family: 'Barlow Condensed'; font-weight: 600; color: var(--brand-ink); font-size: 9.6pt; letter-spacing: 0.02em; }
+  .kw { font-weight: 600; }
+  .say { font-style: italic; color: var(--ink-2); }
+
+  figure { margin: 3mm 0 4mm; page-break-inside: avoid; }
+  figure img { width: 100%; display: block; border: 1px solid var(--line); border-radius: 2mm; }
+  figure.h110 img { max-height: 110mm; object-fit: cover; object-position: top; }
+  figure.h80 img { max-height: 80mm; object-fit: cover; object-position: top; }
+  figure.h60 img { max-height: 62mm; object-fit: cover; object-position: top; }
+  figure.narrow { width: 118mm; }
+  figcaption { font-size: 8.6pt; color: var(--ink-3); margin-top: 1.4mm; }
+  figcaption b { color: var(--ink-2); font-weight: 600; }
+  .figrow { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; page-break-inside: avoid; }
+  .figrow.sim { grid-template-columns: 78mm 1fr; align-items: start; }
+  .figrow.sim figure, .figrow.sim .box { margin-top: 3mm; }
+
+  .formula { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 3mm; margin: 3mm 0 4mm; text-align: center; }
+  .formula .cell { border: 1px solid var(--line); border-radius: 2mm; padding: 3mm; }
+  .formula .cell b { display: block; font-family: 'Barlow Condensed'; font-size: 19pt; font-weight: 700; line-height: 1; }
+  .formula .cell.res { background: var(--brand-soft); border-color: var(--brand); } .formula .cell.res b { color: var(--brand-ink); }
+  .formula .cell span { display: block; font-size: 8.6pt; color: var(--ink-3); margin-top: 1.2mm; }
+  .formula .op { font-family: 'Barlow Condensed'; font-size: 20pt; color: var(--ink-3); }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin: 2mm 0 4mm; }
+  .card { border: 1px solid var(--line); border-radius: 2mm; padding: 2.6mm 3mm; page-break-inside: avoid; }
+  .card b.t { display: block; font-family: 'Barlow Condensed'; font-size: 11.5pt; font-weight: 700; margin-bottom: 1mm; }
+  .card.in b.t { color: var(--ok); } .card.out b.t { color: var(--bad); }
+  .card p { margin: 0; font-size: 9.2pt; color: var(--ink-2); }
+
+  .check li { list-style: none; position: relative; padding-left: 6mm; margin-bottom: 1.6mm; }
+  .check li::before { content: ''; position: absolute; left: 0; top: 0.9mm; width: 3.8mm; height: 3.8mm; border: 1.2px solid var(--ink-2); border-radius: 0.8mm; }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand">
+    <div class="mark"><span>T</span></div>
+    <div class="name">TRANSPPASS<small>Transporte de Passageiros · Módulo PCM</small></div>
+  </div>
+  <div class="doc">Guia da apresentação · versão 1.0<br>15 de novembro de 2026 · ProAero</div>
+</div>
+
+<span class="eyebrow">Reunião de 16/11/2026</span>
+<h1>MKBF de setembro: como mostrar no sistema</h1>
+<p class="lead">Guia para quem vai apresentar o Módulo PCM ao dono da Transppass. Em três telas você escolhe o mês, chega ao número e explica de onde ele vem, sem planilha e sem calcular nada à mão.</p>
+
+<div class="band">
+  <div><b>3.888 km</b><span>MKBF de setembro de 2026, calculado pelo sistema a partir dos dados reais da Transppass</span></div>
+  <div><b>2.430.114</b><span>km rodados em setembro pelos 455 carros em operação</span></div>
+  <div><b>625</b><span>quebras: fichas de manutenção do tipo A, S e T, o critério da própria Transppass</span></div>
+  <div><b>0</b><span>números digitados. O MKBF sai das leituras de km e das fichas, não de um campo</span></div>
+</div>
+
+<div class="box ok avoid">
+  <b class="t">Resumo em 30 segundos.</b>
+  <p>1. Confirme no cabeçalho que a <span class="kw">Simulação</span> está <span class="kw">desligada</span> (seção 1). &nbsp;2. Abra <span class="path">Gestão › Indicadores</span> e, com as setas ao lado do título, escolha <span class="kw">Setembro de 2026</span> (seção 2). &nbsp;3. Leia o cartão: <span class="kw">MKBF 3.888 km</span>, com a conta embaixo: 2.430.114 km ÷ 625 retornos. &nbsp;4. Se perguntarem como chegou nisso, a seção 4 tem a explicação em uma frase.</p>
+  <p class="small muted" style="margin-top:1.6mm">Atalho direto para a tela já no mês certo: <span class="mono">https://transppass.online/indicadores?mes=2026-09</span></p>
+</div>
+
+<h2><span class="n">1</span>Antes da reunião: desligue a Simulação</h2>
+<p>O sistema tem um modo de demonstração, a <span class="kw">Simulação</span>, que preenche a garagem com movimento inventado (ordens de serviço em todas as etapas, quebras e km em meses que a Transppass ainda não enviou). Serve para mostrar o fluxo funcionando, mas <strong>contamina o MKBF</strong>: com ela ligada, setembro aparece com 641 quebras e 3.791 km, e meses sem dado real aparecem cheios. Hoje, 15/11, o ambiente de homologação está com a Simulação <strong>ligada</strong>.</p>
+
+<table class="steps">
+  <thead><tr><th></th><th>Faça</th><th>O que acontece</th></tr></thead>
+  <tbody>
+    <tr><td class="n">1</td><td>Entre com um perfil <span class="kw">ADMIN</span> ou <span class="kw">PCM</span>. No cabeçalho, à direita, clique na pastilha <span class="kw">Simulação ligada</span>.</td><td>Abre um painel explicando o que a simulação faz, com o interruptor e o estado atual.</td></tr>
+    <tr><td class="n">2</td><td>Desligue o interruptor.</td><td>A pastilha passa a <span class="kw">Limpando simulação…</span>. Leva em torno de um minuto. Ao terminar, aparece o aviso <span class="kw">Simulação desligada</span>.</td></tr>
+    <tr><td class="n">3</td><td>Confira: abra o <span class="path">Dashboard</span> e role até o gráfico <span class="kw">MKBF por mês</span>.</td><td>Só setembro tem ponto no gráfico. Os outros meses ficam em branco, porque não há dado real deles. É o estado certo para a reunião.</td></tr>
+  </tbody>
+</table>
+
+<div class="figrow sim">
+<figure><img src="shots/simulacao.png" alt="Painel da Simulação no cabeçalho"><figcaption><b>O painel da Simulação.</b> Depois de desligar, a pastilha fica neutra e o painel diz "Simulação desligada". Não ligue de novo antes da reunião.</figcaption></figure>
+<div class="box warn avoid">
+  <b class="t">Faça isso hoje à noite, não na frente do cliente.</b>
+  <p>Desligar apaga todo o movimento que não veio das planilhas da Transppass, inclusive testes feitos à mão por alguém da equipe nos últimos dias. O que é dado real (frota, km, fichas, ocorrências, OS importadas) fica intacto. Se alguém da Transppass fez registros de teste que quer preservar, avise antes.</p>
+</div>
+</div>
+
+<!-- ===================================================================== -->
+<section style="margin-top:7mm">
+<h2><span class="n">2</span>Caminho principal: Indicadores, mês de setembro</h2>
+<p>A tela <span class="path">Gestão › Indicadores</span> fecha um <strong>mês civil inteiro</strong>, do dia 1º ao último dia. É a tela certa para falar de "o MKBF de setembro", porque é assim que a Transppass apura o indicador.</p>
+
+<table class="steps">
+  <thead><tr><th></th><th>Faça</th><th>O que aparece</th></tr></thead>
+  <tbody>
+    <tr><td class="n">1</td><td>No menu lateral, <span class="path">Gestão › Indicadores</span>.</td><td>A tela abre no mês corrente (novembro). Sem dado real de novembro, o MKBF aparece como "—" e o texto explica: sem retorno não programado, a divisão não teria significado.</td></tr>
+    <tr><td class="n">2</td><td>Ao lado do título, à direita, use a seta <span class="kw">‹</span> duas vezes até ler <span class="kw">Setembro de 2026</span>.</td><td>Os quatro números do cartão mudam na hora. O subtítulo passa a dizer "setembro de 2026, calculado dos estados do processo — ninguém digita".</td></tr>
+    <tr><td class="n">3</td><td>Leia o cartão <span class="kw">MKBF — métrica norte</span>.</td><td><strong>MKBF 3.888 km</strong>, e logo abaixo a conta: <strong>2.430.114 km ÷ 625 retornos</strong>. Ao lado, km rodados e retornos não programados repetidos como cartões próprios.</td></tr>
+    <tr><td class="n">4</td><td>Role até <span class="kw">Histórico mensal</span> e passe o mouse em <span class="kw">set/26</span> no primeiro gráfico.</td><td>O mesmo 3.888 km no ponto de setembro. Meses em branco são meses sem dado, não zero.</td></tr>
+    <tr><td class="n">5</td><td>Para voltar, clique em <span class="kw">Mês atual</span> ou use a seta <span class="kw">›</span>.</td><td>A seta da direita trava no mês corrente: não existe mês futuro para escolher.</td></tr>
+  </tbody>
+</table>
+
+<figure class="narrow"><img src="shots/indicadores-mes.png" alt="Seletor de mês ao lado do título da tela Indicadores"><figcaption><b>O seletor de mês.</b> Setas para o mês anterior e o seguinte, o mês escrito por extenso e o botão "Mês atual" quando você não está nele. O mês escolhido vai para o endereço da página, então o link pode ser copiado e enviado.</figcaption></figure>
+
+<figure class="h110"><img src="shots/indicadores-setembro.png" alt="Indicadores em setembro de 2026"><figcaption><b>Indicadores em setembro de 2026.</b> MKBF 3.888 km com a conta embaixo, km rodados 2.430.114, 625 retornos não programados. É esta tela que você deixa aberta ao falar do número.</figcaption></figure>
+
+<div class="box avoid">
+  <b class="t">Se as setas de mês não aparecerem ao lado do título</b>
+  <p>o servidor ainda não recebeu a atualização de 15/11. Nesse caso use o caminho da seção 3: o número de setembro está lá do mesmo jeito, só que num gráfico em vez de num cartão.</p>
+</div>
+</section>
+
+<!-- ===================================================================== -->
+<section style="margin-top:7mm">
+<h2><span class="n">3</span>Caminho alternativo: os gráficos de mês</h2>
+<p>Há duas outras telas que mostram o MKBF de setembro. Servem como reforço durante a conversa ou como plano B.</p>
+
+<h3>3.1 Indicadores › Histórico mensal</h3>
+<p>No fim da tela de Indicadores, seis gráficos pequenos mostram os últimos 12 meses. O primeiro é o MKBF. Passe o mouse sobre o ponto de <span class="kw">set/26</span>: a etiqueta mostra <strong>3.888</strong>.</p>
+<figure class="h80"><img src="shots/indicadores-historico.png" alt="Histórico mensal dos indicadores"><figcaption><b>Histórico mensal.</b> MKBF, disponibilidade, resolução em campo, retrabalho, aderência à preventiva e adoção do processo, mês a mês. Setembro é o único mês com dado real; por isso é o único ponto.</figcaption></figure>
+
+<h3>3.2 Dashboard › MKBF por mês</h3>
+<p>No <span class="path">Dashboard</span>, no canto direito do título, há o período <span class="kw">7 · 30 · 90 · 180 · 365 dias</span>. Atenção ao detalhe que costuma confundir: esse período é <strong>"os últimos N dias contados de hoje"</strong>, não um mês do calendário. Em 16/11, "30 dias" vai de 18/10 a 16/11 e não contém setembro; por isso o cartão MKBF do topo mostra "—" nesse ajuste.</p>
+<ul>
+  <li><strong>Para falar de setembro no Dashboard</strong>, role até o gráfico <span class="kw">MKBF por mês</span> na parte de baixo e passe o mouse no ponto de set/26: MKBF 3.888 km, km rodados e quebras do mês.</li>
+  <li><strong>"90 dias" também mostra 3.888 km no cartão do topo</strong>, porque hoje a janela de 90 dias (18/08 a 16/11) contém setembro inteiro e nenhum outro mês tem dado. Funciona, mas é uma coincidência de calendário; não baseie a explicação nisso.</li>
+</ul>
+<div class="figrow">
+  <figure><img src="shots/dashboard-periodo.png" alt="Topo do Dashboard com o período de 90 dias"><figcaption><b>Dashboard com 90 dias.</b> O período fica no canto direito do título; o cartão MKBF mostra o valor da janela e a conta.</figcaption></figure>
+  <figure><img src="shots/dashboard-mkbf-mes.png" alt="Gráfico MKBF por mês no Dashboard"><figcaption><b>MKBF por mês.</b> Um ponto por mês; a etiqueta traz MKBF, km e quebras. Mês sem dado fica em branco.</figcaption></figure>
+</div>
+</section>
+
+<!-- ===================================================================== -->
+<section class="section">
+<h2><span class="n">4</span>Como o número é calculado</h2>
+<p>Você não precisa calcular nada. Mas vale saber explicar, em uma frase, o que o sistema fez:</p>
+<p class="say">"O sistema somou os quilômetros que os 455 carros em operação rodaram em setembro, pelas leituras diárias de hodômetro, e dividiu pelo número de fichas de manutenção corretiva do tipo A, S e T do mês, que é exatamente o critério de quebra que a Transppass usa. Deu 3.888 km entre falhas."</p>
+
+<div class="formula avoid">
+  <div class="cell"><b>2.430.114 km</b><span>rodados em setembro pela frota em operação (STATUS 0). Leituras diárias do VBM0406; dia sem leitura é dia sem rodar, nada é estimado.</span></div>
+  <div class="op">÷</div>
+  <div class="cell"><b>625</b><span>retornos não programados: fichas A (recolhida anormal), S (socorro) e T (troca de carro) do VBM0503.</span></div>
+  <div class="op">=</div>
+  <div class="cell res"><b>3.888 km</b><span>MKBF de setembro de 2026. Confere com a apuração da própria Transppass pelo critério da carta de 28/10.</span></div>
+</div>
+
+<div class="cards">
+  <div class="card in"><b class="t">O que entra</b><p>Km dos 455 carros com STATUS 0 (em operação). As 625 fichas de tipo A, S e T. Só leituras de km validadas: leitura recusada não entra, para um erro de digitação não inflar o indicador.</p></div>
+  <div class="card out"><b class="t">O que fica de fora</b><p>Os 2 guinchos (STATUS 7) e os 3 carros de treinamento (STATUS 17): rodam, mas não são frota em operação. As 3.038 ocorrências do CCO de setembro sem ficha A, S ou T (FRO, PAM, SOS sem ficha etc.): ficam registradas no sistema, mas não contam como quebra.</p></div>
+</div>
+
+<div class="box avoid">
+  <b class="t">O argumento que mais convence.</b>
+  <p>Pelo critério antigo, em que toda ocorrência do CCO contava como quebra, setembro daria <strong>2.297 km</strong>. Pelo critério da carta da Transppass (fichas A, S e T), dá <strong>3.888 km</strong>. A diferença não é do sistema, é do critério, e o sistema guarda as duas populações: registra tudo o que o CCO viu e conta só o que a Transppass definiu como quebra. Isso significa que o número do sistema é auditável carro a carro, dia a dia.</p>
+</div>
+
+<h2 style="margin-top:7mm"><span class="n">5</span>Perguntas que podem surgir</h2>
+<table>
+  <thead><tr><th style="width:38%">Se perguntarem…</th><th>Responda</th></tr></thead>
+  <tbody>
+    <tr><td><strong>"Por que só setembro?"</strong></td><td>Porque foi o mês que a Transppass enviou como amostra, na carta de 28/10. Os meses seguintes aparecem conforme a operação for registrada no sistema ou novas extrações forem carregadas. O cálculo é o mesmo para qualquer mês.</td></tr>
+    <tr><td><strong>"Por que novembro está em branco?"</strong></td><td>Sem retorno não programado no mês, a divisão não tem significado. O sistema prefere deixar em branco a mostrar um número enganoso. Em outubro e novembro ainda não há dado real carregado.</td></tr>
+    <tr><td><strong>"Esse número bate com a nossa planilha?"</strong></td><td>Sim: 3.888 km pelo critério da carta (fichas A, S e T, frota STATUS 0). Se a apuração interna der diferente, o sistema permite descer até o carro e o dia e encontrar onde está a diferença.</td></tr>
+    <tr><td><strong>"Quem digitou isso?"</strong></td><td>Ninguém. O MKBF não tem campo de preenchimento em lugar nenhum. Ele nasce das leituras de km e das fichas; quando a garagem passar a operar pelo sistema, nasce dos registros do próprio fluxo (evento, triagem, OS, liberação).</td></tr>
+    <tr><td><strong>"E os socorros que o CCO registrou?"</strong></td><td>Estão todos no sistema, na tela de Eventos. Só não contam como quebra os que não geraram ficha A, S ou T, exatamente como a Transppass orientou. Das 625 fichas, 584 casam com um registro do CCO do mesmo carro e dia.</td></tr>
+    <tr><td><strong>"Por que OS liberadas está em 0 em setembro?"</strong></td><td>As 10.399 fichas de manutenção de setembro estão no sistema como fichas importadas da Transppass: aparecem na ficha de cada carro ("Fichas de manutenção") e na Daily. O cartão "OS liberadas" conta as ordens de serviço abertas e fechadas pelo próprio fluxo do sistema (evento, triagem, oficina, liberação), que começa a contar quando a garagem passar a operar por ele.</td></tr>
+    <tr><td><strong>"Dá para ver por carro?"</strong></td><td>Sim. Em <span class="path">Painel da frota</span>, cada carro tem MKBF, km, retornos e OS dos últimos 30 dias; a ficha completa do carro mostra o histórico.</td></tr>
+  </tbody>
+</table>
+
+<h2 style="margin-top:7mm"><span class="n">6</span>Cinco minutos antes</h2>
+<ul class="check">
+  <li>Simulação <strong>desligada</strong> (pastilha neutra no cabeçalho; gráfico "MKBF por mês" só com setembro).</li>
+  <li>Aba aberta em <span class="mono">https://transppass.online/indicadores?mes=2026-09</span>, já com <strong>Setembro de 2026</strong> e <strong>3.888 km</strong> na tela.</li>
+  <li>Segunda aba no <span class="path">Dashboard</span>, rolada até <span class="kw">MKBF por mês</span>, para reforçar.</li>
+  <li>Frase da seção 4 na ponta da língua; a tabela da seção 5 ao alcance.</li>
+  <li>Não ligar a Simulação durante a reunião. Se quiser mostrar a garagem em movimento, deixe para o fim e avise que é demonstração.</li>
+</ul>
+<p class="small muted" style="margin-top:6mm">Siglas: MKBF (quilômetros médios entre falhas), CCO (centro de controle operacional), OS (ordem de serviço), PCM (planejamento e controle da manutenção). Fontes dos dados: VBM0208 (frota), VBM0406 (km diário), VBM0503 (fichas de manutenção), CCOweb (ocorrências), conforme a carta da Transppass de 28/10/2026.</p>
+</section>
+
+</body>
+</html>
