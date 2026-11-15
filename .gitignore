@@ -26,3 +26,4 @@ deploy/*.sql.gz
 deploy/*.dump
 apps/api/prisma/data-full/
 docs/guia-mkbf/shots/
+docs/guia-apresentacao/shots/
