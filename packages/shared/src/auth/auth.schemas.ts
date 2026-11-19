@@ -59,6 +59,10 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
 export const TOAST_POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const;
 export type ToastPosition = (typeof TOAST_POSITIONS)[number];
 
+/** Onde os painéis de edição abrem: encostados à direita ou como janela central. */
+export const PANEL_LAYOUTS = ['side', 'center'] as const;
+export type PanelLayout = (typeof PANEL_LAYOUTS)[number];
+
 /** Máximo de atalhos no cabeçalho. */
 export const MAX_SHORTCUTS = 4;
 
@@ -71,6 +75,7 @@ export const userPreferencesSchema = z.object({
   shortcuts: z.array(z.string().min(1).max(40)).max(MAX_SHORTCUTS).default([]),
   notifications: z.boolean().default(true),
   toastPosition: z.enum(TOAST_POSITIONS).default('bottom-right'),
+  panelLayout: z.enum(PANEL_LAYOUTS).default('side'),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

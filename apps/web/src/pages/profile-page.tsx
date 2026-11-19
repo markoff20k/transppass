@@ -11,6 +11,7 @@ import {
   LogOut,
   Mail,
   MessageSquare,
+  PanelRight,
   Moon,
   Settings2,
   Shield,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 import {
   ACCOUNT_ACTIVITY_CATEGORIES,
+  PANEL_LAYOUTS,
   TOAST_POSITIONS,
   USER_ROLE_LABELS,
   changePasswordSchema,
@@ -333,6 +335,29 @@ function PreferencesCard({ user, onSaved }: { user: PublicUser; onSaved: (u: Pub
             >
               <span className="pos-pick__screen" aria-hidden><i /></span>
               <span className="pos-pick__label">{t.profile.positions[pos]}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="pref pref--block">
+        <span className="pref__icon"><PanelRight size={16} /></span>
+        <div className="pref__text">
+          <b>{t.profile.panelLayout}</b>
+          <span>{t.profile.panelLayoutHint}</span>
+        </div>
+        <div className="pref__positions" role="radiogroup" aria-label={t.profile.panelLayout}>
+          {PANEL_LAYOUTS.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              role="radio"
+              aria-checked={prefs.panelLayout === mode}
+              className={`pos-pick pos-pick--${mode}${prefs.panelLayout === mode ? ' is-active' : ''}`}
+              disabled={save.isPending}
+              onClick={() => save.mutate({ panelLayout: mode })}
+            >
+              <span className="pos-pick__screen" aria-hidden><i /></span>
+              <span className="pos-pick__label">{t.profile.layouts[mode]}</span>
             </button>
           ))}
         </div>

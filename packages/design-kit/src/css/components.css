@@ -1032,6 +1032,79 @@
   flex: none;
 }
 
+/* Ferramentas do cabeçalho do painel: posição (lateral/central) e fechar. */
+.tp-drawer__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--tp-space-2);
+  flex: none;
+  margin: -2px -4px 0 0;
+}
+
+.tp-drawer__layout {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--tp-radius-md);
+  background: var(--color-surface-sunken);
+  border: var(--tp-border-thin) solid var(--color-border-subtle);
+}
+
+.tp-drawer__layout-btn {
+  width: 28px;
+  height: 26px;
+  min-height: 0;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--tp-duration-fast) var(--tp-ease),
+    color var(--tp-duration-fast) var(--tp-ease),
+    box-shadow var(--tp-duration-fast) var(--tp-ease);
+}
+
+.tp-drawer__layout-btn:hover { color: var(--color-text); }
+.tp-drawer__layout-btn.is-active {
+  background: var(--color-surface-raised);
+  color: var(--color-brand-text);
+  box-shadow: var(--shadow-card);
+}
+.tp-drawer__layout-btn:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 1px; }
+
+/* Modo central: o mesmo painel vira uma janela no meio da tela. */
+.tp-drawer-scrim--center { backdrop-filter: blur(3px); }
+
+.tp-drawer--center {
+  top: 50%;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  width: min(720px, calc(100vw - 48px));
+  max-height: min(calc(100vh - 48px), 920px);
+  border: var(--tp-border-thin) solid var(--color-card-border);
+  border-radius: var(--tp-radius-xl);
+  overflow: hidden;
+  animation: tp-drawer-center-in var(--tp-duration-slow) var(--tp-ease);
+}
+
+.tp-drawer--center.tp-drawer--wide { width: min(920px, calc(100vw - 48px)); }
+.tp-drawer--center .tp-drawer__head { padding: var(--tp-space-5) var(--tp-space-6) var(--tp-space-4); }
+.tp-drawer--center .tp-drawer__body { min-height: 0; padding: var(--tp-space-5) var(--tp-space-6); }
+.tp-drawer--center .tp-drawer__foot { padding: var(--tp-space-4) var(--tp-space-6); }
+
+@keyframes tp-drawer-center-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(10px) scale(0.985);
+  }
+}
+
 /* Bloco de leitura dentro do painel: rótulo em cima, valor embaixo. */
 .tp-facts {
   display: grid;
@@ -1085,6 +1158,23 @@
     border-left: none;
   }
 
+  /* No celular o painel já ocupa a tela toda: a escolha não se aplica. */
+  .tp-drawer__layout { display: none; }
+
+  .tp-drawer--center,
+  .tp-drawer--center.tp-drawer--wide {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: none;
+    width: 100vw;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    animation: tp-slide-in var(--tp-duration-slow) var(--tp-ease);
+  }
+
   .tp-drawer__foot {
     flex-direction: column-reverse;
     align-items: stretch;
@@ -1097,6 +1187,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tp-drawer,
+  .tp-drawer--center,
   .tp-drawer-scrim {
     animation: none;
   }

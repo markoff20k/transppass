@@ -3649,6 +3649,10 @@ a.bus-card:hover { transform: translateY(-1px); }
 .pos-pick--top-right .pos-pick__screen i { top: 5px; right: 6px; }
 .pos-pick--bottom-left .pos-pick__screen i { bottom: 5px; left: 6px; }
 .pos-pick--bottom-right .pos-pick__screen i { bottom: 5px; right: 6px; }
+/* Ilustração dos painéis de edição: faixa à direita ou janela no meio. */
+.pos-pick--side .pos-pick__screen i, .pos-pick--center .pos-pick__screen i { border-radius: 2px; }
+.pos-pick--side .pos-pick__screen i { top: 4px; right: 4px; bottom: 4px; width: 34%; height: auto; }
+.pos-pick--center .pos-pick__screen i { top: 7px; bottom: 7px; left: 26%; right: 26%; width: auto; height: auto; }
 .pos-pick.is-active .pos-pick__screen { background: color-mix(in srgb, var(--color-brand) 14%, var(--color-surface)); border-color: color-mix(in srgb, var(--color-brand) 30%, transparent); }
 
 /* Trilha de atividades agrupada por dia. */
