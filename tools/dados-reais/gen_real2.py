@@ -12,7 +12,7 @@ from xlsx_dump import read_sheets
 C = 'C:/Users/jefer/AppData/Local/Temp/claude/c--Users-jefer-transppass-pcm/447116dd-98b7-4131-b571-e2bd32975d88/scratchpad/cliente/'
 OUT = 'C:/Users/jefer/transppass-pcm/apps/api/prisma/data/'
 EPOCH = datetime.datetime(1899, 12, 30)
-WINDOW = ('2026-08', '2026-09')  # abrangência informada pelo cliente (item 9 da carta)
+WINDOW = tuple(f'2026-{m:02d}' for m in range(1, 12))  # remessa de 19/11/2026: janeiro a novembro (novembro até o dia 19)
 def num(v, default=None):
     try: return float(str(v).replace(',', '.'))
     except (TypeError, ValueError): return default
@@ -66,7 +66,7 @@ col = lambda r, n: ci(r, h.index(n))
 records = {}
 skipped = collections.Counter()
 for r in rows[1:]:
-    d = xl_dt(col(r, 'DATA'))
+    d = xl_dt(col(r, 'DATA')) or br_date(col(r, 'DATA'))
     if not d: skipped['sem data'] += 1; continue
     hour = num(col(r, 'HORA'), 0) or 0
     at = d + datetime.timedelta(days=hour if hour < 1 else 0)
@@ -124,7 +124,7 @@ rows = read_sheets(C + 'vbm0404.xlsx')['VBE0404']; h = [x.strip() for x in rows[
 col = lambda r, n: (r[h.index(n)].strip() if h.index(n) < len(r) else '')
 mats_ok = mats_orphan = 0; orphan_rows = []
 for r in rows[1:]:
-    d = xl_dt(col(r, 'DATA'))
+    d = xl_dt(col(r, 'DATA')) or br_date(col(r, 'DATA'))
     mat = col(r, 'MATERIAL')
     mm = re.match(r'(.*?)\s{2,}(\d{6})\s*$', mat) or re.match(r'(.*)\s(\d{6})$', mat)
     desc, mcode = (mm.group(1).strip(), mm.group(2)) if mm else (mat.strip(), None)
@@ -152,7 +152,7 @@ pool = collections.defaultdict(list)
 for e in cco:
     if e['group'] in ('SOS', 'RAM', 'TRO'): pool[(e['code'], e['at'][:10])].append(e)
 used = set(); events = []
-# Só a abrangência combinada (agosto e setembro): o VBM0503 traz algumas fichas de outubro, que ficariam
+# Só a abrangência combinada (WINDOW): fichas fora dela ficariam
 # sozinhas num mês sem km real e distorceriam o MKBF do mês corrente.
 fichas_ast = sorted((x for x in records.values() if x['kind'] in PAIR and x['openedAt'][:7] in WINDOW), key=lambda x: x['openedAt'])
 skipped_window = sum(1 for x in records.values() if x['kind'] in PAIR and x['openedAt'][:7] not in WINDOW)
@@ -189,7 +189,7 @@ rows = read_sheets(C + 'viagens.xlsx')['1']; h = [x.strip() for x in rows[0]]
 col = lambda r, n: (r[h.index(n)].strip() if h.index(n) < len(r) else '')
 trips = []
 for r in rows[1:]:
-    d = xl_dt(col(r, 'Data_ope'))
+    d = xl_dt(col(r, 'Data_ope')) or br_date(col(r, 'Data_ope'))
     if not d or not col(r, 'Linha'): continue
     prog, ops, moni = int(num(col(r, 'V_prog'), 0) or 0), int(num(col(r, 'VPOpe'), 0) or 0), int(num(col(r, 'V_moni'), 0) or 0)
     trips.append({'date': d.date().isoformat(), 'line': col(r, 'Linha'), 'direction': col(r, 'Sentido') or '', 'plannedReserve': int(num(col(r, 'VPRes'), 0) or 0), 'plannedOps': ops, 'planned': prog, 'monitored': moni, 'lost': max(0, ops - moni)})
@@ -204,7 +204,7 @@ rows = read_sheets(C + 'vbr0306.xlsx')['Sheet1']; h = [x.strip() for x in rows[0
 col = lambda r, n: (r[h.index(n)].strip() if h.index(n) < len(r) else '')
 lines = []; skip = collections.Counter()
 for r in rows[1:]:
-    d = xl_dt(col(r, 'DATA')); car = pad3(col(r, 'P_Base'))
+    d = xl_dt(col(r, 'DATA')) or br_date(col(r, 'DATA')); car = pad3(col(r, 'P_Base'))
     if not d: skip['sem data'] += 1; continue
     if car not in frota: skip['carro fora da frota'] += 1; continue
     reg = col(r, 'REGISTRO')

@@ -188,12 +188,15 @@ export async function importBases(prisma: PrismaClient): Promise<void> {
         ccoPrefix: v.ccoPrefix, chassisCode: v.chassisCode, vin: v.vin, renavam: v.renavam, bodyMaker: v.bodyMaker, bodyYear: v.bodyYear, fabricationYear: v.fabricationYear,
         hasAc: v.hasAc, seats: v.seats, acquiredAt: v.acquiredAt ? new Date(v.acquiredAt) : null, isImported: true, isActive: true,
       };
-      await prisma.vehicle.upsert({ where: { code: v.code }, update: data, create: { code: v.code, ...data, currentKm: v.currentKm } });
+      // O KM CHASSI do cadastro é a âncora do hodômetro (carta, 1.1.6): numa reimportação ele também avança.
+      await prisma.vehicle.upsert({ where: { code: v.code }, update: v.currentKm > 0 ? { ...data, currentKm: v.currentKm } : data, create: { code: v.code, ...data, currentKm: v.currentKm } });
     }
     // Carros de exemplo saem do ar aqui; o seed de demonstração os apaga depois de limpar o movimento que os referencia.
     const removed = await prisma.vehicle.updateMany({ where: { isImported: false, isActive: true }, data: { isActive: false, status: 'OUT_OF_SERVICE' } });
+    // Carros importados antes e ausentes do cadastro novo (desligados ou com outro STATUS) saem de operação, sem apagar o histórico.
+    const gone = await prisma.vehicle.updateMany({ where: { isImported: true, isActive: true, code: { notIn: fleet.map((v) => v.code) } }, data: { isActive: false, status: 'OUT_OF_SERVICE' } });
     const support = fleet.filter((v) => (v.application ?? 'FROTA') !== 'FROTA').length;
-    console.log(`  ${fleet.length} carros da frota real (E8 ${fleet.filter((v) => v.lot === 'E8').length}, AR9 ${fleet.filter((v) => v.lot === 'AR9').length}; ${fleet.filter((v) => v.telemetry).length} com telemetria; ${support} de apoio: guincho e treinamento) · ${removed.count} carro(s) de exemplo desativado(s)`);
+    console.log(`  ${fleet.length} carros da frota real (E8 ${fleet.filter((v) => v.lot === 'E8').length}, AR9 ${fleet.filter((v) => v.lot === 'AR9').length}; ${fleet.filter((v) => v.telemetry).length} com telemetria; ${support} de apoio: guincho e treinamento) · ${removed.count} carro(s) de exemplo desativado(s) · ${gone.count} carro(s) fora do cadastro novo desativado(s)`);
   }
 
   // ---- Operadores -----------------------------------------------------------
@@ -545,6 +548,26 @@ export async function importRealMovement(prisma: PrismaClient): Promise<void> {
   }
   for (let i = 0; i < readings.length; i += 5000) await prisma.odometerReading.createMany({ data: readings.slice(i, i + 5000), skipDuplicates: true });
   const kmTotal = readings.reduce((s, r) => s + r.deltaKm, 0);
+  // Última leitura e projeção de km (mesma conta de OdometerService.refreshProjection, sobre as 30 leituras mais recentes):
+  // sem isto o carro ficaria com a projeção da carga anterior e o 'lido há N dias' errado até o job horário rodar.
+  const KM_DEGRADATION_DAYS = 2;
+  const now = new Date();
+  await prisma.kmProjection.deleteMany({ where: { vehicleId: { in: vehicles.map((v) => v.id) } } });
+  const projections: { vehicleId: string; avgDailyKm: number; projectedKm: number; projectedAt: Date; lastReadingAt: Date; isDegraded: boolean; degradedSince: Date | null; sampleDays: number }[] = [];
+  for (const v of vehicles) {
+    const mine = readings.filter((r) => r.vehicleId === v.id).slice(0, 30); // já estão da mais recente para a mais antiga
+    const latest = mine[0];
+    if (!latest) continue;
+    const oldest = mine[mine.length - 1]!;
+    const spanDays = Math.max(1, (latest.readAt.getTime() - oldest.readAt.getTime()) / DAY);
+    const avgDailyKm = mine.length > 1 ? Math.max(0, (latest.adjustedKm - oldest.adjustedKm) / spanDays) : 0;
+    const daysSince = (now.getTime() - latest.readAt.getTime()) / DAY;
+    const isDegraded = daysSince > KM_DEGRADATION_DAYS;
+    projections.push({ vehicleId: v.id, avgDailyKm: Number(avgDailyKm.toFixed(2)), projectedKm: Math.round(latest.adjustedKm + avgDailyKm * Math.max(0, daysSince)), projectedAt: now, lastReadingAt: latest.readAt, isDegraded, degradedSince: isDegraded ? now : null, sampleDays: Math.round(spanDays) });
+    await prisma.vehicle.update({ where: { id: v.id }, data: { lastReadingAt: latest.readAt } });
+  }
+  await prisma.kmProjection.createMany({ data: projections });
+  console.log(`  ${projections.length} projeções de km refeitas (${projections.filter((p) => p.isDegraded).length} degradadas: última leitura há mais de ${KM_DEGRADATION_DAYS} dias)`);
   console.log(`  ${readings.length} leituras reais de km (${allDates[0]} a ${lastRealDate}; ${kmTotal.toLocaleString('pt-BR')} km)`);
 
   // ---- Quebras e ocorrências (fichas A/S/T da "3-VBM0503" casadas com a "3-CCOweb") ----
@@ -631,6 +654,10 @@ export async function importRealMovement(prisma: PrismaClient): Promise<void> {
     for (let i = 0; i < rowsLd.length; i += 5000) await prisma.vehicleLineDay.createMany({ data: rowsLd.slice(i, i + 5000) });
     console.log(`  ${rowsLd.length} carro-linha-dia com km em linha e ocioso`);
   }
+
+  // Os snapshots mensais da frota foram calculados sobre o movimento antigo; apagados, a série é refeita na hora com a base nova.
+  const snapshots = await prisma.metricSnapshot.deleteMany({ where: { scope: 'FLEET' } });
+  if (snapshots.count) console.log(`  ${snapshots.count} snapshot(s) mensal(is) da frota descartado(s) para recálculo`);
 }
 
 if (require.main === module) {
