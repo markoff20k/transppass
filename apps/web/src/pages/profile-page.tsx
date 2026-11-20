@@ -479,7 +479,7 @@ function ActivityCard() {
                   <span className="activity__icon">{a.action === 'auth.login' ? <LogIn size={15} /> : a.action === 'auth.logout' ? <LogOut size={15} /> : CATEGORY_ICON[a.category]}</span>
                   <div className="activity__text">
                     <b>{actionLabel(a, t.profile.actions)}</b>
-                    <span>{[a.ip ? `IP ${a.ip}` : null, a.userAgent ? shortAgent(a.userAgent) : null].filter(Boolean).join(' • ') || '—'}</span>
+                    <span>{activityDetail(a, t.profile.entities)}</span>
                   </div>
                   <div className="activity__meta">
                     <span className={`tp-badge activity__cat activity__cat--${a.category}`}>{t.profile.categories[a.category]}</span>
@@ -500,6 +500,15 @@ function actionLabel(a: AccountActivity, labels: Record<string, string>): string
   if (known) return known;
   const [entity, verb] = a.action.split('.');
   return `${entity ?? a.entity}${verb ? ` · ${verb.replace(/-/g, ' ')}` : ''}`;
+}
+
+/** Linha de apoio: o registro tocado (OS, carro, evento…) com seu código, e de onde veio a ação quando a trilha guardou IP e navegador. */
+function activityDetail(a: AccountActivity, entities: Record<string, string>): string {
+  const label = entities[a.entity] ?? a.entity;
+  // Código que já começa pelo nome da entidade ("OS-2026-0418") dispensa o rótulo, senão fica "OS OS-2026…".
+  const subject = a.category === 'system' ? (a.detail && a.detail.toLowerCase().startsWith(label.toLowerCase()) ? a.detail : [label, a.detail].filter(Boolean).join(' ')) : a.detail;
+  const origin = [a.ip ? `IP ${a.ip}` : null, a.userAgent ? shortAgent(a.userAgent) : null].filter(Boolean).join(' • ');
+  return [subject, origin].filter(Boolean).join(' • ') || '—';
 }
 
 /** "Chrome 130 · Windows" a partir do user agent, sem a sopa de letras inteira. */

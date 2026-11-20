@@ -118,6 +118,8 @@ export interface AccountActivity {
   category: AccountActivityCategory;
   entity: string;
   entityId: string | null;
+  /** Referência legível do registro (código da OS, prefixo do carro, nome…) e o motivo informado, quando houver. */
+  detail: string | null;
   ip: string | null;
   userAgent: string | null;
   createdAt: string;

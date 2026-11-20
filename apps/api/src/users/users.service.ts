@@ -191,7 +191,7 @@ export class UsersService {
       where: { OR: [{ actorId: id }, { entity: 'User', entityId: id }] },
       orderBy: { createdAt: 'desc' },
       take: query.category ? 400 : query.limit,
-      select: { id: true, action: true, entity: true, entityId: true, ip: true, userAgent: true, createdAt: true },
+      select: { id: true, action: true, entity: true, entityId: true, after: true, reason: true, ip: true, userAgent: true, createdAt: true },
     });
     const mapped = rows.map((r) => ({
       id: r.id,
@@ -199,6 +199,7 @@ export class UsersService {
       category: activityCategory(r.action),
       entity: r.entity,
       entityId: r.entityId,
+      detail: activityDetail(r.after, r.reason),
       ip: r.ip,
       userAgent: r.userAgent,
       createdAt: r.createdAt.toISOString(),
@@ -257,6 +258,14 @@ export class UsersService {
 }
 
 /** Categoria de cada ação da trilha, para a aba de atividades da conta. */
+/** O que identifica o registro para quem lê a trilha: código, prefixo ou nome gravados em `after`, mais o motivo. */
+export function activityDetail(after: unknown, reason: string | null): string | null {
+  const a = (after && typeof after === 'object' ? after : {}) as Record<string, unknown>;
+  const pick = ['code', 'vehicleCode', 'name', 'title', 'version', 'description'].map((k) => a[k]).find((v) => typeof v === 'string' && v.trim()) as string | undefined;
+  const ref = pick ? pick.trim().slice(0, 60) : null;
+  return [ref, reason?.trim() || null].filter(Boolean).join(' · ') || null;
+}
+
 export function activityCategory(action: string): AccountActivityCategory {
   if (action.startsWith('auth.') || action === 'user.password' || action === 'user.first-access' || action === 'user.password-reset' || action === 'user.reset-link') return 'security';
   if (action === 'user.profile') return 'profile';
