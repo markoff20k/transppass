@@ -1,8 +1,8 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarOff, Fuel, Minus, RefreshCw, Search, Zap } from 'lucide-react';
-import { CONSUMPTION_FLAG_LABELS, ConsumptionFlag, VehicleTechnology, type ConsumptionFleet, type ConsumptionVehicleRow } from '@app/shared';
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarOff, ChevronDown, Fuel, Minus, RefreshCw, Search, Zap } from 'lucide-react';
+import { CONSUMPTION_FLAG_LABELS, ConsumptionFlag, VehicleTechnology, type ConsumptionFleet, type ConsumptionQualityCar, type ConsumptionVehicleRow } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate, formatNumber } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
@@ -33,6 +33,26 @@ import { ENERGY_FLEET_LABEL, ENERGY_LABEL, WEEKLY_FROM_DAYS, badgeToneClass, buc
  */
 
 type FlagFilter = 'ALL' | 'OFF' | ConsumptionFlag;
+
+/** Lista aberta de um aviso da faixa de qualidade: um carro por linha, com os dias (os mais recentes primeiro). */
+function QualityDetail({ lead, cars, href }: { lead: string; cars: ConsumptionQualityCar[]; href: (id: string) => string }) {
+  const day = (d: string) => formatDate(`${d}T12:00:00`).slice(0, 5);
+  return (
+    <div className="cons-quality__detail">
+      <p className="cons-quality__lead">{lead}</p>
+      <ul className="cons-quality__list">
+        {cars.map((c) => (
+          <li key={c.vehicleId} className="cons-quality__row">
+            <Link to={href(c.vehicleId)} className="cons-quality__car">{c.code}</Link>
+            <span className="tp-mono tp-muted">{c.plate}</span>
+            <span className="cons-quality__days">{c.days} {c.days === 1 ? 'dia' : 'dias'}</span>
+            <span className="cons-quality__dates">{c.dates.map(day).join(', ')}{c.days > c.dates.length ? ` e mais ${c.days - c.dates.length}` : ''}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /** Um período calculado vale 5 min: meses fechados não mudam e o corrente só ganha o dia de hoje. */
 const CONSUMPTION_STALE_MS = 5 * 60_000;
@@ -129,6 +149,8 @@ export function ConsumptionPage() {
 
   const [search, setSearch] = useState('');
   const [flag, setFlag] = useState<FlagFilter>('ALL');
+  // Qual aviso da faixa de qualidade está aberto com a lista de carros e dias.
+  const [qualityOpen, setQualityOpen] = useState<'kmNoFuel' | 'fuelNoKm' | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'deviation', dir: 'desc' });
   const term = useDeferredValue(search.trim().toLowerCase());
 
@@ -304,9 +326,31 @@ export function ConsumptionPage() {
                   ): os dias do trecho ficam fora da conta
                 </span>
               )}
-              {data.quality.daysKmWithoutFuel > 0 && <span className="cons-quality__item">{formatNumber(data.quality.daysKmWithoutFuel)} carro-dias rodados sem registro de consumo</span>}
-              {data.quality.daysFuelWithoutKm > 0 && <span className="cons-quality__item">{formatNumber(data.quality.daysFuelWithoutKm)} registros de consumo em dias sem km</span>}
+              {data.quality.daysKmWithoutFuel > 0 && (
+                <button type="button" className={`cons-quality__item cons-quality__toggle${qualityOpen === 'kmNoFuel' ? ' is-open' : ''}`} aria-expanded={qualityOpen === 'kmNoFuel'} onClick={() => setQualityOpen((o) => (o === 'kmNoFuel' ? null : 'kmNoFuel'))}>
+                  {formatNumber(data.quality.daysKmWithoutFuel)} carro-dias rodados sem registro de consumo <ChevronDown size={13} aria-hidden />
+                </button>
+              )}
+              {data.quality.daysFuelWithoutKm > 0 && (
+                <button type="button" className={`cons-quality__item cons-quality__toggle${qualityOpen === 'fuelNoKm' ? ' is-open' : ''}`} aria-expanded={qualityOpen === 'fuelNoKm'} onClick={() => setQualityOpen((o) => (o === 'fuelNoKm' ? null : 'fuelNoKm'))}>
+                  {formatNumber(data.quality.daysFuelWithoutKm)} {data.quality.daysFuelWithoutKm === 1 ? 'registro' : 'registros'} de consumo em {data.quality.daysFuelWithoutKm === 1 ? 'dia' : 'dias'} sem km <ChevronDown size={13} aria-hidden />
+                </button>
+              )}
               {noData > 0 && <button type="button" className="cons-quality__item cons-quality__link" onClick={() => setFlag(ConsumptionFlag.NO_DATA)}>{noData} carros rodaram o período sem registro</button>}
+              {qualityOpen === 'kmNoFuel' && (
+                <QualityDetail
+                  lead="Rodou nesses dias e a planilha não tem abastecimento do carro. O km conta no período (o carro abastece em outros dias e o combustível cobre a rodagem), só o rendimento do dia fica vazio."
+                  cars={data.quality.kmWithoutFuel}
+                  href={carHref}
+                />
+              )}
+              {qualityOpen === 'fuelNoKm' && (
+                <QualityDetail
+                  lead="Abasteceu nesses dias e não há leitura de km do carro. O consumo conta no período; vale conferir a leitura de km do carro nesses dias."
+                  cars={data.quality.fuelWithoutKm}
+                  href={carHref}
+                />
+              )}
             </div>
           )}
 

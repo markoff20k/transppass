@@ -252,7 +252,21 @@ export interface ConsumptionQuality {
   missingDates: string[];
   /** Carros com odômetro parado em algum trecho do período. */
   stalledVehicles: { vehicleId: string; code: string; from: string; to: string }[];
+  /** Por carro, os dias em que rodou sem registro de consumo (lacunas da planilha e odômetro parado já fora). */
+  kmWithoutFuel: ConsumptionQualityCar[];
+  /** Por carro, os dias com registro de consumo e sem km. */
+  fuelWithoutKm: ConsumptionQualityCar[];
 }
+
+/** Um carro na lista de qualidade: quantos dias e quais (os mais recentes, até CONSUMPTION_QUALITY_MAX_DATES). */
+export interface ConsumptionQualityCar {
+  vehicleId: string;
+  code: string;
+  plate: string;
+  days: number;
+  dates: string[];
+}
+export const CONSUMPTION_QUALITY_MAX_DATES = 31;
 
 export interface ConsumptionFleet {
   energy: VehicleTechnology;

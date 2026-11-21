@@ -1,5 +1,6 @@
 import {
   CONSUMPTION_MIN_DAYS,
+  CONSUMPTION_QUALITY_MAX_DATES,
   CONSUMPTION_STALL_MAX_GAP_DAYS,
   CONSUMPTION_STALL_MAX_KM,
   CONSUMPTION_STALL_MIN_AMOUNT,
@@ -11,6 +12,7 @@ import {
   type ConsumptionDayPoint,
   type ConsumptionMonthPoint,
   type ConsumptionQuality,
+  type ConsumptionQualityCar,
   type ConsumptionStall,
   type ConsumptionTechGroup,
   type ConsumptionTotals,
@@ -317,18 +319,33 @@ export function compareVehicles(
   let lastKmDate: string | null = null;
   let daysKmWithoutFuel = 0;
   let daysFuelWithoutKm = 0;
+  const kmNoFuelByCar = new Map<string, string[]>();
+  const fuelNoKmByCar = new Map<string, string[]>();
+  const add = (map: Map<string, string[]>, d: CarDay) => map.set(d.vehicleId, [...(map.get(d.vehicleId) ?? []), d.date]);
   for (const d of list) {
     if (d.amount !== null && d.amount > 0) {
       if (!lastDate || d.date > lastDate) lastDate = d.date;
-      if (d.km <= 0) daysFuelWithoutKm += 1;
-    } else if (d.km > 0) daysKmWithoutFuel += 1;
+      if (d.km <= 0) {
+        daysFuelWithoutKm += 1;
+        add(fuelNoKmByCar, d);
+      }
+    } else if (d.km > 0) {
+      daysKmWithoutFuel += 1;
+      add(kmNoFuelByCar, d);
+    }
     if (d.km > 0 && (!lastKmDate || d.date > lastKmDate)) lastKmDate = d.date;
   }
+  // Lista por carro, do que mais dias tem para o que menos; as datas mais recentes primeiro, com teto.
+  const qualityCars = (map: Map<string, string[]>): ConsumptionQualityCar[] =>
+    [...map.entries()]
+      .filter(([id]) => infoById.has(id))
+      .map(([id, dates]) => ({ vehicleId: id, code: infoById.get(id)!.code, plate: infoById.get(id)!.plate, days: dates.length, dates: [...dates].sort().reverse().slice(0, CONSUMPTION_QUALITY_MAX_DATES) }))
+      .sort((a, b) => b.days - a.days || a.code.localeCompare(b.code));
   const vehiclesWithoutData = rows.filter((r) => r.flag === ConsumptionFlag.NO_DATA && infoById.has(r.vehicleId)).length;
   const stalledVehicles = [...stalls.entries()]
     .filter(([id, s]) => infoById.has(id) && s.length > 0)
     .map(([id, s]) => ({ vehicleId: id, code: infoById.get(id)!.code, from: s[0]!.from, to: s[s.length - 1]!.to }))
     .sort((a, b) => a.code.localeCompare(b.code));
 
-  return { rows, byTech, quality: { vehiclesWithoutData, daysKmWithoutFuel, daysFuelWithoutKm, lastDate, lastKmDate, missingDates: [], stalledVehicles } };
+  return { rows, byTech, quality: { vehiclesWithoutData, daysKmWithoutFuel, daysFuelWithoutKm, lastDate, lastKmDate, missingDates: [], stalledVehicles, kmWithoutFuel: qualityCars(kmNoFuelByCar), fuelWithoutKm: qualityCars(fuelNoKmByCar) } };
 }
