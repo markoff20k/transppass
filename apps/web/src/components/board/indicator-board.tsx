@@ -83,46 +83,47 @@ export function IndicatorBoard({ board, canEdit, onOpenDay, onSaveTarget }: Prop
   const days = board.days;
   const daysInMonth = new Date(Number(board.month.slice(0, 4)), Number(board.month.slice(5, 7)), 0).getDate();
   const columns = Array.from({ length: daysInMonth }, (_, i) => days[i] ?? null);
+  const weekendOf = (d: BoardDay | null) => Boolean(d && (d.weekday === 0 || d.weekday === 6));
+  const [hoverCol, setHoverCol] = useState<number | null>(null);
 
   return (
     <div className="board">
       <div className="board__scroll">
-        <table className="board__table">
+        <table className="board__table" onMouseLeave={() => setHoverCol(null)}>
+          <colgroup>
+            <col className="board__col-label" />
+            <col className="board__col-meta" />
+            <col className="board__col-resp" />
+            {columns.map((_, i) => <col key={i} />)}
+            <col className="board__col-month" />
+          </colgroup>
           <thead>
-            <tr className="board__marks">
-              <th className="board__sticky" colSpan={4} aria-hidden />
-              {columns.map((d, i) => (
-                <th key={i} className={`board__mark${d && (d.weekday === 0 || d.weekday === 6) ? ' is-weekend' : ''}`} aria-hidden>
-                  {d ? WEEKDAY_MARK[d.weekday] : ''}
-                </th>
-              ))}
-              <th aria-hidden />
-            </tr>
             <tr>
-              <th className="board__sticky board__indicator-head">Indicador</th>
-              <th className="board__sticky board__un">Un</th>
-              <th className="board__sticky board__meta">Meta</th>
-              <th className="board__sticky board__resp">Resp.</th>
+              <th scope="col" className="board__sticky board__h board__h--label">Indicador</th>
+              <th scope="col" className="board__sticky board__h board__h--meta">Meta</th>
+              <th scope="col" className="board__sticky board__h board__h--resp">Resp.</th>
               {columns.map((d, i) => (
-                <th key={i} scope="col" className={`board__day${d && (d.weekday === 0 || d.weekday === 6) ? ' is-weekend' : ''}${d?.holiday ? ' is-holiday' : ''}`} title={d?.holiday ?? undefined}>
-                  {i + 1}
+                <th key={i} scope="col" className={`board__h board__h--day${weekendOf(d) ? ' is-weekend' : ''}${hoverCol === i ? ' is-hover' : ''}`} title={d?.holiday ?? undefined}>
+                  <span className="board__wd">{d ? WEEKDAY_MARK[d.weekday] : ''}</span>
+                  <span className={`board__dn${d?.holiday ? ' is-holiday' : ''}`}>{i + 1}</span>
                 </th>
               ))}
-              <th scope="col" className="board__month">Mês</th>
+              <th scope="col" className="board__h board__h--month">Mês</th>
             </tr>
           </thead>
           <tbody>
             {DAILY_ROWS.map((key) => (
               <BoardRow key={key} indicator={key} board={board} canEdit={canEdit} onSaveTarget={onSaveTarget}>
                 {columns.map((d, i) => {
-                  if (!d || d.empty) return <td key={i} className="board__cell is-empty" />;
+                  const weekend = weekendOf(d);
+                  if (!d || d.empty) return <td key={i} className={`board__c is-empty${weekend ? ' is-weekend' : ''}`} onMouseEnter={() => setHoverCol(i)} />;
                   const v = dayValue(key, d);
                   const status = targetStatus(key, v, board.targets[key].target);
                   const note = key === BoardIndicator.FLEET_COMPLIANCE ? d.fleet.note : null;
                   return (
-                    <td key={i} className={`board__cell is-${v === null ? 'blank' : status}${note ? ` is-${note}` : ''}${d.weekday === 0 || d.weekday === 6 ? ' is-weekend' : ''}`}>
-                      <button type="button" className="board__value" title={cellTitle(key, d)} onClick={() => onOpenDay(d.date)}>
-                        {v === null ? (note ? '·' : '') : shortValue(key, v)}
+                    <td key={i} className={`board__c is-${v === null ? 'blank' : status}${note ? ' is-note' : ''}${weekend ? ' is-weekend' : ''}${hoverCol === i ? ' is-hover' : ''}`} onMouseEnter={() => setHoverCol(i)}>
+                      <button type="button" className="board__v" title={cellTitle(key, d)} onClick={() => onOpenDay(d.date)}>
+                        {v === null ? (note ? '–' : '') : shortValue(key, v)}
                       </button>
                     </td>
                   );
@@ -131,8 +132,8 @@ export function IndicatorBoard({ board, canEdit, onOpenDay, onSaveTarget }: Prop
             ))}
             {MONTHLY_ROWS.map((key) => (
               <BoardRow key={key} indicator={key} board={board} canEdit={canEdit} onSaveTarget={onSaveTarget} monthlyOnly>
-                <td className="board__cell board__cell--span is-monthly" colSpan={daysInMonth}>
-                  <span className="tp-muted">leitura mensal, da planilha de abastecimento</span>
+                <td className="board__c board__c--span" colSpan={daysInMonth}>
+                  <span>leitura mensal, da planilha de abastecimento</span>
                 </td>
               </BoardRow>
             ))}
@@ -142,9 +143,9 @@ export function IndicatorBoard({ board, canEdit, onOpenDay, onSaveTarget }: Prop
       <div className="board__legend">
         <span><i className="board__dot is-good" /> dentro da meta</span>
         <span><i className="board__dot is-bad" /> abaixo da meta</span>
-        <span><i className="board__dot is-none" /> acompanhamento (sem meta)</span>
-        <span><i className="board__dot is-note" /> dia sem percentual: tabela especial ou planilha incompleta</span>
-        <span>S/D sábado e domingo · feriado com ponto no número</span>
+        <span><i className="board__dot" /> sem meta definida</span>
+        <span><i className="board__dot is-note" /> dia sem percentual (tabela especial ou planilha incompleta)</span>
+        <span>S/D fim de semana · ponto laranja = feriado</span>
       </div>
     </div>
   );
@@ -156,17 +157,17 @@ function BoardRow({ indicator, board, canEdit, onSaveTarget, monthlyOnly = false
   const total = monthValue(indicator, board);
   const status = targetStatus(indicator, total, target.target);
   return (
-    <tr className={monthlyOnly ? 'is-monthly' : undefined}>
-      <th scope="row" className="board__sticky board__indicator">
-        <span className="board__short">{info.short}</span>
-        <span className="board__label">{info.label}</span>
+    <tr className={`board__row${monthlyOnly ? ' is-monthly' : ''}`}>
+      <th scope="row" className="board__sticky board__label">
+        <span className="board__name">{info.label}</span>
+        <span className="board__tag">{info.short}</span>
+        {info.unit !== info.short && <span className="board__unit">{info.unit}</span>}
       </th>
-      <td className="board__sticky board__un tp-muted">{info.unit}</td>
       <TargetCell field="target" indicator={indicator} target={target} canEdit={canEdit} onSave={onSaveTarget} />
       <TargetCell field="responsible" indicator={indicator} target={target} canEdit={canEdit} onSave={onSaveTarget} />
       {children}
-      <td className={`board__cell board__month is-${total === null ? 'blank' : status}`} title={longValue(indicator, total)}>
-        <span className="board__value board__value--month">{total === null ? '—' : shortValue(indicator, total)}</span>
+      <td className={`board__c board__month is-${total === null ? 'blank' : status}`} title={longValue(indicator, total)}>
+        <span className="board__v board__v--month">{total === null ? '—' : info.unit === 'km' ? formatNumber(total) : info.unit === '%' ? total.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : shortValue(indicator, total)}</span>
       </td>
     </tr>
   );
@@ -179,6 +180,7 @@ function TargetCell({ field, indicator, target, canEdit, onSave }: { field: 'tar
   const [saving, setSaving] = useState(false);
   const unit = BOARD_INDICATORS[indicator].unit;
   const shown = field === 'target' ? (target.target === null ? '' : longValue(indicator, target.target)) : target.responsible ?? '';
+  const cls = `board__sticky board__${field === 'target' ? 'meta' : 'resp'}`;
 
   const start = () => {
     if (!canEdit) return;
@@ -203,11 +205,11 @@ function TargetCell({ field, indicator, target, canEdit, onSave }: { field: 'tar
 
   if (editing) {
     return (
-      <td className={`board__sticky board__${field === 'target' ? 'meta' : 'resp'} is-editing`}>
+      <td className={`${cls} is-editing`}>
         <input
           autoFocus
           className="tp-input board__input"
-          type={field === 'target' ? 'text' : 'text'}
+          type="text"
           inputMode={field === 'target' ? 'decimal' : 'text'}
           value={draft}
           placeholder={field === 'target' ? unit : 'quem responde'}
@@ -220,16 +222,13 @@ function TargetCell({ field, indicator, target, canEdit, onSave }: { field: 'tar
       </td>
     );
   }
+  if (!canEdit) return <td className={cls}>{shown ? <span className="board__set">{shown}</span> : <span className="board__unset">—</span>}</td>;
   return (
-    <td className={`board__sticky board__${field === 'target' ? 'meta' : 'resp'}${canEdit ? ' is-editable' : ''}`}>
-      {canEdit ? (
-        <button type="button" className="board__edit" onClick={start} title={field === 'target' ? 'Definir a meta' : 'Definir o responsável'}>
-          <span>{shown || <span className="tp-muted">—</span>}</span>
-          <Pencil size={11} aria-hidden />
-        </button>
-      ) : (
-        <span>{shown || <span className="tp-muted">—</span>}</span>
-      )}
+    <td className={`${cls} is-editable`}>
+      <button type="button" className="board__edit" onClick={start} title={field === 'target' ? 'Definir a meta' : 'Definir o responsável'}>
+        {shown ? <span className="board__set">{shown}</span> : <span className="board__define">definir</span>}
+        <Pencil size={11} aria-hidden />
+      </button>
     </td>
   );
 }

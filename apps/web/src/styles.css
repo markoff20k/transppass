@@ -4109,51 +4109,72 @@ a.bus-card:hover { transform: translateY(-1px); }
 .reading__title { font-size: var(--tp-text-sm); font-weight: var(--tp-weight-semibold); color: var(--color-text); }
 .reading__text { font-size: var(--tp-text-xs); line-height: 1.45; color: var(--color-text-secondary); }
 
-/* --- Quadro diário (components/board/indicator-board) ---------------------- */
+/* --- Quadro diário (components/board/indicator-board) ----------------------
+   O quadro branco da garagem, com a sobriedade de um relatório: nomes em caixa
+   normal, números tabulares, cor só onde há meta (vermelho abaixo, verde
+   dentro), fim de semana como faixa discreta, feriado com ponto. Cabe na
+   largura do cartão sem rolar; em telas estreitas rola por dentro. */
 .board { display: grid; gap: var(--tp-space-3); }
-.board__scroll { overflow-x: auto; border: var(--tp-border-thin) solid var(--color-card-border); border-radius: var(--tp-radius-md); }
-.board__table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: var(--tp-text-xs); }
-.board__table th, .board__table td { padding: 0; border-bottom: var(--tp-border-thin) solid var(--color-card-border); }
-.board__table thead th { position: sticky; top: 0; z-index: 2; background: var(--color-surface-sunken, var(--color-surface-hover)); color: var(--color-text-muted); font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.04em; text-transform: uppercase; }
-.board__marks th { height: 14px; border-bottom: 0; font-size: 9px; color: var(--color-text-muted); text-align: center; }
-.board__mark.is-weekend { color: var(--color-warning-text); }
-.board__day { width: 34px; min-width: 34px; height: 26px; text-align: center; }
-.board__day.is-weekend { background: color-mix(in srgb, var(--color-warning-soft) 60%, var(--color-surface-sunken, var(--color-surface-hover))); }
-.board__day.is-holiday::after { content: '•'; display: block; margin-top: -8px; color: var(--color-brand); line-height: 0.6; }
-.board__sticky { position: sticky; background: var(--color-surface); z-index: 3; }
-.board__table thead .board__sticky { z-index: 4; background: var(--color-surface-sunken, var(--color-surface-hover)); }
-.board__indicator-head, .board__indicator { left: 0; width: 200px; min-width: 200px; text-align: left; padding: 0 var(--tp-space-3); }
-.board__indicator { display: table-cell; height: 44px; vertical-align: middle; }
-.board__short { display: block; font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.06em; color: var(--color-text-muted); }
-.board__label { display: block; font-size: var(--tp-text-sm); font-weight: var(--tp-weight-semibold); color: var(--color-text); white-space: nowrap; }
-.board__un { left: 200px; width: 54px; min-width: 54px; text-align: center; }
-.board__meta { left: 254px; width: 92px; min-width: 92px; text-align: center; }
-.board__resp { left: 346px; width: 110px; min-width: 110px; text-align: center; border-right: var(--tp-border-thin) solid var(--color-card-border); }
-.board__edit { display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 100%; height: 44px; padding: 0 6px; border: 0; background: none; font: inherit; font-size: var(--tp-text-xs); color: var(--color-text); cursor: pointer; }
+.board__scroll { overflow-x: auto; border: var(--tp-border-thin) solid var(--color-card-border); border-radius: var(--tp-radius-lg); background: var(--color-surface); }
+.board__table { table-layout: fixed; width: 100%; min-width: 1080px; border-collapse: separate; border-spacing: 0; font-size: var(--tp-text-xs); }
+.board__col-label { width: 236px; }
+.board__col-meta { width: 78px; }
+.board__col-resp { width: 92px; }
+.board__col-month { width: 72px; }
+.board__table th, .board__table td { padding: 0; border-bottom: var(--tp-border-thin) solid var(--color-card-border); vertical-align: middle; }
+.board__table tbody tr:last-child th, .board__table tbody tr:last-child td { border-bottom: 0; }
+.board__h { height: 40px; background: var(--color-surface); color: var(--color-text-muted); font-size: 10px; font-weight: var(--tp-weight-semibold); letter-spacing: 0.08em; text-transform: uppercase; text-align: center; }
+.board__h--label { text-align: left; padding-left: var(--tp-space-4); }
+.board__h--day { line-height: 1; }
+.board__h--day .board__wd { display: block; height: 11px; font-size: 9px; letter-spacing: 0.04em; color: var(--color-text-muted); opacity: 0.8; }
+.board__h--day .board__dn { position: relative; display: inline-block; font-size: var(--tp-text-2xs); letter-spacing: 0; color: var(--color-text-secondary); }
+.board__h--day .board__dn.is-holiday::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 4px; height: 4px; border-radius: 50%; background: var(--color-brand); transform: translateX(-50%); }
+.board__h--day.is-weekend { background: var(--color-surface-sunken); }
+.board__h--day.is-hover .board__dn { color: var(--color-text); }
+.board__h--month { border-left: 2px solid var(--color-card-border); color: var(--color-text-secondary); }
+.board__sticky { position: sticky; z-index: 2; background: var(--color-surface); }
+.board__label { left: 0; padding: 0 var(--tp-space-3) 0 var(--tp-space-4); text-align: left; white-space: nowrap; text-transform: none; letter-spacing: normal; }
+.board__row th, .board__row td { height: 44px; }
+.board__name { font-size: var(--tp-text-sm); font-weight: var(--tp-weight-semibold); color: var(--color-text); }
+.board__tag { display: inline-block; margin-left: var(--tp-space-2); padding: 1px 6px; border-radius: 999px; background: var(--color-surface-sunken); color: var(--color-text-muted); font-size: 10px; font-weight: var(--tp-weight-semibold); letter-spacing: 0.04em; text-transform: none; vertical-align: 1px; }
+.board__unit { margin-left: var(--tp-space-2); color: var(--color-text-muted); font-size: var(--tp-text-2xs); }
+.board__meta { left: 236px; text-align: center; }
+.board__resp { left: 314px; text-align: center; border-right: 2px solid var(--color-card-border); }
+.board__set { color: var(--color-text); font-variant-numeric: tabular-nums; }
+.board__unset { color: var(--color-text-muted); }
+.board__define { color: var(--color-text-muted); font-weight: var(--tp-weight-normal); text-decoration: underline dotted; text-underline-offset: 3px; }
+.board__edit:hover .board__define { color: var(--color-brand-text); }
+.board__edit { display: inline-flex; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 44px; padding: 0 6px; border: 0; background: none; font: inherit; font-size: var(--tp-text-xs); color: var(--color-text); cursor: pointer; }
 .board__edit svg { opacity: 0; color: var(--color-text-muted); transition: opacity var(--tp-duration-fast) var(--tp-ease); }
 .board__edit:hover { background: var(--color-surface-hover); color: var(--color-text); }
 .board__edit:hover svg { opacity: 1; }
-.board__input { width: 100%; height: 32px; padding: 0 6px; font-size: var(--tp-text-xs); text-align: center; }
-.board__cell { text-align: center; }
-.board__value { display: block; width: 100%; height: 44px; padding: 0; border: 0; background: none; font: inherit; font-size: var(--tp-text-xs); font-variant-numeric: tabular-nums; font-weight: var(--tp-weight-medium); color: var(--color-text); cursor: pointer; }
-.board__value:hover { background: color-mix(in srgb, var(--color-text) 8%, transparent); color: var(--color-text); }
-.board__value--month { cursor: default; font-weight: var(--tp-weight-semibold); }
-.board__value--month:hover { background: none; }
-.board__cell.is-good { background: var(--color-success-soft, color-mix(in srgb, var(--color-success) 14%, transparent)); }
-.board__cell.is-bad { background: var(--color-danger-soft, color-mix(in srgb, var(--color-danger) 14%, transparent)); }
-.board__cell.is-none { background: color-mix(in srgb, var(--chart-4) 12%, transparent); }
-.board__cell.is-blank .board__value { color: var(--color-text-muted); }
-.board__cell.is-no-reference, .board__cell.is-incomplete-sheet { background: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--color-text) 6%, transparent) 4px 6px); }
-.board__cell.is-weekend:not(.is-good):not(.is-bad):not(.is-none) { background: color-mix(in srgb, var(--color-warning-soft) 40%, transparent); }
-.board__cell--span { text-align: left; padding: 0 var(--tp-space-3); font-size: var(--tp-text-xs); }
-.board__month { width: 64px; min-width: 64px; text-align: center; border-left: var(--tp-border-thin) solid var(--color-card-border); font-weight: var(--tp-weight-semibold); }
-.board__legend { display: flex; flex-wrap: wrap; gap: var(--tp-space-2) var(--tp-space-4); font-size: var(--tp-text-xs); color: var(--color-text-secondary); }
+.board__input { width: calc(100% - 8px); height: 30px; margin: 0 4px; padding: 0 6px; font-size: var(--tp-text-xs); text-align: center; }
+.board__c { text-align: center; transition: background var(--tp-duration-fast) var(--tp-ease); }
+.board__c.is-weekend { background: var(--color-surface-sunken); }
+.board__c.is-hover { background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+.board__c.is-weekend.is-hover { background: color-mix(in srgb, var(--color-text) 9%, var(--color-surface-sunken)); }
+.board__v { display: block; width: 100%; height: 44px; padding: 0; border: 0; background: none; font: inherit; font-size: var(--tp-text-xs); font-variant-numeric: tabular-nums; font-weight: var(--tp-weight-medium); color: var(--color-text); cursor: pointer; }
+.board__v:hover { background: color-mix(in srgb, var(--color-text) 8%, transparent); color: var(--color-text); }
+.board__v--month { cursor: default; font-weight: var(--tp-weight-semibold); }
+.board__v--month:hover { background: none; }
+.board__c.is-good .board__v { color: var(--color-success-text); }
+.board__c.is-bad { background: var(--color-danger-soft); }
+.board__c.is-bad .board__v { color: var(--color-danger-text); font-weight: var(--tp-weight-semibold); }
+.board__c.is-bad.is-weekend { background: color-mix(in srgb, var(--color-danger-soft) 70%, var(--color-surface-sunken)); }
+.board__c.is-blank .board__v, .board__c.is-note .board__v { color: var(--color-text-muted); font-weight: var(--tp-weight-normal); }
+.board__c.is-note .board__v { text-decoration: underline dotted; text-underline-offset: 3px; }
+.board__month { border-left: 2px solid var(--color-card-border); }
+.board__month.is-good .board__v { color: var(--color-success-text); }
+.board__month.is-bad .board__v { color: var(--color-danger-text); }
+.board__row.is-monthly th, .board__row.is-monthly td { height: 38px; }
+.board__row.is-monthly .board__name { font-weight: var(--tp-weight-medium); color: var(--color-text-secondary); }
+.board__c--span { text-align: left; padding-left: var(--tp-space-3); font-size: var(--tp-text-2xs); color: var(--color-text-muted); font-style: italic; }
+.board__legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--tp-space-2) var(--tp-space-4); padding: 0 var(--tp-space-1); font-size: var(--tp-text-2xs); color: var(--color-text-muted); }
 .board__legend span { display: inline-flex; align-items: center; gap: 6px; }
-.board__dot { width: 10px; height: 10px; border-radius: 3px; }
-.board__dot.is-good { background: var(--color-success-soft, color-mix(in srgb, var(--color-success) 14%, transparent)); border: 1px solid var(--color-success); }
-.board__dot.is-bad { background: var(--color-danger-soft, color-mix(in srgb, var(--color-danger) 14%, transparent)); border: 1px solid var(--color-danger); }
-.board__dot.is-none { background: color-mix(in srgb, var(--chart-4) 12%, transparent); border: 1px solid var(--chart-4); }
-.board__dot.is-note { background: repeating-linear-gradient(135deg, transparent 0 2px, color-mix(in srgb, var(--color-text) 25%, transparent) 2px 3px); border: 1px solid var(--color-card-border); }
+.board__dot { width: 9px; height: 9px; border-radius: 2px; border: 1px solid var(--color-card-border); background: var(--color-surface); }
+.board__dot.is-good { border-color: var(--color-success); background: color-mix(in srgb, var(--color-success) 18%, transparent); }
+.board__dot.is-bad { border-color: var(--color-danger); background: var(--color-danger-soft); }
+.board__dot.is-note { border-style: dotted; }
 
 /* --- Dia aberto (components/board/board-day-drawer) ------------------------ */
 .dayd { display: grid; gap: var(--tp-space-4); }
