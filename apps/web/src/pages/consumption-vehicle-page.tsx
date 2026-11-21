@@ -144,7 +144,7 @@ export function ConsumptionVehiclePage() {
               <span className="chart__hint">{u.ratio} do carro mês a mês</span>
             </div>
           </div>
-          <ConsumptionMonthlyChart data={data.monthly} energy={energy} height={190} />
+          <ConsumptionMonthlyChart data={data.monthly} energy={energy} height={190} highlight={{ from, to }} />
         </section>
       </div>
 

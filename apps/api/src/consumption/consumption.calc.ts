@@ -87,6 +87,28 @@ export function mergeCarDays(
 }
 
 /**
+ * Dias em que a frota rodou e a planilha não tem registro de carro nenhum.
+ * É lacuna da planilha (um dia pulado, ou os dias depois da última remessa),
+ * não "ninguém abasteceu": o km desses dias precisa sair da conta, senão um
+ * dia faltante numa semana derruba o rendimento em mais de 10%.
+ */
+export function sheetGapDates(days: Iterable<CarDay>): string[] {
+  const withKm = new Set<string>();
+  const withFuel = new Set<string>();
+  for (const d of days) {
+    if (d.km > 0) withKm.add(d.date);
+    if (d.amount !== null && d.amount > 0) withFuel.add(d.date);
+  }
+  return [...withKm].filter((d) => !withFuel.has(d)).sort();
+}
+
+/** Tira os carro-dias das datas dadas (as lacunas da planilha). */
+export function dropDates(days: Iterable<CarDay>, dates: string[]): CarDay[] {
+  const gone = new Set(dates);
+  return [...days].filter((d) => !gone.has(d.date));
+}
+
+/**
  * Totais do período. Só entra o km dos carros que têm algum registro de
  * consumo no período — senão um carro sem planilha inflaria o km/l da frota.
  */
@@ -249,5 +271,5 @@ export function compareVehicles(
   }
   const vehiclesWithoutData = rows.filter((r) => r.flag === ConsumptionFlag.NO_DATA && infoById.has(r.vehicleId)).length;
 
-  return { rows, byTech, quality: { vehiclesWithoutData, daysKmWithoutFuel, daysFuelWithoutKm, lastDate, lastKmDate } };
+  return { rows, byTech, quality: { vehiclesWithoutData, daysKmWithoutFuel, daysFuelWithoutKm, lastDate, lastKmDate, missingDates: [] } };
 }

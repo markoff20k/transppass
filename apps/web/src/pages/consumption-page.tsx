@@ -207,7 +207,7 @@ export function ConsumptionPage() {
             <span>Últimos 12 meses</span>
             <span className="tp-muted">{u.ratio}</span>
           </div>
-          <ConsumptionMonthlyChart data={data.monthly} energy={energy} height={120} compact />
+          <ConsumptionMonthlyChart data={data.monthly} energy={energy} height={120} compact highlight={{ from, to }} />
         </div>
       </section>
 
@@ -244,10 +244,11 @@ export function ConsumptionPage() {
             </div>
           </div>
 
-          {(noData > 0 || data.quality.daysKmWithoutFuel > 0 || data.quality.daysFuelWithoutKm > 0 || staleDays) && (
+          {(noData > 0 || data.quality.missingDates.length > 0 || data.quality.daysKmWithoutFuel > 0 || data.quality.daysFuelWithoutKm > 0 || staleDays) && (
             <div className="cons-quality" role="status">
               <span className="cons-quality__title"><AlertTriangle size={14} aria-hidden /> Qualidade do dado</span>
               {staleDays && data.quality.lastDate && <span className="cons-quality__item">consumo registrado até {formatDate(`${data.quality.lastDate}T12:00:00`)}; o km vai até {formatDate(`${data.quality.lastKmDate}T12:00:00`)}</span>}
+              {data.quality.missingDates.length > 0 && <span className="cons-quality__item">{data.quality.missingDates.length === 1 ? 'dia sem planilha de consumo' : `${data.quality.missingDates.length} dias sem planilha de consumo`} ({data.quality.missingDates.map((d) => formatDate(`${d}T12:00:00`).slice(0, 5)).join(', ')}): o km {data.quality.missingDates.length === 1 ? 'desse dia' : 'desses dias'} fica fora da conta</span>}
               {data.quality.daysKmWithoutFuel > 0 && <span className="cons-quality__item">{formatNumber(data.quality.daysKmWithoutFuel)} carro-dias rodados sem registro de consumo</span>}
               {data.quality.daysFuelWithoutKm > 0 && <span className="cons-quality__item">{formatNumber(data.quality.daysFuelWithoutKm)} registros de consumo em dias sem km</span>}
               {noData > 0 && <button type="button" className="cons-quality__item cons-quality__link" onClick={() => setFlag(ConsumptionFlag.NO_DATA)}>{noData} carros rodaram o período sem registro</button>}

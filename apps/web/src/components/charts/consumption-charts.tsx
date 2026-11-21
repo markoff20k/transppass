@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { Area, AreaChart, Bar, CartesianGrid, Cell, ComposedChart, LabelList, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, Bar, CartesianGrid, Cell, ComposedChart, LabelList, Line, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   CONSUMPTION_HIGH_DEVIATION,
   CONSUMPTION_WATCH_DEVIATION,
@@ -214,7 +214,12 @@ export function ConsumptionAmountChart({ data, energy, granularity = 'day' }: { 
 
 // --- Últimos 12 meses -------------------------------------------------------------
 
-export function ConsumptionMonthlyChart({ data, energy, height = 150, compact = false }: { data: ConsumptionMonthPoint[]; energy: VehicleTechnology; height?: number; compact?: boolean }) {
+/**
+ * Os 12 meses até hoje. `highlight` (de/até do período escolhido) marca os
+ * meses que ele toca, para o período se situar na tendência — a série não
+ * muda com o período, só o destaque.
+ */
+export function ConsumptionMonthlyChart({ data, energy, height = 150, compact = false, highlight }: { data: ConsumptionMonthPoint[]; energy: VehicleTechnology; height?: number; compact?: boolean; highlight?: { from: string; to: string } }) {
   const id = useId();
   const color = ENERGY_COLOR[energy];
   const u = unitsOf(energy);
@@ -222,6 +227,10 @@ export function ConsumptionMonthlyChart({ data, energy, height = 150, compact = 
   const vals = rows.map((r) => r.ratio).filter((v): v is number => v !== null);
   const { lo, hi, ticks } = tightDomain(vals);
   const lastIdx = rows.map((r) => r.ratio !== null).lastIndexOf(true);
+  // Eixo: de três em três meses no compacto, de dois em dois no cheio — e sempre o último mês.
+  const tickIdx = (compact ? [0, 3, 6, 9] : [1, 3, 5, 7, 9]).filter((i) => i < rows.length - 1).concat(rows.length - 1);
+  const xTicks = tickIdx.map((i) => rows[i]!.label);
+  const marked = highlight ? rows.filter((r) => r.month >= highlight.from.slice(0, 7) && r.month <= highlight.to.slice(0, 7)) : [];
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={rows} margin={{ top: 16, right: compact ? 20 : 10, bottom: 0, left: compact ? 20 : 0 }}>
@@ -232,7 +241,9 @@ export function ConsumptionMonthlyChart({ data, energy, height = 150, compact = 
           </linearGradient>
         </defs>
         {!compact && <CartesianGrid vertical={false} stroke="var(--chart-grid)" />}
-        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} interval={compact ? 2 : 1} />
+        {marked.length >= 2 && <ReferenceArea x1={marked[0]!.label} x2={marked[marked.length - 1]!.label} fill={color} fillOpacity={0.1} stroke={color} strokeOpacity={0.35} strokeDasharray="3 3" />}
+        {marked.length === 1 && <ReferenceLine x={marked[0]!.label} stroke={color} strokeOpacity={0.5} strokeDasharray="3 3" />}
+        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} ticks={xTicks} interval={0} />
         <YAxis width={compact ? 0 : 42} hide={compact} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} domain={[lo, hi]} ticks={ticks} tickFormatter={axisTick} />
         <Tooltip
           cursor={{ stroke: 'var(--chart-grid)' }}

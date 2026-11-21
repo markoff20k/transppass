@@ -215,6 +215,12 @@ export interface ConsumptionQuality {
   lastDate: string | null;
   /** Último dia com km. */
   lastKmDate: string | null;
+  /**
+   * Dias do período em que a frota rodou e a planilha não tem registro de
+   * ninguém: lacuna da planilha, não "ninguém abasteceu". O km desses dias
+   * fica fora da conta do rendimento.
+   */
+  missingDates: string[];
 }
 
 export interface ConsumptionFleet {
