@@ -51,7 +51,7 @@ export class ConsumptionService {
 
   private async fleetWithGaps(q: ConsumptionQuery): Promise<{ value: ConsumptionFleet; gaps: string[] }> {
     const { from, to } = this.window(q.from, q.to);
-    const key = `${q.energy}|${from}|${to}`;
+    const key = `${q.energy}|${from}|${to}|${q.months}`;
     const hit = this.fleetCache.get(key);
     const ttl = to < isoDay(new Date()) ? CLOSED_TTL_MS : FLEET_TTL_MS;
     if (hit && Date.now() - hit.at < ttl) return hit;
@@ -60,10 +60,11 @@ export class ConsumptionService {
     const { from: prevFrom, to: prevTo } = consumptionComparisonWindow(from, to);
 
     const vehicles = await this.vehiclesOf(energy);
-    const [rawDays, source, monthly] = await Promise.all([
+    const [rawDays, source, monthly, firstMonth] = await Promise.all([
       this.carDays(energy, vehicles.map((v) => v.id), prevFrom, to),
       this.source(),
-      this.monthly(energy, vehicles),
+      this.monthly(energy, vehicles, q.months),
+      this.firstMonth(energy),
     ]);
     // Dia em que a frota rodou e a planilha não tem ninguém é lacuna: o km dele sai da conta.
     const gaps = sheetGapDates(rawDays.values());
@@ -84,6 +85,7 @@ export class ConsumptionService {
       fleetVehicles: vehicles.length,
       daily: dailySeries(energy, inCurrent, from, to),
       monthly,
+      firstMonth,
       byTech: cmp.byTech,
       vehicles: cmp.rows,
       quality: { ...cmp.quality, missingDates: gaps.filter((d) => d >= from && d <= to) },
@@ -100,7 +102,7 @@ export class ConsumptionService {
     const { from, to } = this.window(q.from, q.to);
     const { from: prevFrom, to: prevTo } = consumptionComparisonWindow(from, to);
 
-    const [rawDays, { value: fleet, gaps }] = await Promise.all([this.carDays(energy, [v.id], prevFrom, to), this.fleetWithGaps({ energy, from, to })]);
+    const [rawDays, { value: fleet, gaps }] = await Promise.all([this.carDays(energy, [v.id], prevFrom, to), this.fleetWithGaps({ energy, from, to, months: 12 })]);
     const days = dropDates(rawDays.values(), gaps);
     const inCurrent = days.filter((d) => d.date >= from && d.date <= to);
     const inPrevious = days.filter((d) => d.date >= prevFrom && d.date <= prevTo);
@@ -197,16 +199,22 @@ export class ConsumptionService {
     );
   }
 
+  /** Primeiro mês com registro da tecnologia, "AAAA-MM" (ou null sem carga). */
+  private async firstMonth(energy: VehicleTechnology): Promise<string | null> {
+    const first = await this.prisma.consumptionReading.findFirst({ where: { energy }, orderBy: { date: 'asc' }, select: { date: true } });
+    return first ? first.date.toISOString().slice(0, 7) : null;
+  }
+
   private async source(): Promise<string | null> {
     const last = await this.prisma.consumptionReading.findFirst({ orderBy: { createdAt: 'desc' }, select: { source: true } });
     return last?.source ?? null;
   }
 
-  /** Os 12 meses até o mês de `to` (normalmente hoje), "AAAA-MM". */
-  private lastMonths(to: string): string[] {
+  /** Os últimos `n` meses até o mês de `to` (normalmente hoje), "AAAA-MM". */
+  private lastMonths(to: string, n = 12): string[] {
     const out: string[] = [];
     const [y, m] = to.split('-').map(Number) as [number, number];
-    for (let i = 11; i >= 0; i -= 1) {
+    for (let i = n - 1; i >= 0; i -= 1) {
       const d = new Date(y, m - 1 - i, 1);
       out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
     }
@@ -219,12 +227,12 @@ export class ConsumptionService {
    * do período escolhido — ele é destacado na tela. Meses fechados ficam em
    * cache; o corrente vai até hoje.
    */
-  private async monthly(energy: VehicleTechnology, vehicles: VehicleInfo[]): Promise<ConsumptionMonthPoint[]> {
+  private async monthly(energy: VehicleTechnology, vehicles: VehicleInfo[], months = 12): Promise<ConsumptionMonthPoint[]> {
     const ids = vehicles.map((v) => v.id);
     const today = isoDay(new Date());
     const current = today.slice(0, 7);
     return Promise.all(
-      this.lastMonths(today).map(async (month) => {
+      this.lastMonths(today, months).map(async (month) => {
         const key = `${energy}|${month}`;
         const hit = this.monthCache.get(key);
         if (month !== current && hit && Date.now() - hit.at < MONTH_TTL_MS) return hit.value;

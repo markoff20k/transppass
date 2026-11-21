@@ -149,7 +149,7 @@ function fleetOf(energy: VehicleTechnology, from: string, to: string): Consumpti
   return {
     energy, from, to, source: 'mock',
     current: totals(energy, cur), previous: totals(energy, prev), previousFrom: prevFrom, previousTo: prevTo, fleetVehicles: fleet.length,
-    daily: daily(energy, cur, from, to), monthly: monthly(energy, fleet, to), byTech, vehicles: rows,
+    daily: daily(energy, cur, from, to), monthly: monthly(energy, fleet, to), firstMonth: null, byTech, vehicles: rows,
     quality: { vehiclesWithoutData: rows.filter((r) => r.flag === ConsumptionFlag.NO_DATA).length, daysKmWithoutFuel: kmNoFuel, daysFuelWithoutKm: 0, lastDate: to, lastKmDate: to, missingDates: [] },
   };
 }

@@ -12,9 +12,9 @@ import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
 import { PeriodControl } from '@/components/ui/period-control';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
-import { comparisonOf, periodLabel, periodPhrase, periodSearch, rangeLabel, samePeriod, stepPeriod, usePeriod } from '@/lib/period';
-import { ConsumptionMonthlyChart, ConsumptionTrendChart, FleetSwarm, TechList } from '@/components/charts/consumption-charts';
-import { ENERGY_FLEET_LABEL, ENERGY_LABEL, WEEKLY_FROM_DAYS, badgeToneClass, bucketWeekly, deviationClass, flagTone, fmtAmount, fmtDeviation, fmtRatio, improvement, ratioFormula, unitsOf } from '@/lib/consumption';
+import { comparisonOf, isoOf, monthPeriod, periodLabel, periodPhrase, periodSearch, rangeLabel, samePeriod, stepPeriod, usePeriod } from '@/lib/period';
+import { ConsumptionMonthlyChart, ConsumptionTrendChart, FleetSwarm, MonthlyReading, TechList } from '@/components/charts/consumption-charts';
+import { ENERGY_FLEET_LABEL, ENERGY_LABEL, WEEKLY_FROM_DAYS, badgeToneClass, bucketWeekly, deviationClass, flagTone, fmtAmount, fmtDeviation, fmtRatio, improvement, monthLabel, ratioFormula, unitsOf } from '@/lib/consumption';
 
 /**
  * Consumo — frota.
@@ -37,11 +37,33 @@ type FlagFilter = 'ALL' | 'OFF' | ConsumptionFlag;
 /** Um período calculado vale 5 min: meses fechados não mudam e o corrente só ganha o dia de hoje. */
 const CONSUMPTION_STALE_MS = 5 * 60_000;
 
-const fleetQuery = (energy: VehicleTechnology, from: string, to: string) => ({
-  queryKey: ['consumption', energy, from, to] as const,
-  queryFn: () => api.get<ConsumptionFleet>(`/consumption?energy=${energy}&from=${from}&to=${to}`),
+const fleetQuery = (energy: VehicleTechnology, from: string, to: string, months: number) => ({
+  queryKey: ['consumption', energy, from, to, months] as const,
+  queryFn: () => api.get<ConsumptionFleet>(`/consumption?energy=${energy}&from=${from}&to=${to}&months=${months}`),
   staleTime: CONSUMPTION_STALE_MS,
 });
+
+/** Horizonte da série mensal (?meses=12|24|60); 60 é "tudo" na prática. */
+const HORIZONS = [12, 24, 60] as const;
+type Horizon = (typeof HORIZONS)[number];
+function useHorizon(): [Horizon, (h: Horizon) => void] {
+  const [params, setParams] = useSearchParams();
+  const raw = Number(params.get('meses'));
+  const months = (HORIZONS as readonly number[]).includes(raw) ? (raw as Horizon) : 12;
+  const set = (h: Horizon) => {
+    const next = new URLSearchParams(params);
+    if (h === 12) next.delete('meses');
+    else next.set('meses', String(h));
+    setParams(next, { replace: true });
+  };
+  return [months, set];
+}
+
+/** Mês de início da janela de `months` meses até hoje, "AAAA-MM". */
+function horizonStart(months: number): string {
+  const n = new Date();
+  return isoOf(n.getFullYear(), n.getMonth() - (months - 1), 1).slice(0, 7);
+}
 type SortKey = 'deviation' | 'ratio' | 'km' | 'amount' | 'code';
 
 function useEnergy(): [VehicleTechnology, (e: VehicleTechnology) => void] {
@@ -72,6 +94,7 @@ function EnergySwitch() {
 export function ConsumptionPage() {
   const [energy] = useEnergy();
   const [period] = usePeriod();
+  const [months, setMonths] = useHorizon();
   const { from, to } = period;
   const u = unitsOf(energy);
   const navigate = useNavigate();
@@ -89,7 +112,7 @@ export function ConsumptionPage() {
   });
 
   const { data, isPending, isError, error, refetch, isFetching, isPlaceholderData } = useQuery({
-    ...fleetQuery(energy, from, to),
+    ...fleetQuery(energy, from, to, months),
     placeholderData: keepPreviousData,
   });
 
@@ -100,9 +123,9 @@ export function ConsumptionPage() {
     if (!data || isPlaceholderData) return;
     let chain = Promise.resolve();
     for (const p of [stepPeriod(period, -1), stepPeriod(period, 1)]) {
-      if (!samePeriod(p, period)) chain = chain.then(() => queryClient.prefetchQuery(fleetQuery(energy, p.from, p.to)));
+      if (!samePeriod(p, period)) chain = chain.then(() => queryClient.prefetchQuery(fleetQuery(energy, p.from, p.to, months)));
     }
-  }, [data, isPlaceholderData, period, energy, queryClient]);
+  }, [data, isPlaceholderData, period, energy, months, queryClient]);
 
   const [search, setSearch] = useState('');
   const [flag, setFlag] = useState<FlagFilter>('ALL');
@@ -157,6 +180,14 @@ export function ConsumptionPage() {
   const staleDays = data.quality.lastDate && data.quality.lastKmDate && data.quality.lastDate < data.quality.lastKmDate;
   const empty = cur.vehicles === 0;
   const carHref = (id: string) => `/consumo/carro/${id}${periodSearch(period)}`;
+  // Clique num mês da tendência: ele vira o período da tela, mantendo energia e horizonte.
+  const openMonth = (month: string) => {
+    const [y, m] = month.split('-').map(Number) as [number, number];
+    navigate(`/consumo${periodSearch(monthPeriod(y, m - 1), { energia: energy === VehicleTechnology.EBUS ? 'energia' : null, meses: months !== 12 ? String(months) : null })}`);
+  };
+  // O seletor de horizonte só aparece quando há registro antes dos 12 meses da série.
+  const hasHistory = Boolean(data.firstMonth && data.firstMonth < horizonStart(12));
+  const horizonLabel = months === 12 ? 'Últimos 12 meses' : months === 24 ? 'Últimos 24 meses' : data.firstMonth ? `Desde ${monthLabel(data.firstMonth)}` : 'Todo o histórico';
 
   const toggleSort = (key: SortKey) => setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'code' ? 'asc' : 'desc' }));
   const sortMark = (key: SortKey) => (sort.key === key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : '');
@@ -204,10 +235,22 @@ export function ConsumptionPage() {
         </div>
         <div className="cons-hero__side">
           <div className="cons-hero__side-head">
-            <span>Últimos 12 meses</span>
-            <span className="tp-muted">{u.ratio}</span>
+            <span>{horizonLabel}</span>
+            <span className="cons-hero__side-tools">
+              {hasHistory && (
+                <span className="cons-horizon" role="radiogroup" aria-label="Horizonte da série">
+                  {HORIZONS.map((h) => (
+                    <button key={h} type="button" role="radio" aria-checked={months === h} className={`cons-horizon__item${months === h ? ' is-active' : ''}`} onClick={() => setMonths(h)}>
+                      {h === 60 ? 'Tudo' : `${h} m`}
+                    </button>
+                  ))}
+                </span>
+              )}
+              <span className="tp-muted">{u.ratio}</span>
+            </span>
           </div>
-          <ConsumptionMonthlyChart data={data.monthly} energy={energy} height={120} compact highlight={{ from, to }} />
+          <ConsumptionMonthlyChart data={data.monthly} energy={energy} height={120} compact highlight={{ from, to }} onSelectMonth={openMonth} />
+          <MonthlyReading data={data.monthly} energy={energy} />
         </div>
       </section>
 

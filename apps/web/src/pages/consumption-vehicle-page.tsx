@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Bus } from 'lucide-react';
 import { CONSUMPTION_FLAG_LABELS, ConsumptionFlag, VEHICLE_CLASS_LABELS, VehicleTechnology, type ConsumptionVehicleDetail, type VehicleClass } from '@app/shared';
@@ -12,8 +12,8 @@ import { Pager } from '@/components/ui/pager';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { usePager } from '@/lib/pager';
 import { PeriodControl } from '@/components/ui/period-control';
-import { comparisonOf, periodLabel, periodPhrase, periodSearch, samePeriod, stepPeriod, usePeriod } from '@/lib/period';
-import { ConsumptionAmountChart, ConsumptionMonthlyChart, ConsumptionTrendChart } from '@/components/charts/consumption-charts';
+import { comparisonOf, monthPeriod, periodLabel, periodPhrase, periodSearch, samePeriod, stepPeriod, usePeriod } from '@/lib/period';
+import { ConsumptionAmountChart, ConsumptionMonthlyChart, ConsumptionTrendChart, MonthlyReading } from '@/components/charts/consumption-charts';
 import { ENERGY_LABEL, WEEKLY_FROM_DAYS, badgeToneClass, bucketWeekly, dayLabel, deviationClass, flagTone, fmtAmount, fmtDeviation, fmtRatio, improvement, kpiToneClass, ratioFormula, unitsOf } from '@/lib/consumption';
 
 /**
@@ -33,6 +33,7 @@ const vehicleQuery = (id: string, from: string, to: string) => ({
 
 export function ConsumptionVehiclePage() {
   const { id = '' } = useParams();
+  const navigate = useNavigate();
   const [period] = usePeriod();
   const { from, to } = period;
 
@@ -141,10 +142,20 @@ export function ConsumptionVehiclePage() {
           <div className="tp-card__head">
             <div>
               <h3>Últimos 12 meses</h3>
-              <span className="chart__hint">{u.ratio} do carro mês a mês</span>
+              <span className="chart__hint">{u.ratio} do carro mês a mês · clique num mês para abri-lo</span>
             </div>
           </div>
-          <ConsumptionMonthlyChart data={data.monthly} energy={energy} height={190} highlight={{ from, to }} />
+          <ConsumptionMonthlyChart
+            data={data.monthly}
+            energy={energy}
+            height={190}
+            highlight={{ from, to }}
+            onSelectMonth={(month) => {
+              const [y, m] = month.split('-').map(Number) as [number, number];
+              navigate(`/consumo/carro/${id}${periodSearch(monthPeriod(y, m - 1))}`);
+            }}
+          />
+          <MonthlyReading data={data.monthly} energy={energy} className="cons-reading--card" />
         </section>
       </div>
 

@@ -24,6 +24,8 @@ export const consumptionQuerySchema = z.object({
   energy: z.nativeEnum(VehicleTechnology).default(VehicleTechnology.DIESEL),
   from: z.string().regex(ISO_DAY, 'Data no formato AAAA-MM-DD'),
   to: z.string().regex(ISO_DAY, 'Data no formato AAAA-MM-DD'),
+  /** Horizonte da série mensal (meses até hoje): 12 por padrão, até 60. */
+  months: z.coerce.number().int().min(12).max(60).default(12),
 });
 export type ConsumptionQuery = z.infer<typeof consumptionQuerySchema>;
 
@@ -237,8 +239,10 @@ export interface ConsumptionFleet {
   /** Carros da tecnologia na frota (com ou sem dado). */
   fleetVehicles: number;
   daily: ConsumptionDayPoint[];
-  /** Últimos 12 meses, o corrente incluído. */
+  /** Os últimos `months` meses até hoje, o corrente incluído; não depende do período. */
   monthly: ConsumptionMonthPoint[];
+  /** Primeiro mês com registro de consumo da tecnologia ("AAAA-MM"), para a tela saber se há histórico antes da série. */
+  firstMonth: string | null;
   byTech: ConsumptionTechGroup[];
   vehicles: ConsumptionVehicleRow[];
   quality: ConsumptionQuality;

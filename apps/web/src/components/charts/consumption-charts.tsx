@@ -4,13 +4,14 @@ import {
   CONSUMPTION_HIGH_DEVIATION,
   CONSUMPTION_WATCH_DEVIATION,
   ConsumptionFlag,
-  type VehicleTechnology,
+  consumptionRatio,
+  VehicleTechnology,
   type ConsumptionMonthPoint,
   type ConsumptionTechGroup,
   type ConsumptionVehicleRow,
 } from '@app/shared';
 import { formatNumber } from '@/lib/format';
-import { ENERGY_COLOR, dayLabel, fmtAmount, fmtDeviation, fmtRatio, monthLabel, pointLabel, unitsOf, type Granularity, type TrendPoint } from '@/lib/consumption';
+import { ENERGY_COLOR, dayLabel, fmtAmount, fmtDeviation, fmtRatio, improvement, monthLabel, pointLabel, unitsOf, type Granularity, type TrendPoint } from '@/lib/consumption';
 
 /**
  * Gráficos do consumo (diesel e energia). Mesma gramática dos outros gráficos
@@ -28,7 +29,7 @@ interface TipRow {
   color?: string;
 }
 
-function Tip({ title, rows }: { title: string; rows: TipRow[] }) {
+function Tip({ title, rows, hint }: { title: string; rows: TipRow[]; hint?: string }) {
   return (
     <div className="chart-tip">
       <div className="chart-tip__label">{title}</div>
@@ -41,6 +42,7 @@ function Tip({ title, rows }: { title: string; rows: TipRow[] }) {
           <b>{r.value}</b>
         </div>
       ))}
+      {hint && <div className="chart-tip__row chart-tip__hint"><span>{hint}</span></div>}
     </div>
   );
 }
@@ -214,26 +216,55 @@ export function ConsumptionAmountChart({ data, energy, granularity = 'day' }: { 
 
 // --- Últimos 12 meses -------------------------------------------------------------
 
+/** Melhorou/piorou em texto, com o sinal certo para cada energia (km/l sobe = bom; kWh/km desce = bom). */
+function changeText(energy: VehicleTechnology, current: number | null, previous: number | null): { text: string; tone: 'good' | 'bad' | 'neutral' } | null {
+  const delta = improvement(energy, current, previous);
+  if (delta === null) return null;
+  const pct = fmtDeviation(Math.abs(delta), 1).replace(/^[+−]/, '');
+  if (delta > 0.002) return { text: `melhorou ${pct}`, tone: 'good' };
+  if (delta < -0.002) return { text: `piorou ${pct}`, tone: 'bad' };
+  return { text: 'igual', tone: 'neutral' };
+}
+
+/** Média ponderada da série (soma do consumo sobre soma do km), na unidade da energia. */
+function seriesAverage(energy: VehicleTechnology, rows: ConsumptionMonthPoint[]): number | null {
+  const withData = rows.filter((r) => r.ratio !== null && r.km > 0);
+  if (withData.length === 0) return null;
+  return consumptionRatio(energy, withData.reduce((s, r) => s + r.km, 0), withData.reduce((s, r) => s + r.amount, 0));
+}
+
 /**
- * Os 12 meses até hoje. `highlight` (de/até do período escolhido) marca os
+ * Série mensal até hoje. `highlight` (de/até do período escolhido) marca os
  * meses que ele toca, para o período se situar na tendência — a série não
- * muda com o período, só o destaque.
+ * muda com o período, só o destaque. A linha tracejada é a média do que
+ * está na tela; o hover compara cada mês com o anterior e com o mesmo mês do
+ * ano anterior, quando há. Com `onSelectMonth`, clicar num mês abre-o como
+ * período: é o "zoom" que leva da tendência à causa.
  */
-export function ConsumptionMonthlyChart({ data, energy, height = 150, compact = false, highlight }: { data: ConsumptionMonthPoint[]; energy: VehicleTechnology; height?: number; compact?: boolean; highlight?: { from: string; to: string } }) {
+export function ConsumptionMonthlyChart({ data, energy, height = 150, compact = false, highlight, onSelectMonth }: { data: ConsumptionMonthPoint[]; energy: VehicleTechnology; height?: number; compact?: boolean; highlight?: { from: string; to: string }; onSelectMonth?: (month: string) => void }) {
   const id = useId();
   const color = ENERGY_COLOR[energy];
   const u = unitsOf(energy);
   const rows = data.map((p) => ({ ...p, label: monthLabel(p.month) }));
   const vals = rows.map((r) => r.ratio).filter((v): v is number => v !== null);
-  const { lo, hi, ticks } = tightDomain(vals);
+  const avg = seriesAverage(energy, data);
+  const { lo, hi, ticks } = tightDomain(vals, avg !== null ? [avg] : []);
   const lastIdx = rows.map((r) => r.ratio !== null).lastIndexOf(true);
-  // Eixo: de três em três meses no compacto, de dois em dois no cheio — e sempre o último mês.
-  const tickIdx = (compact ? [0, 3, 6, 9] : [1, 3, 5, 7, 9]).filter((i) => i < rows.length - 1).concat(rows.length - 1);
+  // Eixo: de três em três meses no compacto, de dois em dois no cheio — e sempre o último mês. Acima de 12 meses, a cada seis.
+  const step = rows.length > 24 ? 12 : rows.length > 12 ? 6 : compact ? 3 : 2;
+  const tickIdx: number[] = [];
+  for (let i = compact || step > 2 ? 0 : 1; i < rows.length - 1; i += step) tickIdx.push(i);
+  tickIdx.push(rows.length - 1);
   const xTicks = tickIdx.map((i) => rows[i]!.label);
   const marked = highlight ? rows.filter((r) => r.month >= highlight.from.slice(0, 7) && r.month <= highlight.to.slice(0, 7)) : [];
+  const select = (state: { activeLabel?: string | number; activeIndex?: string | number | null } | null) => {
+    const label = state?.activeLabel;
+    const row = label !== undefined ? rows.find((r) => r.label === String(label)) : rows[Number(state?.activeIndex)];
+    if (row && onSelectMonth) onSelectMonth(row.month);
+  };
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={rows} margin={{ top: 16, right: compact ? 20 : 10, bottom: 0, left: compact ? 20 : 0 }}>
+    <ResponsiveContainer width="100%" height={height} className={onSelectMonth ? 'chart--clickable' : undefined}>
+      <AreaChart data={rows} margin={{ top: 16, right: compact ? 20 : 10, bottom: 0, left: compact ? 20 : 0 }} onClick={onSelectMonth ? select : undefined}>
         <defs>
           <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity={0.28} />
@@ -243,6 +274,7 @@ export function ConsumptionMonthlyChart({ data, energy, height = 150, compact = 
         {!compact && <CartesianGrid vertical={false} stroke="var(--chart-grid)" />}
         {marked.length >= 2 && <ReferenceArea x1={marked[0]!.label} x2={marked[marked.length - 1]!.label} fill={color} fillOpacity={0.1} stroke={color} strokeOpacity={0.35} strokeDasharray="3 3" />}
         {marked.length === 1 && <ReferenceLine x={marked[0]!.label} stroke={color} strokeOpacity={0.5} strokeDasharray="3 3" />}
+        {avg !== null && <ReferenceLine y={avg} stroke="var(--chart-axis)" strokeDasharray="4 4" strokeOpacity={0.8} label={{ value: `média ${fmtRatio(avg)}`, position: 'insideBottomLeft', fontSize: 10, fill: 'var(--chart-axis)' }} />}
         <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} ticks={xTicks} interval={0} />
         <YAxis width={compact ? 0 : 42} hide={compact} tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: 'var(--chart-axis)' }} domain={[lo, hi]} ticks={ticks} tickFormatter={axisTick} />
         <Tooltip
@@ -250,7 +282,14 @@ export function ConsumptionMonthlyChart({ data, energy, height = 150, compact = 
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const p = payload[0]!.payload as (typeof rows)[number];
-            return <Tip title={p.label} rows={[{ label: u.ratio, value: fmtRatio(p.ratio), color }, { label: 'Km', value: formatNumber(p.km) }, { label: u.amountLong.charAt(0).toUpperCase() + u.amountLong.slice(1), value: fmtAmount(p.amount) }, { label: 'Carros', value: String(p.vehicles) }]} />;
+            const i = rows.findIndex((r) => r.month === p.month);
+            const prev = i > 0 ? changeText(energy, p.ratio, rows[i - 1]!.ratio) : null;
+            const year = i >= 12 ? changeText(energy, p.ratio, rows[i - 12]!.ratio) : null;
+            const tipRows: TipRow[] = [{ label: u.ratio, value: fmtRatio(p.ratio), color }, { label: 'Km', value: formatNumber(p.km) }, { label: u.amountLong.charAt(0).toUpperCase() + u.amountLong.slice(1), value: fmtAmount(p.amount) }, { label: 'Carros', value: String(p.vehicles) }];
+            if (prev) tipRows.push({ label: `vs ${rows[i - 1]!.label}`, value: prev.text });
+            if (year) tipRows.push({ label: `vs ${rows[i - 12]!.label}`, value: year.text });
+            if (avg !== null && p.ratio !== null) tipRows.push({ label: 'vs média', value: changeText(energy, p.ratio, avg)?.text ?? '—' });
+            return <Tip title={p.label} rows={tipRows} hint={onSelectMonth ? 'clique para abrir o mês' : undefined} />;
           }}
         />
         <Area type="monotone" dataKey="ratio" stroke={color} strokeWidth={2} fill={`url(#${id}-fill)`} connectNulls isAnimationActive={false} dot={{ r: 2.5, fill: color, stroke: 'var(--color-surface)', strokeWidth: 1.5 }} activeDot={{ r: 4, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 }}>
@@ -268,6 +307,40 @@ export function ConsumptionMonthlyChart({ data, energy, height = 150, compact = 
         </Area>
       </AreaChart>
     </ResponsiveContainer>
+  );
+}
+
+/**
+ * Leitura automática da série: o que um analista diria olhando o gráfico.
+ * Melhor e pior mês, e a direção dos últimos 3 meses contra os 3 anteriores.
+ */
+export function MonthlyReading({ data, energy, className }: { data: ConsumptionMonthPoint[]; energy: VehicleTechnology; className?: string }) {
+  const withData = data.filter((p) => p.ratio !== null && p.km > 0);
+  if (withData.length < 2) return null;
+  const better = (a: ConsumptionMonthPoint, b: ConsumptionMonthPoint) => (energy === VehicleTechnology.DIESEL ? (a.ratio as number) > (b.ratio as number) : (a.ratio as number) < (b.ratio as number));
+  let best = withData[0]!;
+  let worst = withData[0]!;
+  for (const p of withData) {
+    if (better(p, best)) best = p;
+    if (better(worst, p)) worst = p;
+  }
+  // Direção: os 3 últimos meses contra os 3 anteriores, pela média ponderada de cada bloco.
+  const last3 = withData.slice(-3);
+  const prev3 = withData.slice(-6, -3);
+  const trend = last3.length === 3 && prev3.length === 3 ? changeText(energy, seriesAverage(energy, last3), seriesAverage(energy, prev3)) : null;
+  const trendWord = trend ? (trend.tone === 'good' ? 'melhorando' : trend.tone === 'bad' ? 'piorando' : 'estável') : null;
+  const trendPct = trend && trend.tone !== 'neutral' ? trend.text.replace(/^\D+/, '') : null;
+  return (
+    <p className={`cons-reading${className ? ` ${className}` : ''}`}>
+      <span>
+        Melhor mês <b>{monthLabel(best.month)}</b> ({fmtRatio(best.ratio)}) · pior <b>{monthLabel(worst.month)}</b> ({fmtRatio(worst.ratio)})
+      </span>
+      {trendWord && (
+        <span>
+          Últimos 3 meses <b className={`cons-reading__trend is-${trend!.tone}`}>{trendWord}{trendPct ? ` ${trendPct}` : ''}</b> vs os 3 anteriores
+        </span>
+      )}
+    </p>
   );
 }
 

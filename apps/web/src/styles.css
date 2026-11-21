@@ -4599,9 +4599,22 @@ a.bus-card:hover { transform: translateY(-1px); }
 .cons-delta--bad { color: var(--color-danger-text); background: var(--color-danger-soft); border-color: var(--color-danger-border); }
 .cons-delta--neutral { color: var(--color-text-secondary); background: var(--color-surface-sunken); border-color: var(--color-border); }
 .cons-hero__formula { font-size: var(--tp-text-sm); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
-.cons-hero__side { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--tp-space-2); padding: var(--tp-space-3) var(--tp-space-3) var(--tp-space-1); border: var(--tp-border-thin) solid var(--color-card-border); border-radius: var(--tp-radius-lg); background: color-mix(in srgb, var(--color-surface) 88%, transparent); min-width: 0; }
+.cons-hero__side { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--tp-space-2); padding: var(--tp-space-3) var(--tp-space-3) var(--tp-space-1); border: var(--tp-border-thin) solid var(--color-card-border); border-radius: var(--tp-radius-lg); background: color-mix(in srgb, var(--color-surface) 88%, transparent); min-width: 0; }
 .cons-hero__side-head { display: flex; justify-content: space-between; align-items: baseline; font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); }
 .cons-hero__side-head .tp-muted { text-transform: none; letter-spacing: 0; font-weight: var(--tp-weight-normal); }
+.cons-hero__side-tools { display: inline-flex; align-items: center; gap: var(--tp-space-3); }
+/* Horizonte da série (12 m · 24 m · Tudo): só aparece quando há histórico antes dos 12 meses. */
+.cons-horizon { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--color-surface-hover); }
+.cons-horizon__item { padding: 1px 8px; border: 0; border-radius: 999px; background: transparent; color: var(--color-text-muted); font: inherit; font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-medium); letter-spacing: 0; text-transform: none; cursor: pointer; transition: background var(--tp-duration-fast) var(--tp-ease), color var(--tp-duration-fast) var(--tp-ease); }
+.cons-horizon__item:hover { color: var(--color-text); }
+.cons-horizon__item.is-active { background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-card); }
+/* Leitura automática da série: melhor e pior mês, direção dos últimos 3 meses. */
+.cons-reading { display: grid; gap: 2px; margin: 0; padding: 0 var(--tp-space-1); font-size: var(--tp-text-xs); line-height: 1.4; color: var(--color-text-secondary); }
+.cons-reading b { font-weight: var(--tp-weight-semibold); color: var(--color-text); }
+.cons-reading__trend.is-good { color: var(--tone-good-text, var(--color-success)); }
+.cons-reading__trend.is-bad { color: var(--tone-danger-text, var(--color-danger)); }
+.cons-reading--card { padding: var(--tp-space-3) 0 0; }
+.chart--clickable { cursor: pointer; }
 
 .cons-empty { display: grid; justify-items: center; gap: var(--tp-space-2); padding: var(--tp-space-10) var(--tp-space-4); color: var(--color-text-secondary); }
 .cons-empty b { color: var(--color-text); font-size: var(--tp-text-md); }
