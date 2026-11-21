@@ -17,6 +17,8 @@ import { addDays, compareVehicles, dailySeries, daysBetween, isoDay, mergeCarDay
 
 /** Quanto tempo um resultado da frota vale na memória: a planilha chega uma vez por dia, não muda de minuto em minuto. */
 const FLEET_TTL_MS = 60_000;
+/** Um período já fechado (termina antes de hoje) só muda na próxima carga: vale o mesmo prazo dos meses fechados. */
+const CLOSED_TTL_MS = 6 * 3_600_000;
 /** Meses fechados não mudam até a próxima carga; o corrente é sempre recalculado. */
 const MONTH_TTL_MS = 6 * 3_600_000;
 
@@ -46,7 +48,8 @@ export class ConsumptionService {
     const { from, to } = this.window(q.from, q.to);
     const key = `${q.energy}|${from}|${to}`;
     const hit = this.fleetCache.get(key);
-    if (hit && Date.now() - hit.at < FLEET_TTL_MS) return hit.value;
+    const ttl = to < isoDay(new Date()) ? CLOSED_TTL_MS : FLEET_TTL_MS;
+    if (hit && Date.now() - hit.at < ttl) return hit.value;
 
     const energy = q.energy;
     const { from: prevFrom, to: prevTo } = consumptionComparisonWindow(from, to);

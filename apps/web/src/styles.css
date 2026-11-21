@@ -2766,6 +2766,68 @@ a.bus-card:hover { transform: translateY(-1px); }
   to { transform: translateX(100%); }
 }
 
+/* --- Véu de atualização (components/ui/refresh-veil) ----------------------
+   A tela anterior fica no lugar, apagada e sem foco; o loader da marca diz o
+   que está sendo calculado e acompanha a rolagem. */
+
+.refresh-veil { position: relative; }
+.refresh-veil__content { transition: opacity var(--tp-duration-normal) var(--tp-ease), filter var(--tp-duration-normal) var(--tp-ease); }
+.refresh-veil.is-active .refresh-veil__content { opacity: 0.38; filter: blur(1.5px) saturate(0.35); pointer-events: none; user-select: none; }
+.refresh-veil__overlay { position: absolute; inset: 0; z-index: 3; display: flex; justify-content: center; align-items: flex-start; pointer-events: none; }
+.refresh-veil__box {
+  position: sticky;
+  top: calc(var(--shell-header-h) + var(--tp-space-5));
+  margin-top: var(--tp-space-8);
+  padding: var(--tp-space-3) var(--tp-space-5) var(--tp-space-3) var(--tp-space-4);
+  background: var(--color-surface);
+  border: var(--tp-border-thin) solid var(--color-card-border);
+  border-radius: var(--tp-radius-pill, 999px);
+  box-shadow: var(--shadow-card);
+  animation: refresh-veil-in var(--tp-duration-normal) var(--tp-ease);
+}
+/* O símbolo à esquerda e o texto ao lado, numa pílula; vence a regra geral do loader em página. */
+.refresh-veil__box .brand-loader:not(.brand-loader--fullscreen) { display: flex; align-items: center; gap: var(--tp-space-3); width: auto; min-height: 0; padding: 0; }
+.refresh-veil__box .brand-loader__label { font-weight: var(--tp-weight-medium); color: var(--color-text); white-space: nowrap; }
+@keyframes refresh-veil-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* --- Linha de progresso do shell (components/shell/fetch-bar) -------------
+   3px no alto da área de conteúdo, colada ao cabeçalho, enquanto alguma
+   consulta busca um dado que a tela ainda não tem. */
+
+.fetch-bar {
+  position: sticky;
+  top: var(--shell-header-h);
+  z-index: 4;
+  height: 3px;
+  margin-bottom: -3px;
+  border-radius: var(--shell-island-radius) var(--shell-island-radius) 0 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--tp-duration-normal) var(--tp-ease);
+}
+.fetch-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, var(--color-brand), transparent);
+  transform: translateX(-100%);
+}
+.fetch-bar.is-active { opacity: 1; }
+.fetch-bar.is-active::before { animation: fetch-bar-run 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+@keyframes fetch-bar-run {
+  to { transform: translateX(250%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fetch-bar.is-active::before { animation: none; width: 100%; transform: none; opacity: 0.6; }
+  .refresh-veil.is-active .refresh-veil__content { filter: none; }
+  .refresh-veil__box { animation: none; }
+}
+
 /* --- Loader da marca ----------------------------------------------------- */
 
 .brand-loader {
@@ -4512,7 +4574,6 @@ a.bus-card:hover { transform: translateY(-1px); }
 
 .cons { --cons-color: var(--chart-1); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--tp-space-4); transition: opacity var(--tp-duration-normal) var(--tp-ease); }
 .cons--ebus { --cons-color: var(--chart-4); }
-.cons.is-refreshing { opacity: 0.72; }
 /* Cabeçalho do consumo: todos os controles na mesma régua (44px), mesma borda, mesmo raio, mesma sombra. */
 .cons-actions { --cons-ctl: 44px; display: flex; align-items: center; flex-wrap: wrap; gap: var(--tp-space-3); }
 .cons-switch { height: var(--cons-ctl); }

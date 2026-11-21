@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Bus } from 'lucide-react';
 import { CONSUMPTION_FLAG_LABELS, ConsumptionFlag, VEHICLE_CLASS_LABELS, VehicleTechnology, type ConsumptionVehicleDetail, type VehicleClass } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
@@ -9,9 +9,10 @@ import { usePageHeader } from '@/components/shell/page-header.context';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { InfoTip } from '@/components/ui/info-tip';
 import { Pager } from '@/components/ui/pager';
+import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { usePager } from '@/lib/pager';
 import { PeriodControl } from '@/components/ui/period-control';
-import { comparisonOf, periodLabel, periodPhrase, periodSearch, usePeriod } from '@/lib/period';
+import { comparisonOf, periodLabel, periodPhrase, periodSearch, samePeriod, stepPeriod, usePeriod } from '@/lib/period';
 import { ConsumptionAmountChart, ConsumptionMonthlyChart, ConsumptionTrendChart } from '@/components/charts/consumption-charts';
 import { ENERGY_LABEL, WEEKLY_FROM_DAYS, badgeToneClass, bucketWeekly, dayLabel, deviationClass, flagTone, fmtAmount, fmtDeviation, fmtRatio, improvement, kpiToneClass, ratioFormula, unitsOf } from '@/lib/consumption';
 
@@ -24,17 +25,32 @@ import { ENERGY_LABEL, WEEKLY_FROM_DAYS, badgeToneClass, bucketWeekly, dayLabel,
  * de um dia isolado oscila; a média de 7 dias (ou a semana, em períodos
  * longos) é a leitura confiável.
  */
+const vehicleQuery = (id: string, from: string, to: string) => ({
+  queryKey: ['consumption', 'vehicle', id, from, to] as const,
+  queryFn: () => api.get<ConsumptionVehicleDetail>(`/consumption/vehicles/${id}?from=${from}&to=${to}`),
+  staleTime: 5 * 60_000,
+});
+
 export function ConsumptionVehiclePage() {
   const { id = '' } = useParams();
   const [period] = usePeriod();
   const { from, to } = period;
 
-  const { data, isPending, isError, error } = useQuery({
-    queryKey: ['consumption', 'vehicle', id, from, to],
-    queryFn: () => api.get<ConsumptionVehicleDetail>(`/consumption/vehicles/${id}?from=${from}&to=${to}`),
+  const { data, isPending, isError, error, isPlaceholderData } = useQuery({
+    ...vehicleQuery(id, from, to),
     enabled: Boolean(id),
     placeholderData: keepPreviousData,
   });
+
+  // Pré-busca os períodos vizinhos do carro, um de cada vez, como na tela da frota.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!data || isPlaceholderData) return;
+    let chain = Promise.resolve();
+    for (const p of [stepPeriod(period, -1), stepPeriod(period, 1)]) {
+      if (!samePeriod(p, period)) chain = chain.then(() => queryClient.prefetchQuery(vehicleQuery(id, p.from, p.to)));
+    }
+  }, [data, isPlaceholderData, period, id, queryClient]);
   const v = data?.vehicle;
   const energy = data?.energy ?? VehicleTechnology.DIESEL;
   const backTo = `/consumo${periodSearch(period, { energia: energy === VehicleTechnology.EBUS ? 'energia' : null })}`;
@@ -75,6 +91,7 @@ export function ConsumptionVehiclePage() {
   const dayRows = [...data.daily].reverse();
 
   return (
+    <RefreshVeil active={isPlaceholderData} label={`Calculando o consumo ${periodPhrase(period)}`}>
     <div className={`cons cons--${energy.toLowerCase()}`}>
       <div className="tp-kpi-row">
         <div className={`tp-kpi ${empty ? '' : kpiToneClass(tone)}`}>
@@ -180,5 +197,6 @@ export function ConsumptionVehiclePage() {
       )}
       {data.flag === ConsumptionFlag.FEW_DAYS && !empty && <p className="cons-source tp-muted">Com menos de 5 dias de registro o carro não entra na comparação com o grupo.</p>}
     </div>
+    </RefreshVeil>
   );
 }

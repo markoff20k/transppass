@@ -7,6 +7,7 @@ import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { PageHeaderContext, type PageHeaderSpec } from './page-header.context';
 import { Toaster } from '@/components/ui/toaster';
+import { FetchBar } from './fetch-bar';
 
 const COLLAPSE_KEY = 'tp.sidebar.collapsed';
 const DRAWER_BREAKPOINT = 1024;
@@ -111,6 +112,7 @@ export function AppShell() {
         <Header onOpenDrawer={() => setDrawer(true)} />
 
         <div className="content">
+          <FetchBar />
           {spec && (
             <div className="subheader">
               <div className="subheader__text">

@@ -1,12 +1,22 @@
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { MonthControl } from '@/components/ui/month-nav';
-import { formatMonth, monthRange, useReferenceMonth } from '@/lib/month';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { formatMonth, monthRange, toMonth, useReferenceMonth, type ReferenceMonth } from '@/lib/month';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { DOWNTIME_CAUSE_LABELS, METRIC_KEY_LABELS, MetricKey, type MetricHistoryPoint, type R1Metrics } from '@app/shared';
 import { MetricHistoryChart } from '@/components/charts/charts';
 import { api } from '@/lib/api-client';
 import { formatDuration, formatMinutes, formatNumber } from '@/lib/format';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { RefreshVeil } from '@/components/ui/refresh-veil';
+
+const metricsQuery = (m: ReferenceMonth) => {
+  const range = monthRange(m);
+  return {
+    queryKey: ['metrics', m.key] as const,
+    queryFn: () => api.get<R1Metrics>(`/metrics?from=${range.from.toISOString()}${range.to ? `&to=${range.to.toISOString()}` : ''}`),
+  };
+};
 
 /**
  * Indicadores do R1 (RF-38/RF-39).
@@ -23,14 +33,23 @@ export function MetricsPage() {
   });
 
   const [month] = useReferenceMonth();
-  const range = monthRange(month);
   const monthLabel = formatMonth(month);
-  const { data, isPending, isError } = useQuery({
-    queryKey: ['metrics', month.key],
-    queryFn: () => api.get<R1Metrics>(`/metrics?from=${range.from.toISOString()}${range.to ? `&to=${range.to.toISOString()}` : ''}`),
+  const { data, isPending, isError, isPlaceholderData } = useQuery({
+    ...metricsQuery(month),
     placeholderData: keepPreviousData,
     refetchInterval: 60_000,
   });
+
+  // Pré-busca o mês anterior e depois o seguinte, um de cada vez: a seta do mês abre na hora. Mês fechado fica 5 min em cache.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!data || isPlaceholderData) return;
+    let chain = Promise.resolve();
+    for (const dir of [-1, 1] as const) {
+      const m = toMonth(month.year, month.month + dir);
+      if (new Date(m.year, m.month, 1) <= new Date()) chain = chain.then(() => queryClient.prefetchQuery({ ...metricsQuery(m), staleTime: m.isCurrent ? 30_000 : 5 * 60_000 }));
+    }
+  }, [data, isPlaceholderData, month.year, month.month, queryClient]);
   const history = useQuery({
     queryKey: ['metrics', 'history'],
     queryFn: () => api.get<MetricHistoryPoint[]>('/metrics/history?months=12'),
@@ -40,7 +59,7 @@ export function MetricsPage() {
   if (isError || !data) return <p className="tp-error">Falha ao carregar os indicadores.</p>;
 
   return (
-    <>
+    <RefreshVeil active={isPlaceholderData} label={`Calculando ${monthLabel}`}>
       <section className="tp-card">
         <div className="tp-card__head">
           <div>
@@ -275,7 +294,7 @@ export function MetricsPage() {
           </div>
         )}
       </section>
-    </>
+    </RefreshVeil>
   );
 }
 

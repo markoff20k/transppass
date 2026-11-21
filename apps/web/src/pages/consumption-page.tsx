@@ -1,6 +1,6 @@
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarOff, Fuel, Minus, RefreshCw, Search, Zap } from 'lucide-react';
 import { CONSUMPTION_FLAG_LABELS, ConsumptionFlag, VehicleTechnology, type ConsumptionFleet, type ConsumptionVehicleRow } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
@@ -11,7 +11,8 @@ import { InfoTip } from '@/components/ui/info-tip';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
 import { PeriodControl } from '@/components/ui/period-control';
-import { comparisonOf, periodLabel, periodPhrase, periodSearch, rangeLabel, usePeriod } from '@/lib/period';
+import { RefreshVeil } from '@/components/ui/refresh-veil';
+import { comparisonOf, periodLabel, periodPhrase, periodSearch, rangeLabel, samePeriod, stepPeriod, usePeriod } from '@/lib/period';
 import { ConsumptionMonthlyChart, ConsumptionTrendChart, FleetSwarm, TechList } from '@/components/charts/consumption-charts';
 import { ENERGY_FLEET_LABEL, ENERGY_LABEL, WEEKLY_FROM_DAYS, badgeToneClass, bucketWeekly, deviationClass, flagTone, fmtAmount, fmtDeviation, fmtRatio, improvement, ratioFormula, unitsOf } from '@/lib/consumption';
 
@@ -32,6 +33,15 @@ import { ENERGY_FLEET_LABEL, ENERGY_LABEL, WEEKLY_FROM_DAYS, badgeToneClass, buc
  */
 
 type FlagFilter = 'ALL' | 'OFF' | ConsumptionFlag;
+
+/** Um período calculado vale 5 min: meses fechados não mudam e o corrente só ganha o dia de hoje. */
+const CONSUMPTION_STALE_MS = 5 * 60_000;
+
+const fleetQuery = (energy: VehicleTechnology, from: string, to: string) => ({
+  queryKey: ['consumption', energy, from, to] as const,
+  queryFn: () => api.get<ConsumptionFleet>(`/consumption?energy=${energy}&from=${from}&to=${to}`),
+  staleTime: CONSUMPTION_STALE_MS,
+});
 type SortKey = 'deviation' | 'ratio' | 'km' | 'amount' | 'code';
 
 function useEnergy(): [VehicleTechnology, (e: VehicleTechnology) => void] {
@@ -78,11 +88,21 @@ export function ConsumptionPage() {
     ),
   });
 
-  const { data, isPending, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ['consumption', energy, from, to],
-    queryFn: () => api.get<ConsumptionFleet>(`/consumption?energy=${energy}&from=${from}&to=${to}`),
+  const { data, isPending, isError, error, refetch, isFetching, isPlaceholderData } = useQuery({
+    ...fleetQuery(energy, from, to),
     placeholderData: keepPreviousData,
   });
+
+  // Pré-busca os períodos vizinhos assim que este chega: a seta do período abre na hora na maior parte das vezes.
+  // Um de cada vez (o anterior primeiro, que é para onde mais se navega), para não disputar a API com o que o usuário pediu.
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!data || isPlaceholderData) return;
+    let chain = Promise.resolve();
+    for (const p of [stepPeriod(period, -1), stepPeriod(period, 1)]) {
+      if (!samePeriod(p, period)) chain = chain.then(() => queryClient.prefetchQuery(fleetQuery(energy, p.from, p.to)));
+    }
+  }, [data, isPlaceholderData, period, energy, queryClient]);
 
   const [search, setSearch] = useState('');
   const [flag, setFlag] = useState<FlagFilter>('ALL');
@@ -142,7 +162,8 @@ export function ConsumptionPage() {
   const sortMark = (key: SortKey) => (sort.key === key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : '');
 
   return (
-    <div className={`cons cons--${energy.toLowerCase()}${isFetching ? ' is-refreshing' : ''}`}>
+    <RefreshVeil active={isPlaceholderData} label={`Calculando o consumo ${phrase}`}>
+    <div className={`cons cons--${energy.toLowerCase()}`}>
       {isError && (
         <div className="tp-alert tp-alert--warning dash-error" role="status">
           <span>A atualização falhou; os números na tela são da última consulta que deu certo.</span>
@@ -337,5 +358,6 @@ export function ConsumptionPage() {
       )}
       {data.source && <p className="cons-source tp-muted">Fonte do consumo: {data.source === 'sintético' ? 'dados sintéticos de desenvolvimento (a planilha real ainda não foi carregada)' : `planilha ${data.source}`} · km do odômetro diário.</p>}
     </div>
+    </RefreshVeil>
   );
 }
