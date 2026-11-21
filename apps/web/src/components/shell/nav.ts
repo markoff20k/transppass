@@ -17,7 +17,6 @@ import {
   ListChecks,
   Package,
   Palette,
-  ShieldCheck,
   Siren,
   Stethoscope,
   Sunrise,
@@ -94,7 +93,7 @@ export const NAV_GROUPS: NavGroup[] = [
         children: [{ to: '/consumo', key: 'consumption', icon: Fuel, roles: [ADMIN, PCM, GESTAO, MANUTENCAO] }],
       },
       { to: '/km', key: 'km', icon: Gauge, roles: [ADMIN, PCM, CCO, MANUTENCAO] },
-      { to: '/auditorias', key: 'audits', icon: ShieldCheck, roles: [ADMIN, PCM, GESTAO, MANUTENCAO, ESTOQUE] },
+      // Auditorias (5S e conformidade) fica fora do menu por enquanto (pedido de 21/11/2026): a tela continua em /auditorias.
     ],
   },
   {
