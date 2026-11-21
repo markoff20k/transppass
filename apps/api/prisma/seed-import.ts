@@ -1,6 +1,7 @@
 import { EventOrigin, EventStatus, KmSource, PrismaClient, UserRole, VehicleTechnology } from '@prisma/client';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { isoDay, mergeCarDays, odometerStalls, sheetGapDates } from '../src/consumption/consumption.calc';
 
 /**
  * Carga das bases que a Transppass entregou no Kaizen "Projeto MKBF":
@@ -687,6 +688,64 @@ export async function importConsumption(prisma: PrismaClient): Promise<void> {
   const kwh = ebus.reduce((s, r) => s + r.amount, 0);
   const tag = consumo.source === 'sintético' ? ' — DADOS SINTÉTICOS de desenvolvimento, não são do cliente' : ` (${consumo.source})`;
   console.log(`  ${rows.length} carro-dias de consumo${tag}: ${diesel.length} diesel (${Math.round(liters).toLocaleString('pt-BR')} L) e ${ebus.length} elétricos (${Math.round(kwh).toLocaleString('pt-BR')} kWh), de ${dates[0]} a ${dates[dates.length - 1]}`);
+  await notifyConsumptionIssues(prisma, vehicles, rows, source, dates[0]!, dates[dates.length - 1]!);
+}
+
+/**
+ * Qualidade do dado vira aviso para quem age (perfil PCM), não para o CEO:
+ * dias em que a planilha não tem carro nenhum (pedir ao cliente) e carros
+ * com odômetro parado (conferir a leitura de km). Mesmo critério das telas
+ * de Consumo (consumption.calc). A cada carga os avisos anteriores destes
+ * dois tipos são refeitos, porque a base de consumo é recriada inteira.
+ */
+async function notifyConsumptionIssues(
+  prisma: PrismaClient,
+  vehicles: { id: string; code: string; technology: VehicleTechnology }[],
+  rows: { vehicleId: string; date: Date; energy: VehicleTechnology; amount: number; tech: string | null }[],
+  source: string,
+  firstDate: string,
+  lastDate: string,
+): Promise<void> {
+  const km = await prisma.odometerReading.findMany({
+    where: { vehicleId: { in: vehicles.map((v) => v.id) }, readAt: { gte: new Date(`${firstDate}T00:00:00`), lt: new Date(`${lastDate}T23:59:59`) }, status: { not: 'REJECTED' }, deltaKm: { gt: 0 } },
+    select: { vehicleId: true, readAt: true, deltaKm: true },
+  });
+  const fmt = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+  const notices: { role: UserRole; title: string; body: string; entity: string; entityId: string }[] = [];
+  for (const energy of [VehicleTechnology.DIESEL, VehicleTechnology.EBUS]) {
+    const ids = new Set(vehicles.filter((v) => v.technology === energy).map((v) => v.id));
+    const days = mergeCarDays(
+      km.filter((r) => ids.has(r.vehicleId)).map((r) => ({ vehicleId: r.vehicleId, date: isoDay(r.readAt), km: r.deltaKm ?? 0 })),
+      rows.filter((r) => r.energy === energy).map((r) => ({ vehicleId: r.vehicleId, date: r.date.toISOString().slice(0, 10), amount: r.amount, tech: r.tech })),
+    );
+    const gaps = sheetGapDates(days.values()).filter((d) => d <= lastDate);
+    const label = energy === VehicleTechnology.DIESEL ? 'diesel' : 'elétricos';
+    const unit = energy === VehicleTechnology.DIESEL ? 'L' : 'kWh';
+    if (gaps.length > 0) {
+      notices.push({
+        role: UserRole.PCM,
+        title: `Planilha de consumo sem registro em ${gaps.map(fmt).join(', ')} (${label})`,
+        body: `A planilha ${source} não tem abastecimento de carro nenhum ${gaps.length === 1 ? 'nesse dia' : 'nesses dias'}, embora a frota tenha rodado. O km ${gaps.length === 1 ? 'desse dia' : 'desses dias'} fica fora do rendimento. Vale pedir o complemento ao cliente.`,
+        entity: 'ConsumptionGap',
+        entityId: `${energy}|${gaps.join(',')}`.slice(0, 64),
+      });
+    }
+    for (const [vehicleId, stalls] of odometerStalls(energy, days.values())) {
+      const v = vehicles.find((x) => x.id === vehicleId)!;
+      for (const s of stalls) {
+        notices.push({
+          role: UserRole.PCM,
+          title: `Odômetro parado no carro ${v.code} de ${fmt(s.from)} a ${fmt(s.to)}`,
+          body: `O carro abasteceu ${Math.round(s.amount).toLocaleString('pt-BR')} ${unit} em ${s.days} registros e marcou ${s.km} km no trecho. Esses dias ficam fora do rendimento do carro e da frota. Confira a leitura de km do carro.`,
+          entity: 'Vehicle',
+          entityId: vehicleId,
+        });
+      }
+    }
+  }
+  await prisma.notification.deleteMany({ where: { OR: [{ entity: 'ConsumptionGap' }, { entity: 'Vehicle', title: { startsWith: 'Odômetro parado no carro ' } }] } });
+  if (notices.length > 0) await prisma.notification.createMany({ data: notices });
+  console.log(`  avisos de qualidade do consumo para o PCM: ${notices.length} (${notices.filter((n) => n.entity === 'ConsumptionGap').length} de planilha sem registro, ${notices.filter((n) => n.entity === 'Vehicle').length} de odômetro parado)`);
 }
 
 if (require.main === module) {

@@ -139,6 +139,16 @@ Legenda: `[ ]` a pedir · `[~]` pedido, aguardando · `[x]` recebido
 
 ---
 
+## 14. `[ ]` Dias sem registro na planilha de consumo (M04 - Litros_kwh)
+
+**O que pedimos.** O complemento da planilha de abastecimento e recarga para os dias que vieram sem nenhum registro: **30/01, 31/01 (elétricos) e 31/07 (diesel e elétricos)**. A frota rodou normalmente nesses dias (o km está no 2-KM), só o consumo não veio.
+
+**Por quê.** Sem o registro, o km desses dias ficaria no denominador sem o combustível no numerador e derrubaria o km/l do período. O sistema já detecta o dia e o tira da conta (a tela avisa "dia sem planilha de consumo"), mas o certo é ter o dado.
+
+**Como está hoje.** Detecção automática na carga: cada dia sem planilha vira aviso para o PCM. O mesmo vale para carros com odômetro parado (abastecem e o km não anda por 5+ registros seguidos; 4 carros em 2026: 095 em março, 151 e 375 em abril, 996 em julho e agosto) — esse é problema da leitura de km, não da planilha de consumo, e fica para o 2-KM.
+
+---
+
 ## Resumo para a mensagem ao André
 
 Se for mandar um e-mail curto, os três primeiros itens são os que mudam o sistema de "histórico" para "operação":

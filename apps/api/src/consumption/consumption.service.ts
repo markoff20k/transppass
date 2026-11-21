@@ -11,9 +11,10 @@ import {
   type ConsumptionQuery,
   type ConsumptionVehicleDetail,
   type ConsumptionVehicleQuery,
+  type ConsumptionStall,
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
-import { addDays, compareVehicles, dailySeries, daysBetween, dropDates, isoDay, mergeCarDays, monthPoint, sheetGapDates, totalsOf, type CarDay, type VehicleInfo } from './consumption.calc';
+import { addDays, compareVehicles, dailySeries, daysBetween, dropDates, dropStalls, isoDay, mergeCarDays, monthPoint, odometerStalls, sheetGapDates, totalsOf, type CarDay, type VehicleInfo } from './consumption.calc';
 
 /** Quanto tempo um resultado da frota vale na memória: a planilha chega uma vez por dia, não muda de minuto em minuto. */
 const FLEET_TTL_MS = 60_000;
@@ -39,8 +40,8 @@ const CLASS_TECH: Record<string, string> = {
  */
 @Injectable()
 export class ConsumptionService {
-  /** Além do resultado, as lacunas da planilha na janela inteira (período + comparação), que a tela do carro reaproveita. */
-  private readonly fleetCache = new Map<string, { at: number; value: ConsumptionFleet; gaps: string[] }>();
+  /** Além do resultado, as lacunas da planilha e os odômetros parados na janela inteira (período + comparação), que a tela do carro reaproveita. */
+  private readonly fleetCache = new Map<string, { at: number; value: ConsumptionFleet; gaps: string[]; stalls: Map<string, ConsumptionStall[]> }>();
   private readonly monthCache = new Map<string, { at: number; value: ConsumptionMonthPoint }>();
 
   constructor(private readonly prisma: PrismaService) {}
@@ -49,7 +50,7 @@ export class ConsumptionService {
     return (await this.fleetWithGaps(q)).value;
   }
 
-  private async fleetWithGaps(q: ConsumptionQuery): Promise<{ value: ConsumptionFleet; gaps: string[] }> {
+  private async fleetWithGaps(q: ConsumptionQuery): Promise<{ value: ConsumptionFleet; gaps: string[]; stalls: Map<string, ConsumptionStall[]> }> {
     const { from, to } = this.window(q.from, q.to);
     const key = `${q.energy}|${from}|${to}|${q.months}`;
     const hit = this.fleetCache.get(key);
@@ -60,18 +61,23 @@ export class ConsumptionService {
     const { from: prevFrom, to: prevTo } = consumptionComparisonWindow(from, to);
 
     const vehicles = await this.vehiclesOf(energy);
+    // A janela carregada recua ao menos 14 dias antes do período, para um odômetro parado que começou antes ser visto inteiro.
+    const loadFrom = prevFrom < addDays(from, -14) ? prevFrom : addDays(from, -14);
     const [rawDays, source, monthly, firstMonth] = await Promise.all([
-      this.carDays(energy, vehicles.map((v) => v.id), prevFrom, to),
+      this.carDays(energy, vehicles.map((v) => v.id), loadFrom, to),
       this.source(),
       this.monthly(energy, vehicles, q.months),
       this.firstMonth(energy),
     ]);
     // Dia em que a frota rodou e a planilha não tem ninguém é lacuna: o km dele sai da conta.
     const gaps = sheetGapDates(rawDays.values());
-    const days = dropDates(rawDays.values(), gaps);
+    // Carro que abastece e não anda por dias seguidos é odômetro parado: os carro-dias do trecho saem da conta.
+    const stalls = odometerStalls(energy, dropDates(rawDays.values(), gaps));
+    const days = dropStalls(dropDates(rawDays.values(), gaps), stalls);
     const inCurrent = days.filter((d) => d.date >= from && d.date <= to);
     const inPrevious = days.filter((d) => d.date >= prevFrom && d.date <= prevTo);
-    const cmp = compareVehicles(energy, vehicles, inCurrent, (v) => CLASS_TECH[v.vehicleClass ?? ''] ?? 'Sem classe');
+    const stallsInPeriod = new Map([...stalls].map(([id, list]) => [id, list.filter((s) => s.to >= from && s.from <= to)] as const).filter(([, list]) => list.length > 0));
+    const cmp = compareVehicles(energy, vehicles, inCurrent, (v) => CLASS_TECH[v.vehicleClass ?? ''] ?? 'Sem classe', stallsInPeriod);
 
     const value: ConsumptionFleet = {
       energy,
@@ -90,7 +96,7 @@ export class ConsumptionService {
       vehicles: cmp.rows,
       quality: { ...cmp.quality, missingDates: gaps.filter((d) => d >= from && d <= to) },
     };
-    const entry = { at: Date.now(), value, gaps };
+    const entry = { at: Date.now(), value, gaps, stalls };
     this.fleetCache.set(key, entry);
     return entry;
   }
@@ -102,8 +108,9 @@ export class ConsumptionService {
     const { from, to } = this.window(q.from, q.to);
     const { from: prevFrom, to: prevTo } = consumptionComparisonWindow(from, to);
 
-    const [rawDays, { value: fleet, gaps }] = await Promise.all([this.carDays(energy, [v.id], prevFrom, to), this.fleetWithGaps({ energy, from, to, months: 12 })]);
-    const days = dropDates(rawDays.values(), gaps);
+    const [rawDays, { value: fleet, gaps, stalls }] = await Promise.all([this.carDays(energy, [v.id], prevFrom, to), this.fleetWithGaps({ energy, from, to, months: 12 })]);
+    const days = dropStalls(dropDates(rawDays.values(), gaps), stalls);
+    const myStalls = (stalls.get(v.id) ?? []).filter((s) => s.to >= prevFrom && s.from <= to);
     const inCurrent = days.filter((d) => d.date >= from && d.date <= to);
     const inPrevious = days.filter((d) => d.date >= prevFrom && d.date <= prevTo);
     const current = totalsOf(energy, inCurrent);
@@ -127,8 +134,10 @@ export class ConsumptionService {
     const today = isoDay(new Date());
     const monthFrom = `${addDays(today, -365).slice(0, 7)}-01`;
     const allDays = await this.carDays(energy, [v.id], monthFrom, today);
+    // Um carro só: dá para detectar o odômetro parado no ano inteiro e tirar os trechos da série também.
+    const yearDays = dropStalls(allDays.values(), odometerStalls(energy, allDays.values()));
     const months = new Map<string, CarDay[]>();
-    for (const d of allDays.values()) {
+    for (const d of yearDays) {
       const m = d.date.slice(0, 7);
       const list = months.get(m) ?? [];
       list.push(d);
@@ -153,6 +162,7 @@ export class ConsumptionService {
       daily: dailySeries(energy, inCurrent, from, to, false),
       monthly,
       daysKmWithoutFuel: row?.daysKmWithoutFuel ?? inCurrent.filter((d) => d.km > 0 && !(d.amount && d.amount > 0)).length,
+      stalls: myStalls,
     };
   }
 

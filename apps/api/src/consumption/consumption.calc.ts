@@ -1,5 +1,9 @@
 import {
   CONSUMPTION_MIN_DAYS,
+  CONSUMPTION_STALL_MAX_GAP_DAYS,
+  CONSUMPTION_STALL_MAX_KM,
+  CONSUMPTION_STALL_MIN_AMOUNT,
+  CONSUMPTION_STALL_MIN_RECORDS,
   consumptionDeviation,
   consumptionFlagOf,
   consumptionRatio,
@@ -7,6 +11,7 @@ import {
   type ConsumptionDayPoint,
   type ConsumptionMonthPoint,
   type ConsumptionQuality,
+  type ConsumptionStall,
   type ConsumptionTechGroup,
   type ConsumptionTotals,
   type ConsumptionVehicleRow,
@@ -109,6 +114,50 @@ export function dropDates(days: Iterable<CarDay>, dates: string[]): CarDay[] {
 }
 
 /**
+ * Odômetro parado, por carro: trechos de CONSUMPTION_STALL_MIN_RECORDS ou
+ * mais abastecimentos seguidos (no máximo CONSUMPTION_STALL_MAX_GAP_DAYS de
+ * intervalo entre eles) com volume normal e km quase zero. Carro que abastece
+ * 150 L não rodou 1 km: é o odômetro que não contou, não o consumo.
+ */
+export function odometerStalls(energy: VehicleTechnology, days: Iterable<CarDay>): Map<string, ConsumptionStall[]> {
+  const minAmount = CONSUMPTION_STALL_MIN_AMOUNT[energy];
+  const byVehicle = new Map<string, CarDay[]>();
+  for (const d of days) {
+    if (d.amount === null || d.amount <= 0) continue;
+    const list = byVehicle.get(d.vehicleId) ?? [];
+    list.push(d);
+    byVehicle.set(d.vehicleId, list);
+  }
+  const out = new Map<string, ConsumptionStall[]>();
+  for (const [vehicleId, list] of byVehicle) {
+    list.sort((a, b) => a.date.localeCompare(b.date));
+    const stalls: ConsumptionStall[] = [];
+    let run: CarDay[] = [];
+    const close = () => {
+      if (run.length >= CONSUMPTION_STALL_MIN_RECORDS) {
+        stalls.push({ from: run[0]!.date, to: run[run.length - 1]!.date, days: run.length, amount: r2(run.reduce((s, d) => s + (d.amount ?? 0), 0)), km: Math.round(run.reduce((s, d) => s + d.km, 0)) });
+      }
+      run = [];
+    };
+    for (const d of list) {
+      const suspect = (d.amount ?? 0) >= minAmount && d.km < CONSUMPTION_STALL_MAX_KM;
+      const continues = run.length > 0 && daysBetween(run[run.length - 1]!.date, d.date) - 1 <= CONSUMPTION_STALL_MAX_GAP_DAYS;
+      if (!suspect || !continues) close();
+      if (suspect) run.push(d);
+    }
+    close();
+    if (stalls.length > 0) out.set(vehicleId, stalls);
+  }
+  return out;
+}
+
+/** Tira os carro-dias dentro dos trechos de odômetro parado (km e consumo: nenhum dos dois é confiável ali). */
+export function dropStalls(days: Iterable<CarDay>, stalls: Map<string, ConsumptionStall[]>): CarDay[] {
+  if (stalls.size === 0) return [...days];
+  return [...days].filter((d) => !(stalls.get(d.vehicleId) ?? []).some((s) => d.date >= s.from && d.date <= s.to));
+}
+
+/**
  * Totais do período. Só entra o km dos carros que têm algum registro de
  * consumo no período — senão um carro sem planilha inflaria o km/l da frota.
  */
@@ -203,6 +252,7 @@ export function compareVehicles(
   vehicles: VehicleInfo[],
   days: Iterable<CarDay>,
   fallbackTech: (v: VehicleInfo) => string,
+  stalls: Map<string, ConsumptionStall[]> = new Map(),
 ): VehicleComparison {
   const list = [...days];
   const per = perVehicle(energy, list);
@@ -212,8 +262,13 @@ export function compareVehicles(
   const drafts: Draft[] = [];
   for (const v of vehicles) {
     const p = per.get(v.id);
-    if (!p || (p.km <= 0 && p.days === 0)) continue;
-    drafts.push({ vehicleId: v.id, code: v.code, plate: v.plate, model: v.model, vehicleClass: v.vehicleClass, tech: p.tech ?? fallbackTech(v), km: p.km, amount: p.amount, ratio: p.ratio, days: p.days, daysKmWithoutFuel: p.kmNoFuel });
+    const stall = stalls.get(v.id)?.[0] ?? null;
+    // Carro cujo período inteiro foi odômetro parado continua na lista (com a etiqueta), sem número.
+    if (!p || (p.km <= 0 && p.days === 0)) {
+      if (stall) drafts.push({ vehicleId: v.id, code: v.code, plate: v.plate, model: v.model, vehicleClass: v.vehicleClass, tech: fallbackTech(v), km: 0, amount: 0, ratio: null, days: 0, daysKmWithoutFuel: 0, stall });
+      continue;
+    }
+    drafts.push({ vehicleId: v.id, code: v.code, plate: v.plate, model: v.model, vehicleClass: v.vehicleClass, tech: p.tech ?? fallbackTech(v), km: p.km, amount: p.amount, ratio: p.ratio, days: p.days, daysKmWithoutFuel: p.kmNoFuel, stall });
   }
 
   const groups = new Map<string, Draft[]>();
@@ -270,6 +325,10 @@ export function compareVehicles(
     if (d.km > 0 && (!lastKmDate || d.date > lastKmDate)) lastKmDate = d.date;
   }
   const vehiclesWithoutData = rows.filter((r) => r.flag === ConsumptionFlag.NO_DATA && infoById.has(r.vehicleId)).length;
+  const stalledVehicles = [...stalls.entries()]
+    .filter(([id, s]) => infoById.has(id) && s.length > 0)
+    .map(([id, s]) => ({ vehicleId: id, code: infoById.get(id)!.code, from: s[0]!.from, to: s[s.length - 1]!.to }))
+    .sort((a, b) => a.code.localeCompare(b.code));
 
-  return { rows, byTech, quality: { vehiclesWithoutData, daysKmWithoutFuel, daysFuelWithoutKm, lastDate, lastKmDate, missingDates: [] } };
+  return { rows, byTech, quality: { vehiclesWithoutData, daysKmWithoutFuel, daysFuelWithoutKm, lastDate, lastKmDate, missingDates: [], stalledVehicles } };
 }

@@ -139,7 +139,7 @@ function fleetOf(energy: VehicleTechnology, from: string, to: string): Consumpti
       const flag = consumptionFlagOf(deviation, m.days, m.km > 0);
       if (flag === ConsumptionFlag.HIGH) high += 1; if (flag === ConsumptionFlag.WATCH) watch += 1;
       if (m.days > 0) { km += m.km; amount += m.amount; withData += 1; }
-      rows.push({ vehicleId: m.c.id, code: m.c.code, plate: m.c.plate, model: m.c.model, vehicleClass: m.c.vehicleClass, tech: m.c.tech, km: m.km, amount: Math.round(m.amount * 100) / 100, ratio: m.ratio, reference, deviation, days: m.days, daysKmWithoutFuel: m.noFuel, flag });
+      rows.push({ vehicleId: m.c.id, code: m.c.code, plate: m.c.plate, model: m.c.model, vehicleClass: m.c.vehicleClass, tech: m.c.tech, km: m.km, amount: Math.round(m.amount * 100) / 100, ratio: m.ratio, reference, deviation, days: m.days, daysKmWithoutFuel: m.noFuel, flag, stall: null });
     }
     byTech.push({ tech: t.tech, vehicles: withData, km, amount: Math.round(amount), ratio: r3(consumptionRatio(energy, km, amount)), reference, high, watch });
   }
@@ -150,7 +150,7 @@ function fleetOf(energy: VehicleTechnology, from: string, to: string): Consumpti
     energy, from, to, source: 'mock',
     current: totals(energy, cur), previous: totals(energy, prev), previousFrom: prevFrom, previousTo: prevTo, fleetVehicles: fleet.length,
     daily: daily(energy, cur, from, to), monthly: monthly(energy, fleet, to), firstMonth: null, byTech, vehicles: rows,
-    quality: { vehiclesWithoutData: rows.filter((r) => r.flag === ConsumptionFlag.NO_DATA).length, daysKmWithoutFuel: kmNoFuel, daysFuelWithoutKm: 0, lastDate: to, lastKmDate: to, missingDates: [] },
+    quality: { vehiclesWithoutData: rows.filter((r) => r.flag === ConsumptionFlag.NO_DATA).length, daysKmWithoutFuel: kmNoFuel, daysFuelWithoutKm: 0, lastDate: to, lastKmDate: to, missingDates: [], stalledVehicles: [] },
   };
 }
 
@@ -182,6 +182,7 @@ function vehicleOf(id: string, from: string, to: string): ConsumptionVehicleDeta
     rank: pos > 0 ? { position: pos, of: peers.length } : null,
     daily: daily(c.energy, cur, from, to), monthly: months,
     daysKmWithoutFuel: row?.daysKmWithoutFuel ?? 0,
+    stalls: [],
   };
 }
 

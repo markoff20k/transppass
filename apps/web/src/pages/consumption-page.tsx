@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, CalendarOff, Fuel, Minus, RefreshCw, Search, Zap } from 'lucide-react';
 import { CONSUMPTION_FLAG_LABELS, ConsumptionFlag, VehicleTechnology, type ConsumptionFleet, type ConsumptionVehicleRow } from '@app/shared';
@@ -287,11 +287,23 @@ export function ConsumptionPage() {
             </div>
           </div>
 
-          {(noData > 0 || data.quality.missingDates.length > 0 || data.quality.daysKmWithoutFuel > 0 || data.quality.daysFuelWithoutKm > 0 || staleDays) && (
+          {(noData > 0 || data.quality.missingDates.length > 0 || data.quality.stalledVehicles.length > 0 || data.quality.daysKmWithoutFuel > 0 || data.quality.daysFuelWithoutKm > 0 || staleDays) && (
             <div className="cons-quality" role="status">
               <span className="cons-quality__title"><AlertTriangle size={14} aria-hidden /> Qualidade do dado</span>
               {staleDays && data.quality.lastDate && <span className="cons-quality__item">consumo registrado até {formatDate(`${data.quality.lastDate}T12:00:00`)}; o km vai até {formatDate(`${data.quality.lastKmDate}T12:00:00`)}</span>}
               {data.quality.missingDates.length > 0 && <span className="cons-quality__item">{data.quality.missingDates.length === 1 ? 'dia sem planilha de consumo' : `${data.quality.missingDates.length} dias sem planilha de consumo`} ({data.quality.missingDates.map((d) => formatDate(`${d}T12:00:00`).slice(0, 5)).join(', ')}): o km {data.quality.missingDates.length === 1 ? 'desse dia' : 'desses dias'} fica fora da conta</span>}
+              {data.quality.stalledVehicles.length > 0 && (
+                <span className="cons-quality__item">
+                  odômetro parado em {data.quality.stalledVehicles.length === 1 ? '1 carro' : `${data.quality.stalledVehicles.length} carros`} (
+                  {data.quality.stalledVehicles.map((s, i) => (
+                    <span key={s.vehicleId}>
+                      {i > 0 && ', '}
+                      <Link to={carHref(s.vehicleId)} className="cons-quality__car" title={`${s.code}: abasteceu sem km de ${formatDate(`${s.from}T12:00:00`).slice(0, 5)} a ${formatDate(`${s.to}T12:00:00`).slice(0, 5)}`}>{s.code}</Link>
+                    </span>
+                  ))}
+                  ): os dias do trecho ficam fora da conta
+                </span>
+              )}
               {data.quality.daysKmWithoutFuel > 0 && <span className="cons-quality__item">{formatNumber(data.quality.daysKmWithoutFuel)} carro-dias rodados sem registro de consumo</span>}
               {data.quality.daysFuelWithoutKm > 0 && <span className="cons-quality__item">{formatNumber(data.quality.daysFuelWithoutKm)} registros de consumo em dias sem km</span>}
               {noData > 0 && <button type="button" className="cons-quality__item cons-quality__link" onClick={() => setFlag(ConsumptionFlag.NO_DATA)}>{noData} carros rodaram o período sem registro</button>}
@@ -389,7 +401,10 @@ export function ConsumptionPage() {
                         <td className="is-num tp-muted">{fmtRatio(r.reference)}</td>
                         <td className={`is-num ${deviationClass(r.flag, r.deviation) || (r.deviation === null ? 'tp-muted' : '')}`}>{fmtDeviation(r.deviation)}</td>
                         <td className="is-num">{r.days}{r.daysKmWithoutFuel > 0 && <span className="mat-sub">{r.daysKmWithoutFuel} sem registro</span>}</td>
-                        <td><span className={`tp-badge cons-flag ${badgeToneClass(flagTone(r.flag))}`}>{CONSUMPTION_FLAG_LABELS[r.flag]}</span></td>
+                        <td>
+                          <span className={`tp-badge cons-flag ${badgeToneClass(flagTone(r.flag))}`}>{CONSUMPTION_FLAG_LABELS[r.flag]}</span>
+                          {r.stall && <span className="tp-badge cons-flag cons-flag--stall" title={`Abasteceu ${fmtAmount(r.stall.amount)} ${u.amount} e marcou ${r.stall.km} km de ${formatDate(`${r.stall.from}T12:00:00`).slice(0, 5)} a ${formatDate(`${r.stall.to}T12:00:00`).slice(0, 5)}; esses dias ficam fora da conta`}>odômetro parado</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

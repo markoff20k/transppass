@@ -4615,6 +4615,10 @@ a.bus-card:hover { transform: translateY(-1px); }
 .cons-reading__trend.is-bad { color: var(--tone-danger-text, var(--color-danger)); }
 .cons-reading--card { padding: var(--tp-space-3) 0 0; }
 .chart--clickable { cursor: pointer; }
+/* Etiqueta neutra de dado suspeito, ao lado da classificação do carro. */
+.cons-flag--stall { margin-left: 4px; background: var(--color-surface-hover); color: var(--color-text-secondary); border: var(--tp-border-thin) dashed var(--color-card-border); }
+.cons-quality__car { font-weight: var(--tp-weight-semibold); color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+.cons-quality__car:hover { text-decoration-style: solid; }
 
 .cons-empty { display: grid; justify-items: center; gap: var(--tp-space-2); padding: var(--tp-space-10) var(--tp-space-4); color: var(--color-text-secondary); }
 .cons-empty b { color: var(--color-text); font-size: var(--tp-text-md); }

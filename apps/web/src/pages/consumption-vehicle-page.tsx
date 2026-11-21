@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Bus } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Bus } from 'lucide-react';
 import { CONSUMPTION_FLAG_LABELS, ConsumptionFlag, VEHICLE_CLASS_LABELS, VehicleTechnology, type ConsumptionVehicleDetail, type VehicleClass } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
-import { formatNumber } from '@/lib/format';
+import { formatDate, formatNumber } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { InfoTip } from '@/components/ui/info-tip';
@@ -128,6 +128,17 @@ export function ConsumptionVehiclePage() {
         </div>
       </div>
 
+      {data.stalls.length > 0 && (
+        <div className="cons-quality" role="status">
+          <span className="cons-quality__title"><AlertTriangle size={14} aria-hidden /> Odômetro parado</span>
+          {data.stalls.map((s) => (
+            <span key={s.from} className="cons-quality__item">
+              de {formatDate(`${s.from}T12:00:00`).slice(0, 5)} a {formatDate(`${s.to}T12:00:00`).slice(0, 5)} o carro abasteceu {fmtAmount(s.amount)} {u.amount} em {s.days} registros e marcou {s.km} km: o odômetro não contou. Esses dias ficam fora da conta.
+            </span>
+          ))}
+          <Link to={`/frota/${v.id}`} className="cons-quality__item cons-quality__link">ver a leitura de km no painel do carro</Link>
+        </div>
+      )}
       <div className="cons-row">
         <section className="tp-card cons-trend">
           <div className="tp-card__head">

@@ -555,6 +555,7 @@ export function FleetSwarm({
           <div className="chart-tip__row"><span>{u.ratio}</span><b>{fmtRatio(hover.row.ratio)}</b></div>
           <div className="chart-tip__row"><span>vs grupo</span><b>{fmtDeviation(hover.row.deviation)}{hover.clamped ? ' (fora da régua)' : ''}</b></div>
           <div className="chart-tip__row"><span>dias com registro</span><b>{hover.row.days}</b></div>
+          {hover.row.stall && <div className="chart-tip__row"><span>odômetro parado</span><b>{dayLabel(hover.row.stall.from)} – {dayLabel(hover.row.stall.to)}, fora da conta</b></div>}
           <div className="chart-tip__row chart-tip__hint"><span>clique para abrir o carro</span></div>
         </div>
       )}

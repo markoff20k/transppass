@@ -92,6 +92,31 @@ export const CONSUMPTION_HIGH_DEVIATION = 0.15;
 /** Dias com dado abaixo disso o carro não é comparado: a amostra é pequena demais. */
 export const CONSUMPTION_MIN_DAYS = 5;
 
+/**
+ * Odômetro parado: o carro abastece normalmente e o km não anda. Um dia
+ * isolado assim é normal (abastece à noite, o km aparece no dia seguinte; na
+ * base real metade dos abastecimentos de segunda-feira vem com km zero), por
+ * isso só conta um trecho de registros seguidos. Calibrado nos 11 meses de
+ * 2026: 5+ registros até 40 km pegam 4 carros no ano (095, 151, 375, 996);
+ * 3+ pegariam fins de semana e carros que abastecem dia sim, dia não.
+ */
+export const CONSUMPTION_STALL_MIN_AMOUNT: Record<VehicleTechnology, number> = { DIESEL: 40, EBUS: 60 };
+export const CONSUMPTION_STALL_MAX_KM = 40;
+export const CONSUMPTION_STALL_MIN_RECORDS = 5;
+export const CONSUMPTION_STALL_MAX_GAP_DAYS = 2;
+
+/** Trecho em que o carro abasteceu e o odômetro não contou; os carro-dias dele ficam fora da conta. */
+export interface ConsumptionStall {
+  from: string;
+  to: string;
+  /** Registros de abastecimento no trecho. */
+  days: number;
+  /** Litros ou kWh abastecidos no trecho. */
+  amount: number;
+  /** Km registrado no trecho (quase nada, por definição). */
+  km: number;
+}
+
 export const ConsumptionFlag = {
   OK: 'OK',
   WATCH: 'WATCH',
@@ -204,6 +229,8 @@ export interface ConsumptionVehicleRow {
   /** Dias em que o carro rodou e não há registro de consumo. */
   daysKmWithoutFuel: number;
   flag: ConsumptionFlag;
+  /** Trecho de odômetro parado dentro do período, já fora da conta do carro. */
+  stall: ConsumptionStall | null;
 }
 
 export interface ConsumptionQuality {
@@ -223,6 +250,8 @@ export interface ConsumptionQuality {
    * fica fora da conta do rendimento.
    */
   missingDates: string[];
+  /** Carros com odômetro parado em algum trecho do período. */
+  stalledVehicles: { vehicleId: string; code: string; from: string; to: string }[];
 }
 
 export interface ConsumptionFleet {
@@ -276,4 +305,6 @@ export interface ConsumptionVehicleDetail {
   monthly: ConsumptionMonthPoint[];
   /** Dias em que rodou sem registro de consumo. */
   daysKmWithoutFuel: number;
+  /** Trechos de odômetro parado na janela (período + comparação), fora da conta. */
+  stalls: ConsumptionStall[];
 }
