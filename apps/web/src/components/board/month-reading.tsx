@@ -10,11 +10,11 @@ import type { BoardInsight } from '@app/shared';
 export function MonthReading({ insights, onOpenDay }: { insights: BoardInsight[]; onOpenDay?: (date: string) => void }) {
   if (insights.length === 0) return null;
   return (
-    <section className="tp-card reading" aria-label="Leitura do mês">
+    <section className="tp-card reading" aria-label="IA da Transppass">
       <div className="tp-card__head">
         <div>
-          <h3><Sparkles size={15} aria-hidden /> Leitura do mês</h3>
-          <span className="chart__hint">o que fugiu do padrão e por quê, lido das planilhas do ERP-JB; clique numa data para abrir o dia</span>
+          <h3><Sparkles size={15} aria-hidden /> IA da Transppass</h3>
+          <span className="chart__hint">a leitura do mês: o que fugiu do padrão e por quê, lido das planilhas do ERP-JB; clique numa data para abrir o dia</span>
         </div>
       </div>
       <ul className="reading__list">

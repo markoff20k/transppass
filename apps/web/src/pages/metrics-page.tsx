@@ -53,7 +53,7 @@ function SectionSkeleton({ title, hint, kpis = 4, two = false, loader }: { title
 function PageSkeleton({ monthLabel }: { monthLabel: string }) {
   return (
     <div className="metrics-skel__page" aria-busy="true">
-      <SectionSkeleton title="Leitura do mês" hint="o que fugiu do padrão e por quê" loader={`Calculando ${monthLabel}`} />
+      <SectionSkeleton title="IA da Transppass" hint="a leitura do mês: o que fugiu do padrão e por quê" loader={`Calculando ${monthLabel}`} />
       <SectionSkeleton title="Confiabilidade" hint="MKBF, km rodados, quebras e OS liberadas" />
       <SectionSkeleton title="Operação" hint="cumprimento de frota e de viagens" />
       <SectionSkeleton title="Consumo" hint="rendimento da frota no mês" kpis={2} two />
@@ -180,7 +180,7 @@ export function MetricsPage() {
   return (
     <RefreshVeil active={isPlaceholderData || (boardQ.isPlaceholderData && Boolean(board))} label={`Calculando ${monthLabel}`}>
       {board && <MonthReading insights={board.insights} onOpenDay={setOpenDay} />}
-      {boardLoading && <SectionSkeleton title="Leitura do mês" hint="o que fugiu do padrão e por quê, lido das planilhas do ERP-JB" loader={`Lendo ${monthLabel}`} />}
+      {boardLoading && <SectionSkeleton title="IA da Transppass" hint="a leitura do mês: o que fugiu do padrão e por quê, lido das planilhas do ERP-JB" loader={`Lendo ${monthLabel}`} />}
       {boardFailed && (
         <section className="tp-card">
           <div className="tp-alert tp-alert--warning dash-error" role="status">
