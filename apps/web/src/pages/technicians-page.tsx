@@ -137,7 +137,7 @@ export function TechniciansPage() {
                       {t.trainingsExpiring > 0 && <span className="tp-badge tp-badge--status tp-badge--warning" style={{ marginLeft: 6 }}>{t.trainingsExpiring} vencendo</span>}
                     </td>
                     <td className="is-num">{t.openTasks}</td>
-                    <td className="is-action"><span className="tp-row-action"><Pencil size={13} /> Editar</span></td>
+                    <td className="is-action"><button type="button" className="tp-btn tp-btn--secondary tp-btn--sm"><Pencil size={14} aria-hidden /> Editar</button></td>
                   </tr>
                 ))}
                 {rows.length === 0 && <tr><td colSpan={9} className="tp-table__empty">Nenhum técnico. A base vem da Manutenção (Kaizen 16).</td></tr>}

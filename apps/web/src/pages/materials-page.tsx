@@ -129,7 +129,7 @@ export function MaterialsPage() {
                     <td className="is-num tp-muted">{m.avgCost === null ? '—' : m.avgCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                     <td className="is-num">{m.kitCount}</td>
                     <td><span className={`tp-badge tp-badge--status ${m.isActive ? 'tp-badge--success' : ''}`}>{m.isActive ? 'Ativo' : 'Desativado'}</span></td>
-                    <td className="is-action"><span className="tp-row-action"><Pencil size={13} /> Editar</span></td>
+                    <td className="is-action"><button type="button" className="tp-btn tp-btn--secondary tp-btn--sm"><Pencil size={14} aria-hidden /> Editar</button></td>
                   </tr>
                 ))}
                 {rows.length === 0 && <tr><td colSpan={9} className="tp-table__empty">Nenhum material.</td></tr>}

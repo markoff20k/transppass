@@ -93,31 +93,9 @@
 
 /* --- Peças de lista: barra de ferramentas, busca, progresso, rodapé ----- */
 
-/* Ação de edição visível na linha: aparece em cinza e acende no hover da linha */
+/* Coluna de ação da linha (o botão "Editar" é o tp-btn padrão, secundário e pequeno). */
 .tp-table th.is-action,
 .tp-table td.is-action { width: 1%; text-align: right; }
-
-.tp-row-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: var(--tp-radius-full);
-  border: var(--tp-border-thin) solid var(--color-border);
-  font-size: var(--tp-text-xs);
-  font-weight: var(--tp-weight-semibold);
-  color: var(--color-text-muted);
-  background: var(--color-surface);
-  white-space: nowrap;
-  transition: color var(--tp-duration-fast), border-color var(--tp-duration-fast), background var(--tp-duration-fast);
-}
-
-.tp-table tr:hover .tp-row-action,
-.tp-table tr:focus-visible .tp-row-action {
-  color: var(--color-surface);
-  border-color: var(--color-text);
-  background: var(--color-text);
-}
 
 /* Sub-OS: card de trabalho com trilho de estado à esquerda */
 .wo-task {

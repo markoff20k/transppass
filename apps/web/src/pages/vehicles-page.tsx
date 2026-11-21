@@ -159,7 +159,7 @@ export function VehiclesPage() {
                         <span className={`tp-state tp-state--${family}`}>{VEHICLE_STATUS_LABELS[v.status]}</span>
                       </td>
                       <td className="is-action">
-                        <span className="tp-row-action"><Pencil size={13} /> Editar</span>
+                        <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm"><Pencil size={14} aria-hidden /> Editar</button>
                       </td>
                     </tr>
                   );

@@ -138,7 +138,7 @@ export function UsersPage() {
                     </td>
                     <td className="tp-muted">{formatDate(u.createdAt)}</td>
                     <td className="is-action">
-                      <span className="tp-row-action"><Pencil size={13} /> Editar</span>
+                      <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm"><Pencil size={14} aria-hidden /> Editar</button>
                     </td>
                   </tr>
                 ))}

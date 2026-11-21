@@ -38,6 +38,11 @@
   background: var(--color-action-hover);
 }
 
+/* O ícone não encolhe quando a célula aperta o botão (coluna de ação com width: 1%). */
+.tp-btn > svg {
+  flex-shrink: 0;
+}
+
 .tp-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
