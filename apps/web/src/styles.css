@@ -4082,7 +4082,11 @@ a.bus-card:hover { transform: translateY(-1px); }
 .metrics-skel__kpi { min-height: 112px; border-radius: var(--tp-radius-lg); }
 .metrics-skel__loader { display: grid; place-items: center; min-height: 150px; border-radius: var(--tp-radius-lg); }
 .metrics-skel__loader .brand-loader { min-height: 0; padding: var(--tp-space-4); background: transparent; }
-.metrics-theme { margin: var(--tp-space-3) 0 0; padding: 0 var(--tp-space-1); font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); }
+/* Oficina: um cartão de tema como os outros, com os blocos antigos dentro, separados por linha tracejada. */
+.metrics-office { display: grid; gap: var(--tp-space-4); }
+.metrics-office > .metrics-office__block, .metrics-office > .tp-split { padding-top: var(--tp-space-4); border-top: var(--tp-border-thin) dashed var(--color-card-border); }
+.metrics-office__block { min-width: 0; }
+.metrics-office__block > h3, .metrics-office__block .tp-card__head h3 { font-size: var(--tp-text-sm); }
 .metrics-delta { display: inline-flex; align-items: center; gap: 4px; }
 .metrics-delta.is-good { color: var(--color-success); }
 .metrics-delta.is-bad { color: var(--color-danger); }

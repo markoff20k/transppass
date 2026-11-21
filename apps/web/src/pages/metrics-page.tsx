@@ -303,9 +303,15 @@ export function MetricsPage() {
         </section>
       )}
 
-      <h2 className="metrics-theme">Oficina</h2>
-
       <section className="tp-card">
+        <div className="tp-card__head">
+          <div>
+            <h3>Oficina</h3>
+            <span className="chart__hint">indisponibilidade, triagem, resolução em campo, retrabalho e alinhamento de código — derivados do processo nas OS</span>
+          </div>
+        </div>
+        <div className="metrics-office">
+      <section className="metrics-office__block">
         <div className="tp-card__head">
           <div>
             <h3>Indisponibilidade por causa (RF-39)</h3>
@@ -363,7 +369,7 @@ export function MetricsPage() {
       </section>
 
       <div className="tp-split">
-        <section className="tp-card">
+        <section className="metrics-office__block">
           <h3>SLA de triagem</h3>
           <p className="tp-muted">
             Do registro do evento até a decisão do PCM. Os valores-alvo ainda serão pactuados com
@@ -393,7 +399,7 @@ export function MetricsPage() {
           </div>
         </section>
 
-        <section className="tp-card">
+        <section className="metrics-office__block">
           <h3>Resolução em campo e retrabalho</h3>
           <div className="tp-kpi-row tp-kpi-row--2">
             <div className="tp-kpi">
@@ -447,7 +453,7 @@ export function MetricsPage() {
         </section>
       </div>
 
-      <section className="tp-card">
+      <section className="metrics-office__block">
           <h3>Alinhamento origem × diagnóstico</h3>
           <p className="tp-muted">
             O código decidido no registro se sustenta frente ao que a manutenção constata? Compara, por evento com constatação, o Sistema e o Subsistema completo (padrão de codificação, seção 8.2).
@@ -472,6 +478,8 @@ export function MetricsPage() {
             </div>
           </div>
           )}
+      </section>
+        </div>
       </section>
 
       <section className="tp-card">
