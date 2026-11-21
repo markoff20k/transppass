@@ -17,6 +17,51 @@ import { BoardDayDrawer } from '@/components/board/board-day-drawer';
 import { useAuth } from '@/features/auth/use-auth';
 import { fmtRatio } from '@/lib/consumption';
 
+/** Esqueleto de uma faixa de KPIs: os cartões no lugar, cinza, até o número chegar. */
+function KpiSkeleton({ count, two = false }: { count: number; two?: boolean }) {
+  return (
+    <div className={`tp-kpi-row${two ? ' tp-kpi-row--2' : ''}`} aria-hidden>
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="tp-kpi skeleton metrics-skel__kpi" />
+      ))}
+    </div>
+  );
+}
+
+/** Um tema ainda calculando: cabeçalho real e esqueleto no lugar dos cartões (com o loader da marca quando a espera é longa). */
+function SectionSkeleton({ title, hint, kpis = 4, two = false, loader }: { title: string; hint: string; kpis?: number; two?: boolean; loader?: string }) {
+  return (
+    <section className="tp-card metrics-skel" aria-busy="true" aria-label={`${title}: carregando`}>
+      <div className="tp-card__head">
+        <div>
+          <h3>{title}</h3>
+          <span className="chart__hint">{hint}</span>
+        </div>
+      </div>
+      {loader ? (
+        <div className="metrics-skel__loader skeleton">
+          <BrandLoader size={36} label={loader} />
+        </div>
+      ) : (
+        <KpiSkeleton count={kpis} two={two} />
+      )}
+    </section>
+  );
+}
+
+/** A página inteira antes do primeiro dado: a estrutura já aparece, o conteúdo chega por tema. */
+function PageSkeleton({ monthLabel }: { monthLabel: string }) {
+  return (
+    <div className="metrics-skel__page" aria-busy="true">
+      <SectionSkeleton title="Leitura do mês" hint="o que fugiu do padrão e por quê" loader={`Calculando ${monthLabel}`} />
+      <SectionSkeleton title="Confiabilidade" hint="MKBF, km rodados, quebras e OS liberadas" />
+      <SectionSkeleton title="Operação" hint="cumprimento de frota e de viagens" />
+      <SectionSkeleton title="Consumo" hint="rendimento da frota no mês" kpis={2} two />
+      <SectionSkeleton title="Acompanhamento diário" hint="o quadro da garagem, dia a dia" loader="Montando o quadro" />
+    </div>
+  );
+}
+
 const boardQuery = (m: ReferenceMonth) => ({
   queryKey: ['metrics', 'board', m.key] as const,
   queryFn: () => api.get<MetricsBoard>(`/metrics/board?month=${m.key}`),
@@ -120,8 +165,12 @@ export function MetricsPage() {
     queryFn: () => api.get<MetricHistoryPoint[]>('/metrics/history?months=12'),
   });
 
-  if (isPending) return <BrandLoader size={44} label="Calculando indicadores" />;
+  if (isPending) return <PageSkeleton monthLabel={monthLabel} />;
   if (isError || !data) return <p className="tp-error">Falha ao carregar os indicadores.</p>;
+  // O quadro é mais pesado que o resto (12 meses de frota, viagens e quebras): enquanto não chega, os temas
+  // que dependem dele ficam no esqueleto, com o loader da marca onde a espera é maior.
+  const boardLoading = !board && boardQ.isPending;
+  const boardFailed = !board && boardQ.isError;
 
   const prevName = board ? formatMonth(toMonth(month.year, month.month - 1)) : 'mês anterior';
   const pct = (v: number | null) => (v === null ? '—' : `${v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`);
@@ -131,6 +180,15 @@ export function MetricsPage() {
   return (
     <RefreshVeil active={isPlaceholderData || (boardQ.isPlaceholderData && Boolean(board))} label={`Calculando ${monthLabel}`}>
       {board && <MonthReading insights={board.insights} onOpenDay={setOpenDay} />}
+      {boardLoading && <SectionSkeleton title="Leitura do mês" hint="o que fugiu do padrão e por quê, lido das planilhas do ERP-JB" loader={`Lendo ${monthLabel}`} />}
+      {boardFailed && (
+        <section className="tp-card">
+          <div className="tp-alert tp-alert--warning dash-error" role="status">
+            <span>Não foi possível montar o quadro diário e a leitura do mês.</span>
+            <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm" onClick={() => void boardQ.refetch()} disabled={boardQ.isFetching}>Tentar de novo</button>
+          </div>
+        </section>
+      )}
 
       <section className="tp-card">
         <div className="tp-card__head">
@@ -179,6 +237,9 @@ export function MetricsPage() {
         )}
       </section>
 
+      {boardLoading && <SectionSkeleton title="Operação" hint="frota que saiu e viagens cumpridas, da planilha carro-linha-dia e da planilha de viagens (SPTrans)" />}
+      {boardLoading && <SectionSkeleton title="Consumo" hint="rendimento da frota no mês, da planilha de abastecimento e recarga" kpis={2} two />}
+      {boardLoading && <SectionSkeleton title="Acompanhamento diário" hint="o quadro da garagem, dia a dia, lido das planilhas" loader="Montando o quadro" />}
       {board && (
         <section className="tp-card">
           <div className="tp-card__head">

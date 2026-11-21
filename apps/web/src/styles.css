@@ -4077,7 +4077,12 @@ a.bus-card:hover { transform: translateY(-1px); }
 @media (max-width: 640px) { .month-nav__label { min-width: 9em; } .month-nav__now { display: none; } }
 
 .metrics-history { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--tp-space-4); }
-.metrics-theme { margin: var(--tp-space-2) 0 calc(-1 * var(--tp-space-2)); padding: 0 var(--tp-space-1); font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); }
+/* Esqueletos de Indicadores: cartões no lugar enquanto cada tema calcula. */
+.metrics-skel__page { display: grid; gap: var(--tp-space-4); }
+.metrics-skel__kpi { min-height: 112px; border-radius: var(--tp-radius-lg); }
+.metrics-skel__loader { display: grid; place-items: center; min-height: 150px; border-radius: var(--tp-radius-lg); }
+.metrics-skel__loader .brand-loader { min-height: 0; padding: var(--tp-space-4); background: transparent; }
+.metrics-theme { margin: var(--tp-space-3) 0 0; padding: 0 var(--tp-space-1); font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); }
 .metrics-delta { display: inline-flex; align-items: center; gap: 4px; }
 .metrics-delta.is-good { color: var(--color-success); }
 .metrics-delta.is-bad { color: var(--color-danger); }
