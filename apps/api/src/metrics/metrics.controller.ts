@@ -1,17 +1,42 @@
-import { Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { metricsHistoryQuerySchema, metricsQuerySchema, UserRole, type DailyBoard, type MetricHistoryPoint, type MetricsHistoryQuery, type MetricsQuery, type R1Metrics } from '@app/shared';
+import {
+  BOARD_INDICATORS,
+  indicatorTargetSchema,
+  metricsBoardDayQuerySchema,
+  metricsBoardQuerySchema,
+  metricsHistoryQuerySchema,
+  metricsQuerySchema,
+  UserRole,
+  type BoardDayDetail,
+  type BoardIndicator,
+  type DailyBoard,
+  type IndicatorTarget,
+  type IndicatorTargetInput,
+  type MetricHistoryPoint,
+  type MetricsBoard,
+  type MetricsBoardDayQuery,
+  type MetricsBoardQuery,
+  type MetricsHistoryQuery,
+  type MetricsQuery,
+  type R1Metrics,
+} from '@app/shared';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { MetricsService } from './metrics.service';
+import { BoardService } from './board.service';
 
 @ApiTags('indicadores')
 @ApiBearerAuth()
 @Controller('metrics')
 @UseGuards(RolesGuard)
 export class MetricsController {
-  constructor(private readonly metrics: MetricsService) {}
+  constructor(
+    private readonly metrics: MetricsService,
+    private readonly board: BoardService,
+  ) {}
 
   /** Criterio de saida do R1: MKBF publicado automaticamente. */
   @Get()
@@ -24,6 +49,26 @@ export class MetricsController {
   @Get('daily')
   daily(): Promise<DailyBoard> {
     return this.metrics.daily();
+  }
+
+  /** Quadro de acompanhamento diário do mês (o quadro branco da garagem), com totais, mês anterior, 12 meses, consumo e metas. */
+  @Get('board')
+  boardMonth(@Query(new ZodValidationPipe(metricsBoardQuerySchema)) query: MetricsBoardQuery): Promise<MetricsBoard> {
+    return this.board.board(query.month);
+  }
+
+  /** Um dia do quadro: as quebras, as linhas com viagem perdida e a frota coberta. */
+  @Get('board/day')
+  boardDay(@Query(new ZodValidationPipe(metricsBoardDayQuerySchema)) query: MetricsBoardDayQuery): Promise<BoardDayDetail> {
+    return this.board.day(query.date);
+  }
+
+  /** Meta e responsável de um indicador do quadro. */
+  @Put('targets/:key')
+  @Roles(UserRole.ADMIN, UserRole.PCM, UserRole.GESTAO)
+  setTarget(@Param('key') key: string, @Body(new ZodValidationPipe(indicatorTargetSchema)) body: IndicatorTargetInput, @CurrentUser('sub') userId: string): Promise<IndicatorTarget> {
+    if (!(key in BOARD_INDICATORS)) throw new BadRequestException('Indicador desconhecido');
+    return this.board.setTarget(key as BoardIndicator, body, userId);
   }
 
   @Get('history')

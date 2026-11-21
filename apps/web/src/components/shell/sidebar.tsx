@@ -20,9 +20,10 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, drawer, onClo
   const { user, logout } = useAuth();
   const { t } = useI18n();
 
+  const allowed = (i: NavItem) => !i.roles || (user && i.roles.includes(user.role));
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((i) => !i.roles || (user && i.roles.includes(user.role))),
+    items: g.items.filter(allowed).map((i) => (i.children ? { ...i, children: i.children.filter(allowed) } : i)),
   })).filter((g) => g.items.length > 0);
 
   return (
@@ -53,21 +54,29 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, drawer, onClo
           <div key={group.key} className="sidebar__group">
             <div className="sidebar__group-title">{t.nav[group.key]}</div>
             {group.items.map((item) => {
-              const Icon = item.icon;
-              const count = counts?.[item.key];
+              const render = (it: NavItem, child = false) => {
+                const Icon = it.icon;
+                const count = counts?.[it.key];
+                return (
+                  <NavLink
+                    key={it.to}
+                    to={it.to}
+                    end={it.to === '/'}
+                    onClick={onNavigate}
+                    title={collapsed ? t.nav[it.key] : undefined}
+                    className={({ isActive }) => `sidebar__link${child ? ' sidebar__link--child' : ''}${isActive ? ' is-active' : ''}`}
+                  >
+                    <Icon className="sidebar__icon" strokeWidth={1.9} />
+                    <span className="sidebar__label">{t.nav[it.key]}</span>
+                    {count ? <span className="sidebar__count">{count}</span> : null}
+                  </NavLink>
+                );
+              };
               return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.to === '/'}
-                  onClick={onNavigate}
-                  title={collapsed ? t.nav[item.key] : undefined}
-                  className={({ isActive }) => `sidebar__link${isActive ? ' is-active' : ''}`}
-                >
-                  <Icon className="sidebar__icon" strokeWidth={1.9} />
-                  <span className="sidebar__label">{t.nav[item.key]}</span>
-                  {count ? <span className="sidebar__count">{count}</span> : null}
-                </NavLink>
+                <div key={item.to} className="sidebar__entry">
+                  {render(item)}
+                  {item.children?.map((c) => render(c, true))}
+                </div>
               );
             })}
           </div>

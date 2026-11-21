@@ -127,3 +127,190 @@ export interface DailyBoard {
   /** Viagens por linha (SPTrans) nos últimos 30 dias: programadas × monitoradas; null sem base real. */
   trips: { planned30: number; monitored30: number; lost30: number } | null;
 }
+
+// ---------------------------------------------------------------------------
+// Quadro de acompanhamento diário dos indicadores (o quadro branco da garagem,
+// em Indicadores): uma linha por indicador, uma coluna por dia do mês, a cor
+// pela meta. Os três primeiros saem das planilhas do ERP-JB; consumo vem da
+// planilha de abastecimento e só tem leitura mensal.
+// ---------------------------------------------------------------------------
+
+export const metricsBoardQuerySchema = z.object({
+  /** "AAAA-MM"; sem ele, o mês corrente. */
+  month: z.string().regex(/^\d{4}-\d{2}$/, 'Mês no formato AAAA-MM').optional(),
+});
+export type MetricsBoardQuery = z.infer<typeof metricsBoardQuerySchema>;
+
+export const metricsBoardDayQuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data no formato AAAA-MM-DD'),
+});
+export type MetricsBoardDayQuery = z.infer<typeof metricsBoardDayQuerySchema>;
+
+export const BoardIndicator = {
+  /** ICF — tabelas cobertas ÷ tabelas programadas no dia. */
+  FLEET_COMPLIANCE: 'FLEET_COMPLIANCE',
+  /** IQF — quebras do dia (fichas A/S/T, retornos não programados). */
+  FAILURES: 'FAILURES',
+  /** MKBF acumulado no mês até o dia. */
+  MKBF_MTD: 'MKBF_MTD',
+  /** ICV — viagens realizadas ÷ programadas (planilha de viagens). */
+  TRIP_COMPLIANCE: 'TRIP_COMPLIANCE',
+  /** km/l da frota diesel no mês. */
+  CONSUMPTION_DIESEL: 'CONSUMPTION_DIESEL',
+  /** kWh/km da frota elétrica no mês. */
+  CONSUMPTION_EBUS: 'CONSUMPTION_EBUS',
+} as const;
+export type BoardIndicator = (typeof BoardIndicator)[keyof typeof BoardIndicator];
+
+export interface BoardIndicatorInfo {
+  label: string;
+  /** Sigla do quadro branco. */
+  short: string;
+  unit: '%' | 'un' | 'km' | 'km/l' | 'kWh/km';
+  /** Para que lado a meta é boa. */
+  better: 'higher' | 'lower';
+  /** Tem leitura por dia (as de consumo só têm a mensal). */
+  daily: boolean;
+}
+
+export const BOARD_INDICATORS: Record<BoardIndicator, BoardIndicatorInfo> = {
+  FLEET_COMPLIANCE: { label: 'Cumprimento de frota', short: 'ICF', unit: '%', better: 'higher', daily: true },
+  FAILURES: { label: 'Quebras (fichas A/S/T)', short: 'IQF', unit: 'un', better: 'lower', daily: true },
+  MKBF_MTD: { label: 'MKBF acumulado no mês', short: 'MKBF', unit: 'km', better: 'higher', daily: true },
+  TRIP_COMPLIANCE: { label: 'Cumprimento de viagens', short: 'ICV', unit: '%', better: 'higher', daily: true },
+  CONSUMPTION_DIESEL: { label: 'Rendimento diesel', short: 'km/l', unit: 'km/l', better: 'higher', daily: false },
+  CONSUMPTION_EBUS: { label: 'Rendimento elétrico', short: 'kWh/km', unit: 'kWh/km', better: 'lower', daily: false },
+};
+
+export const indicatorTargetSchema = z.object({
+  target: z.number().finite().nullable(),
+  responsible: z.string().trim().max(60).nullable(),
+});
+export type IndicatorTargetInput = z.infer<typeof indicatorTargetSchema>;
+
+export interface IndicatorTarget {
+  key: BoardIndicator;
+  target: number | null;
+  responsible: string | null;
+}
+
+/** Como uma leitura se compara com a meta: dentro, abaixo, ou sem meta (acompanhamento). */
+export type TargetStatus = 'good' | 'bad' | 'none';
+export function targetStatus(key: BoardIndicator, value: number | null, target: number | null): TargetStatus {
+  if (value === null || target === null) return 'none';
+  const better = BOARD_INDICATORS[key].better;
+  return (better === 'higher' ? value >= target : value <= target) ? 'good' : 'bad';
+}
+
+/**
+ * Por que o cumprimento de frota do dia ficou em branco: sem dia comparável
+ * (feriado, eleição, tabela especial) ou planilha carro-linha-dia incompleta
+ * (carros escalados sem km em linha enquanto viagens e km da frota foram normais).
+ */
+export type BoardFleetNote = 'no-reference' | 'incomplete-sheet';
+
+export interface BoardFleet {
+  /** Tabelas (linha × tabela) que tiveram carro com km ou viagem no dia. */
+  covered: number;
+  /** Tabelas programadas; estimada pelos dias comparáveis (mesmo tipo de dia e viagens programadas parecidas) até a programação do ERP-JB chegar. */
+  programmed: number | null;
+  estimated: boolean;
+  /** Carros distintos que operaram (com km em linha ou viagem). */
+  vehicles: number;
+  /** Carros escalados na planilha carro-linha-dia, com ou sem km. */
+  scheduled: number;
+  pct: number | null;
+  note: BoardFleetNote | null;
+}
+
+export interface BoardTrips {
+  planned: number;
+  lost: number;
+  pct: number | null;
+}
+
+export interface BoardDay {
+  date: string;
+  /** 0 = domingo. */
+  weekday: number;
+  /** Feriado ou data especial (eleição), pelo calendário de São Paulo. */
+  holiday: string | null;
+  /** Dia ainda sem dado (futuro ou depois da última remessa). */
+  empty: boolean;
+  fleet: BoardFleet;
+  failures: number;
+  km: number;
+  failuresToDate: number;
+  kmToDate: number;
+  mkbfToDate: number | null;
+  trips: BoardTrips;
+}
+
+export interface BoardTotals {
+  fleet: BoardFleet;
+  failures: number;
+  km: number;
+  mkbf: number | null;
+  trips: BoardTrips;
+}
+
+export interface BoardConsumption {
+  ratio: number | null;
+  previousRatio: number | null;
+  vehicles: number;
+  /** Carros acima do grupo / em atenção no mês. */
+  high: number;
+  watch: number;
+  from: string;
+  to: string;
+}
+
+export interface BoardHistoryPoint {
+  month: string;
+  fleetPct: number | null;
+  failures: number;
+  mkbf: number | null;
+  tripsPct: number | null;
+}
+
+/**
+ * Leitura automática do mês: o que fugiu do padrão e por quê, em português,
+ * por regras sobre o próprio dado (feriados, planilha incompleta, pior dia,
+ * tendência contra o mês anterior). Determinística e auditável.
+ */
+export interface BoardInsight {
+  kind: 'day' | 'fleet' | 'failures' | 'mkbf' | 'trips' | 'consumption' | 'data';
+  tone: 'info' | 'good' | 'warn' | 'bad';
+  /** Dia a que se refere, quando é sobre um dia. */
+  date: string | null;
+  title: string;
+  text: string;
+}
+
+export interface MetricsBoard {
+  month: string;
+  from: string;
+  to: string;
+  /** Último dia com alguma leitura (km, viagens ou carro-linha-dia). */
+  lastDataDate: string | null;
+  days: BoardDay[];
+  totals: BoardTotals;
+  previous: BoardTotals;
+  previousMonth: string;
+  history: BoardHistoryPoint[];
+  consumption: { diesel: BoardConsumption | null; ebus: BoardConsumption | null };
+  targets: Record<BoardIndicator, IndicatorTarget>;
+  insights: BoardInsight[];
+  /** Linhas com mais viagens perdidas no mês. */
+  worstLines: { line: string; planned: number; lost: number; pct: number | null }[];
+}
+
+/** O que aconteceu num dia do quadro: as quebras, as linhas que perderam viagem e a frota coberta. */
+export interface BoardDayDetail {
+  date: string;
+  holiday: string | null;
+  fleet: BoardFleet;
+  failures: { id: string; code: string; vehicleId: string; vehicleCode: string; line: string | null; fichaKind: string | null; defect: string | null; reportedAt: string }[];
+  trips: { line: string; planned: number; lost: number; pct: number | null }[];
+  tripsTotal: BoardTrips;
+}

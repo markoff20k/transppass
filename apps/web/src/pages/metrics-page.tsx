@@ -1,14 +1,66 @@
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { MonthControl } from '@/components/ui/month-nav';
-import { formatMonth, monthRange, toMonth, useReferenceMonth, type ReferenceMonth } from '@/lib/month';
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { DOWNTIME_CAUSE_LABELS, METRIC_KEY_LABELS, MetricKey, type MetricHistoryPoint, type R1Metrics } from '@app/shared';
+import { formatMonth, monthDays, monthRange, toMonth, useReferenceMonth, type ReferenceMonth } from '@/lib/month';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowDownRight, ArrowUpRight, Fuel, Minus, Zap } from 'lucide-react';
+import { DOWNTIME_CAUSE_LABELS, METRIC_KEY_LABELS, MetricKey, UserRole, type BoardConsumption, type BoardIndicator, type IndicatorTarget, type IndicatorTargetInput, type MetricHistoryPoint, type MetricsBoard, type R1Metrics } from '@app/shared';
 import { MetricHistoryChart } from '@/components/charts/charts';
 import { api } from '@/lib/api-client';
 import { formatDuration, formatMinutes, formatNumber } from '@/lib/format';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
+import { MonthReading } from '@/components/board/month-reading';
+import { IndicatorBoard } from '@/components/board/indicator-board';
+import { BoardDayDrawer } from '@/components/board/board-day-drawer';
+import { useAuth } from '@/features/auth/use-auth';
+import { fmtRatio } from '@/lib/consumption';
+
+const boardQuery = (m: ReferenceMonth) => ({
+  queryKey: ['metrics', 'board', m.key] as const,
+  queryFn: () => api.get<MetricsBoard>(`/metrics/board?month=${m.key}`),
+  staleTime: m.isCurrent ? 60_000 : 5 * 60_000,
+});
+
+/** Variação entre dois valores como "melhorou 4,3%" com a seta certa; `lowerIsBetter` inverte o sentido (kWh/km). */
+function Delta({ current, previous, lowerIsBetter = false, label }: { current: number | null; previous: number | null; lowerIsBetter?: boolean; label: string }) {
+  if (current === null || previous === null || previous === 0) return <span className="tp-kpi__note tp-muted">sem {label} para comparar</span>;
+  const change = (current - previous) / previous;
+  const good = lowerIsBetter ? change < 0 : change > 0;
+  const flat = Math.abs(change) < 0.002;
+  const pct = `${Math.abs(change * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+  return (
+    <span className={`tp-kpi__note metrics-delta ${flat ? '' : good ? 'is-good' : 'is-bad'}`}>
+      {flat ? <Minus size={13} aria-hidden /> : good ? <ArrowUpRight size={13} aria-hidden /> : <ArrowDownRight size={13} aria-hidden />}
+      {flat ? 'igual a' : good ? `melhorou ${pct} vs` : `piorou ${pct} vs`} {label}
+    </span>
+  );
+}
+
+function ConsumptionKpi({ energy, data, month }: { energy: 'diesel' | 'ebus'; data: BoardConsumption | null; month: ReferenceMonth }) {
+  const diesel = energy === 'diesel';
+  const { from, to } = monthDays(month);
+  const href = `/consumo?de=${from}&ate=${to}${diesel ? '' : '&energia=energia'}`;
+  const unit = diesel ? 'km/l' : 'kWh/km';
+  return (
+    <div className="tp-kpi">
+      <span className="tp-kpi__label">{diesel ? <Fuel size={13} aria-hidden /> : <Zap size={13} aria-hidden />} {diesel ? 'Frota diesel' : 'Frota elétrica'}</span>
+      {data && data.ratio !== null ? (
+        <>
+          <strong className="tp-kpi__value">{fmtRatio(data.ratio)} <small className="tp-kpi__of">{unit}</small></strong>
+          <Delta current={data.ratio} previous={data.previousRatio} lowerIsBetter={!diesel} label="mês anterior" />
+          <span className="tp-kpi__note">{data.vehicles} carros com registro · {data.high} acima do grupo · {data.watch} em atenção · <Link to={href} className="tp-kpi__link">carro a carro</Link></span>
+        </>
+      ) : (
+        <>
+          <strong className="tp-kpi__value">—</strong>
+          <span className="tp-kpi__note tp-muted">sem registro de consumo no mês</span>
+        </>
+      )}
+    </div>
+  );
+}
 
 const metricsQuery = (m: ReferenceMonth) => {
   const range = monthRange(m);
@@ -28,7 +80,7 @@ export function MetricsPage() {
   usePageHeader({
     eyebrow: 'Gestão',
     title: 'Indicadores',
-    description: 'MKBF e decomposição da indisponibilidade, derivados do processo.',
+    description: 'O mês da frota em quatro temas: confiabilidade, operação, consumo e oficina — tudo lido das planilhas do ERP-JB e do processo, ninguém digita.',
     actions: <MonthControl />,
   });
 
@@ -38,6 +90,19 @@ export function MetricsPage() {
     ...metricsQuery(month),
     placeholderData: keepPreviousData,
     refetchInterval: 60_000,
+  });
+  const boardQ = useQuery({ ...boardQuery(month), placeholderData: keepPreviousData });
+  const board = boardQ.data;
+  const [openDay, setOpenDay] = useState<string | null>(null);
+  const { user } = useAuth();
+  const canEditTargets = user?.role === UserRole.ADMIN || user?.role === UserRole.PCM || user?.role === UserRole.GESTAO;
+  const saveTarget = useMutation({
+    meta: { success: 'Meta salva' },
+    mutationFn: ({ key, input }: { key: BoardIndicator; input: IndicatorTargetInput }) => api.put<IndicatorTarget>(`/metrics/targets/${key}`, input),
+    onSuccess: (saved) => {
+      // A meta vale para todos os meses: atualiza o que está em cache sem refazer o quadro.
+      queryClient.setQueriesData<MetricsBoard>({ queryKey: ['metrics', 'board'] }, (old) => (old && 'targets' in old ? { ...old, targets: { ...old.targets, [saved.key]: saved } } : old));
+    },
   });
 
   // Pré-busca o mês anterior e depois o seguinte, um de cada vez: a seta do mês abre na hora. Mês fechado fica 5 min em cache.
@@ -58,15 +123,22 @@ export function MetricsPage() {
   if (isPending) return <BrandLoader size={44} label="Calculando indicadores" />;
   if (isError || !data) return <p className="tp-error">Falha ao carregar os indicadores.</p>;
 
+  const prevName = board ? formatMonth(toMonth(month.year, month.month - 1)) : 'mês anterior';
+  const pct = (v: number | null) => (v === null ? '—' : `${v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`);
+  const boardHistory = (pick: (h: MetricsBoard['history'][number]) => number | null, percent: boolean): MetricHistoryPoint[] =>
+    (board?.history ?? []).map((h) => ({ month: `${h.month}-01T12:00:00`, values: { [MetricKey.MKBF]: percent ? (pick(h) === null ? null : (pick(h) as number) / 100) : pick(h) } as MetricHistoryPoint['values'] }));
+
   return (
-    <RefreshVeil active={isPlaceholderData} label={`Calculando ${monthLabel}`}>
+    <RefreshVeil active={isPlaceholderData || (boardQ.isPlaceholderData && Boolean(board))} label={`Calculando ${monthLabel}`}>
+      {board && <MonthReading insights={board.insights} onOpenDay={setOpenDay} />}
+
       <section className="tp-card">
         <div className="tp-card__head">
           <div>
-            <h3>MKBF — métrica norte</h3>
+            <h3>Confiabilidade</h3>
             <span className="chart__hint">
               {monthLabel}
-              {month.isCurrent ? ' (até agora)' : ''}, calculado dos estados do processo — ninguém digita
+              {month.isCurrent ? ' (até agora)' : ''} · MKBF é a métrica norte: km da frota dividido pelas quebras (fichas A, S e T)
             </span>
           </div>
         </div>
@@ -77,7 +149,7 @@ export function MetricsPage() {
             <strong className="tp-kpi__value">
               {data.mkbf.mkbf === null ? '—' : `${formatNumber(data.mkbf.mkbf)} km`}
             </strong>
-            {data.mkbf.mkbf !== null && (
+            {board ? <Delta current={board.totals.mkbf} previous={board.previous.mkbf} label={prevName} /> : data.mkbf.mkbf !== null && (
               <span className="tp-muted">
                 {formatNumber(data.mkbf.kmTraveled)} km ÷ {formatNumber(data.mkbf.unscheduledReturns)} retornos
               </span>
@@ -86,10 +158,12 @@ export function MetricsPage() {
           <div className="tp-kpi">
             <span className="tp-kpi__label">Km rodados</span>
             <strong className="tp-kpi__value">{formatNumber(data.mkbf.kmTraveled)}</strong>
+            {board && <span className="tp-kpi__note">{formatNumber(board.previous.km)} em {prevName}</span>}
           </div>
           <div className="tp-kpi">
-            <span className="tp-kpi__label">Retornos não programados</span>
+            <span className="tp-kpi__label">Quebras</span>
             <strong className="tp-kpi__value">{data.mkbf.unscheduledReturns}</strong>
+            {board ? <Delta current={board.totals.failures} previous={board.previous.failures} lowerIsBetter label={prevName} /> : <span className="tp-kpi__note">retornos não programados</span>}
           </div>
           <div className="tp-kpi">
             <span className="tp-kpi__label">OS liberadas</span>
@@ -104,6 +178,71 @@ export function MetricsPage() {
           </p>
         )}
       </section>
+
+      {board && (
+        <section className="tp-card">
+          <div className="tp-card__head">
+            <div>
+              <h3>Operação</h3>
+              <span className="chart__hint">frota que saiu e viagens cumpridas, da planilha carro-linha-dia e da planilha de viagens (SPTrans)</span>
+            </div>
+          </div>
+          <div className="tp-kpi-row">
+            <div className="tp-kpi">
+              <span className="tp-kpi__label">Cumprimento de frota</span>
+              <strong className="tp-kpi__value">{pct(board.totals.fleet.pct)}</strong>
+              <Delta current={board.totals.fleet.pct} previous={board.previous.fleet.pct} label={prevName} />
+              <span className="tp-kpi__note">{formatNumber(board.totals.fleet.covered)} de {formatNumber(board.totals.fleet.programmed ?? 0)} tabelas · programação estimada pelos dias comparáveis até a escala do ERP-JB chegar</span>
+            </div>
+            <div className="tp-kpi">
+              <span className="tp-kpi__label">Cumprimento de viagens</span>
+              <strong className="tp-kpi__value">{pct(board.totals.trips.pct)}</strong>
+              <Delta current={board.totals.trips.pct} previous={board.previous.trips.pct} label={prevName} />
+              <span className="tp-kpi__note">{formatNumber(board.totals.trips.planned - board.totals.trips.lost)} de {formatNumber(board.totals.trips.planned)} viagens programadas</span>
+            </div>
+            <div className="tp-kpi">
+              <span className="tp-kpi__label">Viagens perdidas</span>
+              <strong className="tp-kpi__value">{formatNumber(board.totals.trips.lost)}</strong>
+              <Delta current={board.totals.trips.lost} previous={board.previous.trips.lost} lowerIsBetter label={prevName} />
+              {board.worstLines[0] && <span className="tp-kpi__note">linha que mais perdeu: {board.worstLines[0].line}, {formatNumber(board.worstLines[0].lost)}</span>}
+            </div>
+            <div className="tp-kpi">
+              <span className="tp-kpi__label">Carros em operação</span>
+              <strong className="tp-kpi__value">{formatNumber(board.totals.fleet.vehicles)}</strong>
+              <span className="tp-kpi__note">no dia de maior operação · {formatNumber(board.totals.fleet.scheduled)} escalados</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {board && (
+        <section className="tp-card">
+          <div className="tp-card__head">
+            <div>
+              <h3>Consumo</h3>
+              <span className="chart__hint">rendimento da frota no mês, da planilha de abastecimento e recarga; o detalhe carro a carro está em Consumo</span>
+            </div>
+          </div>
+          <div className="tp-kpi-row tp-kpi-row--2">
+            <ConsumptionKpi energy="diesel" data={board.consumption.diesel} month={month} />
+            <ConsumptionKpi energy="ebus" data={board.consumption.ebus} month={month} />
+          </div>
+        </section>
+      )}
+
+      {board && (
+        <section className="tp-card">
+          <div className="tp-card__head">
+            <div>
+              <h3>Acompanhamento diário</h3>
+              <span className="chart__hint">o quadro da garagem, dia a dia, lido das planilhas; clique num dia para ver o que aconteceu{canEditTargets ? ' · meta e responsável se editam na própria célula' : ''}</span>
+            </div>
+          </div>
+          <IndicatorBoard board={board} canEdit={canEditTargets} onOpenDay={setOpenDay} onSaveTarget={(key, input) => saveTarget.mutateAsync({ key, input })} />
+        </section>
+      )}
+
+      <h2 className="metrics-theme">Oficina</h2>
 
       <section className="tp-card">
         <div className="tp-card__head">
@@ -286,6 +425,9 @@ export function MetricsPage() {
         ) : (
           <div className="metrics-history">
             <MetricHistoryChart data={history.data ?? []} metric={MetricKey.MKBF} title={METRIC_KEY_LABELS.MKBF} color="var(--chart-1)" />
+            {board && <MetricHistoryChart data={boardHistory((h) => h.fleetPct, true)} metric={MetricKey.MKBF} title="Cumprimento de frota" color="var(--chart-2)" percent />}
+            {board && <MetricHistoryChart data={boardHistory((h) => h.tripsPct, true)} metric={MetricKey.MKBF} title="Cumprimento de viagens" color="var(--chart-3)" percent />}
+            {board && <MetricHistoryChart data={boardHistory((h) => h.failures, false)} metric={MetricKey.MKBF} title="Quebras (fichas A/S/T)" color="var(--chart-5)" />}
             <MetricHistoryChart data={history.data ?? []} metric={MetricKey.FLEET_AVAILABILITY} title={METRIC_KEY_LABELS.FLEET_AVAILABILITY} color="var(--chart-4)" percent />
             <MetricHistoryChart data={history.data ?? []} metric={MetricKey.FIELD_RESOLUTION} title={METRIC_KEY_LABELS.FIELD_RESOLUTION} color="var(--chart-3)" percent />
             <MetricHistoryChart data={history.data ?? []} metric={MetricKey.INTERNAL_REWORK} title={METRIC_KEY_LABELS.INTERNAL_REWORK} color="var(--chart-5)" percent />
@@ -294,6 +436,7 @@ export function MetricsPage() {
           </div>
         )}
       </section>
+      <BoardDayDrawer date={openDay} onClose={() => setOpenDay(null)} />
     </RefreshVeil>
   );
 }

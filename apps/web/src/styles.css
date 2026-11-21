@@ -4077,6 +4077,78 @@ a.bus-card:hover { transform: translateY(-1px); }
 @media (max-width: 640px) { .month-nav__label { min-width: 9em; } .month-nav__now { display: none; } }
 
 .metrics-history { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--tp-space-4); }
+.metrics-theme { margin: var(--tp-space-2) 0 calc(-1 * var(--tp-space-2)); padding: 0 var(--tp-space-1); font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); }
+.metrics-delta { display: inline-flex; align-items: center; gap: 4px; }
+.metrics-delta.is-good { color: var(--color-success); }
+.metrics-delta.is-bad { color: var(--color-danger); }
+
+/* --- Leitura do mês (components/board/month-reading) ----------------------- */
+.reading h3 { display: flex; align-items: center; gap: 6px; }
+.reading h3 svg { color: var(--color-brand); }
+.reading__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--tp-space-2) var(--tp-space-5); margin: 0; padding: 0; list-style: none; }
+.reading__item { position: relative; padding-left: 14px; min-width: 0; }
+.reading__item::before { content: ''; position: absolute; left: 0; top: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--color-text-muted); }
+.reading__item.is-good::before { background: var(--color-success); }
+.reading__item.is-bad::before { background: var(--color-danger); }
+.reading__item.is-warn::before { background: var(--color-warning-text); }
+.reading__item.is-info::before { background: var(--chart-4); }
+.reading__body { display: grid; gap: 1px; width: 100%; min-width: 0; padding: 2px 0; border: 0; background: none; text-align: left; font: inherit; color: inherit; white-space: normal; border-radius: var(--tp-radius-sm); }
+.reading__body > * { min-width: 0; overflow-wrap: anywhere; }
+.reading__body.is-clickable { cursor: pointer; }
+.reading__body.is-clickable:hover { background: none; color: inherit; }
+.reading__body.is-clickable:hover .reading__title { color: var(--color-brand-text); text-decoration: underline; text-underline-offset: 2px; }
+.reading__title { font-size: var(--tp-text-sm); font-weight: var(--tp-weight-semibold); color: var(--color-text); }
+.reading__text { font-size: var(--tp-text-xs); line-height: 1.45; color: var(--color-text-secondary); }
+
+/* --- Quadro diário (components/board/indicator-board) ---------------------- */
+.board { display: grid; gap: var(--tp-space-3); }
+.board__scroll { overflow-x: auto; border: var(--tp-border-thin) solid var(--color-card-border); border-radius: var(--tp-radius-md); }
+.board__table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: var(--tp-text-xs); }
+.board__table th, .board__table td { padding: 0; border-bottom: var(--tp-border-thin) solid var(--color-card-border); }
+.board__table thead th { position: sticky; top: 0; z-index: 2; background: var(--color-surface-sunken, var(--color-surface-hover)); color: var(--color-text-muted); font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.04em; text-transform: uppercase; }
+.board__marks th { height: 14px; border-bottom: 0; font-size: 9px; color: var(--color-text-muted); text-align: center; }
+.board__mark.is-weekend { color: var(--color-warning-text); }
+.board__day { width: 34px; min-width: 34px; height: 26px; text-align: center; }
+.board__day.is-weekend { background: color-mix(in srgb, var(--color-warning-soft) 60%, var(--color-surface-sunken, var(--color-surface-hover))); }
+.board__day.is-holiday::after { content: '•'; display: block; margin-top: -8px; color: var(--color-brand); line-height: 0.6; }
+.board__sticky { position: sticky; background: var(--color-surface); z-index: 3; }
+.board__table thead .board__sticky { z-index: 4; background: var(--color-surface-sunken, var(--color-surface-hover)); }
+.board__indicator-head, .board__indicator { left: 0; width: 200px; min-width: 200px; text-align: left; padding: 0 var(--tp-space-3); }
+.board__indicator { display: table-cell; height: 44px; vertical-align: middle; }
+.board__short { display: block; font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.06em; color: var(--color-text-muted); }
+.board__label { display: block; font-size: var(--tp-text-sm); font-weight: var(--tp-weight-semibold); color: var(--color-text); white-space: nowrap; }
+.board__un { left: 200px; width: 54px; min-width: 54px; text-align: center; }
+.board__meta { left: 254px; width: 92px; min-width: 92px; text-align: center; }
+.board__resp { left: 346px; width: 110px; min-width: 110px; text-align: center; border-right: var(--tp-border-thin) solid var(--color-card-border); }
+.board__edit { display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 100%; height: 44px; padding: 0 6px; border: 0; background: none; font: inherit; font-size: var(--tp-text-xs); color: var(--color-text); cursor: pointer; }
+.board__edit svg { opacity: 0; color: var(--color-text-muted); transition: opacity var(--tp-duration-fast) var(--tp-ease); }
+.board__edit:hover { background: var(--color-surface-hover); color: var(--color-text); }
+.board__edit:hover svg { opacity: 1; }
+.board__input { width: 100%; height: 32px; padding: 0 6px; font-size: var(--tp-text-xs); text-align: center; }
+.board__cell { text-align: center; }
+.board__value { display: block; width: 100%; height: 44px; padding: 0; border: 0; background: none; font: inherit; font-size: var(--tp-text-xs); font-variant-numeric: tabular-nums; font-weight: var(--tp-weight-medium); color: var(--color-text); cursor: pointer; }
+.board__value:hover { background: color-mix(in srgb, var(--color-text) 8%, transparent); color: var(--color-text); }
+.board__value--month { cursor: default; font-weight: var(--tp-weight-semibold); }
+.board__value--month:hover { background: none; }
+.board__cell.is-good { background: var(--color-success-soft, color-mix(in srgb, var(--color-success) 14%, transparent)); }
+.board__cell.is-bad { background: var(--color-danger-soft, color-mix(in srgb, var(--color-danger) 14%, transparent)); }
+.board__cell.is-none { background: color-mix(in srgb, var(--chart-4) 12%, transparent); }
+.board__cell.is-blank .board__value { color: var(--color-text-muted); }
+.board__cell.is-no-reference, .board__cell.is-incomplete-sheet { background: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--color-text) 6%, transparent) 4px 6px); }
+.board__cell.is-weekend:not(.is-good):not(.is-bad):not(.is-none) { background: color-mix(in srgb, var(--color-warning-soft) 40%, transparent); }
+.board__cell--span { text-align: left; padding: 0 var(--tp-space-3); font-size: var(--tp-text-xs); }
+.board__month { width: 64px; min-width: 64px; text-align: center; border-left: var(--tp-border-thin) solid var(--color-card-border); font-weight: var(--tp-weight-semibold); }
+.board__legend { display: flex; flex-wrap: wrap; gap: var(--tp-space-2) var(--tp-space-4); font-size: var(--tp-text-xs); color: var(--color-text-secondary); }
+.board__legend span { display: inline-flex; align-items: center; gap: 6px; }
+.board__dot { width: 10px; height: 10px; border-radius: 3px; }
+.board__dot.is-good { background: var(--color-success-soft, color-mix(in srgb, var(--color-success) 14%, transparent)); border: 1px solid var(--color-success); }
+.board__dot.is-bad { background: var(--color-danger-soft, color-mix(in srgb, var(--color-danger) 14%, transparent)); border: 1px solid var(--color-danger); }
+.board__dot.is-none { background: color-mix(in srgb, var(--chart-4) 12%, transparent); border: 1px solid var(--chart-4); }
+.board__dot.is-note { background: repeating-linear-gradient(135deg, transparent 0 2px, color-mix(in srgb, var(--color-text) 25%, transparent) 2px 3px); border: 1px solid var(--color-card-border); }
+
+/* --- Dia aberto (components/board/board-day-drawer) ------------------------ */
+.dayd { display: grid; gap: var(--tp-space-4); }
+.dayd__section h4 { margin: 0 0 var(--tp-space-2); font-size: var(--tp-text-sm); font-weight: var(--tp-weight-semibold); }
 .metrics-history__item { min-width: 0; }
 
 @media (max-width: 1100px) { .metrics-history { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

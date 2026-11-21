@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 
 import { MetricsController } from './metrics.controller';
 import { MetricsService } from './metrics.service';
+import { BoardService } from './board.service';
+import { ConsumptionModule } from '../consumption/consumption.module';
 
 @Module({
-
+  imports: [ConsumptionModule],
   controllers: [MetricsController],
-  providers: [MetricsService],
+  providers: [MetricsService, BoardService],
   exports: [MetricsService],
 })
 export class MetricsModule {}

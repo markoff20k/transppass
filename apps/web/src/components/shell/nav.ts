@@ -43,6 +43,8 @@ export interface NavItem {
   key: NavKey;
   icon: LucideIcon;
   roles?: UserRole[];
+  /** Subitens: o detalhe de um indicador mora embaixo de Indicadores, não solto no menu. */
+  children?: NavItem[];
 }
 
 export interface NavGroup {
@@ -84,8 +86,13 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     key: 'management',
     items: [
-      { to: '/indicadores', key: 'metrics', icon: BarChart3, roles: [ADMIN, PCM, GESTAO] },
-      { to: '/consumo', key: 'consumption', icon: Fuel, roles: [ADMIN, PCM, GESTAO, MANUTENCAO] },
+      {
+        to: '/indicadores',
+        key: 'metrics',
+        icon: BarChart3,
+        roles: [ADMIN, PCM, GESTAO, MANUTENCAO],
+        children: [{ to: '/consumo', key: 'consumption', icon: Fuel, roles: [ADMIN, PCM, GESTAO, MANUTENCAO] }],
+      },
       { to: '/km', key: 'km', icon: Gauge, roles: [ADMIN, PCM, CCO, MANUTENCAO] },
       { to: '/auditorias', key: 'audits', icon: ShieldCheck, roles: [ADMIN, PCM, GESTAO, MANUTENCAO, ESTOQUE] },
     ],

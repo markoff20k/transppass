@@ -144,6 +144,18 @@
 
 /* O item ativo é o único uso permanente do laranja no shell: faixa à
    esquerda e ícone tingido. */
+/* Subitem (ex.: Consumo embaixo de Indicadores): recuado, menor, com a guia à esquerda. */
+.sidebar__link--child {
+  margin-left: 22px;
+  padding-left: 14px;
+  min-height: 32px;
+  font-size: var(--tp-text-sm);
+  border-left: var(--tp-border-thin) solid color-mix(in srgb, var(--color-sidebar-text) 25%, transparent);
+  border-radius: 0 var(--tp-radius-md) var(--tp-radius-md) 0;
+}
+.sidebar__link--child .sidebar__icon { width: 16px; height: 16px; }
+.shell--collapsed .sidebar__link--child { margin-left: 0; padding-left: 0; border-left: 0; }
+
 .sidebar__link.is-active {
   background: var(--color-sidebar-active-bg);
   color: var(--color-sidebar-text-strong);
