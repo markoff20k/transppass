@@ -121,3 +121,56 @@ export interface DashboardData {
   recentEvents: FailureEventSummary[];
   vehicles: DashboardVehicle[];
 }
+
+// ---------------------------------------------------------------------------
+// Avisos e alertas — o cartão de cima do Dashboard.
+//
+// Uma lista só, já ordenada por gravidade, com tudo o que pede atenção agora:
+// o que está preso na garagem (segurança, peça, OS, triagem, fila, preventiva),
+// até quando os dados do ERP-JB chegaram, o que a planilha de consumo deixou
+// de registrar, a caixa de notificações de quem está olhando e as leituras do
+// quadro de indicadores que pioraram. Nada é digitado: cada item nasce de um
+// estado do sistema e abre a tela onde se resolve.
+// ---------------------------------------------------------------------------
+
+export const NOTICE_SEVERITIES = ['critical', 'warning', 'info', 'good'] as const;
+export type NoticeSeverity = (typeof NOTICE_SEVERITIES)[number];
+
+export type NoticeKind =
+  | 'safety'
+  | 'parts'
+  | 'workorders'
+  | 'triage'
+  | 'queue'
+  | 'preventive'
+  | 'km'
+  | 'data'
+  | 'sheet'
+  | 'indicator'
+  | 'notification';
+
+export interface DashboardNotice {
+  id: string;
+  severity: NoticeSeverity;
+  kind: NoticeKind;
+  title: string;
+  text: string;
+  /** Rota no app onde o assunto se resolve; null quando é só para saber. */
+  to: string | null;
+  /** Quando aconteceu, ou a data a que se refere (ISO). */
+  at: string | null;
+  /** Origem curta, para o rodapé do item ("Oficina", "ERP-JB", "Indicadores"). */
+  source: string;
+  /** Quantidade por trás do item, quando é uma contagem (3 OS, 12 peças). */
+  count: number | null;
+  /** Notificação da caixa do usuário: pode ser dada como ciente. */
+  notificationId: string | null;
+}
+
+export interface DashboardNotices {
+  generatedAt: string;
+  items: DashboardNotice[];
+  counts: Record<NoticeSeverity, number>;
+  /** Até quando cada planilha do ERP-JB chegou (ISO yyyy-mm-dd), null sem dado. */
+  dataThrough: { km: string | null; consumption: string | null; failures: string | null; lineDays: string | null };
+}

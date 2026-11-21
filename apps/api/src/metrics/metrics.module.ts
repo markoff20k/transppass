@@ -9,6 +9,6 @@ import { ConsumptionModule } from '../consumption/consumption.module';
   imports: [ConsumptionModule],
   controllers: [MetricsController],
   providers: [MetricsService, BoardService],
-  exports: [MetricsService],
+  exports: [MetricsService, BoardService],
 })
 export class MetricsModule {}

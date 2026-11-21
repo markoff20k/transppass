@@ -185,7 +185,28 @@ const notifications: { id: string; title: string; body: string; createdAt: strin
   { id: 'n-3', title: 'Projeção de km degradada — carro 10003', body: 'Sem leitura de odômetro há 5 dias. A projeção segue publicada em modo degradado.', createdAt: new Date(Date.now() - 26 * 3_600_000).toISOString(), readAt: null },
 ];
 
+function buildNotices() {
+  const h = (n: number) => new Date(Date.now() - n * 3_600_000).toISOString();
+  const items = [
+    { id: 'safety', severity: 'critical', kind: 'safety', title: '2 falhas de segurança em aberto', text: 'Carro 10001 e 10004. Falha marcada como de segurança sem encerramento: tem prioridade sobre qualquer outra OS.', to: '/eventos', at: h(5), source: 'Eventos', count: 2, notificationId: null },
+    { id: 'parts-overdue', severity: 'critical', kind: 'parts', title: '1 peça com prazo vencido', text: 'A mais antiga venceu há 26 h, carro 10003. Carro parado sem ninguém trabalhando nele até a peça chegar.', to: '/estoque', at: h(26), source: 'Estoque', count: 1, notificationId: null },
+    { id: 'triage', severity: 'warning', kind: 'triage', title: '1 evento aguardando triagem', text: 'O mais antigo espera há 3 h. Sem triagem o carro não entra na fila nem volta à linha.', to: '/triagem', at: h(3), source: 'Triagem', count: 1, notificationId: null },
+    { id: 'inbox:n-2', severity: 'warning', kind: 'notification', title: 'Prazo de peça vencido — carro 10003', text: 'PNE-CUI-01 — Cuíca de freio. Prazo era ontem (Aguardando compra).', to: '/estoque', at: h(3), source: 'Notificação', count: null, notificationId: 'n-2' },
+    { id: 'data-through', severity: 'info', kind: 'data', title: 'Dados do ERP-JB até 18/11', text: 'Km até 18/11, fichas até 18/11, consumo até 18/11, carro-linha-dia até 18/11. MKBF, consumo e o quadro diário do mês seguem parciais até a próxima carga.', to: '/indicadores', at: '2026-11-18T12:00:00.000Z', source: 'ERP-JB', count: null, notificationId: null },
+    { id: 'inbox:n-1', severity: 'info', kind: 'notification', title: 'Previsão de retorno do carro 10002 mudou', text: 'Nova previsão de conclusão: hoje, 16:40.', to: '/fila', at: h(0.4), source: 'Notificação', count: null, notificationId: 'n-1' },
+    { id: 'board:mkbf', severity: 'good', kind: 'indicator', title: 'MKBF 8.420 km, melhorou 2,6% vs outubro', text: '1.284.000 km rodados ÷ 152 quebras. Média dos últimos 6 meses: 7.510 km, o mês está acima.', to: '/indicadores', at: '2026-11-18T12:00:00.000Z', source: 'Indicadores', count: null, notificationId: null },
+  ].filter((i) => i.notificationId === null || notifications.some((n) => n.id === i.notificationId && !n.readAt));
+  const counts = { critical: 0, warning: 0, info: 0, good: 0 } as Record<string, number>;
+  for (const i of items) counts[i.severity] = (counts[i.severity] ?? 0) + 1;
+  return { generatedAt: new Date().toISOString(), items, counts, dataThrough: { km: '2026-11-18', consumption: '2026-11-18', failures: '2026-11-18', lineDays: '2026-11-18' } };
+}
+
 export const dashboardHandlers = [
+  http.get('*/api/dashboard/notices', async () => {
+    await new Promise((r) => setTimeout(r, 180));
+    return HttpResponse.json(buildNotices());
+  }),
+
   http.get('*/api/dashboard', async ({ request }) => {
     const auth = request.headers.get('Authorization');
     if (!auth || !users.some((u) => auth.endsWith(u.id))) {
