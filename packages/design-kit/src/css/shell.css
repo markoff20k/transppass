@@ -566,14 +566,38 @@
 
 /* ---- Subheader ---------------------------------------------------------- */
 
+/* Fixo abaixo da barra ao rolar: o período e as ações da tela ficam sempre à mão.
+   Quando "cola" (is-stuck), encolhe — some a descrição, o título diminui — e ganha
+   a linha de base; a sentinela fica logo acima dele no shell. */
+.subheader__sentinel { height: 1px; margin-bottom: -1px; }
+
 .subheader {
+  position: sticky;
+  top: var(--shell-header-h);
+  z-index: var(--tp-z-sticky);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--tp-space-4);
   min-height: var(--shell-subheader-h);
   padding: var(--tp-space-4) var(--shell-gutter) 0;
+  background: var(--color-bg);
+  border-radius: var(--shell-island-radius) var(--shell-island-radius) 0 0;
+  transition: padding var(--tp-duration-normal) var(--tp-ease), box-shadow var(--tp-duration-normal) var(--tp-ease);
 }
+
+.subheader.is-stuck {
+  align-items: center;
+  min-height: 0;
+  padding: var(--tp-space-2) var(--shell-gutter);
+  border-radius: 0;
+  border-bottom: var(--tp-border-thin) solid var(--color-card-border);
+  box-shadow: 0 8px 20px -14px rgb(16 24 40 / 0.35);
+}
+
+.subheader.is-stuck .subheader__desc,
+.subheader.is-stuck .subheader__eyebrow { display: none; }
+.subheader.is-stuck .subheader__title { font-size: var(--tp-text-lg); }
 
 .subheader__text {
   display: grid;

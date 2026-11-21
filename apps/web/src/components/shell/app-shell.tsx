@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { EventStatus, type Paginated, type FailureEventSummary } from '@app/shared';
@@ -96,6 +96,18 @@ export function AppShell() {
   if (collapsed && !isNarrow) classes.push('shell--collapsed');
   if (drawer) classes.push('shell--drawer');
 
+  // O cabeçalho da página (título + período/ações) fica fixo abaixo da barra ao rolar, encolhido:
+  // o controle de período continua à mão no meio de uma tabela longa. A sentinela diz quando ele "colou".
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(([entry]) => setStuck(Boolean(entry && !entry.isIntersecting)), { rootMargin: `-${64}px 0px 0px 0px`, threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   return (
     <PageHeaderContext.Provider value={headerCtx}>
       <div className={classes.join(' ')}>
@@ -113,8 +125,9 @@ export function AppShell() {
 
         <div className="content">
           <FetchBar />
+          <div ref={sentinelRef} className="subheader__sentinel" aria-hidden />
           {spec && (
-            <div className="subheader">
+            <div className={`subheader${stuck ? ' is-stuck' : ''}`}>
               <div className="subheader__text">
                 {spec.eyebrow && <span className="subheader__eyebrow">{spec.eyebrow}</span>}
                 <h1 className="subheader__title">{spec.title}</h1>

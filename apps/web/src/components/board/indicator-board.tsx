@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from 'react';
-import { Pencil } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { BOARD_INDICATORS, BoardIndicator, targetStatus, type BoardDay, type IndicatorTarget, type IndicatorTargetInput, type MetricsBoard } from '@app/shared';
 import { formatNumber } from '@/lib/format';
 
@@ -113,9 +113,12 @@ interface Props {
   canEdit: boolean;
   onOpenDay: (date: string) => void;
   onSaveTarget: (key: BoardIndicator, input: IndicatorTargetInput) => Promise<unknown>;
+  /** Setas de mês na própria grade, para não ter de subir até o cabeçalho. */
+  onShiftMonth?: (dir: -1 | 1) => void;
+  canGoForward?: boolean;
 }
 
-export function IndicatorBoard({ board, canEdit, onOpenDay, onSaveTarget }: Props) {
+export function IndicatorBoard({ board, canEdit, onOpenDay, onSaveTarget, onShiftMonth, canGoForward = true }: Props) {
   const days = board.days;
   const daysInMonth = new Date(Number(board.month.slice(0, 4)), Number(board.month.slice(5, 7)), 0).getDate();
   const columns = Array.from({ length: daysInMonth }, (_, i) => days[i] ?? null);
@@ -131,7 +134,17 @@ export function IndicatorBoard({ board, canEdit, onOpenDay, onSaveTarget }: Prop
     <div className="board">
       <div className="board__caption">
         <div className="board__caption-main">
+          {onShiftMonth && (
+            <button type="button" className="board__nav" aria-label="Mês anterior" onClick={() => onShiftMonth(-1)}>
+              <ChevronLeft size={16} aria-hidden />
+            </button>
+          )}
           <span className="board__month-name">{monthName.charAt(0).toUpperCase() + monthName.slice(1)}</span>
+          {onShiftMonth && (
+            <button type="button" className="board__nav" aria-label="Próximo mês" disabled={!canGoForward} onClick={() => onShiftMonth(1)}>
+              <ChevronRight size={16} aria-hidden />
+            </button>
+          )}
           <span className="board__caption-sub">
             {withData === daysInMonth ? `${daysInMonth} dias com dado` : board.lastDataDate ? `dados até ${fmtDay(board.lastDataDate)} · ${withData} de ${daysInMonth} dias` : 'sem dado neste mês'}
           </span>

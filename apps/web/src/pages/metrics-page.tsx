@@ -129,7 +129,7 @@ export function MetricsPage() {
     actions: <MonthControl />,
   });
 
-  const [month] = useReferenceMonth();
+  const [month, setMonth] = useReferenceMonth();
   const monthLabel = formatMonth(month);
   const { data, isPending, isError, isPlaceholderData } = useQuery({
     ...metricsQuery(month),
@@ -299,7 +299,14 @@ export function MetricsPage() {
               <span className="chart__hint">o quadro da garagem, dia a dia, lido das planilhas; clique num dia para ver o que aconteceu{canEditTargets ? ' · meta e responsável se editam na própria célula' : ''}</span>
             </div>
           </div>
-          <IndicatorBoard board={board} canEdit={canEditTargets} onOpenDay={setOpenDay} onSaveTarget={(key, input) => saveTarget.mutateAsync({ key, input })} />
+          <IndicatorBoard
+            board={board}
+            canEdit={canEditTargets}
+            onOpenDay={setOpenDay}
+            onSaveTarget={(key, input) => saveTarget.mutateAsync({ key, input })}
+            onShiftMonth={(dir) => setMonth(toMonth(month.year, month.month + dir))}
+            canGoForward={!month.isCurrent}
+          />
         </section>
       )}
 

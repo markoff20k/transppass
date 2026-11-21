@@ -2754,7 +2754,7 @@ a.bus-card:hover { transform: translateY(-1px); }
 .refresh-veil__overlay { position: absolute; inset: 0; z-index: 3; display: flex; justify-content: center; align-items: flex-start; pointer-events: none; }
 .refresh-veil__box {
   position: sticky;
-  top: calc(var(--shell-header-h) + var(--tp-space-5));
+  top: calc(var(--shell-header-h) + 60px + var(--tp-space-4));
   margin-top: var(--tp-space-8);
   padding: var(--tp-space-3) var(--tp-space-5) var(--tp-space-3) var(--tp-space-4);
   background: var(--color-surface);
@@ -2778,7 +2778,7 @@ a.bus-card:hover { transform: translateY(-1px); }
 .fetch-bar {
   position: sticky;
   top: var(--shell-header-h);
-  z-index: 4;
+  z-index: calc(var(--tp-z-sticky) + 1);
   height: 3px;
   margin-bottom: -3px;
   border-radius: var(--shell-island-radius) var(--shell-island-radius) 0 0;
@@ -4114,9 +4114,14 @@ a.bus-card:hover { transform: translateY(-1px); }
    normal, números tabulares, cor só onde há meta (vermelho abaixo, verde
    dentro), fim de semana como faixa discreta, feriado com ponto. Cabe na
    largura do cartão sem rolar; em telas estreitas rola por dentro. */
-.board { display: grid; gap: var(--tp-space-3); }
+.board { display: grid; gap: var(--tp-space-3); scroll-margin-top: calc(var(--shell-header-h) + 72px); }
 .board__caption { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--tp-space-2) var(--tp-space-4); padding: 0 var(--tp-space-1); }
-.board__caption-main { display: flex; align-items: baseline; gap: var(--tp-space-3); }
+.board__caption-main { display: flex; align-items: center; gap: var(--tp-space-2); }
+.board__nav { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: var(--tp-border-thin) solid var(--color-card-border); border-radius: var(--tp-radius-md); background: var(--color-surface); color: var(--color-text-secondary); cursor: pointer; transition: background var(--tp-duration-fast) var(--tp-ease), color var(--tp-duration-fast) var(--tp-ease); }
+.board__nav:hover:not(:disabled) { background: var(--color-surface-hover); color: var(--color-text); }
+.board__nav:disabled { opacity: 0.35; cursor: default; }
+.board__month-name { margin: 0 var(--tp-space-1); }
+.board__caption-sub { margin-left: var(--tp-space-2); }
 .board__month-name { font-family: var(--tp-font-display); font-size: var(--tp-text-lg, 1.125rem); font-weight: var(--tp-weight-semibold); color: var(--color-text); }
 .board__caption-sub { font-size: var(--tp-text-xs); color: var(--color-text-muted); }
 .board__foot { margin: 0; padding: 0 var(--tp-space-1); font-size: var(--tp-text-2xs); color: var(--color-text-muted); }
