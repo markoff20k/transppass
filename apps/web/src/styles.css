@@ -4228,19 +4228,28 @@ a.bus-card:hover { transform: translateY(-1px); }
 .fcode__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tp-space-3); }
 .fcode__grid .tp-field:first-child { grid-column: 1 / -1; }
 .fcode__result { display: flex; align-items: center; gap: var(--tp-space-3); flex-wrap: wrap; }
+/* Código composto: o mesmo selo do sistema (sólido, 28 px, largura fixa,
+   cantos 8 px), só que em mono para o código ler bem. */
 .fcode__code, .fcode__inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 7.75rem;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 4px var(--tp-space-3);
   font-family: var(--tp-font-mono);
-  font-size: var(--tp-text-sm);
+  font-size: var(--tp-text-xs);
   font-weight: var(--tp-weight-semibold);
   letter-spacing: 0.04em;
-  padding: 2px 8px;
+  line-height: 1.5;
   border-radius: var(--tp-radius-md);
-  background: var(--color-brand-soft);
-  color: var(--color-brand-text);
-  border: 1px solid var(--color-brand-soft-border);
+  background: var(--color-brand-solid, var(--color-primary));
+  color: var(--color-on-solid);
+  border: var(--tp-border-thin) solid transparent;
   white-space: nowrap;
 }
-.fcode__inline { font-size: var(--tp-text-xs); padding: 1px 6px; }
 .fcode__summary { margin: 0; display: flex; align-items: center; gap: var(--tp-space-2); flex-wrap: wrap; }
 
 /* Regras de criticidade e tabelas de referência */
