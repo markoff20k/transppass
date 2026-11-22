@@ -28,7 +28,7 @@ describe('IaToolsService', () => {
     expect(names).toEqual(expect.arrayContaining(['frota_resumo', 'carro', 'quadro_mes', 'mkbf', 'fila', 'os_lista', 'eventos', 'consumo_frota', 'preventivas']));
     for (const d of svc.definitions) {
       expect(d.input_schema.type).toBe('object');
-      expect(d.description.length).toBeGreaterThan(20);
+      expect((d.description ?? '').length).toBeGreaterThan(20);
     }
   });
 

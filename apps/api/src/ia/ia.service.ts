@@ -14,7 +14,7 @@ import {
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { IaToolsService } from './ia-tools.service';
-import { EMPTY_USAGE, IA_PROVIDER, addUsage, type IaProvider } from './ia-provider';
+import { EMPTY_USAGE, IA_PROVIDER, addUsage, describeProviderError, type IaProvider } from './ia-provider';
 
 /** Quantas idas às ferramentas uma resposta pode ter antes de o agente ser obrigado a concluir. */
 const MAX_TOOL_ROUNDS = 8;
@@ -174,8 +174,8 @@ export class IaService {
       if (signal?.aborted) {
         error = 'Resposta interrompida.';
       } else {
-        error = err instanceof Error ? err.message : String(err);
-        this.log.warn(`resposta falhou (${this.provider.kind}): ${error}`);
+        error = describeProviderError(err);
+        this.log.warn(`resposta falhou (${this.provider.kind}): ${err instanceof Error ? err.message.slice(0, 300) : String(err)}`);
       }
     }
 

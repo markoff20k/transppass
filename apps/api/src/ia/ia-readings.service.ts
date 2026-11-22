@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { IA_NAME, type BoardInsight, type IaReading, type IaReadingKind, type IaUsage } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { BoardService } from '../metrics/board.service';
-import { IA_PROVIDER, type IaProvider } from './ia-provider';
+import { IA_PROVIDER, describeProviderError, type IaProvider } from './ia-provider';
 
 const insightSchema = z.object({
   kind: z.enum(['day', 'fleet', 'failures', 'mkbf', 'trips', 'consumption', 'data']),
@@ -92,7 +92,13 @@ Regras:
 
 <dados>${JSON.stringify(data)}</dados>`;
     const started = Date.now();
-    const out = await this.provider.complete({ system, prompt, maxTokens: 4000 });
+    let out: Awaited<ReturnType<IaProvider['complete']>>;
+    try {
+      out = await this.provider.complete({ system, prompt, maxTokens: 4000 });
+    } catch (err) {
+      this.log.warn(`leitura de ${key} falhou: ${err instanceof Error ? err.message.slice(0, 300) : String(err)}`);
+      throw new ServiceUnavailableException(`Não foi possível redigir a leitura: ${describeProviderError(err)}.`);
+    }
     const parsed = parseReading(out.text);
     if (!parsed) {
       this.log.warn(`leitura de ${key}: resposta do modelo fora do formato; mantida a leitura de regras`);
