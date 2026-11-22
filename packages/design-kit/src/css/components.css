@@ -409,75 +409,42 @@ a.tp-btn--danger:hover { color: var(--color-on-danger); }
    Etiqueta
    ========================================================================= */
 
-/* Um formato só para todo selo do sistema: cantos de 8 px (não pílula), 28 px
-   de altura, texto centrado e seminegrito. As variantes mudam só a cor. */
+/* Um formato só para todo selo do sistema, seja estado, flag ou categoria:
+   selo sólido de cantos 8 px, 28 px de altura, largura fixa e texto centrado,
+   para uma coluna de selos alinhar e dois selos lado a lado terem o mesmo
+   tamanho. As variantes mudam só a cor; o neutro é cinza. */
 .tp-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--tp-space-1);
+  box-sizing: border-box;
+  min-width: 7.75rem;
+  max-width: 100%;
   padding: 4px var(--tp-space-3);
   min-height: 28px;
   font-size: var(--tp-text-xs);
   font-weight: var(--tp-weight-semibold);
+  letter-spacing: 0.01em;
   line-height: 1.5;
-  border-radius: var(--tp-radius-md);
-  background: var(--color-neutral-soft);
-  border: var(--tp-border-thin) solid var(--color-neutral-border);
-  color: var(--color-neutral-text);
-  white-space: nowrap;
-}
-
-.tp-badge--success {
-  background: var(--color-success-soft);
-  border-color: var(--color-success-border);
-  color: var(--color-success-text);
-}
-.tp-badge--warning {
-  background: var(--color-warning-soft);
-  border-color: var(--color-warning-border);
-  color: var(--color-warning-text);
-}
-.tp-badge--danger {
-  background: var(--color-danger-soft);
-  border-color: var(--color-danger-border);
-  color: var(--color-danger-text);
-}
-.tp-badge--info {
-  background: var(--color-info-soft);
-  border-color: var(--color-info-border);
-  color: var(--color-info-text);
-}
-.tp-badge--brand {
-  background: var(--color-brand-soft);
-  border-color: var(--color-brand-soft-border);
-  color: var(--color-brand-text);
-}
-
-/* Badge de estado: largura fixa e centralizado, para a coluna alinhar.
-   Um estado curto e um longo lado a lado com larguras diferentes deixam a
-   tabela parecendo bagunçada — a largura é a mesma, sempre. */
-.tp-badge--status {
-  min-width: 7.75rem;
-  justify-content: center;
   text-align: center;
+  border-radius: var(--tp-radius-md);
+  background: var(--color-neutral-solid);
+  border: var(--tp-border-thin) solid transparent;
+  color: var(--color-on-solid);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* Estado é um selo sólido, cantos de 8 px, altura fixa: o olho acha a
-     coluna de situação sem ler. O neutro (aberta, solicitado) é cinza. */
-  padding: 4px var(--tp-space-3);
-  min-height: 28px;
-  border-radius: var(--tp-radius-md);
-  font-weight: var(--tp-weight-semibold);
-  letter-spacing: 0.01em;
-  background: var(--color-neutral-solid);
-  border-color: transparent;
-  color: var(--color-on-solid);
 }
-.tp-badge--status.tp-badge--success { background: var(--color-success-solid); border-color: transparent; color: var(--color-on-solid); }
-.tp-badge--status.tp-badge--warning { background: var(--color-warning-solid); border-color: transparent; color: var(--color-on-solid); }
-.tp-badge--status.tp-badge--danger { background: var(--color-danger-solid); border-color: transparent; color: var(--color-on-solid); }
-.tp-badge--status.tp-badge--info { background: var(--color-info-solid); border-color: transparent; color: var(--color-on-solid); }
+
+.tp-badge--success { background: var(--color-success-solid); color: var(--color-on-solid); }
+.tp-badge--warning { background: var(--color-warning-solid); color: var(--color-on-solid); }
+.tp-badge--danger { background: var(--color-danger-solid); color: var(--color-on-solid); }
+.tp-badge--info { background: var(--color-info-solid); color: var(--color-on-solid); }
+.tp-badge--brand { background: var(--color-brand-solid, var(--color-primary)); color: var(--color-on-solid); }
+
+/* Selo de estado: mesmo selo; a classe fica para quem já a usa. */
+.tp-badge--status { min-width: 7.75rem; }
 .tp-badge--status.tp-badge--brand { background: var(--color-brand-solid); border-color: transparent; color: var(--color-on-solid); }
 
 /* Ponto de estado — reforça a cor com forma, para quem não distingue matiz. */
