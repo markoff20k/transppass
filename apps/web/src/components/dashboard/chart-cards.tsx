@@ -14,6 +14,14 @@ import {
   MkbfTrendChart,
 } from '@/components/charts/charts';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
+import { BrandLoader } from '@/components/brand/brand-loader';
+
+/** Primeiro carregamento, sem gráfico anterior para pôr sob o véu: o loader da marca no lugar do gráfico. */
+const ChartLoading = () => (
+  <div className="chart chart--fill chart-loading">
+    <BrandLoader size={34} label="Carregando" />
+  </div>
+);
 
 const fmtDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
@@ -85,7 +93,7 @@ export function MkbfCard() {
           )}
         </RefreshVeil>
       ) : (
-        <div className="chart chart--fill skeleton" />
+        <ChartLoading />
       )}
     </div>
   );
@@ -160,7 +168,7 @@ export function AvailabilityCard() {
           if (days) return <RefreshVeil active={daysQuery.isPlaceholderData} delay={0}>{days}</RefreshVeil>;
           if (hours) return <RefreshVeil active delay={0}>{hours}</RefreshVeil>;
         }
-        return <div className="chart chart--fill skeleton" />;
+        return <ChartLoading />;
       })()}
     </div>
   );

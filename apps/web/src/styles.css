@@ -5494,3 +5494,8 @@ a.bus-card:hover { transform: translateY(-1px); }
 .reading__summary { margin: 0 0 var(--tp-space-2); font-size: var(--tp-text-sm); line-height: 1.5; color: var(--color-text-secondary); }
 .reading__head-tools { display: inline-flex; align-items: center; gap: var(--tp-space-2); }
 @media (prefers-reduced-motion: reduce) { .ia-msg__caret, .spin { animation: none; } }
+
+/* Gráfico do Dashboard no primeiro carregamento: o loader da marca no meio do espaço do gráfico, na mesma pílula do véu. */
+.chart-loading { display: grid; place-items: center; min-height: 220px; border-radius: var(--tp-radius-lg); background: color-mix(in srgb, var(--color-surface-sunken, var(--color-surface-hover)) 60%, transparent); }
+.chart-loading .brand-loader:not(.brand-loader--fullscreen) { display: flex; align-items: center; gap: var(--tp-space-3); width: auto; min-height: 0; padding: var(--tp-space-3) var(--tp-space-5) var(--tp-space-3) var(--tp-space-4); background: var(--color-surface); border: var(--tp-border-thin) solid var(--color-card-border); border-radius: 999px; box-shadow: var(--shadow-card); }
+.chart-loading .brand-loader__label { font-weight: var(--tp-weight-medium); color: var(--color-text); white-space: nowrap; }
