@@ -230,37 +230,45 @@ export class DashboardService {
     };
   }
 
-  /** Fila: quem são os mais antigos, quanto se espera em média e o movimento de hoje. */
+  /**
+   * Fila: quem são os mais antigos (os mesmos carros que a frente conta),
+   * quanto se espera em média e o movimento de hoje. O movimento vem dos
+   * registros da fila; sem eles, dos próprios carros (quem está esperando
+   * desde hoje; quem entrou na oficina com OS aberta hoje).
+   */
   private async queueBack(now: Date, from: Date): Promise<DashboardBacks['queue']> {
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
-    const [oldest, served, enteredToday, startedToday] = await Promise.all([
-      this.prisma.queueEntry.findMany({
-        where: { status: QueueStatus.WAITING },
-        orderBy: { enteredAt: 'asc' },
-        take: 3,
-        select: { enteredAt: true, vehicle: { select: { code: true } } },
-      }),
+    const [waiting, served, enteredEntries, startedEntries, startedVehicles] = await Promise.all([
+      this.waitingVehicles(now),
       this.prisma.queueEntry.findMany({
         where: { startedAt: { gte: from } },
         select: { enteredAt: true, startedAt: true },
       }),
       this.prisma.queueEntry.count({ where: { enteredAt: { gte: today } } }),
       this.prisma.queueEntry.count({ where: { startedAt: { gte: today } } }),
+      this.prisma.vehicle.count({
+        where: {
+          isActive: true,
+          status: { in: IN_SHOP_STATUSES },
+          workOrders: { some: { status: { notIn: [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] }, openedAt: { gte: today } } },
+        },
+      }),
     ]);
     const waits = served.flatMap((q) =>
       q.startedAt ? [(q.startedAt.getTime() - q.enteredAt.getTime()) / HOUR_MS] : [],
     );
+    const enteredVehicles = waiting.filter((v) => v.since && v.since >= today).length;
     return {
-      oldest: oldest.map((q) => ({
-        code: q.vehicle.code,
-        hours: Math.round(((now.getTime() - q.enteredAt.getTime()) / HOUR_MS) * 10) / 10,
-      })),
+      oldest: waiting
+        .filter((v): v is { code: string; since: Date; hours: number } => v.hours !== null)
+        .slice(0, 3)
+        .map((v) => ({ code: v.code, hours: v.hours })),
       averageWaitHours: waits.length
         ? Math.round((waits.reduce((a, b) => a + b, 0) / waits.length) * 10) / 10
         : null,
-      enteredToday,
-      startedToday,
+      enteredToday: Math.max(enteredEntries, enteredVehicles),
+      startedToday: Math.max(startedEntries, startedVehicles),
     };
   }
 
@@ -789,28 +797,39 @@ export class DashboardService {
    * garagem e da frota. Uma entrada de fila que ficou para trás nunca faz o
    * cartão discordar do trilho.
    */
-  private async queue(now: Date) {
-    const [waiting, inService, oldest] = await Promise.all([
-      this.prisma.vehicle.count({
-        where: { isActive: true, status: VehicleStatus.AWAITING_MAINTENANCE },
-      }),
-      this.prisma.vehicle.count({ where: { isActive: true, status: { in: IN_SHOP_STATUSES } } }),
-      this.prisma.queueEntry.findFirst({
-        where: {
-          status: QueueStatus.WAITING,
-          vehicle: { status: VehicleStatus.AWAITING_MAINTENANCE },
-        },
-        orderBy: { enteredAt: 'asc' },
-        select: { enteredAt: true },
-      }),
-    ]);
+  /**
+   * Quem está esperando valeta, pela mesma régua da frente do cartão e do
+   * fluxo da garagem: o estado do carro. O tempo é o da entrada na fila; sem
+   * registro de fila (carro que chegou ao estado por outro caminho), vale a
+   * OS ou a quebra que o trouxe. Do mais antigo para o mais novo.
+   */
+  private async waitingVehicles(now: Date): Promise<{ code: string; since: Date | null; hours: number | null }[]> {
+    const rows = await this.prisma.vehicle.findMany({
+      where: { isActive: true, status: VehicleStatus.AWAITING_MAINTENANCE },
+      select: {
+        code: true,
+        queueEntries: { where: { status: QueueStatus.WAITING }, orderBy: { enteredAt: 'asc' }, take: 1, select: { enteredAt: true } },
+        workOrders: { where: { status: { notIn: [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] } }, orderBy: { openedAt: 'desc' }, take: 1, select: { openedAt: true } },
+        failureEvents: { where: { status: { notIn: [EventStatus.CLOSED, EventStatus.CANCELLED] } }, orderBy: { reportedAt: 'desc' }, take: 1, select: { reportedAt: true } },
+      },
+    });
+    return rows
+      .map((v) => {
+        const since = v.queueEntries[0]?.enteredAt ?? v.workOrders[0]?.openedAt ?? v.failureEvents[0]?.reportedAt ?? null;
+        return { code: v.code, since, hours: since ? Math.round(((now.getTime() - since.getTime()) / HOUR_MS) * 10) / 10 : null };
+      })
+      .sort((a, b) => (b.hours ?? -1) - (a.hours ?? -1));
+  }
 
+  private async queue(now: Date) {
+    const [waiting, inService] = await Promise.all([
+      this.waitingVehicles(now),
+      this.prisma.vehicle.count({ where: { isActive: true, status: { in: IN_SHOP_STATUSES } } }),
+    ]);
     return {
-      waiting,
+      waiting: waiting.length,
       inService,
-      oldestWaitingHours: oldest
-        ? Math.round(((now.getTime() - oldest.enteredAt.getTime()) / HOUR_MS) * 10) / 10
-        : null,
+      oldestWaitingHours: waiting[0]?.hours ?? null,
     };
   }
 

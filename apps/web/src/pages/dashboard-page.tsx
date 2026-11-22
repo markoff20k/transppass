@@ -30,6 +30,7 @@ import { WidgetsCard } from '@/components/dashboard/widgets';
 import { AvailabilityCard, MkbfCard } from '@/components/dashboard/chart-cards';
 import { CustomRangeItem } from '@/components/charts/chart-period';
 import { LiveBadge } from '@/components/ui/live-badge';
+import { KpiAi } from '@/components/ui/flip-kpi';
 import { rangeLabel, shiftDays, todayIso } from '@/lib/period';
 import { useUiPref, useUiState } from '@/features/auth/use-ui-pref';
 import { DowntimeDonut, EventsPerDayChart, RingGauge, Sparkline } from '@/components/charts/charts';
@@ -563,38 +564,40 @@ function MkbfBack({ data }: { data: DashboardData }) {
   const cur = data.mkbf.last30;
   const pct =
     b.previous.mkbf && cur.mkbf ? ((cur.mkbf - b.previous.mkbf) / b.previous.mkbf) * 100 : null;
+  const pctText =
+    pct === null ? '' : `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1).replace('.', ',')}%`;
+  const top = b.topSystems[0];
   return (
-    <ul className="kpi-back__list">
-      <BackRow
-        label={t.dash.back.previous}
-        value={
-          b.previous.mkbf === null
-            ? '—'
-            : `${formatNumber(b.previous.mkbf)} km${pct === null ? '' : ` · ${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1).replace('.', ',')}%`}`
-        }
-        tone={pct === null ? undefined : pct >= 0 ? 'neutral' : 'danger'}
-      />
-      {b.topSystems.length === 0 ? (
-        <BackRow label={t.dash.back.topSystems} value={t.dash.back.noReturns} />
-      ) : (
-        b.topSystems
-          .slice(0, 1)
-          .map((sys, i) => (
-            <BackRow
-              key={sys.name}
-              label={i === 0 ? `${t.dash.back.topSystems}: ${sys.name}` : sys.name}
-              value={`${sys.count} ${plural(sys.count, t.dash.back.times)}`}
-            />
-          ))
-      )}
-      {b.worstVehicle && (
+    <>
+      <KpiAi>
+        {cur.mkbf === null
+          ? t.dash.back.aiNoReturns
+          : t.dash.back.aiMkbf.replace('{v}', formatNumber(cur.mkbf)) +
+            (pctText ? t.dash.back.aiVs.replace('{p}', pctText) : '') +
+            (top ? t.dash.back.aiTop.replace('{s}', top.name) : '') +
+            (b.worstVehicle
+              ? t.dash.back.aiWorst
+                  .replace('{c}', b.worstVehicle.code)
+                  .replace('{n}', String(b.worstVehicle.count))
+              : '') +
+            '.'}
+      </KpiAi>
+      <ul className="kpi-back__list">
         <BackRow
-          label={t.dash.back.worstVehicle}
-          value={`${b.worstVehicle.code} · ${b.worstVehicle.count} ${plural(b.worstVehicle.count, t.dash.back.times)}`}
-          tone="warn"
+          label={t.dash.back.previous}
+          value={b.previous.mkbf === null ? '—' : `${formatNumber(b.previous.mkbf)} km${pctText ? ` · ${pctText}` : ''}`}
+          tone={pct === null ? undefined : pct >= 0 ? 'neutral' : 'danger'}
         />
-      )}
-    </ul>
+        {top ? (
+          <BackRow
+            label={`${t.dash.back.topSystems}: ${top.name}`}
+            value={`${top.count} ${plural(top.count, t.dash.back.times)}`}
+          />
+        ) : (
+          <BackRow label={t.dash.back.topSystems} value={t.dash.back.noReturns} />
+        )}
+      </ul>
+    </>
   );
 }
 
@@ -602,29 +605,45 @@ function QueueBack({ data }: { data: DashboardData }) {
   const { t } = useI18n();
   const b = data.backs.queue;
   const fmtH = (h: number) => `${h.toFixed(1).replace('.', ',')}${t.dash.hours}`;
+  const first = b.oldest[0];
   return (
-    <ul className="kpi-back__list">
-      {b.oldest.length === 0 ? (
-        <BackRow label={t.dash.back.oldest} value={t.dash.back.emptyQueue} />
-      ) : (
-        b.oldest.map((q, i) => (
+    <>
+      <KpiAi>
+        {data.queue.waiting === 0
+          ? t.dash.back.aiQueueEmpty.replace('{n}', String(data.queue.inService))
+          : !first
+            ? t.dash.back.aiQueueNoTime.replace('{n}', String(data.queue.waiting))
+            : t.dash.back.aiQueue
+              .replace('{n}', String(data.queue.waiting))
+              .replace('{c}', first.code)
+              .replace('{h}', fmtH(first.hours)) +
+            (b.averageWaitHours !== null
+              ? t.dash.back.aiAvg.replace('{h}', fmtH(b.averageWaitHours))
+              : '') +
+            '.'}
+      </KpiAi>
+      <ul className="kpi-back__list">
+        {b.oldest.length === 0 ? (
           <BackRow
-            key={q.code}
-            label={i === 0 ? `${t.dash.back.oldest}: ${q.code}` : q.code}
-            value={fmtH(q.hours)}
-            tone={q.hours >= 12 ? 'danger' : undefined}
+            label={t.dash.back.oldest}
+            value={data.queue.waiting === 0 ? t.dash.back.emptyQueue : t.dash.back.noEntryTime}
           />
-        ))
-      )}
-      <BackRow
-        label={t.dash.back.averageWait}
-        value={b.averageWaitHours === null ? '—' : fmtH(b.averageWaitHours)}
-      />
-      <BackRow
-        label={`${t.dash.back.enteredToday} / ${t.dash.back.startedToday}`}
-        value={`${b.enteredToday} / ${b.startedToday}`}
-      />
-    </ul>
+        ) : (
+          b.oldest.slice(0, 1).map((q) => (
+            <BackRow
+              key={q.code}
+              label={`${t.dash.back.oldest}: ${q.code}`}
+              value={fmtH(q.hours)}
+              tone={q.hours >= 12 ? 'danger' : undefined}
+            />
+          ))
+        )}
+        <BackRow
+          label={`${t.dash.back.enteredToday} / ${t.dash.back.startedToday}`}
+          value={`${b.enteredToday} / ${b.startedToday}`}
+        />
+      </ul>
+    </>
   );
 }
 
@@ -640,22 +659,28 @@ function WorkOrdersBack({ data }: { data: DashboardData }) {
     { key: 'inCleaning', label: t.dash.back.stageInCleaning },
   ];
   const shown = stages.filter((s) => b.byStage[s.key] > 0).slice(0, 2);
+  const ai =
+    t.dash.back.aiWo
+      .replace('{n}', String(data.workOrders.open))
+      .replace('{o}', String(data.workOrders.overdue))
+      .replace('{p}', String(b.byStage.waitingPart)) +
+    (b.mostOverdue
+      ? t.dash.back.aiMostOverdue
+          .replace('{code}', b.mostOverdue.code)
+          .replace('{c}', b.mostOverdue.vehicleCode)
+          .replace('{h}', `${b.mostOverdue.lateHours.toLocaleString('pt-BR')}${t.dash.hours}`)
+      : '') +
+    '.';
   return (
+    <>
+    <KpiAi>{ai}</KpiAi>
     <ul className="kpi-back__list">
       {shown.length === 0 && <BackRow label={t.dash.back.byStage} value="0" />}
       {shown.map((s) => (
         <BackRow key={s.key} label={s.label} value={String(b.byStage[s.key])} tone={s.tone} />
       ))}
-      <BackRow
-        label={t.dash.back.mostOverdue}
-        value={
-          b.mostOverdue
-            ? `${b.mostOverdue.code} · ${b.mostOverdue.vehicleCode} · ${t.dash.back.lateBy.replace('{h}', Math.round(b.mostOverdue.lateHours).toString())}`
-            : t.dash.back.noneOverdue
-        }
-        tone={b.mostOverdue ? 'danger' : undefined}
-      />
     </ul>
+    </>
   );
 }
 

@@ -5397,3 +5397,8 @@ a.bus-card:hover { transform: translateY(-1px); }
 .ccard.cons-hero .ccard__head > div:first-of-type { display: block; }
 .cons-kpis .tp-kpi-row { gap: var(--tp-space-3); }
 @media (max-width: 900px) { .cons-hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--tp-space-4); } }
+
+/* Versos do Dashboard: a frase da ia.Transppass antes das linhas de apoio. */
+.dash-kpi__face--back:has(.kpi-ai) { gap: 2px; padding-top: 6px; padding-bottom: 7px; }
+.dash-kpi__face--back .kpi-ai { margin: 0 0 2px; }
+.dash-kpi__face--back .kpi-back__list { margin-top: auto; }
