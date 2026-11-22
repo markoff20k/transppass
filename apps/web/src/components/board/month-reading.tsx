@@ -1,4 +1,4 @@
-import { Sparkles } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import type { BoardInsight } from '@app/shared';
 
 /**
@@ -13,7 +13,7 @@ export function MonthReading({ insights, onOpenDay }: { insights: BoardInsight[]
     <section className="tp-card reading" aria-label="IA da Transppass - Insights">
       <div className="tp-card__head">
         <div>
-          <h3><Sparkles size={15} aria-hidden /> IA da Transppass - Insights</h3>
+          <h3><Bot size={16} aria-hidden /> IA da Transppass - Insights</h3>
           <span className="chart__hint">a leitura do mês: o que fugiu do padrão e por quê, informado pelos agentes de Inteligência Artificial da Transppass (ia.Transppass); clique numa data para abrir o dia</span>
         </div>
       </div>
