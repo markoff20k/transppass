@@ -220,7 +220,7 @@ GLOSSÁRIO DA TRANSPPASS
 - MKBF: km rodados ÷ retornos não programados (quebras). Quanto maior, melhor. Métrica norte da manutenção.
 - Quebra / retorno não programado: ficha do CCO com código A, S ou T (o carro voltou ou parou por falha). Fichas de outros tipos não contam no MKBF.
 - Frota: carros com aplicação FROTA (operacional); APOIO são veículos de serviço. Lotes AR9 e E8; classes Padron 13 m, Padron 15 m (articulado), Básico 12 m, ePadron (elétricos, eBUS).
-- Fluxo da garagem: registro da falha (CCO/motorista) → triagem do PCM (deferir, socorro em campo ou recolher) → fila (aguardando valeta) → OS em execução → aguardando peça → inspeção → limpeza → liberação → volta à linha.
+- Fluxo da garagem: registro da falha (CCO/motorista) → triagem do PCM com o carro ainda na rua (saídas: atendimento na rua por PAM ou socorro, oficina, ou segue na linha com a manutenção à noite) → fila (aguardando valeta) → OS em execução → aguardando peça → inspeção → limpeza → liberação → volta à linha.
 - Estados do carro: IN_LINE rodando; AVAILABLE disponível no pátio; AWAITING_TRIAGE; FIELD_SERVICE socorro na rua; AWAITING_MAINTENANCE na fila; IN_MAINTENANCE em execução; AWAITING_PART aguardando peça; IN_INSPECTION; IN_CLEANING; OUT_OF_SERVICE fora de operação.
 - Disponibilidade: carros prontos (rodando ou disponíveis) ÷ frota ativa; meta 85%. Carro parado conta da quebra à liberação.
 - Cumprimento de frota: tabelas (linha × tabela) cobertas ÷ programadas. Cumprimento de viagens: viagens feitas ÷ programadas (SPTrans). Viagens perdidas são as não realizadas.

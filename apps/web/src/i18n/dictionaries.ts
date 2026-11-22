@@ -407,7 +407,7 @@ const ptBR = {
     flowFamily: 'Família',
     stages: { triage: 'Triagem', field: 'Socorro', queue: 'Fila', shop: 'Oficina', part: 'Peça', release: 'Liberação' },
     stageHelp: {
-      triage: 'Carro recolhido com falha apontada. O PCM decide se vai para a oficina, se a falha pode ser deferida ou se o carro volta à linha.',
+      triage: 'Carro com falha apontada, ainda na rua. O PCM decide a saída: atendimento na rua (PAM ou socorro), oficina, ou o carro segue na linha e a manutenção é executada à noite.',
       field: 'Carro parado na rua ou no ponto final. A equipe de socorro atende no local e decide se ele volta a rodar ou é recolhido.',
       queue: 'Carro já triado, com OS aberta, aguardando valeta e mecânico livres na oficina.',
       shop: 'Carro na valeta com serviço em andamento. O relógio da OS está correndo.',
@@ -908,7 +908,7 @@ const en: Dictionary = {
     flowFamily: 'Family',
     stages: { triage: 'Triage', field: 'Roadside', queue: 'Queue', shop: 'Workshop', part: 'Parts', release: 'Release' },
     stageHelp: {
-      triage: 'Bus pulled in with a reported failure. Planning decides whether it goes to the workshop, the failure is deferred, or the bus returns to service.',
+      triage: 'Bus with a reported failure, still on the road. Planning decides the outcome: roadside service (PAM or rescue), workshop, or the bus stays in service and maintenance is done at night.',
       field: 'Bus stopped on the street or at the terminal. The roadside crew works on site and decides whether it keeps running or is pulled in.',
       queue: 'Bus already triaged, with an open work order, waiting for a free bay and mechanic.',
       shop: 'Bus in the bay with work in progress. The work-order clock is running.',
