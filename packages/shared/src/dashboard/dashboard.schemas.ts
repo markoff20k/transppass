@@ -146,8 +146,7 @@ export type NoticeKind =
   | 'replacement'
   | 'preventive'
   | 'inspection'
-  | 'release'
-  | 'data';
+  | 'release';
 
 /**
  * Uma linha do letreiro do Dashboard: um fato real em andamento no sistema

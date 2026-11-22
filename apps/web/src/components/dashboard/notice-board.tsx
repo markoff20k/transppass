@@ -11,7 +11,6 @@ const SPEED = 64;
 /** Frase de cada aviso é cortada aqui para o giro não ficar longo demais. */
 const TEXT_MAX = 140;
 
-const fmtDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 const clip = (text: string) => (text.length > TEXT_MAX ? `${text.slice(0, TEXT_MAX - 1).trimEnd()}…` : text);
 
 /**
@@ -42,8 +41,7 @@ export function NoticeBoard() {
       : items.length
         ? 'info'
         : 'clear';
-  const through = query.data.dataThrough.km;
-  const meta = through ? t.dash.notices.dataThrough.replace('{d}', fmtDay(through)) : t.dash.notices.updated.replace('{t}', formatRelative(query.data.generatedAt));
+  const meta = t.dash.notices.updated.replace('{t}', formatRelative(query.data.generatedAt));
 
   return (
     <section className={`ticker ticker--${tone}`} aria-label={t.dash.notices.title}>

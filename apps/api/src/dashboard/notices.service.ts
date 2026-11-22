@@ -58,7 +58,6 @@ const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
  *   [Plantão]       linha sem carro reserva com a janela fechando ou vencida
  *   [Qualidade]     inspeção reprovada, retrabalho
  *   [PCM]           preventiva vencida com o carro rodando
- *   [ERP-JB]        até quando os dados importados chegaram
  *
  * Nada aqui é digitado: toda linha sai de um registro com hora, e o tempo
  * decorrido é recalculado a cada chamada (o letreiro atualiza a cada minuto).
@@ -80,7 +79,7 @@ export class NoticesService {
       this.inspections(now),
       this.releases(now),
       this.preventive(now),
-      this.freshness(now),
+      this.freshness(),
     ]);
     const items = [...rescue, ...triage, ...safety, ...workOrders, ...parts, ...queue, ...replacement, ...inspections, ...releases, ...preventive, ...freshness.items].sort(
       (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || (a.at ?? '').localeCompare(b.at ?? ''),
@@ -387,9 +386,9 @@ export class NoticesService {
     });
   }
 
-  // --- [ERP-JB] até quando os dados chegaram --------------------------------------------
+  // --- até quando os dados importados chegaram (só no payload, não vira linha) -----------
 
-  private async freshness(now: Date): Promise<{ items: DashboardNotice[]; dataThrough: DashboardNotices['dataThrough'] }> {
+  private async freshness(): Promise<{ items: DashboardNotice[]; dataThrough: DashboardNotices['dataThrough'] }> {
     const [km, consumption, failures, lineDays] = await Promise.all([
       this.prisma.odometerReading.aggregate({ where: { status: { not: OdometerStatus.REJECTED }, vehicle: { application: 'FROTA' } }, _max: { readAt: true } }),
       this.prisma.consumptionReading.aggregate({ _max: { date: true } }),
@@ -402,27 +401,7 @@ export class NoticesService {
       failures: failures._max.reportedAt ? isoDay(failures._max.reportedAt) : null,
       lineDays: lineDays._max.date ? lineDays._max.date.toISOString().slice(0, 10) : null,
     };
-    const items: DashboardNotice[] = [];
-    const today = isoDay(now);
-    const kmAge = dataThrough.km ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${dataThrough.km}T00:00:00Z`)) / DAY_MS) : null;
-    if (kmAge !== null && kmAge >= 3) {
-      const parts = [
-        dataThrough.km ? `km até ${fmtDay(dataThrough.km)}` : null,
-        dataThrough.failures ? `fichas até ${fmtDay(dataThrough.failures)}` : null,
-        dataThrough.consumption ? `consumo até ${fmtDay(dataThrough.consumption)}` : null,
-      ].filter(Boolean);
-      items.push({
-        id: 'data-through',
-        severity: 'info',
-        kind: 'data',
-        area: 'ERP-JB',
-        title: `Remessa do ERP-JB com ${parts.join(', ')}${kmAge > 20 ? ', próxima carga atrasada' : ''}`,
-        text: 'MKBF, consumo e o quadro diário do mês seguem parciais até a próxima carga.',
-        to: '/indicadores',
-        at: `${dataThrough.km}T12:00:00.000Z`,
-        vehicleCode: null,
-      });
-    }
-    return { items, dataThrough };
+    return { items: [], dataThrough };
+
   }
 }
