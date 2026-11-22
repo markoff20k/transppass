@@ -1398,10 +1398,16 @@ a.tp-btn--danger:hover { color: var(--color-on-danger); }
   transition: transform var(--tp-duration-fast) var(--tp-ease);
 }
 
-.tp-switch.is-on { background: var(--color-success-solid); }
+/* Ligado é laranja Transppass, a cor de ação do sistema; nunca o verde de estado. */
+.tp-switch.is-on { background: var(--color-brand-solid, var(--color-primary)); }
 .tp-switch.is-on .tp-switch__knob { transform: translateX(18px); }
 .tp-switch:disabled { opacity: 0.6; cursor: wait; }
 .tp-switch:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+
+/* Chave pequena, para cabeçalho e barras de ferramentas: 32 × 18 px. */
+.tp-switch--sm { width: 32px; height: 18px; }
+.tp-switch--sm .tp-switch__knob { width: 14px; height: 14px; }
+.tp-switch--sm.is-on .tp-switch__knob { transform: translateX(14px); }
 
 /* ---- Modal central ---------------------------------------------------------- */
 

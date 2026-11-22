@@ -56,7 +56,7 @@ export function TickerSwitch() {
         type="button"
         role="switch"
         aria-checked={on}
-        className={`tp-switch${on ? ' is-on' : ''}`}
+        className={`tp-switch tp-switch--sm${on ? ' is-on' : ''}`}
         disabled={save.isPending}
         onClick={() => save.mutate({ ticker: !on })}
       >
