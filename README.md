@@ -73,6 +73,14 @@ O Kaizen Estruturante (A3 de 03/06/2026) e os Fluxos de Processo PCM (Rev. 00, a
 
 Com `DEMO_SIMULATOR=true` no `.env` a garagem **anda sozinha** a cada minuto pela própria API de negócio: telemetria dos eBUS, lançamento de km diesel de manhã (alguns atrasam), falhas na proporção do MKBF, triagem, socorro, fila, material, inspeção, limpeza, liberação e reposição com reserva habilitada. `POST /api/demo/pulse` (admin ou PCM) avança um ciclo na hora; `DEMO_SPEED=12` acelera os tempos de espera e `DEMO_ALL_HOURS=true` ignora o horário de operação (só para testes). Nunca ligue o simulador num banco com dados reais.
 
+## ia.Transppass — o agente de PCM
+
+O robô no cabeçalho abre a **ia.Transppass** (apelido Tipê): um agente que responde, em português, perguntas sobre a frota, a fila, as OS, as quebras, o consumo e os indicadores. O front nunca fala com o modelo: a API (`apps/api/src/ia`) monta o contexto, dá ao modelo **ferramentas só de leitura** sobre os mesmos serviços que alimentam as telas (frota agora, carro, quadro do mês, MKBF, oficina, consumo, fila, OS, eventos, preventivas) e devolve a resposta em streaming (SSE). O agente não executa ações e só fala a partir do que as ferramentas devolveram, citando período e fonte. As conversas ficam por usuário (`ai_conversations`, `ai_messages`), com os blocos exatos trocados com o modelo, e o painel aberto e a conversa atual ficam salvos na conta.
+
+**Fase 2**: a leitura do mês dos Indicadores ("IA da Transppass - Insights") pode ser redigida pelo modelo a partir dos números do quadro e da leitura de regras (`ai_readings`): toda noite na hora `IA_READING_HOUR` para o mês corrente, ou na hora pelo botão "Redigir agora" (ADMIN, PCM, GESTÃO). Sem leitura redigida, a tela mostra a leitura de regras; o cartão diz quem escreveu.
+
+Configuração no `.env`: `ANTHROPIC_API_KEY` liga o agente com o modelo `IA_MODEL` (padrão Claude Opus 5.5, raciocínio adaptativo, prompt de sistema em cache); `IA_PROVIDER=fake` liga um provedor simulado, sem chave e sem custo, que exercita toda a pipeline com respostas de mentira (desenvolvimento e QA); sem nenhum dos dois o agente aparece desligado. Rotas: `GET /api/ia/status`, `GET|POST /api/ia/conversations`, `POST /api/ia/conversations/:id/messages` (SSE), `GET|POST|DELETE /api/ia/readings/month/:AAAA-MM`. Testes: `npm test -w @app/api` (provedor simulado, ferramentas, loop de resposta, leitura do mês).
+
 ## Interface
 
 Shell com **sidebar recolhível** (trilho de 72px no desktop, gaveta abaixo de 1024px), **header** com atalhos de idioma, tema, contraste, notificações e perfil, e **subheader** controlado por cada tela. A tela inicial é o **dashboard**: quatro números que resumem a garagem, o que precisa de atenção, a frota carro a carro e as tendências em gráfico.

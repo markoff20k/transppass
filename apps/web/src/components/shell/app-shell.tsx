@@ -5,6 +5,8 @@ import { EventStatus, type Paginated, type FailureEventSummary } from '@app/shar
 import { api } from '@/lib/api-client';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
+import { IaProvider, useIa } from '@/features/ia/ia.context';
+import { IaPanel } from '@/features/ia/ia-panel';
 import { PageHeaderContext, type PageHeaderSpec } from './page-header.context';
 import { Toaster } from '@/components/ui/toaster';
 import { FetchBar } from './fetch-bar';
@@ -28,6 +30,15 @@ function readCollapsed(): boolean {
  *   < 1024px  gaveta sobre o conteúdo, fecha ao navegar, no Esc e no véu
  */
 export function AppShell() {
+  return (
+    <IaProvider>
+      <ShellInner />
+    </IaProvider>
+  );
+}
+
+function ShellInner() {
+  const ia = useIa();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [drawer, setDrawer] = useState(false);
@@ -95,6 +106,7 @@ export function AppShell() {
   const classes = ['shell'];
   if (collapsed && !isNarrow) classes.push('shell--collapsed');
   if (drawer) classes.push('shell--drawer');
+  if (ia.open) classes.push('shell--ia');
 
   // O cabeçalho da página (título + período/ações) fica fixo abaixo da barra ao rolar, encolhido:
   // o controle de período continua à mão no meio de uma tabela longa. A sentinela diz quando ele "colou".
@@ -140,6 +152,7 @@ export function AppShell() {
             <Outlet />
           </main>
         </div>
+        <IaPanel />
         <Toaster />
       </div>
     </PageHeaderContext.Provider>

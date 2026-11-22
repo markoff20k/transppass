@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, BellOff, ChevronRight, FastForward, FlaskConical, GripVertical, Loader2, Menu, Minus, Moon, Plus, Sun, UserRound } from 'lucide-react';
+import { Bell, BellOff, Bot, ChevronRight, FastForward, FlaskConical, GripVertical, Loader2, Menu, Minus, Moon, Plus, Sun, UserRound } from 'lucide-react';
 import { MAX_SHORTCUTS, type DemoPulseResult, type DemoStatus, type PublicUser } from '@app/shared';
 import { Theme } from '@app/design-kit';
 import { useAuth } from '@/features/auth/use-auth';
+import { useIa } from '@/features/ia/ia.context';
 import { useTheme } from '@/features/theme/use-theme';
 import { useI18n } from '@/i18n/i18n.context';
 import { Locale, LOCALE_LABELS } from '@/i18n/dictionaries';
@@ -67,6 +68,7 @@ export function Header({ onOpenDrawer }: Props) {
 
       <div className="header__actions">
         <Shortcuts />
+        <IaButton />
         <SimulatorMenu />
         <LanguageToggle />
         <ThemeToggle />
@@ -519,5 +521,23 @@ function Dropdown({
         </div>
       )}
     </div>
+  );
+}
+
+/** O robô: abre e fecha o painel da ia.Transppass; aceso quando aberto. */
+function IaButton() {
+  const { t } = useI18n();
+  const { open, toggle, status } = useIa();
+  return (
+    <button
+      type="button"
+      className={`header__btn header__ia${open ? ' is-on' : ''}${status && !status.enabled ? ' is-off' : ''}`}
+      onClick={toggle}
+      aria-pressed={open}
+      title={t.ia.open}
+      aria-label={t.ia.open}
+    >
+      <Bot />
+    </button>
   );
 }

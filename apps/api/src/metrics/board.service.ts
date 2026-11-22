@@ -73,7 +73,14 @@ export class BoardService {
       this.consumptionSummary(VehicleTechnology.EBUS, core.from, core.to),
       this.worstLines(core.from, core.to),
     ]);
-    const insights = buildInsights(core, prev, prevKey, history, { diesel, ebus }, worstLines, today);
+    const rules = buildInsights(core, prev, prevKey, history, { diesel, ebus }, worstLines, today);
+    // Fase 2 da ia.Transppass: quando há a leitura redigida pelo modelo para o mês, ela entra no lugar
+    // da leitura de regras (os números continuam os do quadro). Mês corrente: só se foi redigida nas
+    // últimas 36 h, para não mostrar leitura velha depois de uma remessa nova.
+    const reading = await this.prisma.aiReading.findUnique({ where: { kind_key: { kind: 'month', key } } }).catch(() => null);
+    const fresh = reading ? key < today.slice(0, 7) || Date.now() - reading.generatedAt.getTime() < 36 * 3_600_000 : false;
+    const aiInsights = reading && fresh && Array.isArray(reading.insights) ? (reading.insights as unknown as BoardInsight[]) : null;
+    const insights = aiInsights && aiInsights.length > 0 ? aiInsights : rules;
     return {
       month: key,
       from: core.from,
@@ -88,7 +95,23 @@ export class BoardService {
       targets,
       insights,
       worstLines,
+      readingSource: aiInsights && aiInsights.length > 0 ? 'ia' : 'rules',
+      readingSummary: aiInsights && aiInsights.length > 0 && reading ? reading.summary : null,
+      readingGeneratedAt: aiInsights && aiInsights.length > 0 && reading ? reading.generatedAt.toISOString() : null,
     };
+  }
+
+  /** A leitura de regras de um mês, sem a redigida por cima (entrada da ia.Transppass). */
+  async rulesInsights(month: string): Promise<BoardInsight[]> {
+    const today = isoDay(new Date());
+    const prevKey = shiftMonth(month, -1);
+    const [core, prev, history] = await Promise.all([this.monthCore(month), this.monthCore(prevKey), this.history(month, 12)]);
+    const [diesel, ebus, worstLines] = await Promise.all([
+      this.consumptionSummary(VehicleTechnology.DIESEL, core.from, core.to),
+      this.consumptionSummary(VehicleTechnology.EBUS, core.from, core.to),
+      this.worstLines(core.from, core.to),
+    ]);
+    return buildInsights(core, prev, prevKey, history, { diesel, ebus }, worstLines, today);
   }
 
   /** As cinco linhas com mais viagens perdidas no período. */

@@ -303,6 +303,11 @@ export interface MetricsBoard {
   insights: BoardInsight[];
   /** Linhas com mais viagens perdidas no mês. */
   worstLines: { line: string; planned: number; lost: number; pct: number | null }[];
+  /** De onde veio a leitura do mês: redigida pela ia.Transppass ou pelas regras do sistema. */
+  readingSource: 'ia' | 'rules';
+  /** Parágrafo de abertura da leitura, quando redigida pelo modelo. */
+  readingSummary: string | null;
+  readingGeneratedAt: string | null;
 }
 
 /** O que aconteceu num dia do quadro: as quebras, as linhas que perderam viagem e a frota coberta. */

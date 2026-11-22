@@ -20,6 +20,14 @@ export const envSchema = z.object({
   /** Ignora o horário de operação (útil para testar de madrugada). */
   DEMO_ALL_HOURS: z.enum(['true', 'false']).default('false'),
   MAIL_FROM: z.string().optional(),
+  /** ia.Transppass: chave da Anthropic. Sem ela (e sem IA_PROVIDER=fake) o agente fica desligado. */
+  ANTHROPIC_API_KEY: z.string().optional(),
+  /** anthropic (padrão quando há chave) | fake (provedor simulado, para desenvolvimento e QA) | off. */
+  IA_PROVIDER: z.enum(['anthropic', 'fake', 'off']).optional(),
+  /** Modelo do agente. */
+  IA_MODEL: z.string().default('claude-opus-5-5'),
+  /** Hora (0–23) em que a leitura do mês é redigida pelo modelo, todo dia. */
+  IA_READING_HOUR: z.coerce.number().int().min(0).max(23).default(3),
 });
 
 export type Env = z.infer<typeof envSchema>;

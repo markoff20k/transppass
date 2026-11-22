@@ -21,6 +21,7 @@ import { dashboardHandlers } from './dashboard.mock';
 import { r1Handlers } from './r1.mock';
 import { r2Handlers } from './r2.mock';
 import { consumptionHandlers } from './consumption.mock';
+import { iaHandlers } from './ia.mock';
 
 /**
  * Handlers do modo mock.
@@ -65,6 +66,7 @@ export const handlers = [
   ...r1Handlers,
   ...r2Handlers,
   ...consumptionHandlers,
+  ...iaHandlers,
   // --- Autenticação --------------------------------------------------------
 
   http.post('*/api/auth/login', async ({ request }) => {

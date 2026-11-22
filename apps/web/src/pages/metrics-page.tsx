@@ -510,7 +510,16 @@ export function MetricsPage() {
       active={isPlaceholderData || (boardQ.isPlaceholderData && Boolean(board))}
       label={`Calculando ${monthLabel}`}
     >
-      {board && <MonthReading insights={board.insights} onOpenDay={setOpenDay} />}
+      {board && (
+        <MonthReading
+          insights={board.insights}
+          month={board.month}
+          source={board.readingSource}
+          summary={board.readingSummary}
+          generatedAt={board.readingGeneratedAt}
+          onOpenDay={setOpenDay}
+        />
+      )}
       {boardLoading && (
         <SectionSkeleton
           title="IA da Transppass - Insights"

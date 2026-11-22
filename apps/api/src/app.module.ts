@@ -27,6 +27,7 @@ import { QualityModule } from './quality/quality.module';
 import { AuditsModule } from './audits/audits.module';
 import { ComponentsModule } from './components/components.module';
 import { ConsumptionModule } from './consumption/consumption.module';
+import { IaModule } from './ia/ia.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { PasswordChangeGuard } from './auth/guards/password-change.guard';
 import { ApiThrottlerGuard } from './auth/guards/api-throttler.guard';
@@ -77,6 +78,8 @@ import { envSchema } from './config/env.validation';
     ComponentsModule,
     // Consumo de diesel (km/l) e de energia (kWh/km): frota e carro, da planilha da Transppass
     ConsumptionModule,
+    // ia.Transppass — o agente de PCM (conversa e leitura do mês)
+    IaModule,
     // Simulador de demonstração — só age com DEMO_SIMULATOR=true
     DemoModule,
   ],

@@ -5402,3 +5402,95 @@ a.bus-card:hover { transform: translateY(-1px); }
 .dash-kpi__face--back:has(.kpi-ai) { gap: 2px; padding-top: 6px; padding-bottom: 7px; }
 .dash-kpi__face--back .kpi-ai { margin: 0 0 2px; }
 .dash-kpi__face--back .kpi-back__list { margin-top: auto; }
+
+/* =========================================================================
+   ia.Transppass — o painel do agente (features/ia)
+   Encosta à direita, abaixo do cabeçalho; em telas largas empurra o conteúdo,
+   em telas estreitas fica por cima. Mesmo vidro dos cartões.
+   ========================================================================= */
+:root { --ia-w: 420px; }
+.ia-panel {
+  position: fixed;
+  top: var(--shell-header-h);
+  right: 0;
+  bottom: 0;
+  width: var(--ia-w);
+  max-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--color-surface);
+  border-left: var(--tp-border-thin) solid var(--color-card-border);
+  box-shadow: -12px 0 32px -20px rgba(15, 23, 42, 0.25);
+  z-index: calc(var(--tp-z-sticky) + 1);
+}
+@media (min-width: 1280px) {
+  .shell--ia .content { padding-right: var(--ia-w); }
+  /* Com menos largura, o cabeçalho da página quebra em duas linhas em vez de o título entrar por baixo das ações. */
+  .shell--ia .subheader { flex-wrap: wrap; }
+  .shell--ia .subheader__text { flex: 1 1 260px; }
+  /* Os avisos (toasts) ficam à esquerda do painel, não em cima da caixa de pergunta. */
+  .shell--ia .tp-toaster { right: calc(var(--ia-w) + 16px); }
+}
+@media (max-width: 640px) {
+  :root { --ia-w: 100vw; }
+}
+.ia-panel__head { display: flex; align-items: center; gap: var(--tp-space-2); padding: var(--tp-space-3) var(--tp-space-3) var(--tp-space-3) var(--tp-space-4); border-bottom: var(--tp-border-thin) solid var(--color-card-border); }
+.ia-panel__logo { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; color: var(--color-brand); background: color-mix(in srgb, var(--color-brand) 12%, var(--color-surface)); flex: none; }
+.ia-panel__title { display: grid; min-width: 0; margin-right: auto; line-height: 1.15; }
+.ia-panel__title b { font-size: var(--tp-text-sm); color: var(--color-text); }
+.ia-panel__status { font-size: var(--tp-text-2xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.ia-panel__status.is-on::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--color-success); vertical-align: 1px; }
+.ia-panel__tool { width: 28px; min-height: 28px; padding: 0; flex: none; }
+.ia-panel__tool.is-active { background: var(--color-surface-hover); color: var(--color-text); }
+.ia-panel__history { max-height: 40%; overflow: auto; padding: var(--tp-space-2) var(--tp-space-3); border-bottom: var(--tp-border-thin) solid var(--color-card-border); background: var(--color-surface-sunken, var(--color-surface)); }
+.ia-panel__history ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ia-panel__history li { display: flex; align-items: center; gap: 4px; border-radius: var(--tp-radius-md); }
+.ia-panel__history li.is-active { background: color-mix(in srgb, var(--color-brand) 10%, var(--color-surface)); }
+.ia-panel__hist-item { flex: 1; min-width: 0; display: grid; gap: 1px; text-align: left; padding: 6px 8px; border: 0; background: transparent; font: inherit; color: var(--color-text); cursor: pointer; border-radius: var(--tp-radius-md); }
+.ia-panel__hist-item:hover { background: var(--color-surface-hover); }
+.ia-panel__hist-title { font-size: var(--tp-text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ia-panel__hist-meta { font-size: var(--tp-text-2xs); color: var(--color-text-muted); }
+.ia-panel__hist-del { width: 28px; min-height: 28px; padding: 0; flex: none; }
+.ia-panel__body { flex: 1; min-height: 0; overflow-y: auto; padding: var(--tp-space-4); display: grid; align-content: start; gap: var(--tp-space-3); scroll-behavior: smooth; }
+.ia-panel__alert { font-size: var(--tp-text-xs); }
+.ia-panel__welcome { display: grid; gap: var(--tp-space-2); padding: var(--tp-space-3) 0; font-size: var(--tp-text-sm); color: var(--color-text-secondary); }
+.ia-panel__welcome p { margin: 0; }
+.ia-msg { display: grid; gap: 6px; max-width: 100%; font-size: var(--tp-text-sm); line-height: 1.5; }
+.ia-msg--user { justify-self: end; max-width: 85%; padding: 8px 12px; border-radius: 14px 14px 4px 14px; background: color-mix(in srgb, var(--color-brand) 12%, var(--color-surface)); color: var(--color-text); }
+.ia-msg--assistant { justify-self: start; max-width: 100%; padding: 2px 0; }
+.ia-msg__text p { margin: 0 0 6px; }
+.ia-msg__text p:last-child { margin-bottom: 0; }
+.ia-msg__text ul { margin: 2px 0 6px; padding-left: 18px; }
+.ia-msg__text li { margin: 2px 0; }
+.ia-msg__text b { font-weight: var(--tp-weight-semibold); color: var(--color-text); }
+.ia-msg__caret { display: inline-block; width: 7px; height: 14px; margin-left: 2px; vertical-align: -2px; background: var(--color-brand); border-radius: 2px; animation: ia-caret 0.9s steps(2, start) infinite; }
+@keyframes ia-caret { 50% { opacity: 0; } }
+.ia-msg__thinking { display: inline-flex; align-items: center; gap: 6px; font-size: var(--tp-text-xs); color: var(--color-text-muted); }
+.ia-msg__tools { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.ia-msg__tool { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; font-size: var(--tp-text-2xs); color: var(--color-text-secondary); background: var(--color-surface-sunken, var(--color-surface-hover)); border: var(--tp-border-thin) solid var(--color-card-border); }
+.ia-msg__tool svg { color: var(--color-success); flex: none; }
+.ia-msg__tool.is-running svg { color: var(--color-brand); }
+.ia-msg__tool.is-error svg { color: var(--color-danger); }
+.ia-msg__tool em { font-style: normal; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.ia-msg__error { margin: 0; font-size: var(--tp-text-xs); color: var(--color-danger-text); }
+.ia-msg__meta { font-size: var(--tp-text-2xs); }
+.ia-panel__foot { display: grid; gap: var(--tp-space-2); padding: var(--tp-space-3) var(--tp-space-4) var(--tp-space-3); border-top: var(--tp-border-thin) solid var(--color-card-border); background: var(--color-surface); }
+.ia-panel__suggestions { display: flex; flex-wrap: wrap; gap: 6px; }
+.ia-panel__chip { padding: 5px 10px; border-radius: 999px; border: var(--tp-border-thin) solid var(--color-card-border); background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: var(--tp-text-xs); text-align: left; cursor: pointer; transition: background var(--tp-duration-fast) var(--tp-ease), color var(--tp-duration-fast) var(--tp-ease), border-color var(--tp-duration-fast) var(--tp-ease); }
+.ia-panel__chip:hover { background: var(--color-surface-hover); color: var(--color-text); border-color: var(--color-border-strong); }
+.ia-panel__form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--tp-space-2); align-items: end; }
+.ia-panel__input { min-height: 40px; max-height: 140px; resize: none; line-height: 1.4; font-size: var(--tp-text-sm); field-sizing: content; }
+.ia-panel__send { width: 40px; min-height: 40px; padding: 0; }
+.ia-panel__note { font-size: var(--tp-text-2xs); }
+.spin { animation: ia-spin 1s linear infinite; }
+@keyframes ia-spin { to { transform: rotate(360deg); } }
+/* O robô no cabeçalho: aceso quando o painel está aberto; apagado quando a IA está desligada. */
+.header__ia.is-on { color: var(--color-brand); background: color-mix(in srgb, var(--color-brand) 14%, transparent); }
+.header__ia.is-off { opacity: 0.55; }
+/* Leitura do mês: a assinatura de quem redigiu. */
+.reading__source { display: inline-flex; align-items: center; gap: 6px; font-size: var(--tp-text-2xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.reading__source.is-ia { color: var(--color-brand); }
+.reading__summary { margin: 0 0 var(--tp-space-2); font-size: var(--tp-text-sm); line-height: 1.5; color: var(--color-text-secondary); }
+.reading__head-tools { display: inline-flex; align-items: center; gap: var(--tp-space-2); }
+@media (prefers-reduced-motion: reduce) { .ia-msg__caret, .spin { animation: none; } }

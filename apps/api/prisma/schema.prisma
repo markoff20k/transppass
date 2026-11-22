@@ -35,27 +35,28 @@ enum UserRole {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  registration String?  @unique @db.VarChar(32)
-  name         String   @db.VarChar(120)
-  email        String   @unique @db.VarChar(255)
-  passwordHash String
-  role         UserRole
-  garageId     String?  @db.Uuid
-  phone        String?  @db.VarChar(32)
+  id                 String   @id @default(uuid()) @db.Uuid
+  registration       String?  @unique @db.VarChar(32)
+  name               String   @db.VarChar(120)
+  email              String   @unique @db.VarChar(255)
+  passwordHash       String
+  role               UserRole
+  garageId           String?  @db.Uuid
+  phone              String?  @db.VarChar(32)
   /// Foto de perfil como data URL (JPEG 256px, redimensionada no navegador).
-  avatarUrl    String?  @db.Text
+  avatarUrl          String?  @db.Text
   /// Preferências da própria pessoa (atalhos do cabeçalho, avisos, notificações).
-  preferences  Json     @default("{}")
-  isActive     Boolean  @default(true)
+  preferences        Json     @default("{}")
+  isActive           Boolean  @default(true)
   /// Senha provisória (conta criada pelo administrador ou importada): a pessoa precisa definir a sua no primeiro acesso.
-  mustChangePassword Boolean @default(false) @map("must_change_password")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  mustChangePassword Boolean  @default(false) @map("must_change_password")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  garage        Garage?        @relation(fields: [garageId], references: [id])
-  refreshTokens RefreshToken[]
-  resetTokens   PasswordResetToken[]
+  garage          Garage?              @relation(fields: [garageId], references: [id])
+  refreshTokens   RefreshToken[]
+  resetTokens     PasswordResetToken[]
+  aiConversations AiConversation[]
 
   @@index([role])
   @@map("users")
@@ -248,14 +249,14 @@ model LineTripDay {
 
 /// Km do carro por linha e dia (arquivo "7-VBR0306"): em linha, ocioso e viagens.
 model VehicleLineDay {
-  id        String   @id @default(uuid()) @db.Uuid
-  vehicleId String   @db.Uuid
-  date      DateTime @db.Date
-  line      String?  @db.VarChar(16)
-  table     String?  @db.VarChar(16)
-  kmInLine  Decimal  @db.Decimal(10, 1)
-  kmIdle    Decimal  @db.Decimal(10, 1)
-  trips     Int      @default(0)
+  id             String   @id @default(uuid()) @db.Uuid
+  vehicleId      String   @db.Uuid
+  date           DateTime @db.Date
+  line           String?  @db.VarChar(16)
+  table          String?  @db.VarChar(16)
+  kmInLine       Decimal  @db.Decimal(10, 1)
+  kmIdle         Decimal  @db.Decimal(10, 1)
+  trips          Int      @default(0)
   /// Registro do motorista (00.000 = substituição, carta 7.1.5)
   driverReg      String?  @db.VarChar(8)
   isSubstitution Boolean  @default(false)
@@ -395,10 +396,10 @@ model Vehicle {
 
 /// Matriz de habilitacoes: consumida, nao administrada (secao 4 do PRD).
 model Operator {
-  id           String  @id @default(uuid()) @db.Uuid
-  registration String  @unique @db.VarChar(32)
-  name         String  @db.VarChar(120)
-  isActive     Boolean @default(true)
+  id             String    @id @default(uuid()) @db.Uuid
+  registration   String    @unique @db.VarChar(32)
+  name           String    @db.VarChar(120)
+  isActive       Boolean   @default(true)
   /// MOTORISTA ou COBRADOR — bases "Motorista por tecnologia" e "Cobrador por lote".
   function       String    @default("MOTORISTA") @db.VarChar(16)
   /// Categoria da CNH (D, AD, E, AE): é o que define as classes de carro permitidas.
@@ -473,11 +474,11 @@ model FailureCatalogItem {
   isSafety     Boolean @default(false)
   isDeferrable Boolean @default(true)
 
-  probableCause          String? @db.VarChar(255)
+  probableCause          String?  @db.VarChar(255)
   estimatedRepairMinutes Int?
   /// Atalho do padrao composto: o item pre-preenche Modo x Subsistema.
-  failureModeCode        String? @db.VarChar(2)
-  subsystemCode          String? @db.VarChar(7)
+  failureModeCode        String?  @db.VarChar(2)
+  subsystemCode          String?  @db.VarChar(7)
   /// Taxa de resolucao em campo, realimentada pelas constatacoes do socorro.
   fieldResolutionRate    Decimal? @db.Decimal(5, 4)
   fieldResolutionSamples Int      @default(0)
@@ -537,11 +538,11 @@ model ReasonCode {
   isActive    Boolean        @default(true)
   createdAt   DateTime       @default(now())
 
-  triages       Triage[]
-  queueChanges  QueueChangeLog[]
-  reschedules   ScheduleReschedule[]
-  inspections   Inspection[]
-  partWaitings  PartWaiting[]
+  triages      Triage[]
+  queueChanges QueueChangeLog[]
+  reschedules  ScheduleReschedule[]
+  inspections  Inspection[]
+  partWaitings PartWaiting[]
 
   @@unique([list, code])
   @@index([list, isActive])
@@ -551,19 +552,19 @@ model ReasonCode {
 // --- Planos, pacotes e kits (RF-34) -------------------------------------
 
 model MaintenancePlan {
-  id                  String            @id @default(uuid()) @db.Uuid
-  code                String            @db.VarChar(24)
-  name                String            @db.VarChar(120)
-  technology          VehicleTechnology
-  version             Int               @default(1)
-  effectiveFrom       DateTime
-  effectiveTo         DateTime?
+  id                 String            @id @default(uuid()) @db.Uuid
+  code               String            @db.VarChar(24)
+  name               String            @db.VarChar(120)
+  technology         VehicleTechnology
+  version            Int               @default(1)
+  effectiveFrom      DateTime
+  effectiveTo        DateTime?
   /// Vinculo ao documento controlado do processo FR.116.
-  controlledDocument  String?           @db.VarChar(60)
-  isActive            Boolean           @default(true)
+  controlledDocument String?           @db.VarChar(60)
+  isActive           Boolean           @default(true)
   /// Plano por modelo (IT.MAN-01 varia filtros e cubos por modelo). Nulo = vale para toda a tecnologia.
-  manufacturer        String?           @db.VarChar(60)
-  vehicleModel        String?           @db.VarChar(60)
+  manufacturer       String?           @db.VarChar(60)
+  vehicleModel       String?           @db.VarChar(60)
 
   packages MaintenancePackage[]
 
@@ -572,19 +573,19 @@ model MaintenancePlan {
 }
 
 model MaintenancePackage {
-  id          String @id @default(uuid()) @db.Uuid
-  planId      String @db.Uuid
-  code        String @db.VarChar(24)
-  name        String @db.VarChar(120)
+  id               String @id @default(uuid()) @db.Uuid
+  planId           String @db.Uuid
+  code             String @db.VarChar(24)
+  name             String @db.VarChar(120)
   /// Janelas de 7.500 / 15.000 km citadas na secao 2 do PRD.
-  intervalKm  Int
-  toleranceKm Int    @default(500)
+  intervalKm       Int
+  toleranceKm      Int    @default(500)
   /// Tolerância para baixo quando difere da de cima (IT.MAN-01: 2.000 abaixo, 1.000 acima).
   toleranceBelowKm Int?
   /// Primeiro gatilho do pacote; depois repete a cada intervalKm (A: 15.000 + n×30.000).
-  offsetKm    Int    @default(0)
+  offsetKm         Int    @default(0)
   /// Pacotes por tempo (AC semanal/mensal, dedetização trimestral) além do km.
-  periodDays  Int?
+  periodDays       Int?
 
   plan                  MaintenancePlan        @relation(fields: [planId], references: [id], onDelete: Cascade)
   tasks                 MaintenanceTask[]
@@ -596,19 +597,19 @@ model MaintenancePackage {
 }
 
 model MaintenanceTask {
-  id               String  @id @default(uuid()) @db.Uuid
-  packageId        String  @db.Uuid
-  code             String  @db.VarChar(24)
-  description      String  @db.VarChar(255)
-  specialtyId      String? @db.Uuid
-  estimatedMinutes Int?
+  id                 String  @id @default(uuid()) @db.Uuid
+  packageId          String  @db.Uuid
+  code               String  @db.VarChar(24)
+  description        String  @db.VarChar(255)
+  specialtyId        String? @db.Uuid
+  estimatedMinutes   Int?
   /// Seção do documento (Motor, Freios e Ar, Elétrica...).
   section            String? @db.VarChar(40)
   /// "Veículos equipados com elevador", "câmbio automático Voith"... filtra pela configuração do carro.
   equipmentCondition String? @db.VarChar(80)
 
-  package    MaintenancePackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  specialty  Specialty?          @relation(fields: [specialtyId], references: [id])
+  package    MaintenancePackage    @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  specialty  Specialty?            @relation(fields: [specialtyId], references: [id])
   scopeItems ScheduleScopeItem[]
   tools      MaintenanceTaskTool[]
 
@@ -691,14 +692,14 @@ model DailyCheckItem {
 
 /// Kaizen — gestão de fornecedores: quem fornece, com que SLA de qualidade.
 model Supplier {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @unique @db.VarChar(120)
-  cnpj      String?  @db.VarChar(18)
-  contact   String?  @db.VarChar(160)
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @unique @db.VarChar(120)
+  cnpj         String?  @db.VarChar(18)
+  contact      String?  @db.VarChar(160)
   /// Prazo acordado para resposta a reclamação de garantia.
   claimSlaDays Int?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
 
   materials   Material[]
   inspections PartInspection[]
@@ -709,25 +710,25 @@ model Supplier {
 /// Kaizen — laboratório de inspeção técnica de peças: cada peça avaliada
 /// (recebimento, falha prematura, garantia) e o desfecho com o fornecedor.
 model PartInspection {
-  id              String   @id @default(uuid()) @db.Uuid
-  materialId      String   @db.Uuid
-  supplierId      String?  @db.Uuid
-  workOrderId     String?  @db.Uuid
-  vehicleId       String?  @db.Uuid
-  serialNumber    String?  @db.VarChar(64)
-  quantity        Decimal  @default(1) @db.Decimal(12, 3)
+  id            String   @id @default(uuid()) @db.Uuid
+  materialId    String   @db.Uuid
+  supplierId    String?  @db.Uuid
+  workOrderId   String?  @db.Uuid
+  vehicleId     String?  @db.Uuid
+  serialNumber  String?  @db.VarChar(64)
+  quantity      Decimal  @default(1) @db.Decimal(12, 3)
   /// APPROVED ou REJECTED
-  result          String   @db.VarChar(10)
+  result        String   @db.VarChar(10)
   /// DEFEITO_FABRICACAO, FORA_DE_ESPEC, DANO_TRANSPORTE, FALHA_PREMATURA, DESGASTE_NORMAL, OUTRO
-  reason          String   @db.VarChar(24)
+  reason        String   @db.VarChar(24)
   /// Km rodado pela peça até falhar, quando se sabe.
-  kmInService     Int?
-  underWarranty   Boolean  @default(false)
+  kmInService   Int?
+  underWarranty Boolean  @default(false)
   /// NONE, OPENED, ACCEPTED, DENIED
-  claimStatus     String   @default("NONE") @db.VarChar(10)
-  note            String?  @db.VarChar(500)
-  inspectedById   String   @db.Uuid
-  inspectedAt     DateTime @default(now())
+  claimStatus   String   @default("NONE") @db.VarChar(10)
+  note          String?  @db.VarChar(500)
+  inspectedById String   @db.Uuid
+  inspectedAt   DateTime @default(now())
 
   material Material  @relation(fields: [materialId], references: [id])
   supplier Supplier? @relation(fields: [supplierId], references: [id])
@@ -812,13 +813,13 @@ model TechnicianTraining {
 }
 
 model Material {
-  id           String  @id @default(uuid()) @db.Uuid
-  code         String  @unique @db.VarChar(32)
-  description  String  @db.VarChar(255)
-  unit         String  @db.VarChar(8)
+  id              String   @id @default(uuid()) @db.Uuid
+  code            String   @unique @db.VarChar(32)
+  description     String   @db.VarChar(255)
+  unit            String   @db.VarChar(8)
   /// Itens do pool rotativo sao controlados por numero de serie (RF-26).
-  isSerialized Boolean @default(false)
-  isActive     Boolean @default(true)
+  isSerialized    Boolean  @default(false)
+  isActive        Boolean  @default(true)
   /// Classe contábil do almoxarifado (6 dígitos: 0101xx mecânica por sistema, 0102xx carroceria, 0302xx lubrificantes, 04xxxx pneus, 10xxxx consumo, 20xxxx recondicionados, 21xxxx montagem interna).
   classCode       String?  @db.VarChar(8)
   manufacturerRef String?  @db.VarChar(80)
@@ -842,7 +843,7 @@ model Material {
   materialRequests     MaterialRequest[]
   poolComponents       PoolComponent[]
   fieldServiceMaterial FieldServiceMaterial[]
-  supplier             Supplier?              @relation(fields: [supplierId], references: [id])
+  supplier             Supplier?                   @relation(fields: [supplierId], references: [id])
   partInspections      PartInspection[]
 
   @@index([classCode])
@@ -861,10 +862,10 @@ model Kit {
   isActive      Boolean   @default(true)
 
   /// Kit corretivo: a falha do catálogo que ele atende (Kaizen 2).
-  catalogItemId String?   @db.Uuid
+  catalogItemId String? @db.Uuid
 
-  package     MaintenancePackage?  @relation(fields: [packageId], references: [id])
-  catalogItem FailureCatalogItem?  @relation(fields: [catalogItemId], references: [id])
+  package     MaintenancePackage? @relation(fields: [packageId], references: [id])
+  catalogItem FailureCatalogItem? @relation(fields: [catalogItemId], references: [id])
   items       KitItem[]
   separations KitSeparation[]
 
@@ -924,16 +925,16 @@ model OdometerReading {
 /// RF-10 — projecao diaria de km. Sem leitura por mais de 2 dias a projecao
 /// entra em modo degradado e alerta o PCM (mitigacao da secao 10 do PRD).
 model KmProjection {
-  id             String   @id @default(uuid()) @db.Uuid
-  vehicleId      String   @unique @db.Uuid
-  avgDailyKm     Decimal  @db.Decimal(10, 2)
-  projectedKm    Int
-  projectedAt    DateTime
-  lastReadingAt  DateTime?
-  isDegraded     Boolean  @default(false)
-  degradedSince  DateTime?
-  sampleDays     Int      @default(0)
-  updatedAt      DateTime @updatedAt
+  id            String    @id @default(uuid()) @db.Uuid
+  vehicleId     String    @unique @db.Uuid
+  avgDailyKm    Decimal   @db.Decimal(10, 2)
+  projectedKm   Int
+  projectedAt   DateTime
+  lastReadingAt DateTime?
+  isDegraded    Boolean   @default(false)
+  degradedSince DateTime?
+  sampleDays    Int       @default(0)
+  updatedAt     DateTime  @updatedAt
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
@@ -953,17 +954,17 @@ enum ScheduleStatus {
 /// RF-11/12 — a janela so libera a saida da escala com kit separado e equipe
 /// reservada confirmados (RN-10).
 model ScheduledMaintenance {
-  id           String         @id @default(uuid()) @db.Uuid
-  vehicleId    String         @db.Uuid
-  packageId    String         @db.Uuid
-  targetKm     Int
+  id            String         @id @default(uuid()) @db.Uuid
+  vehicleId     String         @db.Uuid
+  packageId     String         @db.Uuid
+  targetKm      Int
   projectedDate DateTime
-  plannedDate  DateTime?
-  status       ScheduleStatus @default(PLANNED)
-  kitReady     Boolean        @default(false)
-  teamReserved Boolean        @default(false)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  plannedDate   DateTime?
+  status        ScheduleStatus @default(PLANNED)
+  kitReady      Boolean        @default(false)
+  teamReserved  Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   vehicle       Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   package       MaintenancePackage   @relation(fields: [packageId], references: [id])
@@ -994,14 +995,14 @@ model ScheduleScopeItem {
 
 /// RF-13 — reprogramacao sempre com codigo de motivo e registro.
 model ScheduleReschedule {
-  id                     String   @id @default(uuid()) @db.Uuid
-  scheduledMaintenanceId String   @db.Uuid
+  id                     String    @id @default(uuid()) @db.Uuid
+  scheduledMaintenanceId String    @db.Uuid
   fromDate               DateTime?
   toDate                 DateTime
-  reasonCodeId           String   @db.Uuid
-  actorId                String   @db.Uuid
-  note                   String?  @db.VarChar(255)
-  createdAt              DateTime @default(now())
+  reasonCodeId           String    @db.Uuid
+  actorId                String    @db.Uuid
+  note                   String?   @db.VarChar(255)
+  createdAt              DateTime  @default(now())
 
   scheduledMaintenance ScheduledMaintenance @relation(fields: [scheduledMaintenanceId], references: [id], onDelete: Cascade)
   reasonCode           ReasonCode           @relation(fields: [reasonCodeId], references: [id])
@@ -1112,15 +1113,15 @@ enum TriageDestination {
 }
 
 model Triage {
-  id            String            @id @default(uuid()) @db.Uuid
-  eventId       String            @unique @db.Uuid
-  destination   TriageDestination
-  reasonCodeId  String?           @db.Uuid
-  decidedById   String            @db.Uuid
-  decidedAt     DateTime          @default(now())
+  id           String            @id @default(uuid()) @db.Uuid
+  eventId      String            @unique @db.Uuid
+  destination  TriageDestination
+  reasonCodeId String?           @db.Uuid
+  decidedById  String            @db.Uuid
+  decidedAt    DateTime          @default(now())
   /// Segundos entre o registro do evento e a decisao — base do SLA de triagem.
-  slaSeconds    Int
-  note          String?           @db.VarChar(255)
+  slaSeconds   Int
+  note         String?           @db.VarChar(255)
 
   event      FailureEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   reasonCode ReasonCode?  @relation(fields: [reasonCodeId], references: [id])
@@ -1138,21 +1139,21 @@ enum FieldOutcome {
 
 /// RF-04 — status por toque, constatacao de catalogo e desfecho em um botao.
 model FieldService {
-  id                     String        @id @default(uuid()) @db.Uuid
-  eventId                String        @unique @db.Uuid
-  dispatchedAt           DateTime      @default(now())
-  arrivedAt              DateTime?
-  startedAt              DateTime?
-  finishedAt             DateTime?
-  technicianId           String?       @db.Uuid
-  supportVehicleCode     String?       @db.VarChar(16)
-  confirmedCatalogItemId String?       @db.Uuid
-  confirmedFailureModeCode String?     @db.VarChar(2)
-  confirmedSubsystemCode   String?     @db.VarChar(7)
-  confirmedPosition        String?     @db.VarChar(2)
-  confirmedFailureCode     String?     @db.VarChar(16)
-  outcome                FieldOutcome?
-  note                   String?       @db.VarChar(500)
+  id                       String        @id @default(uuid()) @db.Uuid
+  eventId                  String        @unique @db.Uuid
+  dispatchedAt             DateTime      @default(now())
+  arrivedAt                DateTime?
+  startedAt                DateTime?
+  finishedAt               DateTime?
+  technicianId             String?       @db.Uuid
+  supportVehicleCode       String?       @db.VarChar(16)
+  confirmedCatalogItemId   String?       @db.Uuid
+  confirmedFailureModeCode String?       @db.VarChar(2)
+  confirmedSubsystemCode   String?       @db.VarChar(7)
+  confirmedPosition        String?       @db.VarChar(2)
+  confirmedFailureCode     String?       @db.VarChar(16)
+  outcome                  FieldOutcome?
+  note                     String?       @db.VarChar(500)
 
   event                FailureEvent           @relation(fields: [eventId], references: [id], onDelete: Cascade)
   confirmedCatalogItem FailureCatalogItem?    @relation("FieldConfirmedFailure", fields: [confirmedCatalogItemId], references: [id])
@@ -1254,25 +1255,25 @@ enum WorkOrderStatus {
 /// RF-17 — OS-mae: relogio unico de indisponibilidade (RN-02) e previsao de
 /// conclusao obrigatoria (RN-03). A liberacao (RF-22) para o relogio.
 model WorkOrder {
-  id                    String          @id @default(uuid()) @db.Uuid
-  code                  String          @unique @db.VarChar(24)
-  vehicleId             String          @db.Uuid
-  type                  WorkOrderType
-  status                WorkOrderStatus @default(OPEN)
-  eventId               String?         @unique @db.Uuid
-  scheduledMaintenanceId String?        @unique @db.Uuid
-  openedAt              DateTime        @default(now())
-  estimatedCompletionAt DateTime
-  techClosedAt          DateTime?
-  releasedAt            DateTime?
-  releasedById          String?         @db.Uuid
-  downtimeMinutes       Int?
+  id                     String          @id @default(uuid()) @db.Uuid
+  code                   String          @unique @db.VarChar(24)
+  vehicleId              String          @db.Uuid
+  type                   WorkOrderType
+  status                 WorkOrderStatus @default(OPEN)
+  eventId                String?         @unique @db.Uuid
+  scheduledMaintenanceId String?         @unique @db.Uuid
+  openedAt               DateTime        @default(now())
+  estimatedCompletionAt  DateTime
+  techClosedAt           DateTime?
+  releasedAt             DateTime?
+  releasedById           String?         @db.Uuid
+  downtimeMinutes        Int?
   /// Espelhamento minimo com o JB, que segue mestre de custos e OS oficiais.
-  jbWorkOrderNumber     String?         @db.VarChar(32)
+  jbWorkOrderNumber      String?         @db.VarChar(32)
   /// Kaizen 6 — INTERNAL ou THIRD_PARTY, com o fornecedor quando for terceiro.
-  execution             String          @default("INTERNAL") @db.VarChar(16)
-  supplierName          String?         @db.VarChar(120)
-  createdById           String          @db.Uuid
+  execution              String          @default("INTERNAL") @db.VarChar(16)
+  supplierName           String?         @db.VarChar(120)
+  createdById            String          @db.Uuid
 
   vehicle              Vehicle               @relation(fields: [vehicleId], references: [id])
   event                FailureEvent?         @relation(fields: [eventId], references: [id])
@@ -1302,28 +1303,28 @@ enum TaskStatus {
 /// RF-18 — sub-OS por especialidade, com checklist, bloqueio por material e
 /// causa constatada escolhida de lista (RN-13).
 model WorkOrderTask {
-  id                     String     @id @default(uuid()) @db.Uuid
-  workOrderId            String     @db.Uuid
-  code                   String     @db.VarChar(24)
-  specialtyId            String     @db.Uuid
-  description            String     @db.VarChar(500)
-  status                 TaskStatus @default(PENDING)
-  assignedToId           String?    @db.Uuid
+  id                       String     @id @default(uuid()) @db.Uuid
+  workOrderId              String     @db.Uuid
+  code                     String     @db.VarChar(24)
+  specialtyId              String     @db.Uuid
+  description              String     @db.VarChar(500)
+  status                   TaskStatus @default(PENDING)
+  assignedToId             String?    @db.Uuid
   /// Técnico de manutenção responsável (Kaizen 16).
-  technicianId           String?    @db.Uuid
-  startedAt              DateTime?
-  finishedAt             DateTime?
-  confirmedCatalogItemId String?    @db.Uuid
-  confirmedFailureModeCode String?  @db.VarChar(2)
-  confirmedSubsystemCode   String?  @db.VarChar(7)
-  confirmedPosition        String?  @db.VarChar(2)
-  confirmedFailureCode     String?  @db.VarChar(16)
-  reopenedCount          Int        @default(0)
+  technicianId             String?    @db.Uuid
+  startedAt                DateTime?
+  finishedAt               DateTime?
+  confirmedCatalogItemId   String?    @db.Uuid
+  confirmedFailureModeCode String?    @db.VarChar(2)
+  confirmedSubsystemCode   String?    @db.VarChar(7)
+  confirmedPosition        String?    @db.VarChar(2)
+  confirmedFailureCode     String?    @db.VarChar(16)
+  reopenedCount            Int        @default(0)
 
-  workOrder            WorkOrder            @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  specialty            Specialty            @relation(fields: [specialtyId], references: [id])
-  technician           Technician?          @relation(fields: [technicianId], references: [id])
-  confirmedCatalogItem FailureCatalogItem?  @relation("TaskConfirmedFailure", fields: [confirmedCatalogItemId], references: [id])
+  workOrder            WorkOrder           @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  specialty            Specialty           @relation(fields: [specialtyId], references: [id])
+  technician           Technician?         @relation(fields: [technicianId], references: [id])
+  confirmedCatalogItem FailureCatalogItem? @relation("TaskConfirmedFailure", fields: [confirmedCatalogItemId], references: [id])
   checklistItems       TaskChecklistItem[]
   inspections          Inspection[]
   materialRequests     MaterialRequest[]
@@ -1375,11 +1376,11 @@ model Inspection {
 }
 
 model InspectionMeasurement {
-  id           String  @id @default(uuid()) @db.Uuid
-  inspectionId String  @db.Uuid
-  description  String  @db.VarChar(255)
-  value        Decimal @db.Decimal(12, 3)
-  unit         String  @db.VarChar(16)
+  id           String   @id @default(uuid()) @db.Uuid
+  inspectionId String   @db.Uuid
+  description  String   @db.VarChar(255)
+  value        Decimal  @db.Decimal(12, 3)
+  unit         String   @db.VarChar(16)
   minValue     Decimal? @db.Decimal(12, 3)
   maxValue     Decimal? @db.Decimal(12, 3)
   isWithinSpec Boolean
@@ -1404,7 +1405,7 @@ model Cleaning {
   finishedAt    DateTime?
   performedById String?        @db.Uuid
 
-  workOrder      WorkOrder                @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workOrder      WorkOrder               @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   checklistItems CleaningChecklistItem[]
   damageReports  CleaningDamageReport[]
 
@@ -1412,11 +1413,11 @@ model Cleaning {
 }
 
 model CleaningChecklistItem {
-  id          String   @id @default(uuid()) @db.Uuid
-  cleaningId  String   @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  cleaningId  String    @db.Uuid
   sequence    Int
-  description String   @db.VarChar(255)
-  isChecked   Boolean  @default(false)
+  description String    @db.VarChar(255)
+  isChecked   Boolean   @default(false)
   checkedAt   DateTime?
 
   cleaning Cleaning @relation(fields: [cleaningId], references: [id], onDelete: Cascade)
@@ -1615,14 +1616,14 @@ model PoolMovement {
 
 /// RF-28 — emprestimo de ferramentas com bloqueio por calibracao vencida.
 model Tool {
-  id                String    @id @default(uuid()) @db.Uuid
-  code              String    @unique @db.VarChar(32)
-  description       String    @db.VarChar(255)
-  calibrationDueAt  DateTime?
-  isActive          Boolean   @default(true)
+  id               String    @id @default(uuid()) @db.Uuid
+  code             String    @unique @db.VarChar(32)
+  description      String    @db.VarChar(255)
+  calibrationDueAt DateTime?
+  isActive         Boolean   @default(true)
   /// FR.168 — quantidade necessária e disponível para a suficiência de ferramental.
-  requiredQty       Int       @default(1)
-  availableQty      Int       @default(1)
+  requiredQty      Int       @default(1)
+  availableQty     Int       @default(1)
 
   loans    ToolLoan[]
   taskUses MaintenanceTaskTool[]
@@ -1754,4 +1755,72 @@ model AppSetting {
   value     String   @db.VarChar(400)
   updatedBy String?  @db.Uuid
   updatedAt DateTime @updatedAt
+}
+
+// ===========================================================================
+// ia.Transppass — o agente de PCM: conversas por usuário e leituras redigidas
+// ===========================================================================
+
+model AiConversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  title     String   @db.VarChar(160)
+  /**
+   * Tela onde a conversa começou (rota), para os atalhos de contexto.
+   */
+  context   String?  @db.VarChar(160)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User        @relation(fields: [userId], references: [id])
+  messages AiMessage[]
+
+  @@index([userId, updatedAt])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @db.Uuid
+  /**
+   * user | assistant
+   */
+  role           String   @db.VarChar(16)
+  /**
+   * O texto mostrado na tela (a pergunta, ou a resposta final).
+   */
+  text           String
+  /**
+   * Os blocos exatos trocados com o modelo nesta vez (inclui consultas e resultados), para a conversa continuar íntegra.
+   */
+  blocks         Json
+  toolCalls      Json?
+  usage          Json?
+  error          String?  @db.VarChar(400)
+  createdAt      DateTime @default(now())
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("ai_messages")
+}
+
+model AiReading {
+  id          String   @id @default(uuid()) @db.Uuid
+  /**
+   * month
+   */
+  kind        String   @db.VarChar(24)
+  /**
+   * AAAA-MM
+   */
+  key         String   @db.VarChar(10)
+  summary     String
+  insights    Json
+  model       String   @db.VarChar(60)
+  usage       Json?
+  generatedAt DateTime @default(now())
+
+  @@unique([kind, key])
+  @@map("ai_readings")
 }

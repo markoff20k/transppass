@@ -21,3 +21,4 @@ export * from './operations/operations.schemas.js';
 export * from './plans/plans.schemas.js';
 export * from './common/pagination.js';
 export * from './common/api-error.js';
+export * from './ia/ia.schemas.js';

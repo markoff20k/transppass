@@ -145,3 +145,64 @@ export const api = {
     apiFetch<T>(path, { ...o, method: 'PUT', body }),
   delete: <T>(path: string, o?: RequestOptions) => apiFetch<T>(path, { ...o, method: 'DELETE' }),
 };
+
+/**
+ * POST que responde em Server-Sent Events (a ia.Transppass). Mesma sessão e
+ * mesmo refresh do apiFetch; cada evento `data:` vira uma chamada de onEvent.
+ * Resolve quando o servidor encerra; rejeita com ApiError em erro HTTP.
+ */
+export async function apiEventStream<E>(
+  path: string,
+  body: unknown,
+  handlers: { onEvent: (event: E) => void; signal?: AbortSignal },
+): Promise<void> {
+  const send = async (): Promise<Response> => {
+    const accessToken = tokenStorage.get()?.accessToken;
+    return fetch(`${BASE_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: handlers.signal,
+    });
+  };
+  let res = await send();
+  if (res.status === 401) {
+    if (await refreshTokens()) res = await send();
+    if (res.status === 401) sessionExpired();
+  }
+  if (!res.ok || !res.body) {
+    const payload = await res.json().catch(() => null);
+    throw new ApiError(
+      isApiErrorBody(payload)
+        ? payload
+        : { statusCode: res.status, code: 'UNKNOWN', message: 'Falha na comunicacao com o servidor', timestamp: new Date().toISOString(), path },
+    );
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buffer.indexOf('\n\n')) >= 0) {
+      const chunk = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      for (const line of chunk.split('\n')) {
+        if (!line.startsWith('data:')) continue;
+        const raw = line.slice(5).trim();
+        if (!raw) continue;
+        try {
+          handlers.onEvent(JSON.parse(raw) as E);
+        } catch {
+          /* linha parcial ou comentário: ignora */
+        }
+      }
+    }
+  }
+}
