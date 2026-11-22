@@ -1,5 +1,6 @@
 import { Bot } from 'lucide-react';
 import type { BoardInsight } from '@app/shared';
+import { CollapsibleCard } from '@/components/ui/collapsible-card';
 
 /**
  * Leitura do mês: o que um analista diria olhando o quadro, escrito pela API
@@ -10,13 +11,17 @@ import type { BoardInsight } from '@app/shared';
 export function MonthReading({ insights, onOpenDay }: { insights: BoardInsight[]; onOpenDay?: (date: string) => void }) {
   if (insights.length === 0) return null;
   return (
-    <section className="tp-card reading" aria-label="IA da Transppass - Insights">
-      <div className="tp-card__head">
+    <CollapsibleCard
+      id="indicadores.reading"
+      className="tp-card reading"
+      label="IA da Transppass - Insights"
+      head={
         <div>
           <h3><Bot size={16} aria-hidden /> IA da Transppass - Insights</h3>
           <span className="chart__hint">a leitura do mês: o que fugiu do padrão e por quê, informado pelos agentes de Inteligência Artificial da Transppass (ia.Transppass); clique numa data para abrir o dia</span>
         </div>
-      </div>
+      }
+    >
       <ul className="reading__list">
         {insights.map((i, idx) => {
           const clickable = Boolean(i.date && onOpenDay);
@@ -31,6 +36,6 @@ export function MonthReading({ insights, onOpenDay }: { insights: BoardInsight[]
           );
         })}
       </ul>
-    </section>
+    </CollapsibleCard>
   );
 }

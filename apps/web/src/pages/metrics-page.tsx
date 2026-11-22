@@ -30,6 +30,8 @@ import { api } from '@/lib/api-client';
 import { formatDuration, formatMinutes, formatNumber } from '@/lib/format';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
+import { CollapsibleCard } from '@/components/ui/collapsible-card';
+import { BackRows, FlipKpi, KpiAi, pctChange, shortDay } from '@/components/ui/flip-kpi';
 import { MonthReading } from '@/components/board/month-reading';
 import { IndicatorBoard } from '@/components/board/indicator-board';
 import { BoardDayDrawer } from '@/components/board/board-day-drawer';
@@ -139,6 +141,205 @@ function Delta({
   );
 }
 
+// ---- Versos dos cartões: a leitura da ia.Transppass sai do próprio quadro ----
+
+const ppChange = (cur: number | null, prev: number | null) =>
+  cur === null || prev === null
+    ? null
+    : `${cur - prev >= 0 ? '+' : '−'}${Math.abs(cur - prev).toFixed(1).replace('.', ',')} p.p.`;
+const fmtPct = (v: number | null) =>
+  v === null ? '—' : `${v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+const filled = (board: MetricsBoard) => board.days.filter((d) => !d.empty);
+function extreme<T>(items: T[], score: (x: T) => number | null, max = true): T | null {
+  let best: T | null = null;
+  let bestScore: number | null = null;
+  for (const it of items) {
+    const v = score(it);
+    if (v === null) continue;
+    if (bestScore === null || (max ? v > bestScore : v < bestScore)) {
+      best = it;
+      bestScore = v;
+    }
+  }
+  return best;
+}
+
+function MkbfBack({ board, prevName }: { board: MetricsBoard; prevName: string }) {
+  const pct = pctChange(board.totals.mkbf, board.previous.mkbf);
+  const worst = extreme(filled(board), (d) => (d.failures > 0 ? d.failures : null));
+  return (
+    <>
+      <KpiAi>
+        {formatNumber(board.totals.km)} km para {board.totals.failures} quebras
+        {pct ? `, ${pct} contra ${prevName}` : ''}
+        {worst ? `; o pior dia foi ${shortDay(worst.date)}, com ${worst.failures} quebras` : ''}.
+      </KpiAi>
+      <BackRows
+        rows={[
+          { label: prevName, value: board.previous.mkbf === null ? '—' : `${formatNumber(board.previous.mkbf)} km` },
+          { label: 'km por quebra no mês', value: board.totals.mkbf === null ? '—' : `${formatNumber(board.totals.mkbf)} km` },
+          { label: 'pior dia', value: worst ? `${shortDay(worst.date)} · ${worst.failures} quebras` : '—', tone: worst ? 'warn' : undefined },
+        ]}
+      />
+    </>
+  );
+}
+
+function KmBack({ board, prevName }: { board: MetricsBoard; prevName: string }) {
+  const days = filled(board).filter((d) => d.km > 0);
+  const avg = days.length ? Math.round(board.totals.km / days.length) : null;
+  const best = extreme(days, (d) => d.km);
+  const pct = pctChange(board.totals.km, board.previous.km);
+  return (
+    <>
+      <KpiAi>
+        Rodagem {pct ? `${pct} contra ${prevName}` : `sem ${prevName} para comparar`}
+        {avg !== null ? `; média de ${formatNumber(avg)} km por dia em ${days.length} dias com leitura` : ''}.
+      </KpiAi>
+      <BackRows
+        rows={[
+          { label: prevName, value: `${formatNumber(board.previous.km)} km` },
+          { label: 'média por dia', value: avg === null ? '—' : `${formatNumber(avg)} km` },
+          { label: 'dia de maior rodagem', value: best ? `${shortDay(best.date)} · ${formatNumber(best.km)} km` : '—' },
+        ]}
+      />
+    </>
+  );
+}
+
+function FailuresBack({ board, prevName }: { board: MetricsBoard; prevName: string }) {
+  const days = filled(board);
+  const avg = days.length ? board.totals.failures / days.length : null;
+  const worst = extreme(days, (d) => (d.failures > 0 ? d.failures : null));
+  const pct = pctChange(board.totals.failures, board.previous.failures);
+  return (
+    <>
+      <KpiAi>
+        {board.totals.failures} quebras no mês{pct ? `, ${pct} contra ${prevName}` : ''}
+        {avg !== null ? `; média de ${avg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} por dia` : ''}
+        {worst ? `, pico de ${worst.failures} em ${shortDay(worst.date)}` : ''}.
+      </KpiAi>
+      <BackRows
+        rows={[
+          { label: prevName, value: String(board.previous.failures) },
+          { label: 'média por dia', value: avg === null ? '—' : avg.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) },
+          { label: 'pior dia', value: worst ? `${shortDay(worst.date)} · ${worst.failures}` : '—', tone: worst ? 'warn' : undefined },
+        ]}
+      />
+    </>
+  );
+}
+
+function WoBack({ data }: { data: R1Metrics }) {
+  const rework = data.internalRework.rate;
+  return (
+    <>
+      <KpiAi>
+        {data.workOrdersReleased} OS liberadas
+        {data.averageDowntimeMinutes !== null ? `, com indisponibilidade média de ${formatMinutes(data.averageDowntimeMinutes)} por OS` : ''}
+        {rework !== null ? ` e retrabalho de ${(rework * 100).toFixed(0)}%` : ''}.
+      </KpiAi>
+      <BackRows
+        rows={[
+          { label: 'indisponibilidade média', value: data.averageDowntimeMinutes === null ? '—' : formatMinutes(data.averageDowntimeMinutes) },
+          { label: 'retrabalho interno', value: `${data.internalRework.rejections} de ${data.internalRework.inspections}`, tone: (rework ?? 0) > 0.1 ? 'warn' : undefined },
+          { label: 'resolvido em campo', value: data.fieldResolution.rate === null ? '—' : `${(data.fieldResolution.rate * 100).toFixed(0)}%` },
+        ]}
+      />
+    </>
+  );
+}
+
+function FleetBack({ board, prevName }: { board: MetricsBoard; prevName: string }) {
+  const f = board.totals.fleet;
+  const worst = extreme(filled(board), (d) => d.fleet.pct, false);
+  const pp = ppChange(f.pct, board.previous.fleet.pct);
+  return (
+    <>
+      <KpiAi>
+        {formatNumber(f.covered)} de {formatNumber(f.programmed ?? 0)} tabelas cobertas
+        {pp ? `, ${pp} contra ${prevName}` : ''}
+        {worst ? `; pior dia ${shortDay(worst.date)}, com ${fmtPct(worst.fleet.pct)}` : ''}.
+      </KpiAi>
+      <BackRows
+        rows={[
+          { label: prevName, value: fmtPct(board.previous.fleet.pct) },
+          { label: 'pior dia', value: worst ? `${shortDay(worst.date)} · ${fmtPct(worst.fleet.pct)}` : '—', tone: worst ? 'warn' : undefined },
+          { label: 'tabelas sem carro', value: f.programmed === null ? '—' : formatNumber(Math.max(0, f.programmed - f.covered)) },
+        ]}
+      />
+    </>
+  );
+}
+
+function TripsBack({ board, prevName }: { board: MetricsBoard; prevName: string }) {
+  const t = board.totals.trips;
+  const worst = extreme(filled(board), (d) => (d.trips.lost > 0 ? d.trips.lost : null));
+  const pp = ppChange(t.pct, board.previous.trips.pct);
+  return (
+    <>
+      <KpiAi>
+        {formatNumber(t.lost)} viagens perdidas de {formatNumber(t.planned)} programadas
+        {pp ? `, ${pp} contra ${prevName}` : ''}
+        {worst ? `; pior dia ${shortDay(worst.date)}, com ${formatNumber(worst.trips.lost)} perdidas` : ''}.
+      </KpiAi>
+      <BackRows
+        rows={[
+          { label: prevName, value: fmtPct(board.previous.trips.pct) },
+          { label: 'pior dia', value: worst ? `${shortDay(worst.date)} · ${formatNumber(worst.trips.lost)} perdidas` : '—', tone: worst ? 'warn' : undefined },
+          { label: 'viagens perdidas', value: formatNumber(t.lost) },
+        ]}
+      />
+    </>
+  );
+}
+
+function LostBack({ board }: { board: MetricsBoard }) {
+  const top = board.worstLines.slice(0, 3);
+  const topLost = top.reduce((a, l) => a + l.lost, 0);
+  const share = board.totals.trips.lost ? Math.round((topLost / board.totals.trips.lost) * 100) : null;
+  return (
+    <>
+      <KpiAi>
+        {top.length === 0
+          ? 'Nenhuma viagem perdida no mês.'
+          : `As ${top.length} linhas que mais perderam concentram ${share ?? 0}% das viagens perdidas do mês.`}
+      </KpiAi>
+      <BackRows
+        rows={top.map((l) => ({
+          label: `linha ${l.line}`,
+          value: `${formatNumber(l.lost)}${l.pct !== null ? ` · ${fmtPct(l.pct)}` : ''}`,
+          tone: 'warn' as const,
+        }))}
+      />
+    </>
+  );
+}
+
+function VehiclesBack({ board }: { board: MetricsBoard }) {
+  const f = board.totals.fleet;
+  const days = filled(board).filter((d) => d.fleet.vehicles > 0);
+  const best = extreme(days, (d) => d.fleet.vehicles);
+  const avg = days.length ? Math.round(days.reduce((a, d) => a + d.fleet.vehicles, 0) / days.length) : null;
+  const cov = f.scheduled ? Math.round((f.vehicles / f.scheduled) * 100) : null;
+  return (
+    <>
+      <KpiAi>
+        {formatNumber(f.vehicles)} carros operaram no dia de pico{best ? ` (${shortDay(best.date)})` : ''}
+        {cov !== null ? `, ${cov}% dos ${formatNumber(f.scheduled)} escalados` : ''}
+        {avg !== null ? `; média de ${formatNumber(avg)} por dia` : ''}.
+      </KpiAi>
+      <BackRows
+        rows={[
+          { label: 'escalados', value: formatNumber(f.scheduled) },
+          { label: 'média por dia', value: avg === null ? '—' : formatNumber(avg) },
+          { label: 'dia de pico', value: best ? `${shortDay(best.date)} · ${formatNumber(best.fleet.vehicles)} carros` : '—' },
+        ]}
+      />
+    </>
+  );
+}
+
 function ConsumptionKpi({
   energy,
   data,
@@ -153,12 +354,33 @@ function ConsumptionKpi({
   // A tecnologia vai explícita: sem ela, Consumo abre na última salva na conta, que pode não ser esta.
   const href = `/consumo?de=${from}&ate=${to}&energia=${diesel ? 'diesel' : 'energia'}`;
   const unit = diesel ? 'km/l' : 'kWh/km';
+  const off = data ? data.high + data.watch : 0;
+  const pct = data ? pctChange(data.ratio, data.previousRatio) : null;
   return (
-    <div className="tp-kpi">
-      <span className="tp-kpi__label">
-        {diesel ? <Fuel size={13} aria-hidden /> : <Zap size={13} aria-hidden />}{' '}
-        {diesel ? 'Frota diesel' : 'Frota elétrica'}
-      </span>
+    <FlipKpi
+      label={diesel ? 'Frota diesel' : 'Frota elétrica'}
+      icon={diesel ? <Fuel size={13} aria-hidden /> : <Zap size={13} aria-hidden />}
+      backTo={href}
+      backLabel="Abrir carro a carro"
+      back={
+        data && data.ratio !== null ? (
+          <>
+            <KpiAi>
+              {fmtRatio(data.ratio)} {unit}
+              {pct ? `, ${pct} contra o mês anterior` : ''}; {off} de {data.vehicles} carros fogem do
+              grupo.
+            </KpiAi>
+            <BackRows
+              rows={[
+                { label: 'mês anterior', value: data.previousRatio === null ? '—' : `${fmtRatio(data.previousRatio)} ${unit}` },
+                { label: 'acima do grupo', value: String(data.high), tone: data.high > 0 ? 'danger' : undefined },
+                { label: 'em atenção', value: String(data.watch), tone: data.watch > 0 ? 'warn' : undefined },
+              ]}
+            />
+          </>
+        ) : undefined
+      }
+    >
       {data && data.ratio !== null ? (
         <>
           <strong className="tp-kpi__value">
@@ -184,7 +406,7 @@ function ConsumptionKpi({
           <span className="tp-kpi__note tp-muted">sem registro de consumo no mês</span>
         </>
       )}
-    </div>
+    </FlipKpi>
   );
 }
 
@@ -312,8 +534,11 @@ export function MetricsPage() {
         </section>
       )}
 
-      <section className="tp-card">
-        <div className="tp-card__head">
+      <CollapsibleCard
+        id="indicadores.reliability"
+        className="tp-card"
+        label="Confiabilidade"
+        head={
           <div>
             <h3>Confiabilidade</h3>
             <span className="chart__hint">
@@ -322,11 +547,14 @@ export function MetricsPage() {
               pelas quebras (fichas A, S e T)
             </span>
           </div>
-        </div>
-
+        }
+      >
         <div className="tp-kpi-row">
-          <div className="tp-kpi tp-kpi--good">
-            <span className="tp-kpi__label">MKBF</span>
+          <FlipKpi
+            className="tp-kpi--good"
+            label="MKBF"
+            back={board ? <MkbfBack board={board} prevName={prevName} /> : undefined}
+          >
             <strong className="tp-kpi__value">
               {data.mkbf.mkbf === null ? '—' : `${formatNumber(data.mkbf.mkbf)} km`}
             </strong>
@@ -340,18 +568,16 @@ export function MetricsPage() {
                 </span>
               )
             )}
-          </div>
-          <div className="tp-kpi">
-            <span className="tp-kpi__label">Km rodados</span>
+          </FlipKpi>
+          <FlipKpi label="Km rodados" back={board ? <KmBack board={board} prevName={prevName} /> : undefined}>
             <strong className="tp-kpi__value">{formatNumber(data.mkbf.kmTraveled)}</strong>
             {board && (
               <span className="tp-kpi__note">
                 {formatNumber(board.previous.km)} em {prevName}
               </span>
             )}
-          </div>
-          <div className="tp-kpi">
-            <span className="tp-kpi__label">Quebras</span>
+          </FlipKpi>
+          <FlipKpi label="Quebras" back={board ? <FailuresBack board={board} prevName={prevName} /> : undefined}>
             <strong className="tp-kpi__value">{data.mkbf.unscheduledReturns}</strong>
             {board ? (
               <Delta
@@ -363,11 +589,10 @@ export function MetricsPage() {
             ) : (
               <span className="tp-kpi__note">retornos não programados</span>
             )}
-          </div>
-          <div className="tp-kpi">
-            <span className="tp-kpi__label">OS liberadas</span>
+          </FlipKpi>
+          <FlipKpi label="OS liberadas" back={<WoBack data={data} />}>
             <strong className="tp-kpi__value">{data.workOrdersReleased}</strong>
-          </div>
+          </FlipKpi>
         </div>
 
         {data.mkbf.mkbf === null && (
@@ -376,7 +601,7 @@ export function MetricsPage() {
             indicador fica em branco em vez de mostrar um número enganoso.
           </p>
         )}
-      </section>
+      </CollapsibleCard>
 
       {boardLoading && (
         <SectionSkeleton
@@ -400,8 +625,11 @@ export function MetricsPage() {
         />
       )}
       {board && (
-        <section className="tp-card">
-          <div className="tp-card__head">
+        <CollapsibleCard
+          id="indicadores.operation"
+          className="tp-card"
+          label="Operação"
+          head={
             <div>
               <h3>Operação</h3>
               <span className="chart__hint">
@@ -409,10 +637,10 @@ export function MetricsPage() {
                 viagens (SPTrans)
               </span>
             </div>
-          </div>
+          }
+        >
           <div className="tp-kpi-row">
-            <div className="tp-kpi">
-              <span className="tp-kpi__label">Cumprimento de frota</span>
+            <FlipKpi label="Cumprimento de frota" back={<FleetBack board={board} prevName={prevName} />}>
               <strong className="tp-kpi__value">{pct(board.totals.fleet.pct)}</strong>
               <Delta
                 current={board.totals.fleet.pct}
@@ -424,9 +652,8 @@ export function MetricsPage() {
                 {formatNumber(board.totals.fleet.programmed ?? 0)} tabelas · programação estimada
                 pelos dias comparáveis até a escala do ERP-JB chegar
               </span>
-            </div>
-            <div className="tp-kpi">
-              <span className="tp-kpi__label">Cumprimento de viagens</span>
+            </FlipKpi>
+            <FlipKpi label="Cumprimento de viagens" back={<TripsBack board={board} prevName={prevName} />}>
               <strong className="tp-kpi__value">{pct(board.totals.trips.pct)}</strong>
               <Delta
                 current={board.totals.trips.pct}
@@ -437,9 +664,8 @@ export function MetricsPage() {
                 {formatNumber(board.totals.trips.planned - board.totals.trips.lost)} de{' '}
                 {formatNumber(board.totals.trips.planned)} viagens programadas
               </span>
-            </div>
-            <div className="tp-kpi">
-              <span className="tp-kpi__label">Viagens perdidas</span>
+            </FlipKpi>
+            <FlipKpi label="Viagens perdidas" back={<LostBack board={board} />}>
               <strong className="tp-kpi__value">{formatNumber(board.totals.trips.lost)}</strong>
               <Delta
                 current={board.totals.trips.lost}
@@ -453,21 +679,23 @@ export function MetricsPage() {
                   {formatNumber(board.worstLines[0].lost)}
                 </span>
               )}
-            </div>
-            <div className="tp-kpi">
-              <span className="tp-kpi__label">Carros em operação</span>
+            </FlipKpi>
+            <FlipKpi label="Carros em operação" back={<VehiclesBack board={board} />}>
               <strong className="tp-kpi__value">{formatNumber(board.totals.fleet.vehicles)}</strong>
               <span className="tp-kpi__note">
                 no dia de maior operação · {formatNumber(board.totals.fleet.scheduled)} escalados
               </span>
-            </div>
+            </FlipKpi>
           </div>
-        </section>
+        </CollapsibleCard>
       )}
 
       {board && (
-        <section className="tp-card">
-          <div className="tp-card__head">
+        <CollapsibleCard
+          id="indicadores.consumption"
+          className="tp-card"
+          label="Consumo"
+          head={
             <div>
               <h3>Consumo</h3>
               <span className="chart__hint">
@@ -475,17 +703,21 @@ export function MetricsPage() {
                 a carro está em Consumo
               </span>
             </div>
-          </div>
+          }
+        >
           <div className="tp-kpi-row tp-kpi-row--2">
             <ConsumptionKpi energy="diesel" data={board.consumption.diesel} month={month} />
             <ConsumptionKpi energy="ebus" data={board.consumption.ebus} month={month} />
           </div>
-        </section>
+        </CollapsibleCard>
       )}
 
       {board && (
-        <section className="tp-card">
-          <div className="tp-card__head">
+        <CollapsibleCard
+          id="indicadores.board"
+          className="tp-card"
+          label="Acompanhamento diário"
+          head={
             <div>
               <h3>Acompanhamento diário</h3>
               <span className="chart__hint">
@@ -493,7 +725,8 @@ export function MetricsPage() {
                 aconteceu{canEditTargets ? ' · meta e responsável se editam na própria célula' : ''}
               </span>
             </div>
-          </div>
+          }
+        >
           <IndicatorBoard
             board={board}
             canEdit={canEditTargets}
@@ -502,11 +735,14 @@ export function MetricsPage() {
             onShiftMonth={(dir) => setMonth(toMonth(month.year, month.month + dir))}
             canGoForward={!month.isCurrent}
           />
-        </section>
+        </CollapsibleCard>
       )}
 
-      <section className="tp-card">
-        <div className="tp-card__head">
+      <CollapsibleCard
+        id="indicadores.office"
+        className="tp-card"
+        label="Oficina"
+        head={
           <div>
             <h3>Oficina</h3>
             <span className="chart__hint">
@@ -514,7 +750,8 @@ export function MetricsPage() {
               derivados do processo nas OS
             </span>
           </div>
-        </div>
+        }
+      >
         <div className="metrics-office">
           <section className="metrics-office__block">
             <div className="tp-card__head">
@@ -718,17 +955,21 @@ export function MetricsPage() {
             )}
           </section>
         </div>
-      </section>
+      </CollapsibleCard>
 
-      <section className="tp-card">
-        <div className="tp-card__head">
+      <CollapsibleCard
+        id="indicadores.history"
+        className="tp-card"
+        label="Histórico mensal"
+        head={
           <div>
             <h3>Histórico mensal</h3>
             <span className="chart__hint">
               snapshots gravados toda madrugada (E8); o mês corrente é recalculado ao abrir
             </span>
           </div>
-        </div>
+        }
+      >
         {history.isPending ? (
           <BrandLoader size={44} label="Carregando histórico" />
         ) : (
@@ -802,7 +1043,7 @@ export function MetricsPage() {
             />
           </div>
         )}
-      </section>
+      </CollapsibleCard>
       <BoardDayDrawer date={openDay} onClose={() => setOpenDay(null)} />
     </RefreshVeil>
   );

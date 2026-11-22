@@ -31,6 +31,8 @@ import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
 import { PeriodControl } from '@/components/ui/period-control';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
+import { CollapsibleCard } from '@/components/ui/collapsible-card';
+import { BackRows, FlipKpi, KpiAi, pctChange } from '@/components/ui/flip-kpi';
 import {
   comparisonOf,
   monthPeriod,
@@ -332,6 +334,23 @@ export function ConsumptionPage() {
     data.quality.lastDate < data.quality.lastKmDate;
   const empty = cur.vehicles === 0;
   const carHref = (id: string) => `/consumo/carro/${id}${periodSearch(period)}`;
+  // O verso dos quatro cartões: comparação com o período anterior, médias e onde o desvio se concentra.
+  const diesel = energy === VehicleTechnology.DIESEL;
+  const stalls = data.quality.stalledVehicles.length;
+  const offTech = [...data.byTech].sort((a, b) => b.high + b.watch - (a.high + a.watch))[0];
+  const kmPct = pctChange(cur.km, data.previous.km);
+  const amtPct = pctChange(cur.amount, data.previous.amount);
+  const ratioBetter =
+    cur.ratio !== null && data.previous.ratio !== null && cur.ratio !== data.previous.ratio
+      ? diesel
+        ? cur.ratio > data.previous.ratio
+        : cur.ratio < data.previous.ratio
+      : null;
+  const perCar = (v: number) => (cur.vehicles ? formatNumber(Math.round(v / cur.vehicles)) : '—');
+  const perDay = (v: number) => (cur.days ? formatNumber(Math.round(v / cur.days)) : '—');
+  const coverage = data.fleetVehicles ? Math.round((cur.vehicles / data.fleetVehicles) * 100) : 0;
+  const offTotal = high + watch;
+  const offPct = cur.vehicles ? Math.round((offTotal / cur.vehicles) * 100) : 0;
   // Clique num mês da tendência: ele vira o período da tela, mantendo energia e horizonte.
   const openMonth = (month: string) => {
     const [y, m] = month.split('-').map(Number) as [number, number];
@@ -371,29 +390,35 @@ export function ConsumptionPage() {
         )}
 
         {/* ---- O número e a tendência ---- */}
-        <section
+        <CollapsibleCard
+          id="consumo.hero"
           className="tp-card cons-hero"
-          aria-label={`Rendimento da ${ENERGY_FLEET_LABEL[energy]}`}
+          label={`Rendimento da ${ENERGY_FLEET_LABEL[energy]}`}
+          head={
+            <div>
+              <span className="cons-hero__label">
+                Rendimento da {ENERGY_FLEET_LABEL[energy]} · {label}
+                {period.isCurrent
+                  ? ' (até hoje)'
+                  : period.kind === 'last'
+                    ? ` (${rangeLabel(period.from, period.to)})`
+                    : ''}
+                <InfoTip label="Como o rendimento é calculado" align="start" className="fleet-tip">
+                  <b>{energy === VehicleTechnology.DIESEL ? 'km/l' : 'kWh/km'} da frota</b>
+                  <span>
+                    {energy === VehicleTechnology.DIESEL
+                      ? 'Soma do km rodado dividida pela soma dos litros, só dos carros com registro de abastecimento no período.'
+                      : 'Soma dos kWh dividida pela soma do km rodado, só dos carros com registro de recarga no período.'}{' '}
+                    O km vem do odômetro diário; o consumo, da planilha de abastecimento. A
+                    comparação é com {cmp.name} ({cmp.range}).
+                  </span>
+                </InfoTip>
+              </span>
+            </div>
+          }
         >
+          <div className="cons-hero__grid">
           <div className="cons-hero__main">
-            <span className="cons-hero__label">
-              Rendimento da {ENERGY_FLEET_LABEL[energy]} · {label}
-              {period.isCurrent
-                ? ' (até hoje)'
-                : period.kind === 'last'
-                  ? ` (${rangeLabel(period.from, period.to)})`
-                  : ''}
-              <InfoTip label="Como o rendimento é calculado" align="start" className="fleet-tip">
-                <b>{energy === VehicleTechnology.DIESEL ? 'km/l' : 'kWh/km'} da frota</b>
-                <span>
-                  {energy === VehicleTechnology.DIESEL
-                    ? 'Soma do km rodado dividida pela soma dos litros, só dos carros com registro de abastecimento no período.'
-                    : 'Soma dos kWh dividida pela soma do km rodado, só dos carros com registro de recarga no período.'}{' '}
-                  O km vem do odômetro diário; o consumo, da planilha de abastecimento. A comparação
-                  é com {cmp.name} ({cmp.range}).
-                </span>
-              </InfoTip>
-            </span>
             {empty ? (
               <strong className="cons-hero__value cons-hero__value--empty">—</strong>
             ) : (
@@ -466,7 +491,8 @@ export function ConsumptionPage() {
             />
             <MonthlyReading data={data.monthly} energy={energy} />
           </div>
-        </section>
+          </div>
+        </CollapsibleCard>
 
         {empty ? (
           <section className="tp-card">
@@ -482,42 +508,133 @@ export function ConsumptionPage() {
           </section>
         ) : (
           <>
-            <div className="tp-kpi-row">
-              <div className="tp-kpi tp-kpi--brand">
-                <span className="tp-kpi__label">Km rodados</span>
-                <strong className="tp-kpi__value">{formatNumber(cur.km)}</strong>
-                <span className="tp-kpi__note">dos carros com registro de consumo</span>
+            <CollapsibleCard
+              id="consumo.kpis"
+              className="tp-card cons-kpis"
+              label="Números do período"
+              head={
+                <div>
+                  <h3>Números do período</h3>
+                  <span className="chart__hint">
+                    km, {u.amountLong.toLowerCase()}, cobertura e desvios {phrase}; clique num
+                    cartão para ver a leitura no verso
+                  </span>
+                </div>
+              }
+            >
+              <div className="tp-kpi-row">
+                <FlipKpi
+                  className="tp-kpi--brand"
+                  label="Km rodados"
+                  back={
+                    <>
+                      <KpiAi>
+                        {kmPct
+                          ? `Rodagem ${kmPct} contra ${cmp.name}; ${perCar(cur.km)} km por carro com registro.`
+                          : `${perCar(cur.km)} km por carro com registro; sem ${cmp.name} para comparar.`}
+                      </KpiAi>
+                      <BackRows
+                        rows={[
+                          { label: cmp.name, value: `${formatNumber(data.previous.km)} km` },
+                          { label: 'por carro com registro', value: `${perCar(cur.km)} km` },
+                          { label: 'por dia com registro', value: `${perDay(cur.km)} km` },
+                        ]}
+                      />
+                    </>
+                  }
+                >
+                  <strong className="tp-kpi__value">{formatNumber(cur.km)}</strong>
+                  <span className="tp-kpi__note">dos carros com registro de consumo</span>
+                </FlipKpi>
+                <FlipKpi
+                  label={u.amountLong}
+                  back={
+                    <>
+                      <KpiAi>
+                        {amtPct && kmPct
+                          ? `Consumo ${amtPct} e rodagem ${kmPct} contra ${cmp.name}: rendimento ${ratioBetter === null ? 'igual' : ratioBetter ? 'melhor' : 'pior'}.`
+                          : `${perDay(cur.amount)} ${u.amount} por dia com registro; sem ${cmp.name} para comparar.`}
+                      </KpiAi>
+                      <BackRows
+                        rows={[
+                          { label: cmp.name, value: `${fmtAmount(data.previous.amount)} ${u.amount}` },
+                          { label: 'por carro com registro', value: `${perCar(cur.amount)} ${u.amount}` },
+                          { label: 'por dia com registro', value: `${perDay(cur.amount)} ${u.amount}` },
+                        ]}
+                      />
+                    </>
+                  }
+                >
+                  <strong className="tp-kpi__value">
+                    {fmtAmount(cur.amount)} <small className="tp-kpi__of">{u.amount}</small>
+                  </strong>
+                  <span className="tp-kpi__note">
+                    {cur.days} {cur.days === 1 ? 'dia' : 'dias'} com registro de {period.days}
+                  </span>
+                </FlipKpi>
+                <FlipKpi
+                  className={noData > 0 ? 'tp-kpi--warn' : 'tp-kpi--good'}
+                  label="Carros com registro"
+                  onOpen={noData > 0 ? () => setFlag(ConsumptionFlag.NO_DATA) : undefined}
+                  backLabel="Ver os carros sem registro"
+                  back={
+                    <>
+                      <KpiAi>
+                        {noData > 0
+                          ? `${noData} ${noData === 1 ? 'carro rodou' : 'carros rodaram'} ${phrase} sem nenhum registro: o km ${noData === 1 ? 'dele' : 'deles'} fica fora do rendimento.`
+                          : `Cobertura completa: todo carro que rodou ${phrase} tem registro de ${diesel ? 'abastecimento' : 'recarga'}.`}
+                      </KpiAi>
+                      <BackRows
+                        rows={[
+                          { label: 'rodaram sem registro', value: String(noData), tone: noData > 0 ? 'warn' : undefined },
+                          { label: 'cobertura da frota', value: `${coverage}%` },
+                          { label: 'odômetro parado', value: String(stalls), tone: stalls > 0 ? 'warn' : undefined },
+                        ]}
+                      />
+                    </>
+                  }
+                >
+                  <strong className="tp-kpi__value">
+                    {cur.vehicles} <small className="tp-kpi__of">de {data.fleetVehicles}</small>
+                  </strong>
+                  <span className="tp-kpi__note">
+                    {noData > 0
+                      ? `${noData} rodaram sem nenhum registro`
+                      : 'todos os que rodaram têm registro'}
+                  </span>
+                </FlipKpi>
+                <FlipKpi
+                  className={high > 0 ? 'tp-kpi--danger' : watch > 0 ? 'tp-kpi--warn' : 'tp-kpi--good'}
+                  label="Fora do padrão"
+                  onOpen={offTotal > 0 ? () => setFlag('OFF') : undefined}
+                  backLabel="Ver os carros fora do padrão"
+                  back={
+                    <>
+                      <KpiAi>
+                        {offTotal === 0 || !offTech
+                          ? `Nenhum carro foge do grupo ${phrase}: todos dentro do padrão dos iguais a ele.`
+                          : `${offTotal} de ${cur.vehicles} carros (${offPct}%) fogem do grupo; ${offTech.tech} concentra ${offTech.high + offTech.watch}.`}
+                      </KpiAi>
+                      <BackRows
+                        rows={[
+                          { label: 'acima do grupo', value: String(high), tone: high > 0 ? 'danger' : undefined },
+                          { label: 'em atenção', value: String(watch), tone: watch > 0 ? 'warn' : undefined },
+                          {
+                            label: offTech ? `grupo com mais desvios: ${offTech.tech}` : 'grupo com mais desvios',
+                            value: offTech ? String(offTech.high + offTech.watch) : '—',
+                          },
+                        ]}
+                      />
+                    </>
+                  }
+                >
+                  <strong className="tp-kpi__value">{high + watch}</strong>
+                  <span className="tp-kpi__note">
+                    {high} acima do grupo · {watch} em atenção
+                  </span>
+                </FlipKpi>
               </div>
-              <div className="tp-kpi">
-                <span className="tp-kpi__label">{u.amountLong}</span>
-                <strong className="tp-kpi__value">
-                  {fmtAmount(cur.amount)} <small className="tp-kpi__of">{u.amount}</small>
-                </strong>
-                <span className="tp-kpi__note">
-                  {cur.days} {cur.days === 1 ? 'dia' : 'dias'} com registro de {period.days}
-                </span>
-              </div>
-              <div className={`tp-kpi ${noData > 0 ? 'tp-kpi--warn' : 'tp-kpi--good'}`}>
-                <span className="tp-kpi__label">Carros com registro</span>
-                <strong className="tp-kpi__value">
-                  {cur.vehicles} <small className="tp-kpi__of">de {data.fleetVehicles}</small>
-                </strong>
-                <span className="tp-kpi__note">
-                  {noData > 0
-                    ? `${noData} rodaram sem nenhum registro`
-                    : 'todos os que rodaram têm registro'}
-                </span>
-              </div>
-              <div
-                className={`tp-kpi ${high > 0 ? 'tp-kpi--danger' : watch > 0 ? 'tp-kpi--warn' : 'tp-kpi--good'}`}
-              >
-                <span className="tp-kpi__label">Fora do padrão</span>
-                <strong className="tp-kpi__value">{high + watch}</strong>
-                <span className="tp-kpi__note">
-                  {high} acima do grupo · {watch} em atenção
-                </span>
-              </div>
-            </div>
+            </CollapsibleCard>
 
             {(noData > 0 ||
               data.quality.missingDates.length > 0 ||
@@ -621,8 +738,11 @@ export function ConsumptionPage() {
             )}
 
             <div className="cons-row">
-              <section className="tp-card cons-trend">
-                <div className="tp-card__head">
+              <CollapsibleCard
+                id="consumo.trend"
+                className="tp-card cons-trend"
+                label="Rendimento por dia"
+                head={
                   <div>
                     <h3>Rendimento por {weekly ? 'semana' : 'dia'}</h3>
                     <span className="chart__hint">
@@ -631,7 +751,8 @@ export function ConsumptionPage() {
                         : `${u.ratio} de toda a frota a cada dia; a linha é a média móvel de 7 dias e tira o ruído das folgas e dos abastecimentos fora de hora`}
                     </span>
                   </div>
-                </div>
+                }
+              >
                 <ConsumptionTrendChart
                   data={trend}
                   energy={energy}
@@ -639,22 +760,29 @@ export function ConsumptionPage() {
                   referenceLabel="média do período"
                   granularity={weekly ? 'week' : 'day'}
                 />
-              </section>
-              <section className="tp-card">
-                <div className="tp-card__head">
+              </CollapsibleCard>
+              <CollapsibleCard
+                id="consumo.tech"
+                className="tp-card"
+                label="Por tecnologia"
+                head={
                   <div>
                     <h3>Por tecnologia</h3>
                     <span className="chart__hint">
                       o rendimento agregado de cada grupo e quantos carros fogem dele
                     </span>
                   </div>
-                </div>
+                }
+              >
                 <TechList groups={data.byTech} energy={energy} />
-              </section>
+              </CollapsibleCard>
             </div>
 
-            <section className="tp-card">
-              <div className="tp-card__head">
+            <CollapsibleCard
+              id="consumo.swarm"
+              className="tp-card"
+              label="Carro a carro"
+              head={
                 <div>
                   <h3>Carro a carro</h3>
                   <span className="chart__hint">
@@ -662,17 +790,21 @@ export function ConsumptionPage() {
                     (esquerda) que a mediana dos iguais a ele. Clique para abrir o carro.
                   </span>
                 </div>
-              </div>
+              }
+            >
               <FleetSwarm
                 groups={data.byTech}
                 rows={data.vehicles}
                 energy={energy}
                 onSelect={(id) => navigate(carHref(id))}
               />
-            </section>
+            </CollapsibleCard>
 
-            <section className="tp-card">
-              <div className="tp-card__head">
+            <CollapsibleCard
+              id="consumo.table"
+              className="tp-card"
+              label="Todos os carros"
+              head={
                 <div>
                   <h3>Todos os carros</h3>
                   <span className="chart__hint">
@@ -680,7 +812,8 @@ export function ConsumptionPage() {
                     do grupo
                   </span>
                 </div>
-              </div>
+              }
+            >
               <div className="tp-toolbar">
                 <label className="tp-search">
                   <Search size={15} aria-hidden />
@@ -834,7 +967,7 @@ export function ConsumptionPage() {
                   <Pager pager={pager} label="carros" />
                 </div>
               )}
-            </section>
+            </CollapsibleCard>
           </>
         )}
         {data.source && (
