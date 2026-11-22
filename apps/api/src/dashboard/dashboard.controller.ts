@@ -2,6 +2,7 @@ import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   availabilityDaysQuerySchema,
+  topFailuresQuerySchema,
   availabilityHoursQuerySchema,
   dashboardQuerySchema,
   mkbfSeriesQuerySchema,
@@ -10,6 +11,8 @@ import {
   type DashboardDowntime,
   type DashboardEventsSeries,
   type DashboardRecentEvents,
+  type TopFailures,
+  type TopFailuresQuery,
   type AvailabilityDaysQuery,
   type AvailabilityHours,
   type AvailabilityHoursQuery,
@@ -64,6 +67,12 @@ export class DashboardController {
   @Get('events-series')
   eventsSeries(@Query(new ZodValidationPipe(availabilityDaysQuerySchema)) query: AvailabilityDaysQuery): Promise<DashboardEventsSeries> {
     return this.dashboard.eventsSeries(query);
+  }
+
+  /** As 10 falhas que mais derrubaram carro no período, por defeito do CCO ou código (card "Top 10 falhas"). */
+  @Get('top-failures')
+  topFailures(@Query(new ZodValidationPipe(topFailuresQuerySchema)) query: TopFailuresQuery): Promise<TopFailures> {
+    return this.dashboard.topFailures(query);
   }
 
   /** Últimos 6 eventos de um intervalo, recuando ao último dia com evento (card "Últimos eventos"). */

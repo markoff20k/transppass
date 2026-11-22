@@ -34,6 +34,7 @@ import { AvailabilityCard, ChartLoading, MkbfCard, useFallbackToast } from '@/co
 import { ChartPeriodBar } from '@/components/charts/chart-period';
 import { resolveChartPeriod, useChartPeriod } from '@/components/charts/use-chart-period';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
+import { TopFailuresCard } from '@/components/dashboard/top-failures';
 import { CustomRangeItem } from '@/components/charts/chart-period';
 import { LiveBadge } from '@/components/ui/live-badge';
 import { KpiAi } from '@/components/ui/flip-kpi';
@@ -340,6 +341,10 @@ export function DashboardPage() {
       <section className="dash-row dash-row--charts">
         <MkbfCard />
         <AvailabilityCard />
+      </section>
+
+      <section className="dash-row dash-row--top">
+        <TopFailuresCard />
       </section>
 
       <section className="dash-row dash-row--bottom">

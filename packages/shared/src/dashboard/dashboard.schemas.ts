@@ -401,3 +401,45 @@ export interface DashboardDowntime {
   from: string;
   to: string;
 }
+
+// --- Top 10 falhas -------------------------------------------------------------
+
+export const TOP_FAILURES_BY = ['cco', 'code'] as const;
+export type TopFailuresBy = (typeof TOP_FAILURES_BY)[number];
+
+export const topFailuresQuerySchema = z.object({
+  from: z.string().regex(ISO_DAY),
+  to: z.string().regex(ISO_DAY),
+  /** cco = defeito apontado pelo CCO; code = código composto (modo × subsistema). */
+  by: z.enum(TOP_FAILURES_BY).default('cco'),
+});
+export type TopFailuresQuery = z.infer<typeof topFailuresQuerySchema>;
+
+export interface TopFailureItem {
+  /** Chave do filtro em Eventos: o defeito do CCO, ou o código "IN-022-000". */
+  key: string;
+  label: string;
+  /** Só na visão por código: o código composto, para o chip, e o modo de falha como detalhe. */
+  code: string | null;
+  detail: string | null;
+  count: number;
+  /** Fatia do total de quebras do período (0–1). */
+  share: number;
+  /** Carros distintos com essa falha no período. */
+  vehicles: number;
+  /** Quebras da mesma falha no período anterior, de mesmo tamanho. */
+  previous: number;
+}
+
+export interface TopFailures {
+  by: TopFailuresBy;
+  items: TopFailureItem[];
+  /** Quebras (retornos não programados) no período. */
+  total: number;
+  /** Quebras sem defeito ou sem código: fora do ranking, para o total fechar. */
+  unclassified: number;
+  previousRange: { from: string; to: string };
+  requested: { from: string; to: string };
+  used: { from: string; to: string };
+  fellBack: boolean;
+}

@@ -1,6 +1,6 @@
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, X } from 'lucide-react';
 import {
   EVENT_ORIGIN_LABELS,
@@ -49,6 +49,26 @@ export function EventsPage() {
   const [from, setFrom] = useUiState<string>('eventos.from', '');
   const [to, setTo] = useUiState<string>('eventos.to', '');
   const [wo, setWo] = useUiState<'' | 'with' | 'without'>('eventos.wo', '');
+
+  // Vindo do "Top 10 falhas" do Dashboard: ?falha= ou ?codigo= com ?de=&ate= viram os filtros
+  // da tabela (salvos na conta como os outros) e saem da URL; os demais filtros são limpos.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const falha = searchParams.get('falha');
+    const codigo = searchParams.get('codigo');
+    if (!falha && !codigo) return;
+    setStatus('');
+    setCode('');
+    setVehicle('');
+    setOrigin('');
+    setWo('');
+    setFailure(falha ?? '');
+    setFailureCode(codigo ?? '');
+    setFrom(searchParams.get('de') ?? '');
+    setTo(searchParams.get('ate') ?? '');
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   const codeQ = useDeferredValue(code.trim());
   const vehicleQ = useDeferredValue(vehicle.trim());
   const failureCodeQ = useDeferredValue(failureCode.trim());

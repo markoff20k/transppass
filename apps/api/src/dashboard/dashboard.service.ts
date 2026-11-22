@@ -13,6 +13,10 @@ import {
   type DashboardDowntime,
   type DashboardEventsSeries,
   type DashboardRecentEvents,
+  type TopFailures,
+  type TopFailuresQuery,
+  failureModeByCode,
+  subsystemByCode,
   type AvailabilityDaysQuery,
   type AvailabilityHours,
   type AvailabilityHoursQuery,
@@ -520,6 +524,71 @@ export class DashboardService {
     const usedFrom = addDays(usedTo, -(daysBetween(reqFrom, reqTo) - 1));
     events = await window(usedFrom, usedTo);
     return { events, requested: { from: reqFrom, to: reqTo }, used: { from: usedFrom, to: usedTo }, fellBack: true };
+  }
+
+  /**
+   * As 10 falhas que mais derrubaram carro no período (retornos não
+   * programados), pelo defeito do CCO ou pelo código composto, com o período
+   * anterior de mesmo tamanho para a variação e os carros distintos. Quebra sem
+   * defeito/código fica fora do ranking e é contada à parte.
+   */
+  async topFailures(q: TopFailuresQuery): Promise<TopFailures> {
+    const today = isoDay(new Date());
+    const reqTo = q.to > today ? today : q.to;
+    const reqFrom = q.from > reqTo ? reqTo : q.from;
+    const { from, to, fellBack } = await this.fallbackWindow(reqFrom, reqTo);
+    const span = daysBetween(from, to);
+    const prevTo = addDays(from, -1);
+    const prevFrom = addDays(prevTo, -(span - 1));
+    const load = (a: string, b: string) => {
+      const end = startOfDay(b);
+      end.setHours(23, 59, 59, 999);
+      return this.prisma.failureEvent.findMany({
+        where: { isUnscheduledReturn: true, status: { not: EventStatus.CANCELLED }, reportedAt: { gte: startOfDay(a), lte: end } },
+        select: { vehicleId: true, ccoDefect: true, failureModeCode: true, subsystemCode: true, catalogItem: { select: { description: true } } },
+      });
+    };
+    const [cur, prev] = await Promise.all([load(from, to), load(prevFrom, prevTo)]);
+    type Row = (typeof cur)[number];
+    // Por código, o nome é o subsistema (o que quebrou) e o modo de falha vai como detalhe:
+    // quase todo código começa com "Inoperante", e o modo na frente esconderia a diferença.
+    const keyOf = (r: Row): { key: string; label: string; code: string | null; detail: string | null } | null => {
+      if (q.by === 'code') {
+        if (!r.failureModeCode || !r.subsystemCode) return null;
+        const code = `${r.failureModeCode}-${r.subsystemCode}`;
+        // "Elétrico — subsistema não identificado" vira "Elétrico", e o "subsistema não identificado" vai para o detalhe.
+        const sub = subsystemByCode(r.subsystemCode)?.name ?? code;
+        const generic = / — subsistema não identificado$/i.test(sub);
+        const mode = failureModeByCode(r.failureModeCode)?.name ?? null;
+        return { key: code, label: generic ? sub.replace(/ — subsistema não identificado$/i, '') : sub, code, detail: [mode, generic ? 'subsistema não identificado' : null].filter(Boolean).join(' · ') || null };
+      }
+      const name = (r.ccoDefect ?? r.catalogItem?.description ?? '').trim();
+      return name ? { key: name, label: name, code: null, detail: null } : null;
+    };
+    const groups = new Map<string, { label: string; code: string | null; detail: string | null; count: number; vehicles: Set<string> }>();
+    let unclassified = 0;
+    for (const r of cur) {
+      const k = keyOf(r);
+      if (!k) {
+        unclassified += 1;
+        continue;
+      }
+      const g = groups.get(k.key) ?? { label: k.label, code: k.code, detail: k.detail, count: 0, vehicles: new Set<string>() };
+      g.count += 1;
+      g.vehicles.add(r.vehicleId);
+      groups.set(k.key, g);
+    }
+    const prevCount = new Map<string, number>();
+    for (const r of prev) {
+      const k = keyOf(r);
+      if (k) prevCount.set(k.key, (prevCount.get(k.key) ?? 0) + 1);
+    }
+    const total = cur.length;
+    const items = [...groups.entries()]
+      .sort((a, b) => b[1].count - a[1].count || a[1].label.localeCompare(b[1].label))
+      .slice(0, 10)
+      .map(([key, g]) => ({ key, label: g.label, code: g.code, detail: g.detail, count: g.count, share: total ? g.count / total : 0, vehicles: g.vehicles.size, previous: prevCount.get(key) ?? 0 }));
+    return { by: q.by, items, total, unclassified, previousRange: { from: prevFrom, to: prevTo }, requested: { from: reqFrom, to: reqTo }, used: { from, to }, fellBack };
   }
 
   /** Janela pedida, ou a mesma janela recuada até o último dia com quebra quando a pedida não tem nenhuma. */
