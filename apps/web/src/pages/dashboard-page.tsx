@@ -550,7 +550,7 @@ function DashboardSkeleton() {
   const { t } = useI18n();
   return (
     <div className="dash">
-      <section className="ticker skeleton" style={{ height: 44 }} />
+      <section className="ticker dash-glass skeleton" style={{ height: 50 }} />
       <section className="dash-hero dash-glass skeleton" style={{ minHeight: 280, display: 'grid', placeItems: 'center' }}>
         <BrandLoader size={64} label={t.dash.loading.replace(/…$/, '')} />
       </section>

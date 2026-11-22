@@ -1914,65 +1914,43 @@ small.muted {
 
 /* ---- Letreiro de avisos (uma linha, como o painel de destino do ônibus) -- */
 
-/* Faixa escura em qualquer tema: é um painel luminoso, não um cartão. A cor
-   do pior aviso só aparece na lanterna e nos pontos; o texto é âmbar, como o
-   LED do letreiro, com uma trama de pontos bem leve por cima. */
+/* Um cartão como os outros da página: mesmo vidro, mesmo raio, mesma sombra.
+   O que lembra o letreiro é a fonte de pontos do texto e o trilho levemente
+   rebaixado por onde ele corre. A cor do pior aviso fica só na lanterna, na
+   contagem e nos pontos de cada item. */
 .ticker {
   position: relative;
   z-index: 1;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0;
-  height: 44px;
+  height: 50px;
   min-width: 0;
+  padding: 0 var(--tp-space-3) 0 var(--tp-space-4);
   overflow: hidden;
-  border-radius: var(--tp-radius-xl, 16px);
-  border: 1px solid #262c37;
-  background:
-    linear-gradient(180deg, #1a1f29 0%, #10141b 55%, #0d1016 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 10px 30px -18px rgba(0, 0, 0, 0.55);
-  color: #e8dcc0;
-  --ticker-amber: #ffb84d;
-  --ticker-dim: rgba(232, 220, 192, 0.62);
   --ticker-tone: var(--color-success);
+  --ticker-tone-text: var(--color-success-text);
+  --ticker-tone-soft: var(--color-success-soft);
 }
-.ticker--critical { --ticker-tone: var(--color-danger); }
-.ticker--warning { --ticker-tone: var(--color-warning); }
-.ticker--info { --ticker-tone: var(--color-info); }
+.ticker--critical { --ticker-tone: var(--color-danger); --ticker-tone-text: var(--color-danger-text); --ticker-tone-soft: var(--color-danger-soft); }
+.ticker--warning { --ticker-tone: var(--color-warning); --ticker-tone-text: var(--color-warning-text); --ticker-tone-soft: var(--color-warning-soft); }
+.ticker--info { --ticker-tone: var(--color-info); --ticker-tone-text: var(--color-info-text); --ticker-tone-soft: var(--color-info-soft); }
 
-/* Trama de pontos do LED, só sobre a fita. */
-.ticker__view::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.42) 0.7px, transparent 1px);
-  background-size: 3px 3px;
-  opacity: 0.55;
-  mix-blend-mode: multiply;
-}
-
-/* Lanterna + rótulo + contagem, o "número da linha" do letreiro. */
+/* Lanterna + rótulo + contagem. */
 .ticker__cap {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  height: 100%;
-  padding: 0 16px 0 14px;
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(255, 255, 255, 0.025);
+  padding-right: var(--tp-space-4);
   white-space: nowrap;
 }
 .ticker__beacon {
   position: relative;
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--ticker-tone);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ticker-tone) 22%, transparent), 0 0 12px var(--ticker-tone);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ticker-tone) 18%, transparent);
 }
 .ticker--critical .ticker__beacon::after {
   content: '';
@@ -1980,18 +1958,16 @@ small.muted {
   inset: -3px;
   border-radius: 50%;
   border: 1.5px solid var(--ticker-tone);
-  animation: ticker-halo 1.8s ease-out infinite;
+  animation: ticker-halo 2s ease-out infinite;
 }
 @keyframes ticker-halo {
-  0% { transform: scale(0.7); opacity: 0.9; }
-  100% { transform: scale(2.1); opacity: 0; }
+  0% { transform: scale(0.7); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
 }
 .ticker__label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ticker-dim);
+  font-size: var(--tp-text-sm);
+  font-weight: 600;
+  color: var(--color-text);
 }
 .ticker__count {
   min-width: 20px;
@@ -2002,24 +1978,30 @@ small.muted {
   border-radius: 999px;
   font-family: var(--tp-font-mono);
   font-size: 11.5px;
-  font-weight: 700;
-  color: #10141b;
-  background: var(--ticker-amber);
+  font-weight: 600;
+  color: var(--ticker-tone-text);
+  background: var(--ticker-tone-soft);
 }
 
-/* A janela da fita. */
+/* O trilho por onde o texto corre: rebaixado de leve, com a trama de pontos
+   do painel quase invisível por trás. */
 .ticker__view {
   position: relative;
-  height: 100%;
+  height: 34px;
   min-width: 0;
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 22px, #000 calc(100% - 22px), transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 22px, #000 calc(100% - 22px), transparent);
+  border-radius: var(--tp-radius-md, 10px);
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--color-text) 7%, transparent) 0.6px, transparent 1px) 0 0 / 4px 4px,
+    var(--color-surface-sunken);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--color-text) 6%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
 }
 .ticker__view--still {
   display: flex;
   align-items: center;
-  padding: 0 18px;
+  padding: 0 16px;
   mask-image: none;
   -webkit-mask-image: none;
 }
@@ -2043,7 +2025,7 @@ small.muted {
   flex: none;
   height: 100%;
   margin: 0;
-  padding: 0 0 0 18px;
+  padding: 0 0 0 20px;
   list-style: none;
 }
 .ticker__item {
@@ -2052,91 +2034,79 @@ small.muted {
   height: 100%;
   white-space: nowrap;
 }
-/* Separador: o losango dos letreiros, em âmbar fraco. */
 .ticker__item + .ticker__item::before {
   content: '';
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
   margin: 0 22px;
   transform: rotate(45deg);
-  background: color-mix(in srgb, var(--ticker-amber) 55%, transparent);
+  background: color-mix(in srgb, var(--color-text) 25%, transparent);
 }
 .ticker__link {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 9px;
   color: inherit;
   text-decoration: none;
-  font-size: 13px;
   line-height: 1;
   border-radius: 6px;
   outline-offset: 4px;
 }
-.ticker__link:hover .ticker__area {
-  font-family: var(--tp-font-mono);
-  font-weight: 700;
-  font-size: 12.5px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ticker-amber);
-  text-shadow: 0 0 6px color-mix(in srgb, var(--ticker-amber) 35%, transparent);
-}
-.ticker__link:hover .ticker__text { color: #f3ead6; }
+.ticker__link:hover .ticker__text { color: var(--color-primary); }
 .ticker__dot {
-  align-self: center;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--color-info);
-  box-shadow: 0 0 7px color-mix(in srgb, currentColor 0%, var(--color-info));
 }
-.ticker__item--critical .ticker__dot { background: var(--color-danger); box-shadow: 0 0 7px var(--color-danger); }
-.ticker__item--warning .ticker__dot { background: var(--color-warning); box-shadow: 0 0 7px var(--color-warning); }
-.ticker__item--good .ticker__dot { background: var(--color-success); box-shadow: 0 0 7px var(--color-success); }
-.ticker__title {
-  font-family: var(--tp-font-mono);
-  font-weight: 700;
-  font-size: 12.5px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ticker-amber);
-  text-shadow: 0 0 6px color-mix(in srgb, var(--ticker-amber) 35%, transparent);
-}
-.ticker__text { color: #ead9b8; }
+.ticker__item--critical .ticker__dot { background: var(--color-danger); box-shadow: 0 0 0 2px var(--color-danger-soft); }
+.ticker__item--warning .ticker__dot { background: var(--color-warning); }
+.ticker__item--good .ticker__dot { background: var(--color-success); }
 
-.ticker__clear { font-size: 13px; color: var(--ticker-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ticker__clear b { font-family: var(--tp-font-mono); font-size: 12.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-success); margin-right: 8px; }
+/* A fonte de pontos: só aqui, no texto do letreiro. */
+.ticker__area,
+.ticker__text,
+.ticker__clear {
+  font-family: 'Doto Variable', var(--tp-font-mono);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  font-variation-settings: 'ROND' 40;
+}
+.ticker__area {
+  font-weight: 900;
+  color: var(--color-primary);
+}
+.ticker__text { color: var(--color-text); transition: color 0.15s; }
+
+.ticker__clear { color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ticker__clear b { font-weight: 900; color: var(--color-success-text); margin-right: 10px; text-transform: uppercase; }
 
 .ticker__meta {
-  padding: 0 16px 0 14px;
-  height: 100%;
-  display: inline-flex;
-  align-items: center;
-  border-left: 1px solid rgba(255, 255, 255, 0.07);
-  font-family: var(--tp-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  color: rgba(232, 220, 192, 0.45);
+  padding-left: var(--tp-space-4);
+  font-size: var(--tp-text-2xs);
+  color: var(--color-text-muted);
   white-space: nowrap;
 }
 
-.ticker--skeleton .ticker__beacon { background: #3a414d; box-shadow: none; }
-.ticker__sk { width: 60%; height: 10px; border-radius: 999px; opacity: 0.25; }
+.ticker--skeleton .ticker__beacon { background: var(--color-border); box-shadow: none; }
+.ticker__sk { width: 60%; height: 10px; border-radius: 999px; }
 
 @media (prefers-reduced-motion: reduce) {
   .ticker__track { animation: none !important; }
   .ticker__list[aria-hidden] { display: none; }
   .ticker__view { overflow-x: auto; scrollbar-width: none; }
-  .ticker__list { min-width: 0 !important; padding-right: 18px; }
+  .ticker__list { min-width: 0 !important; padding-right: 20px; }
   .ticker--critical .ticker__beacon::after { animation: none; }
 }
 
 @media (max-width: 760px) {
-  .ticker { grid-template-columns: auto minmax(0, 1fr); height: 40px; }
+  .ticker { grid-template-columns: auto minmax(0, 1fr); height: 46px; padding: 0 var(--tp-space-3); }
   .ticker__label { display: none; }
-  .ticker__cap { padding: 0 12px; gap: 8px; }
+  .ticker__cap { padding-right: var(--tp-space-3); gap: 8px; }
   .ticker__meta { display: none; }
-  }
+  .ticker__area, .ticker__text, .ticker__clear { font-size: 13px; }
+}
 
 .dash-row {
   display: grid;

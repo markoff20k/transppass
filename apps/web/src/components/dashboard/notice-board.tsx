@@ -44,7 +44,7 @@ export function NoticeBoard() {
   const meta = t.dash.notices.updated.replace('{t}', formatRelative(query.data.generatedAt));
 
   return (
-    <section className={`ticker ticker--${tone}`} aria-label={t.dash.notices.title}>
+    <section className={`ticker ticker--${tone} dash-glass`} aria-label={t.dash.notices.title}>
       <div className="ticker__cap">
         <i className="ticker__beacon" aria-hidden />
         <span className="ticker__label">{t.dash.notices.title}</span>
@@ -119,7 +119,7 @@ function Reel({ items }: { items: DashboardNotice[] }) {
 function TickerSkeleton() {
   const { t } = useI18n();
   return (
-    <section className="ticker ticker--skeleton" aria-busy="true" aria-label={t.dash.notices.title}>
+    <section className="ticker ticker--skeleton dash-glass" aria-busy="true" aria-label={t.dash.notices.title}>
       <div className="ticker__cap">
         <i className="ticker__beacon" aria-hidden />
         <span className="ticker__label">{t.dash.notices.title}</span>

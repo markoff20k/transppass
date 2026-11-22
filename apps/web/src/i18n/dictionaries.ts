@@ -232,7 +232,7 @@ const ptBR = {
     notices: {
       title: 'Avisos',
       clear: 'Tudo em dia',
-      clearText: 'Nenhum alerta na garagem nem nos dados.',
+      clearText: 'Nenhum alerta na garagem a ser exibido no momento.',
       critical: 'crítico|críticos',
       warning: 'em atenção|em atenção',
       info: 'aviso|avisos',
@@ -547,7 +547,7 @@ const en: Dictionary = {
     notices: {
       title: 'Notices',
       clear: 'All clear',
-      clearText: 'No alerts in the depot or in the data.',
+      clearText: 'No depot alerts to show right now.',
       critical: 'critical|critical',
       warning: 'needs attention|need attention',
       info: 'notice|notices',

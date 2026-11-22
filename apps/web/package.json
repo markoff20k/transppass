@@ -12,29 +12,30 @@
     "build:mock": "tsc -b && vite build --mode mock"
   },
   "dependencies": {
+    "@app/design-kit": "*",
     "@app/shared": "*",
+    "@fontsource-variable/doto": "^5.3.0",
+    "@fontsource/barlow": "^5.1.0",
+    "@fontsource/barlow-condensed": "^5.1.0",
+    "@fontsource/ibm-plex-mono": "^5.1.0",
+    "@hookform/resolvers": "^3.9.1",
     "@tanstack/react-query": "^5.62.0",
+    "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.0",
-    "@hookform/resolvers": "^3.9.1",
     "react-router-dom": "^7.1.0",
-    "zod": "^3.24.0",
-    "@app/design-kit": "*",
     "recharts": "^3.2.0",
-    "lucide-react": "^0.468.0",
-    "@fontsource/barlow": "^5.1.0",
-    "@fontsource/barlow-condensed": "^5.1.0",
-    "@fontsource/ibm-plex-mono": "^5.1.0"
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@app/config": "*",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "msw": "^2.7.0",
     "typescript": "^5.7.0",
-    "vite": "^6.0.0",
-    "msw": "^2.7.0"
+    "vite": "^6.0.0"
   },
   "msw": {
     "workerDirectory": [
