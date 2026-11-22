@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Clock3, LayoutGrid, List, Search, Wrench } from 'lucide-react';
 import {
   KM_DEGRADATION_DAYS,
@@ -23,6 +23,7 @@ import { readingOf } from '@/components/fleet/fleet-card.utils';
 import { FleetLegend } from '@/components/fleet/fleet-legend';
 import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { InfoTip } from '@/components/ui/info-tip';
 import { Pager } from '@/components/ui/pager';
 import { pagerOf, usePagerState } from '@/lib/pager';
@@ -130,19 +131,23 @@ export function FleetPanelPage() {
     ),
   });
 
+  // A busca vai para a API com um passo de atraso (o campo responde a cada letra) e a
+  // consulta nova mantém a tela anterior sob o véu: digitar não remonta a página nem tira o foco.
+  const searchQ = useDeferredValue(search.trim());
   const query = useMemo(() => {
     const p = new URLSearchParams();
     if (technology) p.set('technology', technology);
     if (status) p.set('status', status);
-    if (search.trim()) p.set('search', search.trim());
+    if (searchQ) p.set('search', searchQ);
     if (vehicleClass) p.set('vehicleClass', vehicleClass);
     if (lot) p.set('lot', lot);
     return p.toString();
-  }, [technology, status, search, vehicleClass, lot]);
+  }, [technology, status, searchQ, vehicleClass, lot]);
 
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, error, isPlaceholderData } = useQuery({
     queryKey: ['fleet-panel', query],
     queryFn: () => api.get<PanelResponse>(`/vehicles/panel${query ? `?${query}` : ''}`),
+    placeholderData: keepPreviousData,
     // O painel precisa refletir a garagem quase em tempo real (seção 8 do PRD).
     refetchInterval: 30_000,
   });
@@ -153,7 +158,8 @@ export function FleetPanelPage() {
   const tablePaging = usePagerState('frota-tabela', resetKey);
 
   if (isPending) return <BrandLoader size={44} label="Carregando painel" />;
-  if (isError) return <div className="tp-alert tp-alert--danger">{(error as Error).message}</div>;
+  if (isError && !data) return <div className="tp-alert tp-alert--danger">{(error as Error).message}</div>;
+  if (!data) return <BrandLoader size={44} label="Carregando painel" />;
 
   const { summary, rows } = data;
   const availabilityPct = Math.round(summary.availabilityRate * 1000) / 10;
@@ -342,6 +348,7 @@ export function FleetPanelPage() {
           </li>
         </ul>
 
+        <RefreshVeil active={isPlaceholderData} label="Filtrando a frota">
         {visible.length === 0 ? (
           <div className="tp-table__empty">Nenhum carro encontrado com esses filtros.</div>
         ) : view === 'grid' ? (
@@ -418,6 +425,7 @@ export function FleetPanelPage() {
             <Pager pager={pager} label="carros" />
           </div>
         )}
+        </RefreshVeil>
       </section>
     </>
   );
