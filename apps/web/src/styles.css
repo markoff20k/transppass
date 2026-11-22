@@ -5632,3 +5632,33 @@ a.bus-card:hover { transform: translateY(-1px); }
 .field-estimate__presets .is-active { border-color: var(--color-brand); color: var(--color-brand); }
 /* Item 13: o campo de data e hora com a mesma altura dos outros campos (a regra global de input vence classes). */
 input.tp-input[type="datetime-local"] { height: 36px; padding-top: 0; padding-bottom: 0; }
+
+/* Item 4: média por carro no Tempo parado por causa e o detalhamento por carro. */
+.donut__percar { color: var(--color-text-secondary); }
+/* A causa clicável ocupa a linha inteira da legenda; a grade fica no botão. */
+.donut__legend li:has(> .donut__pick) { display: block; }
+.donut__pick { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; grid-template-areas: 'dot name pct' '. track track' '. hours hours'; align-items: center; column-gap: var(--tp-space-2); row-gap: 4px; width: 100%; padding: 4px 6px; margin: -4px -6px; border-radius: 8px; cursor: pointer; }
+.donut__pick:hover { background: var(--color-surface-hover); }
+.donut__pick:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 1px; }
+.donut__pick > .tp-swatch { grid-area: dot; }
+.donut__pick .donut__hours { text-align: left; }
+.donut__pick > b { grid-area: pct; text-align: right; font-variant-numeric: tabular-nums; font-weight: var(--tp-weight-semibold); }
+.downtime__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--tp-space-2); margin-top: var(--tp-space-3); padding-top: var(--tp-space-3); border-top: var(--tp-border-thin) solid var(--color-border-subtle); font-size: var(--tp-text-xs); }
+.dtc__filters { display: flex; flex-wrap: wrap; gap: var(--tp-space-2); }
+.dtc__chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: var(--tp-border-thin) solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text); font: inherit; font-size: var(--tp-text-xs); cursor: pointer; }
+.dtc__chip span { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.dtc__chip.is-active { border-color: var(--color-brand); color: var(--color-brand); }
+.dtc__summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--tp-space-3); }
+.dtc__summary > div { display: grid; gap: 4px; padding: var(--tp-space-3); border-radius: 10px; background: var(--color-surface-sunken); }
+.dtc__summary strong { font-family: var(--tp-font-display); font-size: 20px; font-variant-numeric: tabular-nums; }
+.dtc__car { display: inline-flex; align-items: baseline; gap: 8px; color: inherit; text-decoration: none; }
+.dtc__car:hover b { color: var(--color-brand); }
+.dtc__causes { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--tp-text-xs); color: var(--color-text-secondary); }
+.dtc__causes > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.dtc__causes .is-current { color: var(--color-text); font-weight: var(--tp-weight-semibold); }
+.dtc__hours { display: inline-flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.dtc__bar { width: 90px; height: 4px; border-radius: 2px; background: var(--color-border-subtle); overflow: hidden; }
+.dtc__bar i { display: block; height: 100%; background: var(--color-brand); border-radius: 2px; }
+.dtc__sort { all: unset; cursor: pointer; }
+.dtc__sort.is-active { color: var(--color-brand); }
+@media (max-width: 560px) { .dtc__summary { grid-template-columns: 1fr; } .dtc__bar { display: none; } }

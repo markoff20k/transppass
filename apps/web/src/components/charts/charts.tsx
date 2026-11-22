@@ -721,10 +721,16 @@ export function DowntimeDonut({
   data,
   totalMinutes,
   center,
+  perCar,
+  onPick,
 }: {
   data: DowntimeByCause[];
   totalMinutes: number;
   center?: ReactNode;
+  /** Item 4: média de horas por carro em cada causa, ao lado das horas. */
+  perCar?: Partial<Record<DowntimeByCause['cause'], { vehicles: number; avgMinutes: number }>>;
+  /** Clique numa causa da legenda (abre o detalhamento por carro). */
+  onPick?: (cause: DowntimeByCause['cause']) => void;
 }) {
   if (data.length === 0) {
     return <p className="tp-muted">Nenhum tempo de indisponibilidade registrado no período.</p>;
@@ -785,21 +791,46 @@ export function DowntimeDonut({
       <ul className="donut__legend">
         {data.map((d) => {
           const cls = `cause-${d.cause.toLowerCase()}`;
-          return (
-            <li key={d.cause}>
+          const car = perCar?.[d.cause];
+          const body = (
+            <>
               <i className={`tp-swatch ${cls}`} />
               <span className="donut__name">{DOWNTIME_CAUSE_LABELS[d.cause]}</span>
-              <span className="donut__hours">{hours(d.minutes)}</span>
+              <span className="donut__hours">
+                {hours(d.minutes)}
+                {car && car.vehicles > 0 && (
+                  <span className="donut__percar" title={`${car.vehicles} carro(s) pararam nesta etapa`}>
+                    {' '}· {hoursShort(car.avgMinutes)}/carro
+                  </span>
+                )}
+              </span>
               <b>{(d.share * 100).toFixed(0)}%</b>
               <span className="donut__track">
                 <i className={cls} style={{ width: `${Math.max(1, d.share * 100)}%` }} />
               </span>
+            </>
+          );
+          return (
+            <li key={d.cause}>
+              {onPick ? (
+                <button type="button" className="donut__pick" onClick={() => onPick(d.cause)} title="Ver os carros desta causa">
+                  {body}
+                </button>
+              ) : (
+                body
+              )}
             </li>
           );
         })}
       </ul>
     </div>
   );
+}
+
+/** Horas com uma casa abaixo de 10 h — a média por carro costuma ser pequena. */
+function hoursShort(minutes: number): string {
+  const h = minutes / 60;
+  return `${h.toLocaleString('pt-BR', { maximumFractionDigits: h < 10 ? 1 : 0 })} h`;
 }
 
 // --- Sparkline -------------------------------------------------------------

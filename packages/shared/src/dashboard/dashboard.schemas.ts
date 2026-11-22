@@ -398,6 +398,23 @@ export interface DashboardDowntime {
   totalDowntimeMinutes: number;
   from: string;
   to: string;
+  /** Item 4: carros distintos que ficaram parados no período — o denominador da média. */
+  vehicleCount: number;
+  /** Horas paradas ÷ carros distintos que pararam (minutos). */
+  avgMinutesPerVehicle: number | null;
+  /** A mesma média em cada causa: horas da causa ÷ carros que pararam nela. */
+  perCause: { cause: DowntimeByCause['cause']; vehicles: number; avgMinutesPerVehicle: number }[];
+  /** Detalhamento: cada carro com as horas paradas, por causa. */
+  cars: DowntimeCar[];
+}
+
+export interface DowntimeCar {
+  vehicleId: string;
+  code: string;
+  plate: string;
+  minutes: number;
+  workOrders: number;
+  byCause: Partial<Record<DowntimeByCause['cause'], number>>;
 }
 
 // --- Top 10 falhas -------------------------------------------------------------

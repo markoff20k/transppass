@@ -7,6 +7,7 @@ import {
   WorkOrderStatus,
 } from '@prisma/client';
 import {
+  type DowntimeCar,
   AVAILABLE_STATUSES,
   VehicleStatus,
   type AvailabilityDays,
@@ -599,8 +600,58 @@ export class DashboardService {
     const from = q.from > to ? to : q.from;
     const end = startOfDay(to);
     end.setHours(23, 59, 59, 999);
-    const r = await this.metrics.r1({ from: startOfDay(from), to: end });
-    return { downtimeByCause: r.downtimeByCause, totalDowntimeMinutes: r.totalDowntimeMinutes, from, to };
+    // Item 4: o mesmo recorte do relógio (segmentos que começaram no período, o aberto
+    // conta até agora), agora também por carro — a média divide pelos carros distintos.
+    const segments = await this.prisma.downtimeSegment.findMany({
+      where: { startedAt: { gte: startOfDay(from), lte: end } },
+      select: {
+        cause: true,
+        minutes: true,
+        startedAt: true,
+        endedAt: true,
+        workOrderId: true,
+        workOrder: { select: { vehicleId: true, vehicle: { select: { code: true, plate: true } } } },
+      },
+    });
+    const nowMs = Date.now();
+    const byCause = new Map<keyof DowntimeCar['byCause'], number>();
+    const cars = new Map<string, DowntimeCar & { wos: Set<string> }>();
+    const carsByCause = new Map<string, Set<string>>();
+    for (const sg of segments) {
+      const minutes = sg.endedAt ? (sg.minutes ?? 0) : Math.max(0, Math.round((nowMs - sg.startedAt.getTime()) / 60_000));
+      byCause.set(sg.cause, (byCause.get(sg.cause) ?? 0) + minutes);
+      const vid = sg.workOrder.vehicleId;
+      const car = cars.get(vid) ?? { vehicleId: vid, code: sg.workOrder.vehicle.code, plate: sg.workOrder.vehicle.plate, minutes: 0, workOrders: 0, byCause: {}, wos: new Set<string>() };
+      car.minutes += minutes;
+      car.byCause[sg.cause] = (car.byCause[sg.cause] ?? 0) + minutes;
+      car.wos.add(sg.workOrderId);
+      cars.set(vid, car);
+      if (minutes > 0) {
+        const set = carsByCause.get(sg.cause) ?? new Set<string>();
+        set.add(vid);
+        carsByCause.set(sg.cause, set);
+      }
+    }
+    const total = [...byCause.values()].reduce((a, b) => a + b, 0);
+    const downtimeByCause = [...byCause.entries()]
+      .map(([cause, minutes]) => ({ cause, minutes, share: total ? minutes / total : 0 }))
+      .sort((a, b) => b.minutes - a.minutes);
+    const stopped = [...cars.values()].filter((c) => c.minutes > 0);
+    return {
+      downtimeByCause,
+      totalDowntimeMinutes: total,
+      from,
+      to,
+      vehicleCount: stopped.length,
+      avgMinutesPerVehicle: stopped.length ? Math.round(total / stopped.length) : null,
+      perCause: downtimeByCause.map((c) => {
+        const vehicles = carsByCause.get(c.cause)?.size ?? 0;
+        return { cause: c.cause, vehicles, avgMinutesPerVehicle: vehicles ? Math.round(c.minutes / vehicles) : 0 };
+      }),
+      cars: stopped
+        .map(({ wos, ...c }) => ({ ...c, workOrders: wos.size }))
+        .sort((a, b) => b.minutes - a.minutes),
+    };
   }
 
   async availabilityDays(q: AvailabilityDaysQuery): Promise<AvailabilityDays> {

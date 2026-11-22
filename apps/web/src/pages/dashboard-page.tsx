@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDownRight, ArrowUpRight, Minus, RefreshCw, Repeat2, Search, Undo2 } from 'lucide-react';
 import {
+  type DowntimeCause,
   DASHBOARD_PERIODS,
   DEFAULT_DASHBOARD_PERIOD,
   EVENT_STATUS_LABELS,
@@ -36,6 +37,7 @@ import { ChartPeriodBar } from '@/components/charts/chart-period';
 import { resolveChartPeriod, useChartPeriod } from '@/components/charts/use-chart-period';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { TopFailuresCard } from '@/components/dashboard/top-failures';
+import { DowntimeCarsDrawer, formatHours } from '@/components/dashboard/downtime-cars';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { CustomRangeItem } from '@/components/charts/chart-period';
 import { LiveBadge } from '@/components/ui/live-badge';
@@ -386,6 +388,11 @@ function DowntimeCard() {
     refetchInterval: 60_000,
   });
   const d = query.data;
+  // Item 4: detalhamento por carro, aberto pelo botão ou por uma causa da legenda.
+  const [drill, setDrill] = useState<{ cause: DowntimeCause | null } | null>(null);
+  const perCar = d
+    ? Object.fromEntries(d.perCause.map((p) => [p.cause, { vehicles: p.vehicles, avgMinutes: p.avgMinutesPerVehicle }]))
+    : undefined;
   return (
     <div className="tp-card dash-glass">
       <div className="chart__title chart__title--tools">
@@ -397,10 +404,42 @@ function DowntimeCard() {
       </div>
       {d ? (
         <RefreshVeil active={query.isPlaceholderData} delay={0}>
-          <DowntimeDonut data={d.downtimeByCause} totalMinutes={d.totalDowntimeMinutes} />
+          <DowntimeDonut
+            data={d.downtimeByCause}
+            totalMinutes={d.totalDowntimeMinutes}
+            perCar={perCar}
+            onPick={(cause) => setDrill({ cause })}
+            center={
+              d.avgMinutesPerVehicle !== null ? (
+                <>
+                  <span className="donut__big">{formatHours(d.avgMinutesPerVehicle)}</span>
+                  <span className="donut__small">{t.dash.downtimePerCar}</span>
+                </>
+              ) : undefined
+            }
+          />
+          {d.vehicleCount > 0 && (
+            <div className="downtime__foot">
+              <span className="tp-muted">
+                {formatHours(d.totalDowntimeMinutes)} {t.dash.downtimeTotalOf} {formatNumber(d.vehicleCount)} {t.dash.downtimeCars}
+              </span>
+              <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setDrill({ cause: null })}>
+                {t.dash.downtimeSeeCars}
+              </button>
+            </div>
+          )}
         </RefreshVeil>
       ) : (
         <ChartLoading />
+      )}
+      {drill && d && (
+        <DowntimeCarsDrawer
+          data={d}
+          cause={drill.cause}
+          onCause={(cause) => setDrill({ cause })}
+          onClose={() => setDrill(null)}
+          rangeText={rangeLabel(from, to)}
+        />
       )}
     </div>
   );
