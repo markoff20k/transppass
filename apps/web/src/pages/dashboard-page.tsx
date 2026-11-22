@@ -21,7 +21,6 @@ import { useI18n } from '@/i18n/i18n.context';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusRender } from '@/components/bus/bus-render';
 import { InfoTip } from '@/components/ui/info-tip';
-import { BrandLoader } from '@/components/brand/brand-loader';
 import { FleetLegend } from '@/components/fleet/fleet-legend';
 import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
 import { BackFoot, BackHead, FlipButton, MaintenanceBack } from '@/components/fleet/fleet-card';
@@ -35,6 +34,7 @@ import { ChartPeriodBar } from '@/components/charts/chart-period';
 import { resolveChartPeriod, useChartPeriod } from '@/components/charts/use-chart-period';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { TopFailuresCard } from '@/components/dashboard/top-failures';
+import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { CustomRangeItem } from '@/components/charts/chart-period';
 import { LiveBadge } from '@/components/ui/live-badge';
 import { KpiAi } from '@/components/ui/flip-kpi';
@@ -94,7 +94,6 @@ export function DashboardPage() {
 
   const {
     data: fresh,
-    isPending,
     isError,
     error,
     refetch,
@@ -120,11 +119,9 @@ export function DashboardPage() {
       .map(([, d]) => d)
       .find((d): d is DashboardData => Boolean(d));
 
-  if (isPending && !data) return <DashboardSkeleton />;
   // Sem dado nenhum: erro com o motivo e um botão para tentar de novo. Com dado
   // na tela, uma atualização que falhou não apaga o painel — só avisa.
-  if (!data) {
-    return (
+  const errorBlock = !data && isError ? (
       <div className="tp-alert tp-alert--danger dash-error" role="alert">
         <span>
           {t.dash.error} {describeError(error, t)}
@@ -138,8 +135,7 @@ export function DashboardPage() {
           <RefreshCw size={14} className={isFetching ? 'is-spinning' : undefined} /> {t.dash.retry}
         </button>
       </div>
-    );
-  }
+  ) : null;
 
   const staleNotice = isError ? (
     <div className="tp-alert tp-alert--warning dash-error" role="status">
@@ -157,7 +153,7 @@ export function DashboardPage() {
     </div>
   ) : null;
 
-  const availabilityPct = Math.round(data.fleet.availabilityRate * 1000) / 10;
+  const availabilityPct = Math.round((data?.fleet.availabilityRate ?? 0) * 1000) / 10;
   const availabilityTone: Tone =
     availabilityPct >= AVAILABILITY_TARGET
       ? 'good'
@@ -170,7 +166,12 @@ export function DashboardPage() {
       {staleNotice}
       {/* ---- Avisos e alertas: o que pede atenção, antes de qualquer número ---- */}
       <NoticeBoard />
-      {/* ---- Centro de comando: fluxo, os três números e a frota; a pessoa arrasta para reordenar ---- */}
+      {/* ---- Centro de comando: fluxo, os três números e a frota; a pessoa arrasta para reordenar.
+           Enquanto a consulta principal não chega, o esqueleto com a mesma geometria; os cards de
+           baixo têm consultas próprias e carregam ao mesmo tempo. ---- */}
+      {!data ? (
+        (errorBlock ?? <DashboardSkeleton />)
+      ) : (
       <SortableCards
         prefKey="dash.order"
         items={[
@@ -336,6 +337,7 @@ export function DashboardPage() {
           },
         ]}
       />
+      )}
 
       {/* ---- Tendências ---- */}
       <section className="dash-row dash-row--charts">
@@ -353,9 +355,11 @@ export function DashboardPage() {
         <RecentEventsCard />
       </section>
 
-      <p className="tp-muted dash-updated">
-        {t.dash.updated} {formatDateTime(data.generatedAt)}
-      </p>
+      {data && (
+        <p className="tp-muted dash-updated">
+          {t.dash.updated} {formatDateTime(data.generatedAt)}
+        </p>
+      )}
     </div>
   );
 }
@@ -1066,22 +1070,6 @@ function describeError(error: unknown, t: ReturnType<typeof useI18n>['t']): stri
   if (error.body.statusCode === 429) return t.dash.errorRate;
   if (error.body.statusCode >= 500) return t.dash.errorServer;
   return error.message ? `(${error.message})` : '';
-}
-
-function DashboardSkeleton() {
-  const { t } = useI18n();
-  return (
-    <div className="dash">
-      <section className="ticker dash-glass skeleton" style={{ height: 50 }} />
-      <section
-        className="dash-hero dash-glass skeleton"
-        style={{ minHeight: 280, display: 'grid', placeItems: 'center' }}
-      >
-        <BrandLoader size={64} label={t.dash.loading.replace(/…$/, '')} />
-      </section>
-      <section className="tp-card skeleton" style={{ minHeight: 260 }} />
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------

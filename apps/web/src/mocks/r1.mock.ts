@@ -22,7 +22,7 @@ import {
   type WorkOrderSummary,
 } from '@app/shared';
 import { catalogItems, vehicles } from './fixtures';
-import { buildDashboard } from './dashboard.mock';
+import { buildDashboard, mockDowntime, recentEvents } from './dashboard.mock';
 
 /**
  * Leitura das telas do R1 no modo mock.
@@ -313,8 +313,8 @@ function metrics(): R1Metrics {
   const d = buildDashboard();
   return {
     mkbf: { kmTraveled: 101_040, unscheduledReturns: 12, mkbf: d.mkbf.current, periodStart: d.mkbf.series[d.mkbf.series.length - 1]!.month, periodEnd: d.generatedAt },
-    downtimeByCause: d.downtimeByCause,
-    totalDowntimeMinutes: d.totalDowntimeMinutes,
+    downtimeByCause: mockDowntime().downtimeByCause,
+    totalDowntimeMinutes: mockDowntime().totalDowntimeMinutes,
     triageSla: { count: 38, medianSeconds: 11 * 60, p90Seconds: 34 * 60 },
     fieldResolution: { total: 17, resolvedInField: 9, rate: 9 / 17 },
     internalRework: { inspections: 41, rejections: 3, rate: 3 / 41 },
@@ -334,7 +334,7 @@ const pageOf = <T,>(rows: T[], url: URL) => {
 export const r1Handlers = [
   http.get('*/api/events', ({ request }) => {
     const url = new URL(request.url);
-    const all = buildDashboard().recentEvents;
+    const all = recentEvents();
     const pending = url.searchParams.get('pendingTriage') === 'true';
     const status = url.searchParams.get('status');
     let rows = all;
@@ -346,10 +346,10 @@ export const r1Handlers = [
     return HttpResponse.json(pageOf(rows, url));
   }),
   http.get('*/api/events/summary', () => HttpResponse.json({ registeredToday: 4, awaitingTriage: 1, safetyOpen: 2, deferred: 6 })),
-  http.post('*/api/events', () => HttpResponse.json(buildDashboard().recentEvents[0], { status: 201 })),
-  http.post('*/api/events/:id/triage', () => HttpResponse.json(buildDashboard().recentEvents[0], { status: 201 })),
-  http.post('*/api/events/:id/field/step', () => HttpResponse.json(buildDashboard().recentEvents[2], { status: 201 })),
-  http.post('*/api/events/:id/field/outcome', () => HttpResponse.json(buildDashboard().recentEvents[2], { status: 201 })),
+  http.post('*/api/events', () => HttpResponse.json(recentEvents()[0], { status: 201 })),
+  http.post('*/api/events/:id/triage', () => HttpResponse.json(recentEvents()[0], { status: 201 })),
+  http.post('*/api/events/:id/field/step', () => HttpResponse.json(recentEvents()[2], { status: 201 })),
+  http.post('*/api/events/:id/field/outcome', () => HttpResponse.json(recentEvents()[2], { status: 201 })),
 
   http.get('*/api/queue', () => HttpResponse.json(queue)),
   http.get('*/api/queue/:id/history', () => HttpResponse.json(queueHistory)),
@@ -403,7 +403,7 @@ export const r1Handlers = [
     catalogVersions.draft = { id: 'cv-next', version: catalogVersions.draft.version + 1, notes: null, publishedAt: null, createdAt: new Date().toISOString() };
     return HttpResponse.json(catalogVersions.published, { status: 201 });
   }),
-  http.post('*/api/events/:id/field/dispatch', () => HttpResponse.json(buildDashboard().recentEvents[2], { status: 201 })),
+  http.post('*/api/events/:id/field/dispatch', () => HttpResponse.json(recentEvents()[2], { status: 201 })),
 
   http.get('*/api/catalog/failure-rules', () => HttpResponse.json(failureRules)),
   http.post('*/api/catalog/failure-rules', async ({ request }) => {

@@ -93,13 +93,6 @@ export interface DashboardData {
     last30: { kmTraveled: number; unscheduledReturns: number; mkbf: number | null };
   };
 
-  availabilityByHour: HourAvailability[];
-  downtimeByCause: DowntimeByCause[];
-  totalDowntimeMinutes: number;
-  eventsPerDay: DayCount[];
-  /** Até 120 dias cada ponto é um dia; acima disso, uma semana. */
-  eventsBucket: 'day' | 'week';
-
   queue: {
     waiting: number;
     inService: number;
@@ -130,7 +123,6 @@ export interface DashboardData {
   /** Verso dos três cartões do painel: o porquê do número da frente. */
   backs: DashboardBacks;
 
-  recentEvents: FailureEventSummary[];
   vehicles: DashboardVehicle[];
 }
 

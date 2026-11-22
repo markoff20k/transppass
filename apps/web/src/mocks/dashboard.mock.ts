@@ -22,7 +22,6 @@ const delay = () => new Promise((r) => setTimeout(r, 120 + Math.random() * 180))
  * PRD). Servem para a tela ter o que mostrar, não para tirar conclusão.
  */
 
-const DAY_MS = 86_400_000;
 const now = () => new Date();
 
 function monthStart(offset: number): Date {
@@ -151,7 +150,7 @@ function buildVehicles(): DashboardVehicle[] {
   return [...base, ...extraVehicles];
 }
 
-function recentEvents(): FailureEventSummary[] {
+export function recentEvents(): FailureEventSummary[] {
   const items = [
     {
       code: 'EV-2026-000142',
@@ -252,24 +251,6 @@ export function buildDashboard(): DashboardData {
   for (const v of vs) byStatus[v.status] += 1;
   const available = byStatus.AVAILABLE + byStatus.IN_LINE;
 
-  const eventsPerDay = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(Date.now() - (29 - i) * DAY_MS);
-    const weekday = d.getDay();
-    const base = weekday === 0 || weekday === 6 ? 1 : 3;
-    // Determinístico por dia, para a curva não mudar a cada reload.
-    const jitter = ((d.getDate() * 7 + d.getMonth() * 3) % 5) - 1;
-    return { date: d.toISOString().slice(0, 10), count: Math.max(0, base + jitter) };
-  });
-
-  const downtime = [
-    { cause: DowntimeCause.QUEUE, minutes: 2_310 },
-    { cause: DowntimeCause.MATERIAL, minutes: 1_760 },
-    { cause: DowntimeCause.EXECUTION, minutes: 1_490 },
-    { cause: DowntimeCause.INSPECTION, minutes: 610 },
-    { cause: DowntimeCause.CLEANING, minutes: 405 },
-    { cause: DowntimeCause.RELEASE_WAIT, minutes: 205 },
-  ];
-  const totalDowntime = downtime.reduce((a, b) => a + b.minutes, 0);
 
   return {
     generatedAt: now().toISOString(),
@@ -296,15 +277,6 @@ export function buildDashboard(): DashboardData {
       period: { kmTraveled: 412_300, unscheduledReturns: 106, mkbf: 3_890 },
       last30: { kmTraveled: 412_300, unscheduledReturns: 106, mkbf: 3_890 },
     },
-    availabilityByHour: Array.from({ length: 24 }, (_, hour) => ({
-      hour,
-      rate: availabilityCurve(hour),
-      today: hour <= 17 ? availabilityCurve(hour) - 0.02 : null,
-    })),
-    downtimeByCause: downtime.map((d) => ({ ...d, share: d.minutes / totalDowntime })),
-    totalDowntimeMinutes: totalDowntime,
-    eventsPerDay,
-    eventsBucket: 'day',
     queue: { waiting: 2, inService: 1, oldestWaitingHours: 3.1 },
     workOrders: { open: 4, overdue: 1, releasedInPeriod: 23, releasedToday: 2, averageDowntimeMinutes: 386 },
     materials: { pending: 3, overdueParts: 1 },
@@ -340,7 +312,6 @@ export function buildDashboard(): DashboardData {
         mostOverdue: { id: 'wo-1', code: 'OS-2026-0392', vehicleCode: '10003', lateHours: 26.2 },
       },
     },
-    recentEvents: recentEvents(),
     vehicles: vs,
   };
 }
@@ -690,3 +661,17 @@ export const dashboardHandlers = [
     return new HttpResponse(null, { status: 201 });
   }),
 ];
+
+/** Tempo parado por causa do mock (o Dashboard real busca na própria rota). */
+export function mockDowntime(): { downtimeByCause: { cause: DowntimeCause; minutes: number; share: number }[]; totalDowntimeMinutes: number } {
+  const downtime = [
+    { cause: DowntimeCause.QUEUE, minutes: 2_310 },
+    { cause: DowntimeCause.MATERIAL, minutes: 1_760 },
+    { cause: DowntimeCause.EXECUTION, minutes: 1_490 },
+    { cause: DowntimeCause.INSPECTION, minutes: 610 },
+    { cause: DowntimeCause.CLEANING, minutes: 405 },
+    { cause: DowntimeCause.RELEASE_WAIT, minutes: 205 },
+  ];
+  const total = downtime.reduce((a, b) => a + b.minutes, 0);
+  return { downtimeByCause: downtime.map((d) => ({ ...d, share: d.minutes / total })), totalDowntimeMinutes: total };
+}

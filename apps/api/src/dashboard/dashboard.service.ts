@@ -90,21 +90,20 @@ export class DashboardService {
     const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
 
+    // Só o que o centro de comando mostra: disponibilidade por hora, tempo parado, quebras por dia e
+    // últimos eventos têm rotas próprias (cada card busca o seu período) e saíram daqui — a página
+    // principal chega mais rápido e os cards de baixo não esperam por ela.
     const [
       vehicles,
       mkbfSeries,
       periodMkbf,
       last30Mkbf,
       releasedToday,
-      availabilityByHour,
       availabilityDelta,
-      r1,
-      perDay,
       queue,
       workOrders,
       materials,
       alerts,
-      recent,
       backs,
     ] = await Promise.all([
       this.vehicles(now),
@@ -112,15 +111,11 @@ export class DashboardService {
       this.metrics.mkbf(from, periodEnd),
       this.metrics.mkbf(last30From, now),
       this.prisma.workOrder.count({ where: { releasedAt: { gte: todayStart, lte: now } } }),
-      this.availabilityByHour(now, from),
       this.availabilityDelta(now),
-      this.metrics.r1({ from, to: periodEnd }),
-      this.eventsPerDay(periodEnd, from, days),
       this.queue(now),
       this.workOrders(now, from, periodEnd),
       this.materials(now),
       this.alerts(),
-      this.events.list({ page: 1, perPage: 6, from, to: periodEnd }),
       this.backs(now, last30From, 30),
     ]);
 
@@ -157,17 +152,11 @@ export class DashboardService {
           mkbf: last30Mkbf.mkbf,
         },
       },
-      availabilityByHour,
-      downtimeByCause: r1.downtimeByCause,
-      totalDowntimeMinutes: r1.totalDowntimeMinutes,
-      eventsPerDay: perDay.points,
-      eventsBucket: perDay.bucket,
       queue,
       workOrders: { ...workOrders, releasedToday },
       materials,
       alerts,
       backs,
-      recentEvents: recent.data,
       vehicles,
     };
   }
@@ -777,110 +766,18 @@ export class DashboardService {
     });
   }
 
+  /** Um mês por vez custava 12 idas ao banco em série; agora vão todas juntas. */
   private async mkbfSeries(now: Date, months: number): Promise<MkbfPoint[]> {
-    const points: MkbfPoint[] = [];
-
-    for (let i = months - 1; i >= 0; i -= 1) {
-      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const end =
-        i === 0 ? now : new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
-      const r = await this.metrics.mkbf(start, end);
-      points.push({
-        month: start.toISOString(),
-        kmTraveled: r.kmTraveled,
-        unscheduledReturns: r.unscheduledReturns,
-        mkbf: r.mkbf,
-      });
-    }
-
-    return points;
+    return Promise.all(
+      Array.from({ length: months }, (_, idx) => months - 1 - idx).map(async (i) => {
+        const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const end = i === 0 ? now : new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+        const r = await this.metrics.mkbf(start, end);
+        return { month: start.toISOString(), kmTraveled: r.kmTraveled, unscheduledReturns: r.unscheduledReturns, mkbf: r.mkbf };
+      }),
+    );
   }
 
-  /**
-   * Para cada hora do dia, a fração de carros disponíveis naquele instante,
-   * na média do período escolhido (amostra em hh:30; janelas longas amostram
-   * um dia a cada poucos, até ~60 dias). Carro parado é o mesmo
-   * do anel de disponibilidade: da quebra (retorno não programado em aberto,
-   * ainda na fila ou no socorro) até a liberação da OS — não só enquanto a
-   * OS existe. Um carro com evento e OS ao mesmo tempo conta uma vez.
-   */
-  private async availabilityByHour(now: Date, windowStart: Date): Promise<HourAvailability[]> {
-    const totalDays = Math.max(1, Math.round((now.getTime() - windowStart.getTime()) / DAY_MS));
-    const step = Math.max(1, Math.ceil(totalDays / 60));
-
-    const [fleetSize, workOrders, returns] = await Promise.all([
-      this.prisma.vehicle.count({ where: { isActive: true } }),
-      this.prisma.workOrder.findMany({
-        where: {
-          openedAt: { lte: now },
-          OR: [{ releasedAt: null }, { releasedAt: { gte: windowStart } }],
-          status: { not: WorkOrderStatus.CANCELLED },
-        },
-        select: { vehicleId: true, openedAt: true, releasedAt: true },
-      }),
-      this.prisma.failureEvent.findMany({
-        where: {
-          isUnscheduledReturn: true,
-          reportedAt: { lte: now },
-          OR: [{ closedAt: null }, { closedAt: { gte: windowStart } }],
-          status: { not: EventStatus.CANCELLED },
-        },
-        select: { vehicleId: true, reportedAt: true, closedAt: true },
-      }),
-    ]);
-
-    if (fleetSize === 0) {
-      return Array.from({ length: 24 }, (_, hour) => ({ hour, rate: 0, today: null }));
-    }
-
-    const spans = [
-      ...workOrders.map((wo) => ({
-        vehicleId: wo.vehicleId,
-        from: wo.openedAt,
-        to: wo.releasedAt,
-      })),
-      ...returns.map((ev) => ({ vehicleId: ev.vehicleId, from: ev.reportedAt, to: ev.closedAt })),
-    ];
-
-    const rateAt = (t: Date): number => {
-      const downVehicles = new Set<string>();
-      for (const sp of spans) {
-        if (sp.from <= t && (!sp.to || sp.to >= t)) downVehicles.add(sp.vehicleId);
-      }
-      return (fleetSize - Math.min(downVehicles.size, fleetSize)) / fleetSize;
-    };
-
-    const result: HourAvailability[] = [];
-
-    for (let hour = 0; hour < 24; hour += 1) {
-      let sum = 0;
-      let samples = 0;
-
-      for (let day = 1; day <= totalDays; day += step) {
-        const t = new Date(now);
-        t.setDate(t.getDate() - day);
-        t.setHours(hour, 30, 0, 0);
-        if (t > now) continue;
-        sum += rateAt(t);
-        samples += 1;
-      }
-
-      // Hoje, na mesma faixa: a hora corrente usa o instante atual, para o
-      // último ponto bater com o anel de disponibilidade.
-      const todayAt = new Date(now);
-      todayAt.setHours(hour, 30, 0, 0);
-      const todaySample =
-        todayAt <= now ? todayAt : todayAt.getHours() === now.getHours() ? now : null;
-
-      result.push({
-        hour,
-        rate: samples ? sum / samples : 0,
-        today: todaySample ? rateAt(todaySample) : null,
-      });
-    }
-
-    return result;
-  }
 
   private async availabilityDelta(now: Date): Promise<number | null> {
     const then = new Date(now.getTime() - 7 * DAY_MS);
@@ -905,39 +802,6 @@ export class DashboardService {
     return Math.round((rateNow - rateThen) * 1000) / 10;
   }
 
-  /**
-   * Quebras por dia no período; acima de 120 dias, por semana (senão são
-   * centenas de barras num cartão). Só o que tirou carro da rua: é a série
-   * que explica o MKBF, não o volume de registros.
-   */
-  private async eventsPerDay(
-    now: Date,
-    from: Date,
-    days: number,
-  ): Promise<{ points: DayCount[]; bucket: 'day' | 'week' }> {
-    const bucket: 'day' | 'week' = days > 120 ? 'week' : 'day';
-    const size = bucket === 'week' ? 7 : 1;
-
-    const rows = await this.prisma.failureEvent.findMany({
-      where: { reportedAt: { gte: from, lte: now }, isUnscheduledReturn: true },
-      select: { reportedAt: true },
-    });
-
-    const n = Math.ceil(days / size);
-    const counts = Array.from({ length: n }, () => 0);
-    for (const r of rows) {
-      const idx = Math.floor((r.reportedAt.getTime() - from.getTime()) / (DAY_MS * size));
-      if (idx >= 0 && idx < n) counts[idx] = (counts[idx] ?? 0) + 1;
-    }
-
-    const points = counts.map((count, i) => {
-      const d = new Date(from.getTime() + i * size * DAY_MS);
-      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      return { date, count };
-    });
-
-    return { points, bucket };
-  }
 
   /**
    * Fila e oficina contados pelo status do carro — a mesma fonte do fluxo da

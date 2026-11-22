@@ -5555,3 +5555,41 @@ a.bus-card:hover { transform: translateY(-1px); }
   .topf .chart-period > .tp-segmented__item { width: 100%; }
   .topf__row { grid-template-columns: 24px minmax(0, 1fr) auto 48px; gap: var(--tp-space-2); padding: 10px 4px; }
 }
+
+/* =========================================================================
+   Esqueleto do centro de comando do Dashboard (components/dashboard/dashboard-skeleton)
+   Mesmo vidro, mesmos títulos e mesma geometria dos cards reais; o brilho
+   corre só nas peças de dado. Nada muda de lugar quando o dado entra.
+   ========================================================================= */
+.dash-skel { display: grid; gap: var(--tp-space-4); min-width: 0; }
+.dash-skel__card { display: grid; gap: var(--tp-space-4); }
+.dash-skel__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--tp-space-3); flex-wrap: wrap; }
+.dash-skel__head > div { display: grid; gap: 2px; min-width: 0; }
+.dash-skel__head h3 { margin: 0; font-size: var(--tp-text-sm); color: var(--color-text-secondary); }
+.dash-skel__chips { display: inline-flex; flex-wrap: wrap; gap: var(--tp-space-2); align-items: center; }
+.skel { display: block; position: relative; overflow: hidden; background: color-mix(in srgb, var(--color-text-muted) 13%, transparent); border-radius: 999px; }
+.skel::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-surface) 70%, transparent), transparent); animation: skeleton 1.6s ease-in-out infinite; }
+.skel--bar { height: 12px; }
+.skel--chip { height: 22px; border-radius: 999px; }
+.dash-skel__hero { align-items: start; }
+.dash-skel__ring { position: relative; display: grid; place-items: center; width: 232px; height: 232px; border-radius: 50%; background: conic-gradient(from -90deg, color-mix(in srgb, var(--color-text-muted) 22%, transparent) 0 72%, color-mix(in srgb, var(--color-text-muted) 9%, transparent) 72% 100%); animation: dash-skel-spin 2.4s linear infinite; }
+.dash-skel__ring::before { content: ''; position: absolute; inset: 18px; border-radius: 50%; background: var(--color-surface); }
+.dash-skel__ring-inner { position: relative; display: grid; justify-items: center; gap: 8px; animation: dash-skel-unspin 2.4s linear infinite; }
+@keyframes dash-skel-spin { to { transform: rotate(360deg); } }
+@keyframes dash-skel-unspin { to { transform: rotate(-360deg); } }
+.dash-skel__flow { padding-top: var(--tp-space-3); }
+.dash-skel__node { width: 44px; height: 44px; border-radius: 50%; }
+.dash-skel__stage { font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); }
+.dash-skel__center { display: grid; place-items: center; min-height: 72px; }
+.dash-skel__center .brand-loader:not(.brand-loader--fullscreen) { display: flex; align-items: center; gap: var(--tp-space-3); width: auto; min-height: 0; padding: var(--tp-space-3) var(--tp-space-5) var(--tp-space-3) var(--tp-space-4); background: var(--color-surface); border: var(--tp-border-thin) solid var(--color-card-border); border-radius: 999px; box-shadow: var(--shadow-card); }
+.dash-skel__center .brand-loader__label { font-weight: var(--tp-weight-medium); color: var(--color-text); white-space: nowrap; }
+.dash-skel__legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tp-space-2) var(--tp-space-6); }
+.dash-skel__kpi { gap: var(--tp-space-2); min-height: 112px; align-content: start; }
+.dash-skel__kpi .tp-kpi__label { color: var(--color-text-muted); }
+.dash-skel__widget { min-height: 158px; }
+.dash-skel__grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.dash-skel__bus { gap: var(--tp-space-2); }
+.dash-skel__bus-pic { width: 100%; aspect-ratio: 26 / 9; border-radius: var(--tp-radius-md); }
+.dash-skel__bus-row { display: flex; justify-content: space-between; align-items: center; }
+@media (prefers-reduced-motion: reduce) { .dash-skel__ring, .dash-skel__ring-inner, .skel::after { animation: none; } }
+@media (max-width: 900px) { .dash-skel__hero { grid-template-columns: minmax(0, 1fr); justify-items: center; } }
