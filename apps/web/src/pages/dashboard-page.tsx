@@ -28,6 +28,8 @@ import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { SortableCards } from '@/components/ui/sortable-cards';
 import { WidgetsCard } from '@/components/dashboard/widgets';
 import { AvailabilityCard, MkbfCard } from '@/components/dashboard/chart-cards';
+import { CustomRangeItem } from '@/components/charts/chart-period';
+import { rangeLabel, shiftDays, todayIso } from '@/lib/period';
 import { useUiPref, useUiState } from '@/features/auth/use-ui-pref';
 import { DowntimeDonut, EventsPerDayChart, RingGauge, Sparkline } from '@/components/charts/charts';
 
@@ -70,7 +72,7 @@ export function DashboardPage() {
     eyebrow: t.dash.eyebrow,
     title: t.dash.title,
     description:
-      period.days === 1
+      period.days === 1 || isCustom(period)
         ? t.dash.subtitleDay.replace('{p}', periodLabel)
         : t.dash.subtitle.replace('{n}', String(days)),
     actions: (
@@ -89,8 +91,13 @@ export function DashboardPage() {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['dashboard', days, back],
-    queryFn: () => api.get<DashboardData>(`/dashboard?days=${days}&back=${back}&months=12`),
+    queryKey: ['dashboard', days, back, period.from ?? null, period.to ?? null],
+    queryFn: () =>
+      api.get<DashboardData>(
+        isCustom(period)
+          ? `/dashboard?from=${period.from}&to=${period.to}&months=12`
+          : `/dashboard?days=${days}&back=${back}&months=12`,
+      ),
     refetchInterval: 60_000,
     placeholderData: keepPreviousData,
   });
@@ -290,7 +297,7 @@ export function DashboardPage() {
                       data.workOrders.overdue > 0
                         ? `${data.workOrders.overdue} ${t.dash.overdue}`
                         : null,
-                      `${data.workOrders.releasedInPeriod} ${period.days === 1 ? t.dash.releasedOn.replace('{p}', periodLabel) : t.dash.releasedIn.replace('{n}', String(days))}`,
+                      `${data.workOrders.releasedInPeriod} ${period.days === 1 || isCustom(period) ? t.dash.releasedOn.replace('{p}', periodLabel) : t.dash.releasedIn.replace('{n}', String(days))}`,
                       data.workOrders.averageDowntimeMinutes !== null
                         ? `${t.dash.avg} ${formatMinutes(data.workOrders.averageDowntimeMinutes)} ${t.dash.perWo}`
                         : null,
@@ -953,15 +960,29 @@ export interface DashPeriod {
   days: number;
   /** 0 = até agora; 1 = ontem; 2 = anteontem (só com days = 1). */
   back: 0 | 1 | 2;
+  /** Intervalo livre (dias civis); quando presente, vence days/back. */
+  from?: string;
+  to?: string;
 }
 const DAY_PRESETS: { key: string; period: DashPeriod }[] = [
   { key: 'hoje', period: { days: 1, back: 0 } },
   { key: 'd1', period: { days: 1, back: 1 } },
   { key: 'd2', period: { days: 1, back: 2 } },
 ];
-const samePeriod = (a: DashPeriod, b: DashPeriod) => a.days === b.days && a.back === b.back;
+const samePeriod = (a: DashPeriod, b: DashPeriod) =>
+  a.days === b.days && a.back === b.back && !a.from && !b.from;
+const isCustom = (p: DashPeriod) => Boolean(p.from && p.to);
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
-function parsePeriod(dias: string | null, antes: string | null): DashPeriod | null {
+function parsePeriod(
+  dias: string | null,
+  antes: string | null,
+  de: string | null = null,
+  ate: string | null = null,
+): DashPeriod | null {
+  if (de && ate && ISO_DAY.test(de) && ISO_DAY.test(ate) && de <= ate) {
+    return { days: daysInRange(de, ate), back: 0, from: de, to: ate };
+  }
   const d = Number(dias);
   const b = Number(antes ?? 0);
   if (!dias) return null;
@@ -977,16 +998,21 @@ function useDashboardPeriod(): [DashPeriod, (p: DashPeriod) => void] {
     back: 0,
   });
   const period =
-    parsePeriod(params.get('dias'), params.get('antes')) ??
-    (saved.days === 1 || isPeriod(saved.days)
+    parsePeriod(params.get('dias'), params.get('antes'), params.get('de'), params.get('ate')) ??
+    (isCustom(saved) || saved.days === 1 || isPeriod(saved.days)
       ? saved
       : { days: DEFAULT_DASHBOARD_PERIOD, back: 0 });
   const set = (p: DashPeriod) => {
     setSaved(p);
     const next = new URLSearchParams(params);
-    next.set('dias', String(p.days));
-    if (p.back) next.set('antes', String(p.back));
-    else next.delete('antes');
+    for (const k of ['dias', 'antes', 'de', 'ate']) next.delete(k);
+    if (isCustom(p)) {
+      next.set('de', p.from as string);
+      next.set('ate', p.to as string);
+    } else {
+      next.set('dias', String(p.days));
+      if (p.back) next.set('antes', String(p.back));
+    }
     setParams(next, { replace: true });
   };
   return [period, set];
@@ -994,6 +1020,7 @@ function useDashboardPeriod(): [DashPeriod, (p: DashPeriod) => void] {
 
 /** "hoje", "ontem", "anteontem" ou "7 dias": o nome do período para dicas e rodapés. */
 function periodName(p: DashPeriod, t: ReturnType<typeof useI18n>['t']): string {
+  if (isCustom(p)) return rangeLabel(p.from as string, p.to as string);
   if (p.days === 1)
     return p.back === 0
       ? t.dash.dayPresets.todayName
@@ -1037,6 +1064,27 @@ function PeriodControl() {
           </button>
         );
       })}
+      <CustomRangeItem
+        active={isCustom(period)}
+        label={
+          isCustom(period)
+            ? rangeLabel(period.from as string, period.to as string)
+            : t.dash.periodCustom
+        }
+        from={
+          isCustom(period)
+            ? (period.from as string)
+            : shiftDays(todayIso(), -(period.days - 1 + period.back))
+        }
+        to={isCustom(period) ? (period.to as string) : shiftDays(todayIso(), -period.back)}
+        onApply={(from, to) => setPeriod({ days: daysInRange(from, to), back: 0, from, to })}
+      />
     </div>
+  );
+}
+
+function daysInRange(from: string, to: string): number {
+  return (
+    Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1
   );
 }

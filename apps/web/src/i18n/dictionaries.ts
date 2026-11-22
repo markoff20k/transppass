@@ -230,7 +230,8 @@ const ptBR = {
     period: 'Período',
     periodDays: '{n} dias',
     subtitleDay: 'A garagem agora e os números de {p}.',
-    releasedOn: 'liberadas {p}',
+    periodCustom: 'Personalizado',
+    releasedOn: 'liberadas: {p}',
     dayPresets: { hoje: 'Hoje', d1: 'D-1', d2: 'D-2', todayName: 'hoje', d1Name: 'ontem', d2Name: 'anteontem' },
     notices: {
       title: 'Avisos',
@@ -260,6 +261,8 @@ const ptBR = {
     mkbfTrend: 'MKBF por mês',
     mkbfTrendHint: 'km rodados ÷ retornos não programados',
     mkbfTrendDay: 'MKBF por dia',
+    mkbfTrendHour: 'Quebras por hora',
+    mkbfTrendHintHour: 'o dia hora a hora; o MKBF do dia fica na legenda',
     mkbfTrendHintDay: 'acumulado do período, dia a dia',
     availByHourHintRange: 'média de {r} · parado da quebra à liberação',
     chartPeriod: {
@@ -657,7 +660,8 @@ const en: Dictionary = {
     period: 'Period',
     periodDays: '{n} days',
     subtitleDay: 'The depot right now and the numbers for {p}.',
-    releasedOn: 'released {p}',
+    periodCustom: 'Custom',
+    releasedOn: 'released: {p}',
     dayPresets: { hoje: 'Today', d1: 'D-1', d2: 'D-2', todayName: 'today', d1Name: 'yesterday', d2Name: 'two days ago' },
     notices: {
       title: 'Notices',
@@ -687,6 +691,8 @@ const en: Dictionary = {
     mkbfTrend: 'MKBF by month',
     mkbfTrendHint: 'km travelled ÷ unscheduled returns',
     mkbfTrendDay: 'MKBF by day',
+    mkbfTrendHour: 'Breakdowns by hour',
+    mkbfTrendHintHour: 'the day hour by hour; the day MKBF sits in the legend',
     mkbfTrendHintDay: 'period running total, day by day',
     availByHourHintRange: 'average of {r} · down from failure to release',
     chartPeriod: {

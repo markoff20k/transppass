@@ -25,6 +25,9 @@ export const dashboardQuerySchema = z.object({
     .default(DEFAULT_DASHBOARD_PERIOD),
   /** Quantos dias atrás a janela termina: 0 = até agora, 1 = ontem (D-1), 2 = anteontem (D-2). */
   back: z.coerce.number().int().min(0).max(2).default(0),
+  /** Intervalo livre (dias civis AAAA-MM-DD); quando vem, vence days/back. */
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   /** Meses da série mensal do MKBF; por padrão cobre o período com folga. */
   months: z.coerce.number().int().min(3).max(24).optional(),
 });
@@ -296,13 +299,13 @@ export interface ChartPeriod {
 export const mkbfSeriesQuerySchema = z.object({
   from: z.string().regex(ISO_DAY),
   to: z.string().regex(ISO_DAY),
-  /** Um ponto por dia (períodos curtos) ou por mês. */
-  bucket: z.enum(['day', 'month']).default('day'),
+  /** Um ponto por hora (um dia só), por dia (períodos curtos) ou por mês. */
+  bucket: z.enum(['hour', 'day', 'month']).default('day'),
 });
 export type MkbfSeriesQuery = z.infer<typeof mkbfSeriesQuerySchema>;
 
 export interface MkbfSeriesPoint {
-  /** Dia (AAAA-MM-DD) ou mês (AAAA-MM). */
+  /** Hora ("00".."23"), dia (AAAA-MM-DD) ou mês (AAAA-MM). */
   key: string;
   kmTraveled: number;
   unscheduledReturns: number;
@@ -313,8 +316,10 @@ export interface MkbfSeriesPoint {
 }
 
 export interface MkbfSeries {
-  bucket: 'day' | 'month';
+  bucket: 'hour' | 'day' | 'month';
   points: MkbfSeriesPoint[];
+  /** Só por hora: o MKBF do dia inteiro (km do dia ÷ quebras do dia). */
+  dayTotal: { kmTraveled: number; unscheduledReturns: number; mkbf: number | null } | null;
   requested: { from: string; to: string };
   /** O que foi mostrado de fato: igual ao pedido, ou recuado até o último dia com dado. */
   used: { from: string; to: string };

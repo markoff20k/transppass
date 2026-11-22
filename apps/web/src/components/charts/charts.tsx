@@ -121,6 +121,75 @@ function niceStep(span: number): number {
 
 // --- MKBF por mês ----------------------------------------------------------
 
+/** Um dia só, hora a hora: barras de quebras por hora; o MKBF do dia fica na legenda. */
+export function MkbfHourChart({
+  points,
+  dayTotal,
+}: {
+  points: MkbfSeriesPoint[];
+  dayTotal: { kmTraveled: number; unscheduledReturns: number; mkbf: number | null } | null;
+}) {
+  const rows = points.map((p) => ({ ...p, label: `${p.key}h` }));
+  const max = Math.max(1, ...rows.map((r) => r.unscheduledReturns));
+  return (
+    <div className="chart chart--fill">
+      <Legend
+        items={[{ kind: 'bar', color: 'var(--chart-1)', label: 'quebras na hora' }]}
+        note={
+          dayTotal ? (
+            <>
+              MKBF do dia{' '}
+              <b>{dayTotal.mkbf === null ? '—' : `${formatNumber(dayTotal.mkbf)} km`}</b> ·{' '}
+              {formatNumber(dayTotal.kmTraveled)} km ÷ {dayTotal.unscheduledReturns} quebras
+            </>
+          ) : undefined
+        }
+      />
+      <ResponsiveContainer>
+        <ComposedChart data={rows} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey="label" axisLine={false} tickLine={false} interval={2} />
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            width={36}
+            allowDecimals={false}
+            domain={[0, Math.max(2, max)]}
+          />
+          <Tooltip
+            cursor={{ fill: 'var(--color-surface-hover)' }}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const p = payload[0]!.payload as (typeof rows)[number];
+              return (
+                <Tip
+                  title={`faixa ${p.label}`}
+                  rows={[
+                    {
+                      label: 'Quebras',
+                      value: String(p.unscheduledReturns),
+                      color: 'var(--chart-1)',
+                    },
+                    ...(p.kmTraveled > 0
+                      ? [{ label: 'Km lidos', value: formatNumber(p.kmTraveled) }]
+                      : []),
+                  ]}
+                />
+              );
+            }}
+          />
+          <Bar
+            dataKey="unscheduledReturns"
+            fill="var(--chart-1)"
+            radius={[4, 4, 0, 0]}
+            isAnimationActive={false}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 export function MkbfTrendChart({
   points,
   bucket,

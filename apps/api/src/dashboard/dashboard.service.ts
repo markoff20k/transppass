@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { EventStatus, MaterialRequestStatus, QueueStatus, WorkOrderStatus } from '@prisma/client';
+import {
+  EventStatus,
+  OdometerStatus,
+  MaterialRequestStatus,
+  QueueStatus,
+  WorkOrderStatus,
+} from '@prisma/client';
 import {
   AVAILABLE_STATUSES,
   VehicleStatus,
@@ -49,15 +55,25 @@ export class DashboardService {
 
     // A janela do histórico: do início do dia de (days - 1) dias atrás até agora.
     // O "agora" da garagem (anel, fluxo, fila, alertas) não depende dela.
-    const days = query.days;
-    // Com `back`, a janela fecha no fim de D-1 ou D-2 em vez de agora.
-    const periodEnd = new Date(now);
-    if (query.back > 0) {
-      periodEnd.setDate(periodEnd.getDate() - query.back);
-      periodEnd.setHours(23, 59, 59, 999);
+    // Com `back`, a janela fecha no fim de D-1 ou D-2 em vez de agora; com
+    // from/to, é o intervalo livre que a pessoa escolheu (fim de `to`, ou agora se for hoje).
+    let periodEnd = new Date(now);
+    let from: Date;
+    let days = query.days;
+    if (query.from && query.to && query.from <= query.to) {
+      from = startOfDay(query.from);
+      const end = startOfDay(query.to);
+      end.setHours(23, 59, 59, 999);
+      periodEnd = end > now ? now : end;
+      days = Math.round((startOfDay(query.to).getTime() - from.getTime()) / DAY_MS) + 1;
+    } else {
+      if (query.back > 0) {
+        periodEnd.setDate(periodEnd.getDate() - query.back);
+        periodEnd.setHours(23, 59, 59, 999);
+      }
+      from = new Date(periodEnd.getTime() - (days - 1) * DAY_MS);
+      from.setHours(0, 0, 0, 0);
     }
-    const from = new Date(periodEnd.getTime() - (days - 1) * DAY_MS);
-    from.setHours(0, 0, 0, 0);
     const months = query.months ?? Math.max(6, Math.ceil(days / 30) + 1);
 
     const [
@@ -308,6 +324,7 @@ export class DashboardService {
       return {
         bucket: 'month',
         points,
+        dayTotal: null,
         requested: { from: q.from, to: q.to },
         used: { from, to },
         fellBack: false,
@@ -355,9 +372,60 @@ export class DashboardService {
         mkbfToDate: returns > 0 ? Math.round(km / returns) : null,
       });
     }
+    if (q.bucket === 'hour') {
+      // Um dia só, hora a hora: quebras por hora (reportedAt) e o km que houver por hora;
+      // o MKBF do dia inteiro vai à parte, porque km por hora só existe com telemetria.
+      const day = usedTo;
+      const dayStart = startOfDay(day);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+      const [events, readings] = await Promise.all([
+        this.prisma.failureEvent.findMany({
+          where: {
+            isUnscheduledReturn: true,
+            reportedAt: { gte: dayStart, lte: dayEnd },
+            vehicle: { application: 'FROTA' },
+          },
+          select: { reportedAt: true },
+        }),
+        this.prisma.odometerReading.findMany({
+          where: {
+            readAt: { gte: dayStart, lte: dayEnd },
+            status: { not: OdometerStatus.REJECTED },
+            deltaKm: { gt: 0 },
+            vehicle: { application: 'FROTA' },
+          },
+          select: { readAt: true, deltaKm: true },
+        }),
+      ]);
+      const perHour = Array.from({ length: 24 }, () => ({ km: 0, failures: 0 }));
+      for (const e of events) perHour[e.reportedAt.getHours()]!.failures += 1;
+      for (const r of readings) perHour[r.readAt.getHours()]!.km += r.deltaKm ?? 0;
+      const hourPoints: MkbfSeriesPoint[] = perHour.map((h, hour) => ({
+        key: String(hour).padStart(2, '0'),
+        kmTraveled: h.km,
+        unscheduledReturns: h.failures,
+        mkbf: h.failures > 0 && h.km > 0 ? Math.round(h.km / h.failures) : null,
+        mkbfToDate: null,
+      }));
+      const total = days.get(day) ?? { km: 0, failures: events.length };
+      return {
+        bucket: 'hour',
+        points: hourPoints,
+        dayTotal: {
+          kmTraveled: total.km,
+          unscheduledReturns: total.failures,
+          mkbf: total.failures > 0 ? Math.round(total.km / total.failures) : null,
+        },
+        requested: { from: q.from, to: q.to },
+        used: { from: day, to: day },
+        fellBack,
+      };
+    }
     return {
       bucket: 'day',
       points,
+      dayTotal: null,
       requested: { from: q.from, to: q.to },
       used: { from: usedFrom, to: usedTo },
       fellBack,

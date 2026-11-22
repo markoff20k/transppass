@@ -7,7 +7,8 @@ import { rangeLabel, shiftDays } from '@/lib/period';
 import { useI18n } from '@/i18n/i18n.context';
 import { ChartPeriodBar } from '@/components/charts/chart-period';
 import { resolveChartPeriod, useChartPeriod } from '@/components/charts/use-chart-period';
-import { AvailabilityByHourChart, MkbfTrendChart } from '@/components/charts/charts';
+import { AvailabilityByHourChart, MkbfHourChart, MkbfTrendChart } from '@/components/charts/charts';
+import { RefreshVeil } from '@/components/ui/refresh-veil';
 
 const fmtDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
@@ -29,7 +30,12 @@ export function MkbfCard() {
   const { t } = useI18n();
   const [period, setPeriod] = useChartPeriod('dash.period.mkbf', 'months12');
   const { from, to } = resolveChartPeriod(period);
-  const bucket = period.preset === 'months12' || daysBetween(from, to) > 92 ? 'month' : 'day';
+  const bucket =
+    from === to
+      ? 'hour'
+      : period.preset === 'months12' || daysBetween(from, to) > 92
+        ? 'month'
+        : 'day';
   const query = useQuery({
     queryKey: ['dashboard', 'mkbf-series', from, to, bucket],
     queryFn: () =>
@@ -46,19 +52,33 @@ export function MkbfCard() {
   const hint =
     bucket === 'month'
       ? t.dash.mkbfTrendHint
-      : `${t.dash.mkbfTrendHintDay} · ${rangeLabel(s?.used.from ?? from, s?.used.to ?? to)}`;
+      : bucket === 'hour'
+        ? `${t.dash.mkbfTrendHintHour} · ${fmtDay(s?.used.to ?? to)}`
+        : `${t.dash.mkbfTrendHintDay} · ${rangeLabel(s?.used.from ?? from, s?.used.to ?? to)}`;
 
   return (
     <div className="tp-card dash-glass">
       <div className="chart__title chart__title--tools">
         <div>
-          <h3>{bucket === 'month' ? t.dash.mkbfTrend : t.dash.mkbfTrendDay}</h3>
+          <h3>
+            {bucket === 'month'
+              ? t.dash.mkbfTrend
+              : bucket === 'hour'
+                ? t.dash.mkbfTrendHour
+                : t.dash.mkbfTrendDay}
+          </h3>
           <span className="chart__hint">{hint}</span>
         </div>
         <ChartPeriodBar value={period} onChange={setPeriod} />
       </div>
       {s ? (
-        <MkbfTrendChart points={s.points} bucket={s.bucket} />
+        <RefreshVeil active={query.isFetching}>
+          {s.bucket === 'hour' ? (
+            <MkbfHourChart points={s.points} dayTotal={s.dayTotal} />
+          ) : (
+            <MkbfTrendChart points={s.points} bucket={s.bucket} />
+          )}
+        </RefreshVeil>
       ) : (
         <div className="chart chart--fill skeleton" />
       )}
@@ -112,7 +132,9 @@ export function AvailabilityCard() {
         />
       </div>
       {s ? (
-        <AvailabilityByHourChart data={s.hours} days={s.days} dayLabel={dayLabel} />
+        <RefreshVeil active={query.isFetching}>
+          <AvailabilityByHourChart data={s.hours} days={s.days} dayLabel={dayLabel} />
+        </RefreshVeil>
       ) : (
         <div className="chart chart--fill skeleton" />
       )}

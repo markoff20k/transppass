@@ -6,32 +6,35 @@ import { useI18n } from '@/i18n/i18n.context';
 import { resolveChartPeriod } from './use-chart-period';
 
 /**
- * Barra de atalhos do gráfico: Hoje · Ontem · 30 dias · 12 meses · Personalizado,
- * no controle segmentado do sistema. "Personalizado" abre um painel pequeno com
- * de/até e Aplicar; escolhido, o botão mostra o intervalo.
+ * Item "Personalizado" de um controle segmentado: o botão e o painel pequeno
+ * com de/até e Aplicar. Escolhido, o botão mostra o intervalo. Fecha com Esc
+ * ou clique fora. Usado na barra dos gráficos e no período do topo do Dashboard.
  */
-export function ChartPeriodBar({
-  value,
-  onChange,
-  presets = CHART_PERIOD_PRESETS,
+export function CustomRangeItem({
+  active,
+  label,
+  from: initialFrom,
+  to: initialTo,
+  onApply,
 }: {
-  value: ChartPeriod;
-  onChange: (p: ChartPeriod) => void;
-  presets?: readonly ChartPeriodPreset[];
+  active: boolean;
+  label: string;
+  from: string;
+  to: string;
+  onApply: (from: string, to: string) => void;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLSpanElement>(null);
   const panelId = useId();
   const today = todayIso();
-  const current = resolveChartPeriod(value);
-  const [from, setFrom] = useState(current.from);
-  const [to, setTo] = useState(current.to);
+  const [from, setFrom] = useState(initialFrom);
+  const [to, setTo] = useState(initialTo);
 
   useEffect(() => {
     if (!open) return;
-    setFrom(current.from);
-    setTo(current.to);
+    setFrom(initialFrom);
+    setTo(initialTo);
     const onDoc = (e: MouseEvent) => {
       if (root.current && !root.current.contains(e.target as Node)) setOpen(false);
     };
@@ -48,50 +51,22 @@ export function ChartPeriodBar({
   }, [open]);
 
   const valid = from <= to && to <= today;
-  const changed =
-    valid && (value.preset !== 'custom' || from !== current.from || to !== current.to);
+  const changed = valid && (!active || from !== initialFrom || to !== initialTo);
 
   return (
     <span ref={root} className={`chart-period${open ? ' is-open' : ''}`}>
-      <span
-        className="tp-segmented chart-period__seg"
-        role="radiogroup"
-        aria-label={t.dash.chartPeriod.label}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={active}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
+        className={`tp-segmented__item${active ? ' is-active' : ''}`}
+        onClick={() => setOpen((o) => !o)}
       >
-        {presets.map((preset) =>
-          preset === 'custom' ? (
-            <button
-              key={preset}
-              type="button"
-              role="radio"
-              aria-checked={value.preset === 'custom'}
-              aria-haspopup="dialog"
-              aria-expanded={open}
-              aria-controls={open ? panelId : undefined}
-              className={`tp-segmented__item${value.preset === 'custom' ? ' is-active' : ''}`}
-              onClick={() => setOpen((o) => !o)}
-            >
-              {value.preset === 'custom'
-                ? rangeLabel(current.from, current.to)
-                : t.dash.chartPeriod.custom}
-            </button>
-          ) : (
-            <button
-              key={preset}
-              type="button"
-              role="radio"
-              aria-checked={value.preset === preset}
-              className={`tp-segmented__item${value.preset === preset ? ' is-active' : ''}`}
-              onClick={() => {
-                setOpen(false);
-                onChange({ preset });
-              }}
-            >
-              {t.dash.chartPeriod[preset]}
-            </button>
-          ),
-        )}
-      </span>
+        {label}
+      </button>
       {open && (
         <form
           id={panelId}
@@ -102,7 +77,7 @@ export function ChartPeriodBar({
           onSubmit={(e) => {
             e.preventDefault();
             if (!valid) return;
-            onChange({ preset: 'custom', from, to });
+            onApply(from, to);
             setOpen(false);
           }}
         >
@@ -135,6 +110,58 @@ export function ChartPeriodBar({
             </button>
           </div>
         </form>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Barra de atalhos do gráfico: Hoje · Ontem · 30 dias · 12 meses · Personalizado,
+ * no controle segmentado do sistema.
+ */
+export function ChartPeriodBar({
+  value,
+  onChange,
+  presets = CHART_PERIOD_PRESETS,
+}: {
+  value: ChartPeriod;
+  onChange: (p: ChartPeriod) => void;
+  presets?: readonly ChartPeriodPreset[];
+}) {
+  const { t } = useI18n();
+  const current = resolveChartPeriod(value);
+  return (
+    <span
+      className="tp-segmented chart-period__seg"
+      role="radiogroup"
+      aria-label={t.dash.chartPeriod.label}
+    >
+      {presets.map((preset) =>
+        preset === 'custom' ? (
+          <CustomRangeItem
+            key={preset}
+            active={value.preset === 'custom'}
+            label={
+              value.preset === 'custom'
+                ? rangeLabel(current.from, current.to)
+                : t.dash.chartPeriod.custom
+            }
+            from={current.from}
+            to={current.to}
+            onApply={(from, to) => onChange({ preset: 'custom', from, to })}
+          />
+        ) : (
+          <button
+            key={preset}
+            type="button"
+            role="radio"
+            aria-checked={value.preset === preset}
+            className={`tp-segmented__item${value.preset === preset ? ' is-active' : ''}`}
+            onClick={() => onChange({ preset })}
+          >
+            {t.dash.chartPeriod[preset]}
+          </button>
+        ),
       )}
     </span>
   );
