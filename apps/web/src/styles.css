@@ -4229,7 +4229,7 @@ a.bus-card:hover { transform: translateY(-1px); }
 .fcode__grid .tp-field:first-child { grid-column: 1 / -1; }
 .fcode__result { display: flex; align-items: center; gap: var(--tp-space-3); flex-wrap: wrap; }
 /* Código composto: o mesmo selo do sistema (sólido, 28 px, largura fixa,
-   cantos 8 px), só que em mono para o código ler bem. */
+   cantos 8 px), em mono e grafite escuro — cor que nenhuma flag usa. */
 .fcode__code, .fcode__inline {
   display: inline-flex;
   align-items: center;
@@ -4245,8 +4245,8 @@ a.bus-card:hover { transform: translateY(-1px); }
   letter-spacing: 0.04em;
   line-height: 1.5;
   border-radius: var(--tp-radius-md);
-  background: var(--color-brand-solid, var(--color-primary));
-  color: var(--color-on-solid);
+  background: var(--color-text);
+  color: var(--color-surface);
   border: var(--tp-border-thin) solid transparent;
   white-space: nowrap;
 }
