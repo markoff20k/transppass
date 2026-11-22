@@ -2164,6 +2164,9 @@ small.muted {
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto;
   z-index: 30;
+  /* Sem a animação de entrada do seletor grande: com ela o Chromium deixa o painel
+     pintado semitransparente sobre os cartões vizinhos depois que termina. */
+  animation: none;
 }
 .wperiod .wperiod__presets { border-right: 0; border-bottom: var(--tp-border-thin) solid var(--color-border); padding: 6px; }
 /* Atalhos mais compactos que no seletor grande: cabem sete sem rolagem. */
