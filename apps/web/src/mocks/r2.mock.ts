@@ -253,19 +253,19 @@ const history = MKBF_HIST.map((mkbf, i) => ({
 
 const specialtyIds: Record<string, string> = { MEC: 'sp-1', ELE: 'sp-2', PNE: 'sp-3', AC: 'sp-4' };
 const specialtyNames: Record<string, string> = { 'sp-1': 'Mecânica', 'sp-2': 'Elétrica', 'sp-3': 'Pneus', 'sp-4': 'Ar-condicionado' };
-const task = (id: string, code: string, description: string, sp: string, min: number): PlanTaskRow => ({ id, code, description, specialtyId: specialtyIds[sp]!, specialtyName: specialtyNames[specialtyIds[sp]!]!, estimatedMinutes: min , section: null, equipmentCondition: null, tools: [] });
+const task = (id: string, code: string, description: string, sp: string, min: number): PlanTaskRow => ({ id, code, description, specialtyId: specialtyIds[sp]!, specialtyName: specialtyNames[specialtyIds[sp]!]!, estimatedMinutes: min , section: null, equipmentCondition: null, tools: [], materials: [] });
 const plansTree: PlanTree[] = [
   {
     id: 'plan-1', code: 'PLAN-DIESEL', name: 'Plano preventivo — frota diesel', technology: 'DIESEL', manufacturer: null, vehicleModel: null, version: 1, controlledDocument: 'IT.MAN-01', effectiveFrom: '2026-01-01T00:00:00.000Z', isActive: true,
     packages: [
-      { id: 'pkg-1', code: 'P1', name: 'Revisão de 7.500 km', intervalKm: 7500, toleranceKm: 500, toleranceBelowKm: null, offsetKm: 0, periodDays: null, estimatedMinutes: 210,
+      { id: 'pkg-1', code: 'P1', name: 'Revisão de 7.500 km', intervalKm: 7500, toleranceKm: 500, toleranceBelowKm: null, offsetKm: 0, periodDays: null, kitAuto: false, estimatedMinutes: 210,
         tasks: [task('t-1', 'T01', 'Troca de óleo e filtro do motor', 'MEC', 60), task('t-2', 'T02', 'Filtro de ar', 'MEC', 20), task('t-3', 'T03', 'Filtro de combustível', 'MEC', 25), task('t-4', 'T04', 'Inspeção de freios e cuícas', 'PNE', 45), task('t-5', 'T05', 'Verificação do sistema de carga', 'ELE', 30), task('t-6', 'T06', 'Lubrificação de articulações', 'MEC', 30)],
         kit: { id: 'kit-1', code: 'KIT-P1', name: 'Kit 7.500 km diesel', version: 1, isActive: true, items: [
           { materialId: 'm-5', materialCode: 'OLEO-15W40', materialDescription: 'Óleo motor 15W40', unit: 'L', quantity: 28 },
           { materialId: 'm-7', materialCode: 'FIL-OL-01', materialDescription: 'Filtro de óleo', unit: 'un', quantity: 1 },
           { materialId: 'm-2', materialCode: 'FIL-AR-01', materialDescription: 'Filtro de ar motor', unit: 'un', quantity: 1 },
         ] } },
-      { id: 'pkg-2', code: 'P2', name: 'Revisão de 15.000 km', intervalKm: 15000, toleranceKm: 500, toleranceBelowKm: null, offsetKm: 0, periodDays: null, estimatedMinutes: 300,
+      { id: 'pkg-2', code: 'P2', name: 'Revisão de 15.000 km', intervalKm: 15000, toleranceKm: 500, toleranceBelowKm: null, offsetKm: 0, periodDays: null, kitAuto: false, estimatedMinutes: 300,
         tasks: [task('t-7', 'T01', 'Troca de óleo e filtro do motor', 'MEC', 60), task('t-8', 'T02', 'Filtros de ar, combustível e cabine', 'MEC', 45), task('t-9', 'T03', 'Inspeção completa de freios', 'PNE', 90), task('t-10', 'T04', 'Sistema de carga e baterias', 'ELE', 45), task('t-11', 'T05', 'Ar-condicionado: carga e filtros', 'AC', 60)],
         kit: null },
     ],
@@ -273,7 +273,7 @@ const plansTree: PlanTree[] = [
   {
     id: 'plan-2', code: 'PLAN-EBUS', name: 'Plano preventivo — eBUS', technology: 'EBUS', manufacturer: null, vehicleModel: null, version: 1, controlledDocument: 'IT.MAN-54', effectiveFrom: '2026-01-01T00:00:00.000Z', isActive: true,
     packages: [
-      { id: 'pkg-3', code: 'E1', name: 'Revisão de 10.000 km', intervalKm: 10000, toleranceKm: 500, toleranceBelowKm: null, offsetKm: 0, periodDays: null, estimatedMinutes: 145,
+      { id: 'pkg-3', code: 'E1', name: 'Revisão de 10.000 km', intervalKm: 10000, toleranceKm: 500, toleranceBelowKm: null, offsetKm: 0, periodDays: null, kitAuto: false, estimatedMinutes: 145,
         tasks: [task('t-12', 'T01', 'Inspeção do pack de baterias', 'ELE', 60), task('t-13', 'T02', 'Torque das conexões de alta tensão', 'ELE', 40), task('t-14', 'T03', 'Inspeção de freios regenerativos', 'PNE', 45)],
         kit: { id: 'kit-3', code: 'KIT-E1', name: 'Kit 10.000 km eBUS', version: 1, isActive: true, items: [{ materialId: 'm-8', materialCode: 'FIL-INV-01', materialDescription: 'Filtro de ar do inversor', unit: 'un', quantity: 1 }] } },
     ],
@@ -411,14 +411,14 @@ export const r2Handlers = [
   http.post('*/api/plans/:id/packages', async ({ request, params }) => {
     const plan = plansTree.find((p) => p.id === params.id);
     const body = (await request.json()) as { code: string; name: string; intervalKm: number; toleranceKm: number };
-    const pkg = { id: `pkg-${Date.now()}`, toleranceBelowKm: null, offsetKm: 0, periodDays: null, ...body, estimatedMinutes: 0, tasks: [], kit: null };
+    const pkg = { id: `pkg-${Date.now()}`, toleranceBelowKm: null, offsetKm: 0, periodDays: null, ...body, estimatedMinutes: 0, tasks: [], kit: null, kitAuto: false };
     plan?.packages.push(pkg);
     return HttpResponse.json(pkg, { status: 201 });
   }),
   http.post('*/api/plans/packages/:id/tasks', async ({ request, params }) => {
     const pkg = plansTree.flatMap((p) => p.packages).find((x) => x.id === params.id);
     const body = (await request.json()) as { code: string; description: string; specialtyId?: string; estimatedMinutes?: number };
-    const row = { id: `t-${Date.now()}`, code: body.code, description: body.description, specialtyId: body.specialtyId ?? null, specialtyName: body.specialtyId ? (specialtyNames[body.specialtyId] ?? null) : null, estimatedMinutes: body.estimatedMinutes ?? null, section: null, equipmentCondition: null, tools: [] };
+    const row = { id: `t-${Date.now()}`, code: body.code, description: body.description, specialtyId: body.specialtyId ?? null, specialtyName: body.specialtyId ? (specialtyNames[body.specialtyId] ?? null) : null, estimatedMinutes: body.estimatedMinutes ?? null, section: null, equipmentCondition: null, tools: [], materials: [] };
     pkg?.tasks.push(row);
     if (pkg) pkg.estimatedMinutes += row.estimatedMinutes ?? 0;
     return HttpResponse.json(row, { status: 201 });

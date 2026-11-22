@@ -16,6 +16,9 @@ import type {
   CatalogKitRow,
   TaskToolInput,
   TaskToolRow,
+  TaskMaterialInput,
+  TaskMaterialRow,
+  TaskMaterialsResult,
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit.service';
@@ -43,7 +46,7 @@ export class PlansService {
         packages: {
           orderBy: { intervalKm: 'asc' },
           include: {
-            tasks: { orderBy: { code: 'asc' }, include: { specialty: { select: { name: true } }, tools: { include: { tool: true } } } },
+            tasks: { orderBy: { code: 'asc' }, include: { specialty: { select: { name: true } }, tools: { include: { tool: true } }, materials: { include: { material: true }, orderBy: { material: { code: 'asc' } } } } },
             kits: {
               where: { isActive: true },
               orderBy: { version: 'desc' },
@@ -85,8 +88,10 @@ export class PlansService {
           section: t.section,
           equipmentCondition: t.equipmentCondition,
           tools: t.tools.map((tt) => ({ toolId: tt.toolId, code: tt.tool.code, description: tt.tool.description, quantity: tt.quantity })),
+          materials: t.materials.map(toTaskMaterialRow),
         })),
         kit: pkg.kits[0] ? toKitRow(pkg.kits[0]) : null,
+        kitAuto: pkg.tasks.some((t) => t.materials.length > 0),
         estimatedMinutes: pkg.tasks.reduce((sum, t) => sum + (t.estimatedMinutes ?? 0), 0),
       })),
     }));
@@ -177,6 +182,8 @@ export class PlansService {
     }
     await this.prisma.maintenanceTask.delete({ where: { id } });
     await this.audit.write({ actorId, action: 'plan.task.delete', entity: 'MaintenanceTask', entityId: id, before: { code: task.code, packageId: task.packageId } });
+    // Item 9: os materiais da tarefa saem do kit junto com ela.
+    await this.syncPackageKit(task.packageId, actorId);
   }
 
   // --- Kits ------------------------------------------------------------------
@@ -184,6 +191,7 @@ export class PlansService {
   async createKit(packageId: string, input: CreateKitInput, actorId: string): Promise<PlanKitRow> {
     const pkg = await this.prisma.maintenancePackage.findUnique({ where: { id: packageId } });
     if (!pkg) throw new NotFoundException('Pacote não encontrado');
+    await this.assertKitIsManual(packageId);
     await this.assertMaterials(input.items.map((i) => i.materialId));
     const last = await this.prisma.kit.findFirst({ where: { code: input.code }, orderBy: { version: 'desc' } });
     const kit = await this.prisma.$transaction(async (tx) => {
@@ -211,6 +219,7 @@ export class PlansService {
     if (!kit) throw new NotFoundException('Kit não encontrado');
 
     if (input.items) {
+      if (kit.packageId) await this.assertKitIsManual(kit.packageId);
       await this.assertMaterials(input.items.map((i) => i.materialId));
       const next = await this.prisma.$transaction(async (tx) => {
         await tx.kit.update({ where: { id }, data: { isActive: false, effectiveTo: new Date() } });
@@ -324,6 +333,88 @@ export class PlansService {
     return rows.map((tt) => ({ toolId: tt.toolId, code: tt.tool.code, description: tt.tool.description, quantity: tt.quantity }));
   }
 
+  // --- Item 9: material por tarefa e kit como soma automática ------------------
+
+  async addTaskMaterial(taskId: string, input: TaskMaterialInput, actorId: string): Promise<TaskMaterialsResult> {
+    const task = await this.prisma.maintenanceTask.findUnique({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Tarefa não encontrada');
+    await this.assertMaterials([input.materialId]);
+    await this.prisma.maintenanceTaskMaterial.upsert({
+      where: { taskId_materialId: { taskId, materialId: input.materialId } },
+      update: { quantity: input.quantity },
+      create: { taskId, materialId: input.materialId, quantity: input.quantity },
+    });
+    await this.audit.write({ actorId, action: 'plan.task.material.set', entity: 'MaintenanceTask', entityId: taskId, after: { materialId: input.materialId, quantity: input.quantity } });
+    const kit = await this.syncPackageKit(task.packageId, actorId);
+    return { materials: await this.listTaskMaterials(taskId), kit };
+  }
+
+  async removeTaskMaterial(taskId: string, materialId: string, actorId: string): Promise<TaskMaterialsResult> {
+    const task = await this.prisma.maintenanceTask.findUnique({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Tarefa não encontrada');
+    await this.prisma.maintenanceTaskMaterial.deleteMany({ where: { taskId, materialId } });
+    await this.audit.write({ actorId, action: 'plan.task.material.remove', entity: 'MaintenanceTask', entityId: taskId, after: { materialId } });
+    const kit = await this.syncPackageKit(task.packageId, actorId);
+    return { materials: await this.listTaskMaterials(taskId), kit };
+  }
+
+  private async listTaskMaterials(taskId: string): Promise<TaskMaterialRow[]> {
+    const rows = await this.prisma.maintenanceTaskMaterial.findMany({ where: { taskId }, include: { material: true }, orderBy: { material: { code: 'asc' } } });
+    return rows.map(toTaskMaterialRow);
+  }
+
+  /** Kit manual só enquanto nenhuma tarefa do pacote tem material. */
+  private async assertKitIsManual(packageId: string) {
+    const auto = await this.prisma.maintenanceTaskMaterial.count({ where: { task: { packageId } } });
+    if (auto > 0) {
+      throw new BadRequestException('O kit deste pacote é a soma dos materiais das tarefas: ajuste o material na tarefa');
+    }
+  }
+
+  /**
+   * Item 9: o kit do pacote é a soma automática dos materiais das tarefas.
+   * Mudou a soma, nasce uma versão nova (paradas já programadas seguem com a
+   * anterior, como em qualquer edição de kit). Sem material em tarefa nenhuma,
+   * o kit atual fica como está — é o pacote que ainda não migrou.
+   */
+  private async syncPackageKit(packageId: string, actorId: string) {
+    const [pkg, rows, current] = await Promise.all([
+      this.prisma.maintenancePackage.findUnique({ where: { id: packageId } }),
+      this.prisma.maintenanceTaskMaterial.findMany({ where: { task: { packageId } }, select: { materialId: true, quantity: true } }),
+      this.prisma.kit.findFirst({ where: { packageId, isActive: true }, orderBy: { version: 'desc' }, include: { items: { include: { material: true } } } }),
+    ]);
+    if (!pkg) return null;
+    const sum = new Map<string, number>();
+    for (const r of rows) sum.set(r.materialId, Math.round(((sum.get(r.materialId) ?? 0) + Number(r.quantity)) * 1000) / 1000);
+    if (sum.size === 0 && !current) return null;
+    const hadAuto = current ? await this.prisma.auditLog.count({ where: { entity: 'Kit', entityId: current.id, action: 'plan.kit.auto' } }) : 0;
+    // Sem material nas tarefas e kit montado à mão: nada a fazer.
+    if (sum.size === 0 && !hadAuto) return current ? toKitRow(current) : null;
+    const same =
+      current &&
+      current.items.length === sum.size &&
+      current.items.every((i) => sum.get(i.materialId) === Number(i.quantity));
+    if (same) return toKitRow(current);
+    const code = current?.code ?? `KIT-${pkg.code}`;
+    const last = await this.prisma.kit.findFirst({ where: { code }, orderBy: { version: 'desc' } });
+    const next = await this.prisma.$transaction(async (tx) => {
+      await tx.kit.updateMany({ where: { packageId, isActive: true }, data: { isActive: false, effectiveTo: new Date() } });
+      return tx.kit.create({
+        data: {
+          code,
+          name: current?.name ?? `Kit ${pkg.name}`,
+          packageId,
+          version: (last?.version ?? 0) + 1,
+          effectiveFrom: new Date(),
+          items: { create: [...sum.entries()].map(([materialId, quantity]) => ({ materialId, quantity })) },
+        },
+        include: { items: { include: { material: true } } },
+      });
+    });
+    await this.audit.write({ actorId, action: 'plan.kit.auto', entity: 'Kit', entityId: next.id, before: { version: current?.version ?? null }, after: { version: next.version, items: sum.size } });
+    return toKitRow(next);
+  }
+
   // --- Kaizen 2: kit corretivo por falha do catálogo -----------------------------
 
   async listCatalogKits(): Promise<CatalogKitRow[]> {
@@ -366,6 +457,16 @@ export class PlansService {
     return { ...toKitRow(kit), catalogItemId };
   }
 
+}
+
+function toTaskMaterialRow(r: { materialId: string; quantity: { toNumber(): number } | number; material: { code: string; description: string; unit: string } }): TaskMaterialRow {
+  return {
+    materialId: r.materialId,
+    code: r.material.code,
+    description: r.material.description,
+    unit: r.material.unit,
+    quantity: typeof r.quantity === 'number' ? r.quantity : r.quantity.toNumber(),
+  };
 }
 
 function toKitRow(kit: {

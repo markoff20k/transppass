@@ -71,6 +71,27 @@ export interface TaskToolRow {
   quantity: number;
 }
 
+/** Item 9 — material que a tarefa consome. O kit do pacote é a soma destes itens. */
+export const taskMaterialSchema = z.object({
+  materialId: z.string().uuid('Selecione o material'),
+  quantity: z.coerce.number({ invalid_type_error: 'Informe a quantidade' }).positive('A quantidade precisa ser maior que zero').max(100_000),
+});
+export type TaskMaterialInput = z.infer<typeof taskMaterialSchema>;
+
+export interface TaskMaterialRow {
+  materialId: string;
+  code: string;
+  description: string;
+  unit: string;
+  quantity: number;
+}
+
+/** Resposta de vincular/remover material: as linhas da tarefa e o kit recalculado do pacote. */
+export interface TaskMaterialsResult {
+  materials: TaskMaterialRow[];
+  kit: PlanKitRow | null;
+}
+
 export const kitItemInputSchema = z.object({
   materialId: z.string().uuid(),
   quantity: z.coerce.number().positive('Quantidade deve ser maior que zero'),
@@ -134,6 +155,8 @@ export interface PlanTaskRow {
   section: string | null;
   equipmentCondition: string | null;
   tools: TaskToolRow[];
+  /** Item 9: material necessário (opcional). */
+  materials: TaskMaterialRow[];
 }
 
 export interface KitItemRow {
@@ -170,6 +193,8 @@ export interface PlanPackageTree {
   tasks: PlanTaskRow[];
   /** Versão vigente do kit (a mais recente ativa), se houver. */
   kit: PlanKitRow | null;
+  /** Item 9: alguma tarefa tem material — o kit é a soma automática e não se edita à mão. */
+  kitAuto: boolean;
   estimatedMinutes: number;
 }
 

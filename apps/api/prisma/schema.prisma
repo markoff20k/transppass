@@ -612,9 +612,25 @@ model MaintenanceTask {
   specialty  Specialty?            @relation(fields: [specialtyId], references: [id])
   scopeItems ScheduleScopeItem[]
   tools      MaintenanceTaskTool[]
+  materials  MaintenanceTaskMaterial[]
 
   @@unique([packageId, code])
   @@map("maintenance_tasks")
+}
+
+/// Item 9 do cliente — material necessário por tarefa do plano. Opcional: tarefa de
+/// verificação não consome peça. O kit do pacote passa a ser a soma destes itens.
+model MaintenanceTaskMaterial {
+  id         String  @id @default(uuid()) @db.Uuid
+  taskId     String  @db.Uuid
+  materialId String  @db.Uuid
+  quantity   Decimal @db.Decimal(12, 3)
+
+  task     MaintenanceTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  material Material        @relation(fields: [materialId], references: [id])
+
+  @@unique([taskId, materialId])
+  @@map("maintenance_task_materials")
 }
 
 /// Kaizen 3 — ferramental necessário por tarefa do plano (FR.168).
@@ -839,6 +855,7 @@ model Material {
   warrantyKm      Int?
 
   kitItems             KitItem[]
+  taskMaterials        MaintenanceTaskMaterial[]
   recordMaterials      MaintenanceRecordMaterial[]
   materialRequests     MaterialRequest[]
   poolComponents       PoolComponent[]

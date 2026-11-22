@@ -1,6 +1,9 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
+  taskMaterialSchema,
+  type TaskMaterialInput,
+  type TaskMaterialsResult,
   createKitSchema,
   taskToolSchema,
   createMaterialSchema,
@@ -137,6 +140,20 @@ export class PlansController {
   @Roles(...EDITORS)
   removeTaskTool(@Param('id', ParseUUIDPipe) id: string, @Param('toolId', ParseUUIDPipe) toolId: string, @CurrentUser('sub') actorId: string): Promise<TaskToolRow[]> {
     return this.plans.removeTaskTool(id, toolId, actorId);
+  }
+
+  // --- Item 9: material por tarefa (o kit do pacote é a soma) ------------------
+
+  @Post('tasks/:id/materials')
+  @Roles(...EDITORS)
+  addTaskMaterial(@Param('id', ParseUUIDPipe) id: string, @Body(new ZodValidationPipe(taskMaterialSchema)) body: TaskMaterialInput, @CurrentUser('sub') actorId: string): Promise<TaskMaterialsResult> {
+    return this.plans.addTaskMaterial(id, body, actorId);
+  }
+
+  @Delete('tasks/:id/materials/:materialId')
+  @Roles(...EDITORS)
+  removeTaskMaterial(@Param('id', ParseUUIDPipe) id: string, @Param('materialId', ParseUUIDPipe) materialId: string, @CurrentUser('sub') actorId: string): Promise<TaskMaterialsResult> {
+    return this.plans.removeTaskMaterial(id, materialId, actorId);
   }
 
   // --- Kaizen 2: kits corretivos por falha do catálogo ---------------------------

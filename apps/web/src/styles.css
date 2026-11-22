@@ -4743,6 +4743,7 @@ a.bus-card:hover { transform: translateY(-1px); }
 .mat-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; font-size: var(--tp-text-2xs); color: var(--color-text-muted); font-family: var(--tp-font-mono); }
 .tp-table__more { text-align: center; padding: var(--tp-space-2) !important; }
 .plan-task__cond { display: block; font-size: var(--tp-text-2xs); color: var(--color-text-muted); }
+.plan-task__cond svg { display: inline-block; vertical-align: -1px; margin-right: 2px; }
 
 /* Técnicos */
 .tech-level--3 { background: var(--color-success-soft); color: var(--color-success-text); }
@@ -5662,3 +5663,13 @@ input.tp-input[type="datetime-local"] { height: 36px; padding-top: 0; padding-bo
 .dtc__sort { all: unset; cursor: pointer; }
 .dtc__sort.is-active { color: var(--color-brand); }
 @media (max-width: 560px) { .dtc__summary { grid-template-columns: 1fr; } .dtc__bar { display: none; } }
+
+/* Item 9: material por tarefa e kit como soma automática. */
+.field-materials__row--taskmat { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto; gap: var(--tp-space-2); }
+.task-tools__qty { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: var(--tp-weight-semibold); white-space: nowrap; }
+.task-tools li .task-tools__qty + button { margin-left: 0; }
+/* Código e minutos da tarefa numa linha só (quebravam letra a letra com o kit ao lado). */
+.plan-tasks td:first-child, .plan-tasks th:first-child, .plan-tasks .is-num { white-space: nowrap; }
+.plan-kit__auto { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 8px; background: var(--color-surface-sunken); color: var(--color-text-secondary); font-size: var(--tp-text-xs); white-space: nowrap; }
+.plan-kit__hint { margin: 0 0 var(--tp-space-2); }
+.plan-kit__tasks { font-size: var(--tp-text-xs); white-space: nowrap; }

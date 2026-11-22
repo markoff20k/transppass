@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Package, Plus, Trash2, Wrench } from 'lucide-react';
+import { Boxes, ChevronDown, ChevronRight, Package, Plus, Trash2, Wrench } from 'lucide-react';
 import {
+  type TaskMaterialRow,
+  type TaskMaterialsResult,
   VEHICLE_TECHNOLOGY_LABELS,
   VehicleTechnology,
   createKitSchema,
@@ -199,6 +201,12 @@ export function PlansPage() {
                                         {t.tools.map((x) => x.description).join(', ')}
                                       </span>
                                     )}
+                                    {t.materials.length > 0 && (
+                                      <span className="plan-task__cond plan-task__mat">
+                                        <Boxes size={11} />{' '}
+                                        {t.materials.map((m) => `${m.description} (${formatQty(m.quantity)} ${m.unit})`).join(', ')}
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="tp-muted">{t.specialtyName ?? '—'}</td>
                                   <td className="is-num">{t.estimatedMinutes ?? '—'}</td>
@@ -216,20 +224,31 @@ export function PlansPage() {
                           <Package size={14} /> Kit{' '}
                           {pkg.kit ? `· ${pkg.kit.name} v${pkg.kit.version}` : ''}
                         </h4>
-                        <button
-                          type="button"
-                          className="tp-btn tp-btn--ghost tp-btn--sm"
-                          onClick={() => setPanel({ kind: 'kit', pkg, kit: pkg.kit })}
-                        >
-                          {pkg.kit ? (
-                            'Editar kit'
-                          ) : (
-                            <>
-                              <Plus size={14} /> Kit
-                            </>
-                          )}
-                        </button>
+                        {pkg.kitAuto ? (
+                          <span className="plan-kit__auto" title="O kit é recalculado a cada material vinculado ou removido nas tarefas">
+                            soma das tarefas
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="tp-btn tp-btn--ghost tp-btn--sm"
+                            onClick={() => setPanel({ kind: 'kit', pkg, kit: pkg.kit })}
+                          >
+                            {pkg.kit ? (
+                              'Editar kit'
+                            ) : (
+                              <>
+                                <Plus size={14} /> Kit
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
+                      {!pkg.kitAuto && pkg.tasks.length > 0 && (
+                        <p className="tp-help plan-kit__hint">
+                          Item 9: cadastre o material em cada tarefa; o kit passa a ser a soma automática.
+                        </p>
+                      )}
                       {!pkg.kit || pkg.kit.items.length === 0 ? (
                         <p className="tp-muted">
                           Sem kit — o Estoque não tem o que separar em D-1 (RF-25).
@@ -240,6 +259,7 @@ export function PlansPage() {
                             <thead>
                               <tr>
                                 <th>Material</th>
+                                {pkg.kitAuto && <th>Tarefas</th>}
                                 <th className="is-num">Qtd</th>
                               </tr>
                             </thead>
@@ -250,6 +270,14 @@ export function PlansPage() {
                                     <b>{i.materialCode}</b>{' '}
                                     <span className="tp-muted">{i.materialDescription}</span>
                                   </td>
+                                  {pkg.kitAuto && (
+                                    <td className="tp-muted plan-kit__tasks">
+                                      {pkg.tasks
+                                        .filter((t) => t.materials.some((m) => m.materialId === i.materialId))
+                                        .map((t) => t.code)
+                                        .join(', ')}
+                                    </td>
+                                  )}
                                   <td className="is-num">
                                     {i.quantity} {i.unit}
                                   </td>
@@ -771,10 +799,11 @@ function TaskDrawer({
             Define quem executa a sub-OS quando a parada vira OS (RF-18).
           </span>
         </label>
+        {task && <TaskMaterials taskId={task.id} initial={task.materials} />}
         {task && <TaskTools taskId={task.id} initial={task.tools} />}
         {!task && (
           <span className="tp-help">
-            Salve a tarefa para listar o ferramental que ela exige (Kaizen 3).
+            Salve a tarefa para listar o material e o ferramental que ela exige.
           </span>
         )}
         {error && <p className="tp-error">{error}</p>}
@@ -851,6 +880,110 @@ function TaskTools({ taskId, initial }: { taskId: string; initial: TaskToolRow[]
           <Plus size={14} /> Vincular
         </button>
       </div>
+      {error && <p className="tp-error">{error}</p>}
+    </div>
+  );
+}
+
+/** Quantidade sem zeros à direita: 34 L, 0,5 un. */
+function formatQty(q: number): string {
+  return q.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+}
+
+/**
+ * Item 9 — material necessário para executar a tarefa (opcional: tarefa de
+ * verificação não consome peça). Salva na hora; cada mudança recalcula o kit
+ * do pacote, que passa a ser a soma do material das tarefas.
+ */
+function TaskMaterials({ taskId, initial }: { taskId: string; initial: TaskMaterialRow[] }) {
+  const queryClient = useQueryClient();
+  const [rows, setRows] = useState<TaskMaterialRow[]>(initial);
+  const [materialId, setMaterialId] = useState('');
+  const [quantity, setQuantity] = useState('1');
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => setRows(initial), [initial]);
+  const materials = useQuery({
+    queryKey: ['materials', 'catalog'],
+    queryFn: () => api.get<MaterialOption[]>('/materials/catalog'),
+  });
+  const unit = (materials.data ?? []).find((m) => m.id === materialId)?.unit;
+  const refresh = (next: TaskMaterialsResult) => {
+    setRows(next.materials);
+    setMaterialId('');
+    setQuantity('1');
+    setError(null);
+    void queryClient.invalidateQueries({ queryKey: ['plans'] });
+  };
+  const qty = Number(quantity.replace(',', '.'));
+  const add = useMutation({
+    meta: { success: 'Material vinculado — kit do pacote recalculado' },
+    mutationFn: () => api.post<TaskMaterialsResult>(`/plans/tasks/${taskId}/materials`, { materialId, quantity: qty }),
+    onSuccess: refresh,
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao vincular'),
+  });
+  const remove = useMutation({
+    meta: { success: 'Material removido — kit do pacote recalculado' },
+    mutationFn: (id: string) => api.delete<TaskMaterialsResult>(`/plans/tasks/${taskId}/materials/${id}`),
+    onSuccess: refresh,
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao remover'),
+  });
+  return (
+    <div className="tp-field">
+      <span className="tp-label">
+        Material necessário <span className="tp-label__hint">opcional · soma no kit do pacote</span>
+      </span>
+      {rows.length === 0 && <span className="tp-help">Nenhum material: tarefa de verificação não consome peça.</span>}
+      <ul className="task-tools">
+        {rows.map((r) => (
+          <li key={r.materialId}>
+            <Boxes size={12} /> <span>{r.description}</span> <code className="tp-mono">{r.code}</code>
+            <b className="task-tools__qty">
+              {formatQty(r.quantity)} {r.unit}
+            </b>
+            <button
+              type="button"
+              className="tp-btn tp-btn--ghost tp-btn--sm"
+              aria-label={`Remover ${r.description}`}
+              onClick={() => remove.mutate(r.materialId)}
+            >
+              <Trash2 size={13} />
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="field-materials__row field-materials__row--taskmat">
+        <SearchSelect
+          value={materialId}
+          onChange={setMaterialId}
+          placeholder="Código, descrição ou referência"
+          options={(materials.data ?? [])
+            .filter((m) => !rows.some((r) => r.materialId === m.id))
+            .map((m) => ({
+              id: m.id,
+              label: m.description,
+              hint: `${m.code}${m.manufacturerRef ? ` · ${m.manufacturerRef}` : ''}`,
+            }))}
+        />
+        <input
+          className="tp-input"
+          type="number"
+          min={0}
+          step="any"
+          value={quantity}
+          aria-label="Quantidade"
+          placeholder={unit ?? 'qtd'}
+          onChange={(e) => setQuantity(e.target.value)}
+        />
+        <button
+          type="button"
+          className="tp-btn tp-btn--sm"
+          disabled={!materialId || !(qty > 0) || add.isPending}
+          onClick={() => add.mutate()}
+        >
+          <Plus size={14} /> Vincular
+        </button>
+      </div>
+      {materialId && unit && <span className="tp-help">Quantidade em {unit}.</span>}
       {error && <p className="tp-error">{error}</p>}
     </div>
   );
