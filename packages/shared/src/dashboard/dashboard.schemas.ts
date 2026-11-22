@@ -118,8 +118,33 @@ export interface DashboardData {
     safetyEventsOpen: number;
   };
 
+  /** Verso dos três cartões do painel: o porquê do número da frente. */
+  backs: DashboardBacks;
+
   recentEvents: FailureEventSummary[];
   vehicles: DashboardVehicle[];
+}
+
+export interface DashboardBacks {
+  mkbf: {
+    /** Mesmo tamanho de janela, logo antes do período. */
+    previous: { kmTraveled: number; unscheduledReturns: number; mkbf: number | null };
+    /** Até três sistemas com mais quebras no período (nome do catálogo ou grupo do CCO). */
+    topSystems: { name: string; count: number }[];
+    worstVehicle: { code: string; count: number } | null;
+  };
+  queue: {
+    /** Até três carros há mais tempo na fila. */
+    oldest: { code: string; hours: number }[];
+    /** Espera média (h) de quem começou o serviço no período. */
+    averageWaitHours: number | null;
+    enteredToday: number;
+    startedToday: number;
+  };
+  workOrders: {
+    byStage: { open: number; inProgress: number; waitingPart: number; techClosed: number; inInspection: number; inCleaning: number };
+    mostOverdue: { id: string; code: string; vehicleCode: string; lateHours: number } | null;
+  };
 }
 
 // ---------------------------------------------------------------------------

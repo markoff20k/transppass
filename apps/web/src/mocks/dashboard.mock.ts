@@ -174,6 +174,18 @@ export function buildDashboard(): DashboardData {
     workOrders: { open: 4, overdue: 1, releasedInPeriod: 23, averageDowntimeMinutes: 386 },
     materials: { pending: 3, overdueParts: 1 },
     alerts: { degradedKm: 1, pendingTriage: 1, safetyEventsOpen: 2 },
+    backs: {
+      mkbf: {
+        previous: { kmTraveled: 398_100, unscheduledReturns: 112, mkbf: 3_554 },
+        topSystems: [{ name: 'Motor', count: 31 }, { name: 'Elétrica', count: 24 }, { name: 'Portas', count: 17 }],
+        worstVehicle: { code: '10003', count: 6 },
+      },
+      queue: { oldest: [{ code: '10001', hours: 3.1 }, { code: '10004', hours: 1.4 }], averageWaitHours: 2.6, enteredToday: 3, startedToday: 2 },
+      workOrders: {
+        byStage: { open: 1, inProgress: 1, waitingPart: 1, techClosed: 0, inInspection: 1, inCleaning: 0 },
+        mostOverdue: { id: 'wo-1', code: 'OS-2026-0392', vehicleCode: '10003', lateHours: 26.2 },
+      },
+    },
     recentEvents: recentEvents(),
     vehicles: vs,
   };

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownRight, ArrowUpRight, Minus, RefreshCw } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Minus, RefreshCw, Repeat2, Undo2 } from 'lucide-react';
 import {
   DASHBOARD_PERIODS,
   DEFAULT_DASHBOARD_PERIOD,
@@ -24,6 +24,7 @@ import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
 import { BackFoot, BackHead, FlipButton, MaintenanceBack } from '@/components/fleet/fleet-card';
 import { useFlip } from '@/components/fleet/use-flip';
 import { NoticeBoard, TickerSwitch } from '@/components/dashboard/notice-board';
+import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import {
   AvailabilityByHourChart,
   DowntimeDonut,
@@ -54,7 +55,12 @@ const STAGES: { key: StageKey; statuses: VehicleStatus[]; family: Family; to: st
   { key: 'queue', statuses: ['AWAITING_MAINTENANCE'], family: 'waiting', to: '/fila' },
   { key: 'shop', statuses: ['IN_MAINTENANCE'], family: 'working', to: '/os?status=IN_PROGRESS' },
   { key: 'part', statuses: ['AWAITING_PART'], family: 'stopped', to: '/estoque' },
-  { key: 'release', statuses: ['IN_INSPECTION', 'IN_CLEANING'], family: 'working', to: '/os?status=RELEASING' },
+  {
+    key: 'release',
+    statuses: ['IN_INSPECTION', 'IN_CLEANING'],
+    family: 'working',
+    to: '/os?status=RELEASING',
+  },
 ];
 
 export function DashboardPage() {
@@ -74,7 +80,14 @@ export function DashboardPage() {
     ),
   });
 
-  const { data: fresh, isPending, isError, error, refetch, isFetching } = useQuery({
+  const {
+    data: fresh,
+    isPending,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery({
     queryKey: ['dashboard', days],
     queryFn: () => api.get<DashboardData>(`/dashboard?days=${days}`),
     refetchInterval: 60_000,
@@ -96,8 +109,15 @@ export function DashboardPage() {
   if (!data) {
     return (
       <div className="tp-alert tp-alert--danger dash-error" role="alert">
-        <span>{t.dash.error} {describeError(error, t)}</span>
-        <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm" onClick={() => void refetch()} disabled={isFetching}>
+        <span>
+          {t.dash.error} {describeError(error, t)}
+        </span>
+        <button
+          type="button"
+          className="tp-btn tp-btn--secondary tp-btn--sm"
+          onClick={() => void refetch()}
+          disabled={isFetching}
+        >
           <RefreshCw size={14} className={isFetching ? 'is-spinning' : undefined} /> {t.dash.retry}
         </button>
       </div>
@@ -106,8 +126,15 @@ export function DashboardPage() {
 
   const staleNotice = isError ? (
     <div className="tp-alert tp-alert--warning dash-error" role="status">
-      <span>{t.dash.staleError} {describeError(error, t)}</span>
-      <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm" onClick={() => void refetch()} disabled={isFetching}>
+      <span>
+        {t.dash.staleError} {describeError(error, t)}
+      </span>
+      <button
+        type="button"
+        className="tp-btn tp-btn--secondary tp-btn--sm"
+        onClick={() => void refetch()}
+        disabled={isFetching}
+      >
         <RefreshCw size={14} className={isFetching ? 'is-spinning' : undefined} /> {t.dash.retry}
       </button>
     </div>
@@ -115,7 +142,11 @@ export function DashboardPage() {
 
   const availabilityPct = Math.round(data.fleet.availabilityRate * 1000) / 10;
   const availabilityTone: Tone =
-    availabilityPct >= AVAILABILITY_TARGET ? 'good' : availabilityPct >= AVAILABILITY_TARGET - 10 ? 'warn' : 'danger';
+    availabilityPct >= AVAILABILITY_TARGET
+      ? 'good'
+      : availabilityPct >= AVAILABILITY_TARGET - 10
+        ? 'warn'
+        : 'danger';
 
   return (
     <div className="dash">
@@ -123,53 +154,88 @@ export function DashboardPage() {
       {/* ---- Avisos e alertas: o que pede atenção, antes de qualquer número ---- */}
       <NoticeBoard />
       {/* ---- Centro de comando: anel, fluxo e os três números ---- */}
-      <section className="dash-hero dash-glass" aria-label={t.dash.title}>
-        <div className="dash-gauge">
-          <div className="dash-gauge__ring">
-            <RingGauge value={availabilityPct} target={AVAILABILITY_TARGET} tone={availabilityTone} label={t.dash.availability} />
-            <div className="dash-gauge__center">
-              <strong className="dash-gauge__value">
-                {availabilityPct.toLocaleString('pt-BR')}
-                <small>%</small>
-              </strong>
-              <span className="dash-gauge__label">{t.dash.availability}</span>
-            </div>
-          </div>
-          <div className="dash-gauge__foot">
-            <span className="dash-gauge__ready">
-              <b>{data.fleet.available}</b> {t.dash.of} <b>{data.fleet.total}</b> {t.dash.readyBuses}
-            </span>
-            <span className="dash-gauge__meta">
-              <Delta value={data.fleet.availabilityDelta} suffix=" pp" label={t.dash.vs7d} />
-              <span className="dash-gauge__target">
-                {t.dash.target} {AVAILABILITY_TARGET}%
-              </span>
-            </span>
-          </div>
-        </div>
-
-        <div className="dash-flow-wrap">
-          <div className="dash-flow-wrap__head">
+      <CollapsibleCard
+        id="dash.flow"
+        className="dash-hero dash-glass"
+        label={t.dash.title}
+        head={
+          <>
             <div>
               <h3>{t.dash.flowTitle}</h3>
               <span className="chart__hint">{t.dash.flowHint}</span>
             </div>
             <ul className="dash-flow-legend" aria-label={t.dash.legendLabel}>
-              <li className="dash-flow-legend__item dash-flow-legend__item--waiting">{t.dash.flowLegend.waiting}</li>
-              <li className="dash-flow-legend__item dash-flow-legend__item--working">{t.dash.flowLegend.working}</li>
-              <li className="dash-flow-legend__item dash-flow-legend__item--stopped">{t.dash.flowLegend.stopped}</li>
-              <li className="dash-flow-legend__item dash-flow-legend__item--empty">{t.dash.flowLegend.empty}</li>
+              <li className="dash-flow-legend__item dash-flow-legend__item--waiting">
+                {t.dash.flowLegend.waiting}
+              </li>
+              <li className="dash-flow-legend__item dash-flow-legend__item--working">
+                {t.dash.flowLegend.working}
+              </li>
+              <li className="dash-flow-legend__item dash-flow-legend__item--stopped">
+                {t.dash.flowLegend.stopped}
+              </li>
+              <li className="dash-flow-legend__item dash-flow-legend__item--empty">
+                {t.dash.flowLegend.empty}
+              </li>
             </ul>
+          </>
+        }
+      >
+        <div className="dash-hero__grid">
+          <div className="dash-gauge">
+            <div className="dash-gauge__ring">
+              <RingGauge
+                value={availabilityPct}
+                target={AVAILABILITY_TARGET}
+                tone={availabilityTone}
+                label={t.dash.availability}
+              />
+              <div className="dash-gauge__center">
+                <strong className="dash-gauge__value">
+                  {availabilityPct.toLocaleString('pt-BR')}
+                  <small>%</small>
+                </strong>
+                <span className="dash-gauge__label">{t.dash.availability}</span>
+              </div>
+            </div>
+            <div className="dash-gauge__foot">
+              <span className="dash-gauge__ready">
+                <b>{data.fleet.available}</b> {t.dash.of} <b>{data.fleet.total}</b>{' '}
+                {t.dash.readyBuses}
+              </span>
+              <span className="dash-gauge__meta">
+                <Delta value={data.fleet.availabilityDelta} suffix=" pp" label={t.dash.vs7d} />
+                <span className="dash-gauge__target">
+                  {t.dash.target} {AVAILABILITY_TARGET}%
+                </span>
+              </span>
+            </div>
           </div>
-          <GarageFlow byStatus={data.fleet.byStatus} />
-          <StatusSummary byStatus={data.fleet.byStatus} total={data.fleet.total} />
+          <div className="dash-flow-wrap">
+            <GarageFlow byStatus={data.fleet.byStatus} />
+            <StatusSummary byStatus={data.fleet.byStatus} total={data.fleet.total} />
+          </div>
         </div>
-
-        <div className="dash-hero__kpis">
+      </CollapsibleCard>
+      {/* ---- Os três números, cada um com o porquê no verso ---- */}
+      <CollapsibleCard
+        id="dash.kpis"
+        className="dash-kpis dash-glass"
+        label={t.dash.kpisTitle}
+        head={
+          <div>
+            <h3>{t.dash.kpisTitle}</h3>
+            <span className="chart__hint">{t.dash.kpisHint}</span>
+          </div>
+        }
+      >
+        <div className="dash-kpis__grid">
           <Kpi
             label={t.dash.mkbf}
             hint={`${t.dash.mkbfHint} · ${periodLabel}`}
-            value={data.mkbf.period.mkbf === null ? '—' : `${formatNumber(data.mkbf.period.mkbf)} km`}
+            value={
+              data.mkbf.period.mkbf === null ? '—' : `${formatNumber(data.mkbf.period.mkbf)} km`
+            }
             tone="brand"
             spark={data.mkbf.series.map((p) => p.mkbf)}
             sparkColor="var(--chart-1)"
@@ -178,6 +244,9 @@ export function DashboardPage() {
                 ? t.dash.noReturns
                 : `${formatNumber(data.mkbf.period.kmTraveled)} km ÷ ${formatNumber(data.mkbf.period.unscheduledReturns)} ${t.dash.breakdowns}`
             }
+            back={<MkbfBack data={data} />}
+            backTo="/indicadores"
+            backLabel={t.dash.back.openIndicators}
           />
           <Kpi
             label={t.dash.inQueue}
@@ -189,6 +258,9 @@ export function DashboardPage() {
                 ? `+ ${data.queue.inService} ${t.dash.inService} · ${t.dash.oldest} ${data.queue.oldestWaitingHours}${t.dash.hours}`
                 : `+ ${data.queue.inService} ${t.dash.inService}`
             }
+            back={<QueueBack data={data} />}
+            backTo="/fila"
+            backLabel={t.dash.back.openQueue}
           />
           <Kpi
             label={t.dash.openWo}
@@ -198,13 +270,22 @@ export function DashboardPage() {
             note={[
               data.workOrders.overdue > 0 ? `${data.workOrders.overdue} ${t.dash.overdue}` : null,
               `${data.workOrders.releasedInPeriod} ${t.dash.releasedIn.replace('{n}', String(days))}`,
-              data.workOrders.averageDowntimeMinutes !== null ? `${t.dash.avg} ${formatMinutes(data.workOrders.averageDowntimeMinutes)} ${t.dash.perWo}` : null,
+              data.workOrders.averageDowntimeMinutes !== null
+                ? `${t.dash.avg} ${formatMinutes(data.workOrders.averageDowntimeMinutes)} ${t.dash.perWo}`
+                : null,
             ]
               .filter(Boolean)
               .join(' · ')}
+            back={<WorkOrdersBack data={data} />}
+            backTo={
+              data.backs.workOrders.mostOverdue
+                ? `/os/${data.backs.workOrders.mostOverdue.id}`
+                : '/os'
+            }
+            backLabel={t.dash.back.openWo}
           />
         </div>
-      </section>
+      </CollapsibleCard>
 
       {/* ---- A frota, carro a carro ---- */}
       <FleetNow vehicles={data.vehicles} />
@@ -222,7 +303,9 @@ export function DashboardPage() {
         <div className="tp-card dash-glass">
           <div className="chart__title">
             <h3>{t.dash.availByHour}</h3>
-            <span className="chart__hint">{t.dash.availByHourHint.replace('{n}', String(days))}</span>
+            <span className="chart__hint">
+              {t.dash.availByHourHint.replace('{n}', String(days))}
+            </span>
           </div>
           <AvailabilityByHourChart data={data.availabilityByHour} days={days} />
         </div>
@@ -240,7 +323,12 @@ export function DashboardPage() {
         <div className="tp-card dash-glass">
           <div className="chart__title">
             <h3>{data.eventsBucket === 'week' ? t.dash.eventsPerWeek : t.dash.eventsPerDay}</h3>
-            <span className="chart__hint">{(data.eventsBucket === 'week' ? t.dash.eventsPerWeekHint : t.dash.eventsPerDayHint).replace('{n}', String(days))}</span>
+            <span className="chart__hint">
+              {(data.eventsBucket === 'week'
+                ? t.dash.eventsPerWeekHint
+                : t.dash.eventsPerDayHint
+              ).replace('{n}', String(days))}
+            </span>
           </div>
           <EventsPerDayChart data={data.eventsPerDay} bucket={data.eventsBucket} />
         </div>
@@ -263,7 +351,9 @@ export function DashboardPage() {
                   <span>{e.catalog?.description ?? e.reportedDescription ?? e.code}</span>
                 </div>
                 <div className="recent-list__meta">
-                  <span className={`tp-badge tp-badge--status ${badgeFor(e.status)}`}>{EVENT_STATUS_LABELS[e.status]}</span>
+                  <span className={`tp-badge tp-badge--status ${badgeFor(e.status)}`}>
+                    {EVENT_STATUS_LABELS[e.status]}
+                  </span>
                   <span className="tp-muted">{formatDateTime(e.reportedAt)}</span>
                 </div>
               </li>
@@ -284,7 +374,15 @@ export function DashboardPage() {
 
 type Tone = 'good' | 'warn' | 'danger' | 'brand' | 'neutral';
 
-function Delta({ value, suffix = '', label }: { value: number | null | undefined; suffix?: string; label?: string }) {
+function Delta({
+  value,
+  suffix = '',
+  label,
+}: {
+  value: number | null | undefined;
+  suffix?: string;
+  label?: string;
+}) {
   if (value === null || value === undefined) return null;
   const Icon = value === 0 ? Minus : value > 0 ? ArrowUpRight : ArrowDownRight;
   const tone = value === 0 ? 'neutral' : value > 0 ? 'good' : 'danger';
@@ -310,6 +408,9 @@ function Kpi({
   note,
   spark,
   sparkColor,
+  back,
+  backTo,
+  backLabel,
 }: {
   label: string;
   hint?: string;
@@ -321,12 +422,26 @@ function Kpi({
   note?: string;
   spark?: (number | null)[];
   sparkColor?: string;
+  /** Verso do cartão: o porquê do número. Com ele, o cartão vira ao clicar. */
+  back?: ReactNode;
+  /** Tela onde o assunto do verso se resolve, e o texto do atalho. */
+  backTo?: string;
+  backLabel?: string;
 }) {
-  return (
-    <div className={`dash-kpi dash-kpi--${tone}`}>
+  const { t } = useI18n();
+  const [flipped, setFlipped] = useState(false);
+  const front = (
+    <>
       <div className="dash-kpi__head">
         <span className="tp-kpi__label">{label}</span>
-        {hint && <span className="dash-kpi__hint">{hint}</span>}
+        <span className="dash-kpi__head-right">
+          {hint && <span className="dash-kpi__hint">{hint}</span>}
+          {back && (
+            <span className="dash-kpi__flip" aria-hidden title={t.dash.back.flip}>
+              <Repeat2 size={11} />
+            </span>
+          )}
+        </span>
       </div>
       <div className="dash-kpi__body">
         <strong className="dash-kpi__value">{value}</strong>
@@ -334,7 +449,190 @@ function Kpi({
       </div>
       <Delta value={delta} suffix={deltaSuffix} label={deltaLabel} />
       {note && <span className="tp-kpi__note">{note}</span>}
+    </>
+  );
+  if (!back) return <div className={`dash-kpi dash-kpi--${tone}`}>{front}</div>;
+
+  // Virada em 3D: frente e verso ocupam a mesma célula, o cartão tem a altura
+  // do maior dos dois e gira no eixo vertical. Clique em qualquer ponto vira;
+  // links do verso não viram de volta.
+  const toggle = () => setFlipped((f) => !f);
+  return (
+    <div className={`dash-kpi dash-kpi--${tone} dash-kpi--flip${flipped ? ' is-flipped' : ''}`}>
+      <div className="dash-kpi__inner">
+        <div
+          className="dash-kpi__face dash-kpi__face--front"
+          role="button"
+          tabIndex={flipped ? -1 : 0}
+          aria-hidden={flipped}
+          aria-label={`${label}. ${t.dash.back.flip}`}
+          onClick={toggle}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              toggle();
+            }
+          }}
+        >
+          {front}
+        </div>
+        <div className="dash-kpi__face dash-kpi__face--back" aria-hidden={!flipped}>
+          <div className="dash-kpi__head">
+            <span className="tp-kpi__label">{label}</span>
+            <span className="dash-kpi__back-actions">
+              {backTo && (
+                <Link
+                  to={backTo}
+                  className="kpi-back__open"
+                  title={backLabel}
+                  aria-label={backLabel}
+                  tabIndex={flipped ? 0 : -1}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ArrowUpRight size={14} aria-hidden />
+                </Link>
+              )}
+              <button
+                type="button"
+                className="dash-kpi__unflip"
+                onClick={toggle}
+                tabIndex={flipped ? 0 : -1}
+                aria-label={t.dash.back.flipBack}
+                title={t.dash.back.flipBack}
+              >
+                <Undo2 size={14} aria-hidden />
+              </button>
+            </span>
+          </div>
+          {back}
+        </div>
+      </div>
     </div>
+  );
+}
+
+const plural = (n: number, text: string) => {
+  const [one, many] = text.split('|');
+  return n === 1 ? one : (many ?? one);
+};
+
+/** Uma linha do verso: rótulo à esquerda, valor à direita, barra opcional por baixo. */
+function BackRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: 'danger' | 'warn' | 'neutral';
+}) {
+  return (
+    <li className={`kpi-back__row${tone ? ` kpi-back__row--${tone}` : ''}`}>
+      <span className="kpi-back__label">{label}</span>
+      <span className="kpi-back__value">{value}</span>
+    </li>
+  );
+}
+
+function MkbfBack({ data }: { data: DashboardData }) {
+  const { t } = useI18n();
+  const b = data.backs.mkbf;
+  const cur = data.mkbf.period;
+  const pct =
+    b.previous.mkbf && cur.mkbf ? ((cur.mkbf - b.previous.mkbf) / b.previous.mkbf) * 100 : null;
+  return (
+    <ul className="kpi-back__list">
+      <BackRow
+        label={t.dash.back.previous}
+        value={
+          b.previous.mkbf === null
+            ? '—'
+            : `${formatNumber(b.previous.mkbf)} km${pct === null ? '' : ` · ${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1).replace('.', ',')}%`}`
+        }
+        tone={pct === null ? undefined : pct >= 0 ? 'neutral' : 'danger'}
+      />
+      {b.topSystems.length === 0 ? (
+        <BackRow label={t.dash.back.topSystems} value={t.dash.back.noReturns} />
+      ) : (
+        b.topSystems
+          .slice(0, 2)
+          .map((sys, i) => (
+            <BackRow
+              key={sys.name}
+              label={i === 0 ? `${t.dash.back.topSystems}: ${sys.name}` : sys.name}
+              value={`${sys.count} ${plural(sys.count, t.dash.back.times)}`}
+            />
+          ))
+      )}
+      {b.worstVehicle && (
+        <BackRow
+          label={t.dash.back.worstVehicle}
+          value={`${b.worstVehicle.code} · ${b.worstVehicle.count} ${plural(b.worstVehicle.count, t.dash.back.times)}`}
+          tone="warn"
+        />
+      )}
+    </ul>
+  );
+}
+
+function QueueBack({ data }: { data: DashboardData }) {
+  const { t } = useI18n();
+  const b = data.backs.queue;
+  const fmtH = (h: number) => `${h.toFixed(1).replace('.', ',')}${t.dash.hours}`;
+  return (
+    <ul className="kpi-back__list">
+      {b.oldest.length === 0 ? (
+        <BackRow label={t.dash.back.oldest} value={t.dash.back.emptyQueue} />
+      ) : (
+        b.oldest.map((q, i) => (
+          <BackRow
+            key={q.code}
+            label={i === 0 ? `${t.dash.back.oldest}: ${q.code}` : q.code}
+            value={fmtH(q.hours)}
+            tone={q.hours >= 12 ? 'danger' : undefined}
+          />
+        ))
+      )}
+      <BackRow
+        label={t.dash.back.averageWait}
+        value={b.averageWaitHours === null ? '—' : fmtH(b.averageWaitHours)}
+      />
+      <BackRow
+        label={`${t.dash.back.enteredToday} / ${t.dash.back.startedToday}`}
+        value={`${b.enteredToday} / ${b.startedToday}`}
+      />
+    </ul>
+  );
+}
+
+function WorkOrdersBack({ data }: { data: DashboardData }) {
+  const { t } = useI18n();
+  const b = data.backs.workOrders;
+  const stages: { key: keyof typeof b.byStage; label: string; tone?: 'danger' | 'warn' }[] = [
+    { key: 'waitingPart', label: t.dash.back.stageWaitingPart, tone: 'danger' },
+    { key: 'open', label: t.dash.back.stageOpen, tone: 'warn' },
+    { key: 'inProgress', label: t.dash.back.stageInProgress },
+    { key: 'techClosed', label: t.dash.back.stageTechClosed },
+    { key: 'inInspection', label: t.dash.back.stageInInspection },
+    { key: 'inCleaning', label: t.dash.back.stageInCleaning },
+  ];
+  const shown = stages.filter((s) => b.byStage[s.key] > 0).slice(0, 2);
+  return (
+    <ul className="kpi-back__list">
+      {shown.length === 0 && <BackRow label={t.dash.back.byStage} value="0" />}
+      {shown.map((s) => (
+        <BackRow key={s.key} label={s.label} value={String(b.byStage[s.key])} tone={s.tone} />
+      ))}
+      <BackRow
+        label={t.dash.back.mostOverdue}
+        value={
+          b.mostOverdue
+            ? `${b.mostOverdue.code} · ${b.mostOverdue.vehicleCode} · ${t.dash.back.lateBy.replace('{h}', Math.round(b.mostOverdue.lateHours).toString())}`
+            : t.dash.back.noneOverdue
+        }
+        tone={b.mostOverdue ? 'danger' : undefined}
+      />
+    </ul>
   );
 }
 
@@ -355,7 +653,10 @@ function GarageFlow({ byStatus }: { byStatus: Record<VehicleStatus, number> }) {
   return (
     <ol className="dash-flow" aria-label={t.dash.flowTitle}>
       {stages.map((s, i) => (
-        <li key={s.key} className={`dash-flow__stage dash-flow__stage--${s.family}${s.n > 0 ? ' is-active' : ''}`}>
+        <li
+          key={s.key}
+          className={`dash-flow__stage dash-flow__stage--${s.family}${s.n > 0 ? ' is-active' : ''}`}
+        >
           {i > 0 && <i className="dash-flow__rail" aria-hidden />}
           <Link to={s.to} className="dash-flow__node" aria-label={`${s.label}: ${s.n}`}>
             <b>{s.n}</b>
@@ -379,7 +680,9 @@ function GarageFlow({ byStatus }: { byStatus: Record<VehicleStatus, number> }) {
               {' · '}
               {t.dash.flowFamily}: {t.dash[s.family]}
             </span>
-            <span className="tp-tip__foot">{t.dash.stageOpen} {s.label} ↗</span>
+            <span className="tp-tip__foot">
+              {t.dash.stageOpen} {s.label} ↗
+            </span>
           </InfoTip>
         </li>
       ))}
@@ -387,7 +690,13 @@ function GarageFlow({ byStatus }: { byStatus: Record<VehicleStatus, number> }) {
   );
 }
 
-function StatusSummary({ byStatus, total }: { byStatus: Record<VehicleStatus, number>; total: number }) {
+function StatusSummary({
+  byStatus,
+  total,
+}: {
+  byStatus: Record<VehicleStatus, number>;
+  total: number;
+}) {
   const { t } = useI18n();
   const families = [
     { key: 'running', label: t.dash.running, cls: 'tp-state--running' },
@@ -449,27 +758,48 @@ function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
   const inLine = running.filter((v) => v.status === 'IN_LINE').length;
 
   return (
-    <section className="tp-card dash-glass dash-fleet">
-      <div className="tp-card__head dash-fleet__head">
-        <div>
-          <h3>{t.dash.fleetNow}</h3>
-          <span className="chart__hint">{big ? t.dash.fleetNowHintBig : t.dash.fleetNowHint}</span>
-        </div>
-        <FleetLegend statuses={vehicles.map((v) => v.status)} selected={selected} onSelect={setSelected} onHover={setHovered} />
-        <Link to="/frota" className="tp-btn tp-btn--ghost tp-btn--sm">
-          {t.dash.seeAll}
-        </Link>
-      </div>
+    <CollapsibleCard
+      id="dash.fleet"
+      className="tp-card dash-glass dash-fleet"
+      headClassName="tp-card__head dash-fleet__head"
+      label={t.dash.fleetNow}
+      head={
+        <>
+          <div>
+            <h3>{t.dash.fleetNow}</h3>
+            <span className="chart__hint">
+              {big ? t.dash.fleetNowHintBig : t.dash.fleetNowHint}
+            </span>
+          </div>
+          <FleetLegend
+            statuses={vehicles.map((v) => v.status)}
+            selected={selected}
+            onSelect={setSelected}
+            onHover={setHovered}
+          />
+          <Link to="/frota" className="tp-btn tp-btn--ghost tp-btn--sm">
+            {t.dash.seeAll}
+          </Link>
+        </>
+      }
+    >
       <div className="bus-grid" data-focus={focus ?? undefined}>
         {collapseRunning && running.length > 0 && (
           <Link to="/frota?status=IN_LINE" className="bus-card bus-card--running bus-card--summary">
-            <BusRender vehicleClass="PADRON_13M" status="IN_LINE" width={260} title="Carros rodando" />
+            <BusRender
+              vehicleClass="PADRON_13M"
+              status="IN_LINE"
+              width={260}
+              title="Carros rodando"
+            />
             <div className="bus-card__text">
               <div className="bus-card__row">
                 <b className="bus-card__big">{running.length}</b>
                 <span className={`tp-state tp-state--running`}>{t.dash.runningSummary}</span>
               </div>
-              <span className="tp-muted">{inLine} {t.dash.inLineShort} · {running.length - inLine} {t.dash.inYardShort}</span>
+              <span className="tp-muted">
+                {inLine} {t.dash.inLineShort} · {running.length - inLine} {t.dash.inYardShort}
+              </span>
             </div>
           </Link>
         )}
@@ -477,8 +807,10 @@ function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
           <BusCard key={v.id} vehicle={v} />
         ))}
       </div>
-      {shown.length === 0 && !collapseRunning && <p className="tp-muted dash-fleet__empty">{t.dash.legendEmpty}</p>}
-    </section>
+      {shown.length === 0 && !collapseRunning && (
+        <p className="tp-muted dash-fleet__empty">{t.dash.legendEmpty}</p>
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -504,21 +836,47 @@ function BusCard({ vehicle }: { vehicle: DashboardVehicle }) {
   return (
     <article className={`bus-stage ${f.stageClass}`} onKeyDown={f.onKeyDown}>
       <div className="flip__inner" onTransitionEnd={f.onTransitionEnd}>
-        <div className={`bus-card bus-card--${family} flip__face`} aria-hidden={f.flipped} inert={f.flipped}>
-          <Link to={`/frota/${vehicle.id}`} className="flip__link" aria-label={`Abrir o carro ${vehicle.code}`} />
+        <div
+          className={`bus-card bus-card--${family} flip__face`}
+          aria-hidden={f.flipped}
+          inert={f.flipped}
+        >
+          <Link
+            to={`/frota/${vehicle.id}`}
+            className="flip__link"
+            aria-label={`Abrir o carro ${vehicle.code}`}
+          />
           <FlipButton code={vehicle.code} flip={f} corner />
-          <BusRender vehicleClass={vehicle.vehicleClass} technology={vehicle.technology} status={vehicle.status} code={vehicle.code} width={260} />
+          <BusRender
+            vehicleClass={vehicle.vehicleClass}
+            technology={vehicle.technology}
+            status={vehicle.status}
+            code={vehicle.code}
+            width={260}
+          />
           <div className="bus-card__text">
             <div className="bus-card__row">
               <b>{vehicle.code}</b>
               <span className="tp-muted">{vehicle.plate}</span>
             </div>
-            <span className={`tp-state tp-state--${family}`}>{VEHICLE_STATUS_LABELS[vehicle.status]}</span>
-            <span className="bus-card__reason" title={vehicle.reason ?? undefined}>{vehicle.reason ? `${reasonPhase(vehicle.status)}${vehicle.reason}` : ' '}</span>
-            <span className="bus-card__since tp-muted">{vehicle.hoursInState !== null ? `há ${vehicle.hoursInState.toLocaleString('pt-BR')}h` : ' '}</span>
+            <span className={`tp-state tp-state--${family}`}>
+              {VEHICLE_STATUS_LABELS[vehicle.status]}
+            </span>
+            <span className="bus-card__reason" title={vehicle.reason ?? undefined}>
+              {vehicle.reason ? `${reasonPhase(vehicle.status)}${vehicle.reason}` : ' '}
+            </span>
+            <span className="bus-card__since tp-muted">
+              {vehicle.hoursInState !== null
+                ? `há ${vehicle.hoursInState.toLocaleString('pt-BR')}h`
+                : ' '}
+            </span>
           </div>
         </div>
-        <div className={`bus-card bus-card--${family} bus-card--back flip__face flip__face--back`} aria-hidden={!f.flipped} inert={!f.flipped}>
+        <div
+          className={`bus-card bus-card--${family} bus-card--back flip__face flip__face--back`}
+          aria-hidden={!f.flipped}
+          inert={!f.flipped}
+        >
           <BackHead code={vehicle.code} flip={f} />
           <MaintenanceBack id={vehicle.id} enabled={f.flipped} compact />
           <BackFoot id={vehicle.id} />
@@ -556,7 +914,10 @@ function DashboardSkeleton() {
   return (
     <div className="dash">
       <section className="ticker dash-glass skeleton" style={{ height: 50 }} />
-      <section className="dash-hero dash-glass skeleton" style={{ minHeight: 280, display: 'grid', placeItems: 'center' }}>
+      <section
+        className="dash-hero dash-glass skeleton"
+        style={{ minHeight: 280, display: 'grid', placeItems: 'center' }}
+      >
         <BrandLoader size={64} label={t.dash.loading.replace(/…$/, '')} />
       </section>
       <section className="tp-card skeleton" style={{ minHeight: 260 }} />

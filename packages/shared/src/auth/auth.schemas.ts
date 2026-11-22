@@ -78,6 +78,8 @@ export const userPreferencesSchema = z.object({
   panelLayout: z.enum(PANEL_LAYOUTS).default('side'),
   /** Letreiro de avisos no topo do Dashboard: a pessoa pode desligar e a escolha fica na conta. */
   ticker: z.boolean().default(true),
+  /** Estado de interface por pessoa (cartão recolhido, filtro, página): chave → valor. */
+  ui: z.record(z.string(), z.unknown()).default({}),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

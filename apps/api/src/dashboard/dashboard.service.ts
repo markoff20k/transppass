@@ -8,6 +8,7 @@ import {
 import {
   AVAILABLE_STATUSES,
   VehicleStatus,
+  type DashboardBacks,
   type DashboardData,
   type DashboardQuery,
   type DashboardVehicle,
@@ -63,6 +64,7 @@ export class DashboardService {
       materials,
       alerts,
       recent,
+      backs,
     ] = await Promise.all([
       this.vehicles(now),
       this.mkbfSeries(now, months),
@@ -76,6 +78,7 @@ export class DashboardService {
       this.materials(now),
       this.alerts(),
       this.events.list({ page: 1, perPage: 6, from }),
+      this.backs(now, from, days),
     ]);
 
     const byStatus = Object.fromEntries(
@@ -114,8 +117,97 @@ export class DashboardService {
       workOrders,
       materials,
       alerts,
+      backs,
       recentEvents: recent.data,
       vehicles,
+    };
+  }
+
+  // --- Verso dos três cartões: o porquê do número da frente ------------------
+
+  private async backs(now: Date, from: Date, days: number): Promise<DashboardBacks> {
+    const [mkbf, queue, workOrders] = await Promise.all([this.mkbfBack(now, from, days), this.queueBack(now, from), this.workOrdersBack(now)]);
+    return { mkbf, queue, workOrders };
+  }
+
+  /**
+   * MKBF: o mesmo período logo antes (para a variação), os sistemas que mais
+   * quebraram e o carro que mais quebrou. O sistema vem do catálogo quando a
+   * ficha foi classificada; nas fichas importadas do ERP-JB vale o defeito do
+   * CCO, que é o que a Transppass já usa.
+   */
+  private async mkbfBack(now: Date, from: Date, days: number): Promise<DashboardBacks['mkbf']> {
+    const prevFrom = new Date(from.getTime() - days * DAY_MS);
+    const where = { isUnscheduledReturn: true, reportedAt: { gte: from, lte: now }, vehicle: { application: 'FROTA' } };
+    const [previous, rows, byVehicle] = await Promise.all([
+      this.metrics.mkbf(prevFrom, from),
+      this.prisma.failureEvent.findMany({ where, select: { ccoDefect: true, catalogItem: { select: { system: true, description: true } } } }),
+      this.prisma.failureEvent.groupBy({ by: ['vehicleId'], where, _count: { _all: true }, orderBy: { _count: { vehicleId: 'desc' } }, take: 1 }),
+    ]);
+    const counts = new Map<string, number>();
+    for (const r of rows) {
+      const name = r.catalogItem?.system ?? r.catalogItem?.description ?? r.ccoDefect ?? 'Sem classificação';
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    const topSystems = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 3)
+      .map(([name, count]) => ({ name, count }));
+    const worst = byVehicle[0];
+    const worstVehicle = worst
+      ? await this.prisma.vehicle.findUnique({ where: { id: worst.vehicleId }, select: { code: true } }).then((v) => (v ? { code: v.code, count: worst._count._all } : null))
+      : null;
+    return { previous: { kmTraveled: previous.kmTraveled, unscheduledReturns: previous.unscheduledReturns, mkbf: previous.mkbf }, topSystems, worstVehicle };
+  }
+
+  /** Fila: quem são os mais antigos, quanto se espera em média e o movimento de hoje. */
+  private async queueBack(now: Date, from: Date): Promise<DashboardBacks['queue']> {
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const [oldest, served, enteredToday, startedToday] = await Promise.all([
+      this.prisma.queueEntry.findMany({
+        where: { status: QueueStatus.WAITING },
+        orderBy: { enteredAt: 'asc' },
+        take: 3,
+        select: { enteredAt: true, vehicle: { select: { code: true } } },
+      }),
+      this.prisma.queueEntry.findMany({ where: { startedAt: { gte: from } }, select: { enteredAt: true, startedAt: true } }),
+      this.prisma.queueEntry.count({ where: { enteredAt: { gte: today } } }),
+      this.prisma.queueEntry.count({ where: { startedAt: { gte: today } } }),
+    ]);
+    const waits = served.flatMap((q) => (q.startedAt ? [(q.startedAt.getTime() - q.enteredAt.getTime()) / HOUR_MS] : []));
+    return {
+      oldest: oldest.map((q) => ({ code: q.vehicle.code, hours: Math.round(((now.getTime() - q.enteredAt.getTime()) / HOUR_MS) * 10) / 10 })),
+      averageWaitHours: waits.length ? Math.round((waits.reduce((a, b) => a + b, 0) / waits.length) * 10) / 10 : null,
+      enteredToday,
+      startedToday,
+    };
+  }
+
+  /** OS: quantas em cada etapa e a mais atrasada. */
+  private async workOrdersBack(now: Date): Promise<DashboardBacks['workOrders']> {
+    const openWhere = { status: { notIn: [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] } };
+    const [stages, overdue] = await Promise.all([
+      this.prisma.workOrder.groupBy({ by: ['status'], where: openWhere, _count: { _all: true } }),
+      this.prisma.workOrder.findFirst({
+        where: { ...openWhere, estimatedCompletionAt: { lt: now } },
+        orderBy: { estimatedCompletionAt: 'asc' },
+        select: { id: true, code: true, estimatedCompletionAt: true, vehicle: { select: { code: true } } },
+      }),
+    ]);
+    const count = (st: WorkOrderStatus) => stages.find((s) => s.status === st)?._count._all ?? 0;
+    return {
+      byStage: {
+        open: count(WorkOrderStatus.OPEN),
+        inProgress: count(WorkOrderStatus.IN_PROGRESS),
+        waitingPart: count(WorkOrderStatus.WAITING_PART),
+        techClosed: count(WorkOrderStatus.TECH_CLOSED),
+        inInspection: count(WorkOrderStatus.IN_INSPECTION),
+        inCleaning: count(WorkOrderStatus.IN_CLEANING),
+      },
+      mostOverdue: overdue
+        ? { id: overdue.id, code: overdue.code, vehicleCode: overdue.vehicle.code, lateHours: Math.round(((now.getTime() - overdue.estimatedCompletionAt.getTime()) / HOUR_MS) * 10) / 10 }
+        : null,
     };
   }
 

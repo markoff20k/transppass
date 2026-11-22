@@ -151,7 +151,8 @@ export class UsersService {
     const current = await this.prisma.user.findUnique({ where: { id }, select: { preferences: true } });
     if (!current) throw new NotFoundException('Usuário não encontrado');
     const next = userPreferencesSchema.parse({ ...parsePreferences(current.preferences), ...input });
-    const user = await this.prisma.user.update({ where: { id }, data: { preferences: next } });
+    // O saco de chaves de interface (ui) é JSON livre: o Prisma só aceita como InputJsonValue.
+    const user = await this.prisma.user.update({ where: { id }, data: { preferences: next as unknown as Prisma.InputJsonObject } });
     await this.audit.write({
       actorId: id,
       action: 'user.preferences',

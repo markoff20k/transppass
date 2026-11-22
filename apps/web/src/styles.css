@@ -1410,14 +1410,55 @@ small.muted {
 .dash-hero {
   position: relative;
   z-index: 1; /* os tooltips do fluxo passam por cima dos cards abaixo */
-  display: grid;
-  grid-template-columns: 232px minmax(0, 1fr) 272px;
-  gap: var(--tp-space-5);
-  padding: var(--tp-space-5);
+  padding: var(--tp-space-4) var(--tp-space-5) var(--tp-space-5);
   min-width: 0;
 }
+.dash-hero__grid {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: var(--tp-space-5);
+  min-width: 0;
+}
+.dash-hero__grid > * { min-width: 0; }
 
-.dash-hero > * { min-width: 0; }
+/* Os três números, lado a lado, num cartão próprio abaixo do fluxo. */
+.dash-kpis { padding: var(--tp-space-4) var(--tp-space-5) var(--tp-space-5); min-width: 0; }
+.dash-kpis__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--tp-space-3);
+  align-items: start;
+}
+
+/* ---- Cartão que recolhe (estado salvo na conta) ---------------------------- */
+.ccard { display: grid; gap: var(--tp-space-4); align-content: start; }
+.ccard.is-collapsed { gap: 0; }
+.ccard__head { display: flex; align-items: flex-start; justify-content: flex-start; gap: var(--tp-space-3); flex-wrap: wrap; }
+.ccard__head > div:first-child { display: grid; gap: 2px; min-width: 0; margin-right: auto; }
+.ccard__head h3 { margin: 0; font-size: var(--tp-text-sm); }
+.ccard__toggle {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.ccard__toggle:hover { color: var(--color-text); }
+.ccard__toggle svg { transition: transform 240ms ease; }
+.ccard.is-collapsed .ccard__toggle svg { transform: rotate(-90deg); }
+.ccard__body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 320ms ease; }
+.ccard.is-collapsed .ccard__body { grid-template-rows: 0fr; }
+.ccard__inner { min-height: 0; overflow: hidden; min-width: 0; }
+.ccard.is-collapsed .ccard__inner { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .ccard__body, .ccard__toggle svg { transition: none; }
+}
 
 /* Anel de disponibilidade */
 .dash-gauge {
@@ -1829,11 +1870,6 @@ small.muted {
 }
 
 /* KPIs empilhados à direita do painel */
-.dash-hero__kpis {
-  display: grid;
-  gap: var(--tp-space-3);
-  align-content: start;
-}
 
 .dash-kpi {
   position: relative;
@@ -1911,6 +1947,120 @@ small.muted {
 .dash-kpi__delta--good { color: var(--color-success-text); }
 .dash-kpi__delta--danger { color: var(--color-danger-text); }
 .dash-kpi__delta--neutral { color: var(--color-text-muted); }
+
+/* ---- Virada dos cartões (frente: o número; verso: o porquê) -------------- */
+
+/* A frente dita a altura do cartão (a mesma de sempre); o verso fica por
+   cima, na mesma caixa, e gira 180° no eixo vertical. O vidro do cartão fica
+   no próprio .dash-kpi, então a cor e a borda não "viram" — só o conteúdo. */
+.dash-kpi--flip {
+  padding: 0;
+  perspective: 1200px;
+  overflow: visible;
+}
+.dash-kpi__inner {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  transform-style: preserve-3d;
+  transition: transform 640ms cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.dash-kpi--flip.is-flipped .dash-kpi__inner { transform: rotateY(180deg); }
+.dash-kpi__face {
+  display: grid;
+  align-content: start;
+  gap: var(--tp-space-1);
+  min-width: 0;
+  padding: var(--tp-space-3) var(--tp-space-4);
+  border-radius: var(--tp-radius-lg);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
+}
+.dash-kpi__face--front { cursor: pointer; outline-offset: 2px; }
+.dash-kpi__face--back {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  gap: 4px;
+  padding: 8px var(--tp-space-4);
+  transform: rotateY(180deg) translateZ(0);
+  background: linear-gradient(160deg, var(--dash-glass-top), var(--dash-glass-bottom));
+}
+.dash-kpi__face--back .dash-kpi__head { align-items: center; }
+.dash-kpi__back-actions { display: inline-flex; align-items: center; gap: 4px; }
+.dash-kpi__head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+/* Indicador fixo de que o cartão vira: na linha do título, nunca sobre texto. */
+.dash-kpi__flip {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-sunken);
+  transition: color 160ms ease, background 160ms ease;
+}
+.dash-kpi__face--front:hover .dash-kpi__flip { color: var(--color-brand-text); background: var(--color-brand-soft); }
+.dash-kpi__unflip {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex: none;
+}
+.dash-kpi__unflip:hover { color: var(--color-text); background: var(--color-surface-sunken); }
+
+/* O verso: linhas curtas rótulo/valor, barra fina por baixo quando é ranking. */
+.kpi-back__list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+.kpi-back__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--tp-space-2);
+  align-items: baseline;
+  font-size: 11px;
+  line-height: 1.2;
+}
+.kpi-back__label { color: var(--color-text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kpi-back__value { font-weight: var(--tp-weight-semibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kpi-back__row--danger .kpi-back__value { color: var(--color-danger-text); }
+.kpi-back__row--warn .kpi-back__value { color: var(--color-warning-text); }
+.kpi-back__row--neutral .kpi-back__value { color: var(--color-text); }
+.kpi-back__open {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--color-surface-sunken);
+  color: var(--color-brand-text);
+}
+.kpi-back__open:hover { color: var(--color-brand); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-kpi__inner { transition: none; }
+}
 
 /* ---- Letreiro de avisos (uma linha, como o painel de destino do ônibus) -- */
 
@@ -2139,22 +2289,18 @@ small.muted {
 /* ---- Responsivo -------------------------------------------------------- */
 
 @media (max-width: 1240px) {
-  .dash-hero {
+  .dash-hero__grid {
     grid-template-columns: 220px minmax(0, 1fr);
-  }
-  .dash-hero__kpis {
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 760px) {
-  .dash-hero {
+  .dash-hero__grid {
     grid-template-columns: minmax(0, 1fr);
     padding: var(--tp-space-4);
     gap: var(--tp-space-4);
   }
-  .dash-hero__kpis { grid-template-columns: minmax(0, 1fr); }
+  .dash-kpis__grid { grid-template-columns: minmax(0, 1fr); }
   .dash-flow { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--tp-space-4); }
   .dash-flow__rail { display: none; }
   .dash-flow__stage:nth-child(3n + 1) .tp-tip__panel { left: calc(50% - 20px); right: auto; transform: translate(0, -6px); }
