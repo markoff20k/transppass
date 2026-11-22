@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, type OnApplicationBootstrap } from '@nestjs/common';
 import { QueueStatus, ReasonCodeList, WorkOrderType } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import {
   CRITICALITY,
   DEFAULT_REPAIR_MINUTES,
+  FAST_TRACK_ENABLED,
   describeFailureCode,
   type QueueChangeRow,
   type QueueEntryRow,
@@ -28,12 +29,28 @@ const SYSTEM_REASON_CODE = 'SISTEMA';
  * de motivo e grava um registro imutável antes de confirmar.
  */
 @Injectable()
-export class QueueService {
+export class QueueService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(QueueService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
   ) {}
+
+  /**
+   * Ajuste 7: com o fast-track pausado, os carros que já estavam na fila com a
+   * criticidade dele voltam à criticidade do corretivo comum. A posição não
+   * muda (mudar posição exige motivo); só deixam de furar a fila de quem chega.
+   */
+  async onApplicationBootstrap(): Promise<void> {
+    if (FAST_TRACK_ENABLED) return;
+    const { count } = await this.prisma.queueEntry.updateMany({
+      where: { status: { in: [QueueStatus.WAITING, QueueStatus.IN_SERVICE] }, criticality: CRITICALITY.FAST_TRACK },
+      data: { criticality: CRITICALITY.STANDARD },
+    });
+    if (count) this.logger.log(`Fast-track pausado: ${count} carro(s) na fila voltaram à criticidade comum`);
+  }
 
   /**
    * Entrada na fila. A posição inicial vem da criticidade: o carro se encaixa
@@ -72,11 +89,11 @@ export class QueueService {
         workOrderId: input.workOrderId,
         position,
         criticality: input.criticality,
-        isFastTrack: input.isFastTrack,
+        isFastTrack: input.isFastTrack && FAST_TRACK_ENABLED,
       },
     });
 
-    if (input.isFastTrack) {
+    if (input.isFastTrack && FAST_TRACK_ENABLED) {
       // RF-06 — o fast-track é uma priorização como outra qualquer: entra na
       // mesma trilha de auditoria, só que gravada pelo próprio sistema (P-06).
       const reason = await this.systemReasonCode(tx);
@@ -272,7 +289,7 @@ export class QueueService {
       id: r.id,
       position: r.position,
       criticality: r.criticality,
-      isFastTrack: r.isFastTrack,
+      isFastTrack: r.isFastTrack && FAST_TRACK_ENABLED,
       status: r.status,
       vehicleId: r.vehicleId,
       vehicleCode: r.vehicle.code,
@@ -333,7 +350,7 @@ export class QueueService {
     wasDeferred?: boolean;
   }): number {
     if (input.isSafety) return CRITICALITY.SAFETY;
-    if (input.isFastTrack) return CRITICALITY.FAST_TRACK;
+    if (input.isFastTrack && FAST_TRACK_ENABLED) return CRITICALITY.FAST_TRACK;
     if (input.wasDeferred) return CRITICALITY.DEFERRED;
     if (input.type === WorkOrderType.PREVENTIVE) return CRITICALITY.PREVENTIVE;
     return CRITICALITY.STANDARD;

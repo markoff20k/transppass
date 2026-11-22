@@ -315,8 +315,26 @@ export interface ResolvedFlags {
   source: 'rule:mode+subsystem' | 'rule:subsystem' | 'rule:mode' | 'catalog-item' | 'default';
 }
 
+/**
+ * Ajuste 7 do cliente: fast-track desligado temporariamente em todo o sistema.
+ * As marcações do catálogo e das regras ficam guardadas; enquanto isto for
+ * false, nenhuma falha é tratada como fast-track (sem prioridade na fila, sem
+ * registro automático de priorização, sem selo nas telas). A segurança segue
+ * dando prioridade sozinha. Para religar, basta voltar para true.
+ */
+export const FAST_TRACK_ENABLED = false;
+
 /** Mesma resolução na tela e na API (o servidor é quem bloqueia; a tela antecipa). */
 export function resolveFailureFlags(
+  rules: readonly FailureCodeRule[],
+  fields: { failureModeCode?: string | null; subsystemCode?: string | null },
+  catalogItem?: { isFastTrack: boolean; isSafety: boolean; isDeferrable: boolean } | null,
+): ResolvedFlags {
+  const flags = resolveStoredFlags(rules, fields, catalogItem);
+  return FAST_TRACK_ENABLED ? flags : { ...flags, isFastTrack: false };
+}
+
+function resolveStoredFlags(
   rules: readonly FailureCodeRule[],
   fields: { failureModeCode?: string | null; subsystemCode?: string | null },
   catalogItem?: { isFastTrack: boolean; isSafety: boolean; isDeferrable: boolean } | null,

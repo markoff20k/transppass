@@ -10,6 +10,7 @@ import {
 } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import {
+  FAST_TRACK_ENABLED,
   FIELD_OUTCOMES_RETURNING_TO_LINE,
   FieldOutcome,
   FieldStep,
@@ -716,7 +717,7 @@ function toSummary(event: EventWithRelations, rules: FailureCodeRule[]): Failure
             ? Number(event.catalogItem.fieldResolutionRate)
             : null,
           fieldResolutionSamples: event.catalogItem.fieldResolutionSamples,
-          isFastTrack: event.catalogItem.isFastTrack,
+          isFastTrack: event.catalogItem.isFastTrack && FAST_TRACK_ENABLED,
           isSafety: event.catalogItem.isSafety,
           isDeferrable: event.catalogItem.isDeferrable,
         }

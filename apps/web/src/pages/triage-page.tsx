@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  FAST_TRACK_ENABLED,
   EVENT_ORIGIN_LABELS,
   ReasonCodeList,
   TRIAGE_DESTINATION_LABELS,
@@ -64,11 +65,14 @@ export function TriagePage() {
           <span className="tp-kpi__label">Falhas de segurança</span>
           <strong className="tp-kpi__value">{rows.filter((r) => r.catalog?.isSafety).length}</strong>
         </div>
-        <div className="tp-kpi">
-          <span className="tp-kpi__label">Fast-track</span>
-          <strong className="tp-kpi__value">{rows.filter((r) => r.catalog?.isFastTrack).length}</strong>
-          <span className="tp-kpi__note">abrem OS sozinhos ao recolher</span>
-        </div>
+        {/* Ajuste 7: com o fast-track pausado, o cartão sai e a faixa fica com três. */}
+        {FAST_TRACK_ENABLED && (
+          <div className="tp-kpi">
+            <span className="tp-kpi__label">Fast-track</span>
+            <strong className="tp-kpi__value">{rows.filter((r) => r.catalog?.isFastTrack).length}</strong>
+            <span className="tp-kpi__note">abrem OS sozinhos ao recolher</span>
+          </div>
+        )}
       </div>
 
       <section className="tp-card">

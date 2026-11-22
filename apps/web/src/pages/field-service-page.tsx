@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, LifeBuoy, MapPin, Plus, Radio, Route, Trash2 } from 'lucide-react';
 import {
+  FAST_TRACK_ENABLED,
   EventStatus,
   FIELD_OUTCOME_LABELS,
   FIELD_OUTCOMES_RETURNING_TO_LINE,
@@ -203,7 +204,7 @@ function FieldCard({
         <div className="field-card__tags">
           <FieldKindBadge field={field} now={now} />
           {event.catalog?.isSafety && <span className="tp-badge tp-badge--danger">segurança</span>}
-          {event.catalog?.isFastTrack && <span className="tp-badge tp-badge--warning">fast-track</span>}
+          {event.catalog?.isFastTrack && FAST_TRACK_ENABLED && <span className="tp-badge tp-badge--warning">fast-track</span>}
           <button
             type="button"
             className={`tp-badge field-card__dispatch${field?.supportVehicleCode ? '' : ' is-empty'}`}

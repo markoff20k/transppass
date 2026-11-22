@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import {
+  FAST_TRACK_ENABLED,
   FAILURE_MODES,
   POSITION_OPTIONS,
   VMRS_SUBSYSTEMS,
@@ -74,7 +75,7 @@ export function FailureCodeRules() {
                     <td>
                       <span className="tp-row">
                         {r.isSafety && <span className="tp-badge tp-badge--danger">segurança</span>}
-                        {r.isFastTrack && <span className="tp-badge tp-badge--brand">fast-track</span>}
+                        {r.isFastTrack && <span className={`tp-badge ${FAST_TRACK_ENABLED ? 'tp-badge--brand' : ''}`} title={FAST_TRACK_ENABLED ? undefined : 'Fast-track pausado pelo ajuste 7: a marcação fica guardada e volta a valer quando o fast-track for religado'}>{FAST_TRACK_ENABLED ? 'fast-track' : 'fast-track pausado'}</span>}
                         {r.isDeferrable ? <span className="tp-badge">deferível</span> : <span className="tp-badge">não deferível</span>}
                       </span>
                     </td>
@@ -183,6 +184,7 @@ function RuleDrawer({ open, onClose, onDone }: { open: boolean; onClose: () => v
         <div className="tp-stack tp-stack--tight">
           <label className="tp-check"><input type="checkbox" checked={form.isSafety} onChange={(e) => setForm((f) => ({ ...f, isSafety: e.target.checked, isDeferrable: e.target.checked ? false : f.isDeferrable }))} /> Falha de segurança — não volta à linha nem pode ser deferida (RF-05)</label>
           <label className="tp-check"><input type="checkbox" checked={form.isFastTrack} onChange={(e) => setForm((f) => ({ ...f, isFastTrack: e.target.checked }))} /> Fast-track — ao recolher, OS e priorização nascem sozinhas (RF-06)</label>
+          {!FAST_TRACK_ENABLED && <span className="tp-help">Fast-track pausado pelo ajuste 7: a marcação fica guardada e volta a valer quando o fast-track for religado.</span>}
           <label className="tp-check"><input type="checkbox" checked={form.isDeferrable} disabled={form.isSafety} onChange={(e) => setForm((f) => ({ ...f, isDeferrable: e.target.checked }))} /> Deferível para a próxima parada preventiva</label>
         </div>
         <label className="tp-field"><span className="tp-label">Observação</span><input className="tp-input" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} maxLength={255} /></label>

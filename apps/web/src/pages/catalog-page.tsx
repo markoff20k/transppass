@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BookCheck, Package, Plus, Trash2 } from 'lucide-react';
 import {
+  FAST_TRACK_ENABLED,
   createFailureCatalogItemSchema,
   createReasonCodeSchema,
   REASON_CODE_LIST_LABELS,
@@ -149,7 +150,12 @@ export function CatalogPage() {
                           <span className="tp-badge tp-badge--danger">segurança</span>
                         )}
                         {item.isFastTrack && (
-                          <span className="tp-badge tp-badge--brand">fast-track</span>
+                          <span
+                            className={`tp-badge ${FAST_TRACK_ENABLED ? 'tp-badge--brand' : ''}`}
+                            title={FAST_TRACK_ENABLED ? undefined : 'Fast-track pausado pelo ajuste 7: a marcação fica guardada e volta a valer quando o fast-track for religado'}
+                          >
+                            {FAST_TRACK_ENABLED ? 'fast-track' : 'fast-track pausado'}
+                          </span>
                         )}
                         {item.isDeferrable && <span className="tp-badge">deferível</span>}
                       </span>
@@ -382,6 +388,7 @@ function NewItemDrawer({
             <input type="checkbox" {...register('isFastTrack')} /> Fast-track — abre OS e prioriza
             sozinho ao recolher (RF-06)
           </label>
+          {!FAST_TRACK_ENABLED && <span className="tp-help">Fast-track pausado pelo ajuste 7: a marcação fica guardada e volta a valer quando o fast-track for religado.</span>}
           <label className="tp-check">
             <input type="checkbox" disabled={isSafety} {...register('isDeferrable')} /> Deferível —
             pode esperar a parada programada

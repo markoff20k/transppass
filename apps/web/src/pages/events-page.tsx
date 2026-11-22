@@ -3,6 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, X } from 'lucide-react';
 import {
+  FAST_TRACK_ENABLED,
   EVENT_ORIGIN_LABELS,
   EVENT_STATUS_LABELS,
   EventOrigin,
@@ -563,7 +564,7 @@ function NewEventDrawer({
               Falha de segurança: bloqueia retorno à linha e deferimento (RF-05).
             </div>
           )}
-          {selected.isFastTrack && (
+          {selected.isFastTrack && FAST_TRACK_ENABLED && (
             <div className="tp-alert tp-alert--info">
               Fast-track: ao recolher, a OS e a priorização são geradas pelo sistema (RF-06).
             </div>
