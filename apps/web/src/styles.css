@@ -2126,6 +2126,7 @@ small.muted {
 .widget__sk { width: 60%; height: 22px; border-radius: 6px; }
 .widget.is-refreshing .dash-kpi__value { opacity: 0.7; transition: opacity 160ms ease; }
 .widget .tp-kpi__note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.widget__fallback { font-weight: var(--tp-weight-semibold); color: var(--color-warning-text); }
 
 /* Pílula de período do widget: a mesma do seletor de consumo, em tamanho de cartão. */
 .wperiod { position: relative; display: inline-flex; }

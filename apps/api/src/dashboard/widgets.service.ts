@@ -73,17 +73,35 @@ export class WidgetsService {
   ) {}
 
   async build(q: WidgetQuery): Promise<DashboardWidget> {
-    const from = startOfDay(q.from);
-    const to = endOfDay(q.to);
-    const days = Math.round((startOfDay(q.to).getTime() - from.getTime()) / DAY_MS) + 1;
-    const prevTo = new Date(from.getTime() - 1);
-    const prevFrom = new Date(from.getTime() - days * DAY_MS);
     const v = q.vehicleId;
-    const [current, previous, vehicle] = await Promise.all([
-      this.compute(q.kind, from, to, q.from, q.to, v),
-      this.compute(q.kind, prevFrom, prevTo, isoDay(prevFrom), isoDay(prevTo), v),
-      v ? this.prisma.vehicle.findUnique({ where: { id: v }, select: { code: true } }) : null,
-    ]);
+    const days =
+      Math.round((startOfDay(q.to).getTime() - startOfDay(q.from).getTime()) / DAY_MS) + 1;
+    const window = (fromIso: string, toIso: string) => {
+      const from = startOfDay(fromIso);
+      const to = endOfDay(toIso);
+      const prevTo = new Date(from.getTime() - 1);
+      const prevFrom = new Date(from.getTime() - days * DAY_MS);
+      return Promise.all([
+        this.compute(q.kind, from, to, fromIso, toIso, v),
+        this.compute(q.kind, prevFrom, prevTo, isoDay(prevFrom), isoDay(prevTo), v),
+      ]);
+    };
+    let used = { from: q.from, to: q.to };
+    let fellBack = false;
+    let [current, previous] = await window(q.from, q.to);
+    // Sem dado no período (remessa que ainda não chegou, dia sem planilha): recua
+    // para o dia mais recente com dado deste indicador, mantendo o tamanho da janela.
+    if (current.value === null) {
+      const last = await this.lastDataDay(q.kind, q.from, v);
+      if (last) {
+        used = { from: addDaysIso(last, -(days - 1)), to: last };
+        [current, previous] = await window(used.from, used.to);
+        fellBack = true;
+      }
+    }
+    const vehicle = v
+      ? await this.prisma.vehicle.findUnique({ where: { id: v }, select: { code: true } })
+      : null;
     return {
       kind: q.kind,
       from: q.from,
@@ -94,7 +112,63 @@ export class WidgetsService {
       detail: current.detail,
       higherIsBetter: HIGHER_IS_BETTER[q.kind],
       vehicleCode: vehicle?.code ?? null,
+      used,
+      fellBack,
     };
+  }
+
+  /**
+   * Último dia, antes de `before`, em que este indicador tem dado. Só para os
+   * indicadores que dependem de remessa ou planilha; contagens (OS, socorro,
+   * triagem) valem zero e não recuam.
+   */
+  private async lastDataDay(kind: WidgetKind, before: string, v?: string): Promise<string | null> {
+    const lt = new Date(`${before}T00:00:00`);
+    switch (kind) {
+      case 'mkbf':
+      case 'km':
+      case 'breakdowns': {
+        const r = await this.prisma.odometerReading.findFirst({
+          where: {
+            readAt: { lt },
+            deltaKm: { gt: 0 },
+            vehicle: { application: 'FROTA' },
+            ...(v ? { vehicleId: v } : {}),
+          },
+          orderBy: { readAt: 'desc' },
+          select: { readAt: true },
+        });
+        return r ? isoDay(r.readAt) : null;
+      }
+      case 'lostTrips':
+      case 'tripsDone': {
+        if (v) {
+          const e = await this.prisma.failureEvent.findFirst({
+            where: { vehicleId: v, reportedAt: { lt } },
+            orderBy: { reportedAt: 'desc' },
+            select: { reportedAt: true },
+          });
+          return e ? isoDay(e.reportedAt) : null;
+        }
+        const r = await this.prisma.lineTripDay.findFirst({
+          where: { date: { lt: new Date(`${before}T00:00:00Z`) }, planned: { gt: 0 } },
+          orderBy: { date: 'desc' },
+          select: { date: true },
+        });
+        return r ? r.date.toISOString().slice(0, 10) : null;
+      }
+      case 'consumptionDiesel':
+      case 'consumptionEbus': {
+        const r = await this.prisma.consumptionReading.findFirst({
+          where: { date: { lt: new Date(`${before}T00:00:00Z`) }, ...(v ? { vehicleId: v } : {}) },
+          orderBy: { date: 'desc' },
+          select: { date: true },
+        });
+        return r ? r.date.toISOString().slice(0, 10) : null;
+      }
+      default:
+        return null;
+    }
   }
 
   private async compute(
@@ -256,4 +330,8 @@ function endOfDay(iso: string): Date {
 }
 function isoDay(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function addDaysIso(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
+  return isoDay(new Date(y, m - 1, d + n));
 }

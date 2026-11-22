@@ -304,6 +304,9 @@ const ptBR = {
       vsPrevious: 'vs período anterior',
       noPrevious: 'sem período anterior para comparar',
       noData: 'sem dado no período',
+      noDataFor: '{k}: sem dados para {d}',
+      showing: 'Mostrando {d}, o dia mais recente com dados.',
+      dataOf: 'dados de {d}',
       scope: {
         fleet: 'Frota',
         fleetHint: 'Frota inteira; clique para escolher um carro',
@@ -736,6 +739,9 @@ const en: Dictionary = {
       vsPrevious: 'vs previous period',
       noPrevious: 'no previous period to compare',
       noData: 'no data in the period',
+      noDataFor: '{k}: no data for {d}',
+      showing: 'Showing {d}, the most recent day with data.',
+      dataOf: 'data from {d}',
       scope: {
         fleet: 'Fleet',
         fleetHint: 'Whole fleet; click to pick one bus',

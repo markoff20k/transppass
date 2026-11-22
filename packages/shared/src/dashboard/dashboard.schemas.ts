@@ -260,6 +260,9 @@ export interface DashboardWidget {
   higherIsBetter: boolean;
   /** Prefixo do carro, quando o widget é de um carro só. */
   vehicleCode: string | null;
+  /** O período mostrado de fato: igual ao pedido, ou recuado até o dia mais recente com dado. */
+  used: { from: string; to: string };
+  fellBack: boolean;
 }
 
 export const WIDGET_PERIOD_PRESETS = ['today', 'yesterday', 'd2', 'last7', 'last30', 'thisMonth', 'lastMonth', 'custom'] as const;

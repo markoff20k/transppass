@@ -26,7 +26,10 @@ import { formatMinutes, formatNumber } from '@/lib/format';
 import { isoOf, makePeriod, rangeLabel, shiftDays, todayIso } from '@/lib/period';
 import { useI18n } from '@/i18n/i18n.context';
 import { useUiState } from '@/features/auth/use-ui-pref';
+import { toast } from '@/lib/toast';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
+
+const fmtDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
 /** Painel inicial de quem ainda não montou o seu. */
 const DEFAULT_WIDGETS: DashboardWidgetPref[] = [
@@ -183,6 +186,20 @@ function Widget({
     placeholderData: keepPreviousData,
   });
   const w = query.data;
+  // Período sem dado: a API recuou para o dia mais recente com dado; avisa uma vez por recuo.
+  const toasted = useRef<string | null>(null);
+  useEffect(() => {
+    if (!w?.fellBack) return;
+    const key = `${w.kind}:${w.to}>${w.used.to}`;
+    if (toasted.current === key) return;
+    toasted.current = key;
+    toast.warning(
+      t.dash.widgets.noDataFor.replace('{d}', fmtDay(w.to)).replace('{k}', meta.label),
+      {
+        description: t.dash.widgets.showing.replace('{d}', fmtDay(w.used.to)),
+      },
+    );
+  }, [w, t, meta.label]);
   const value = w ? formatValue(w.value, w.unit) : null;
   const delta =
     w && w.value !== null && w.previous !== null && w.previous !== 0
@@ -247,6 +264,11 @@ function Widget({
         <em>{delta === null ? t.dash.widgets.noPrevious : t.dash.widgets.vsPrevious}</em>
       </span>
       <span className="tp-kpi__note">
+        {w?.fellBack && (
+          <b className="widget__fallback">
+            {t.dash.widgets.dataOf.replace('{d}', fmtDay(w.used.to))} ·{' '}
+          </b>
+        )}
         {w && w.value === null ? t.dash.widgets.noData : (w?.detail ?? meta.hint)}
       </span>
     </article>

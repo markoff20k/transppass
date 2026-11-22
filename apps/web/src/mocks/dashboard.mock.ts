@@ -643,6 +643,8 @@ export const dashboardHandlers = [
       ...s,
       detail: s.detail || null,
       vehicleCode: url.searchParams.get('vehicleId') ? '10001' : null,
+      used: { from: url.searchParams.get('from'), to: url.searchParams.get('to') },
+      fellBack: false,
     });
   }),
   http.get('*/api/dashboard/notices', async () => {
