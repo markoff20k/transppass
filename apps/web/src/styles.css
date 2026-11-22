@@ -2241,6 +2241,34 @@ small.muted {
 /* Gráficos com zoom: o clique para arrastar não deixa a borda de foco. */
 .chart--zoomable .recharts-wrapper:focus:not(:focus-visible) { outline: none; }
 
+/* ---- Período dos gráficos (atalhos + personalizado) ---------------------------- */
+.chart__title--tools { align-items: flex-start; flex-wrap: wrap; }
+.chart__title--tools > div:first-child { display: grid; gap: 2px; min-width: 0; margin-right: auto; }
+.chart-period { position: relative; display: inline-flex; flex: none; }
+.chart-period__seg { padding: 2px; }
+.chart-period__seg .tp-segmented__item { min-height: 26px; padding: 0 10px; font-size: var(--tp-text-xs); }
+.chart-period .period__panel.chart-period__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: auto;
+  width: 300px;
+  display: block;
+  z-index: 30;
+  animation: none;
+}
+.chart-period .chart-period__custom { grid-template-columns: 1fr 1fr; padding: 10px 12px 12px; border-top: 0; }
+.chart-period .chart-period__custom .period__date { display: grid; gap: 3px; }
+.chart-period .chart-period__custom .period__date .tp-input { min-width: 0; width: 100%; height: 32px; padding: 0 8px; font-size: var(--tp-text-xs); }
+.chart-period .chart-period__custom .tp-btn { grid-column: 1 / -1; justify-self: end; }
+.dash-row--charts:has(.chart-period.is-open) { position: relative; z-index: 30; }
+.tp-card:has(.chart-period.is-open) { z-index: 30; }
+.tp-table__filters th:last-child select.tp-select { min-width: 104px; }
+
+/* ---- Período do topo do Dashboard: dias (hoje, D-1, D-2) | janelas (7…365) -- */
+.dash-period { align-items: center; }
+.dash-period__sep { width: 1px; height: 18px; margin: 0 4px; background: var(--color-border-strong); opacity: 0.7; }
+
 /* ---- Letreiro de avisos (uma linha, como o painel de destino do ônibus) -- */
 
 /* Um cartão como os outros da página: mesmo vidro, mesmo raio, mesma sombra.

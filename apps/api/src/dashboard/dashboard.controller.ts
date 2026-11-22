@@ -1,6 +1,20 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { dashboardQuerySchema, widgetQuerySchema, type DashboardData, type DashboardNotices, type DashboardQuery, type DashboardWidget, type WidgetQuery } from '@app/shared';
+import {
+  availabilityHoursQuerySchema,
+  dashboardQuerySchema,
+  mkbfSeriesQuerySchema,
+  widgetQuerySchema,
+  type AvailabilityHours,
+  type AvailabilityHoursQuery,
+  type DashboardData,
+  type DashboardNotices,
+  type DashboardQuery,
+  type DashboardWidget,
+  type MkbfSeries,
+  type MkbfSeriesQuery,
+  type WidgetQuery,
+} from '@app/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { DashboardService } from './dashboard.service';
@@ -32,9 +46,27 @@ export class DashboardController {
     return this.noticesService.build();
   }
 
+  /** Série do MKBF por dia ou por mês para o período escolhido no cartão. */
+  @Get('mkbf-series')
+  mkbfSeries(
+    @Query(new ZodValidationPipe(mkbfSeriesQuerySchema)) query: MkbfSeriesQuery,
+  ): Promise<MkbfSeries> {
+    return this.dashboard.mkbfSeriesRange(query);
+  }
+
+  /** Disponibilidade por hora: média de uma janela e a curva de um dia. */
+  @Get('availability-hours')
+  availabilityHours(
+    @Query(new ZodValidationPipe(availabilityHoursQuerySchema)) query: AvailabilityHoursQuery,
+  ): Promise<AvailabilityHours> {
+    return this.dashboard.availabilityHours(query);
+  }
+
   /** Um widget da seção de indicadores: indicador + período → valor, anterior e detalhe. */
   @Get('widget')
-  widget(@Query(new ZodValidationPipe(widgetQuerySchema)) query: WidgetQuery): Promise<DashboardWidget> {
+  widget(
+    @Query(new ZodValidationPipe(widgetQuerySchema)) query: WidgetQuery,
+  ): Promise<DashboardWidget> {
     return this.widgets.build(query);
   }
 }

@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import {
-  EventStatus,
-  MaterialRequestStatus,
-  QueueStatus,
-  WorkOrderStatus,
-} from '@prisma/client';
+import { EventStatus, MaterialRequestStatus, QueueStatus, WorkOrderStatus } from '@prisma/client';
 import {
   AVAILABLE_STATUSES,
   VehicleStatus,
+  type AvailabilityHours,
+  type AvailabilityHoursQuery,
   type DashboardBacks,
   type DashboardData,
+  type MkbfSeries,
+  type MkbfSeriesPoint,
+  type MkbfSeriesQuery,
   type DashboardQuery,
   type DashboardVehicle,
   type DayCount,
@@ -20,6 +20,8 @@ import { IN_SHOP_STATUSES } from '../common/vehicle-status';
 import { PrismaService } from '../prisma/prisma.service';
 import { MetricsService } from '../metrics/metrics.service';
 import { EventsService } from '../events/events.service';
+import { BoardService } from '../metrics/board.service';
+import { addDays, daysBetween, isoDay } from '../consumption/consumption.calc';
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -39,6 +41,7 @@ export class DashboardService {
     private readonly prisma: PrismaService,
     private readonly metrics: MetricsService,
     private readonly events: EventsService,
+    private readonly board: BoardService,
   ) {}
 
   async build(query: DashboardQuery): Promise<DashboardData> {
@@ -47,7 +50,13 @@ export class DashboardService {
     // A janela do histórico: do início do dia de (days - 1) dias atrás até agora.
     // O "agora" da garagem (anel, fluxo, fila, alertas) não depende dela.
     const days = query.days;
-    const from = new Date(now.getTime() - (days - 1) * DAY_MS);
+    // Com `back`, a janela fecha no fim de D-1 ou D-2 em vez de agora.
+    const periodEnd = new Date(now);
+    if (query.back > 0) {
+      periodEnd.setDate(periodEnd.getDate() - query.back);
+      periodEnd.setHours(23, 59, 59, 999);
+    }
+    const from = new Date(periodEnd.getTime() - (days - 1) * DAY_MS);
     from.setHours(0, 0, 0, 0);
     const months = query.months ?? Math.max(6, Math.ceil(days / 30) + 1);
 
@@ -68,22 +77,23 @@ export class DashboardService {
     ] = await Promise.all([
       this.vehicles(now),
       this.mkbfSeries(now, months),
-      this.metrics.mkbf(from, now),
+      this.metrics.mkbf(from, periodEnd),
       this.availabilityByHour(now, from),
       this.availabilityDelta(now),
-      this.metrics.r1({ from, to: now }),
-      this.eventsPerDay(now, from, days),
+      this.metrics.r1({ from, to: periodEnd }),
+      this.eventsPerDay(periodEnd, from, days),
       this.queue(now),
-      this.workOrders(now, from),
+      this.workOrders(now, from, periodEnd),
       this.materials(now),
       this.alerts(),
-      this.events.list({ page: 1, perPage: 6, from }),
+      this.events.list({ page: 1, perPage: 6, from, to: periodEnd }),
       this.backs(now, from, days),
     ]);
 
-    const byStatus = Object.fromEntries(
-      Object.values(VehicleStatus).map((s) => [s, 0]),
-    ) as Record<VehicleStatus, number>;
+    const byStatus = Object.fromEntries(Object.values(VehicleStatus).map((s) => [s, 0])) as Record<
+      VehicleStatus,
+      number
+    >;
     for (const v of vehicles) byStatus[v.status] += 1;
 
     const available = vehicles.filter((v) => AVAILABLE_STATUSES.includes(v.status)).length;
@@ -91,7 +101,7 @@ export class DashboardService {
 
     return {
       generatedAt: now.toISOString(),
-      period: { days, from: from.toISOString(), to: now.toISOString() },
+      period: { days, from: from.toISOString(), to: periodEnd.toISOString() },
       fleet: {
         total: vehicles.length,
         available,
@@ -126,7 +136,11 @@ export class DashboardService {
   // --- Verso dos três cartões: o porquê do número da frente ------------------
 
   private async backs(now: Date, from: Date, days: number): Promise<DashboardBacks> {
-    const [mkbf, queue, workOrders] = await Promise.all([this.mkbfBack(now, from, days), this.queueBack(now, from), this.workOrdersBack(now)]);
+    const [mkbf, queue, workOrders] = await Promise.all([
+      this.mkbfBack(now, from, days),
+      this.queueBack(now, from),
+      this.workOrdersBack(now),
+    ]);
     return { mkbf, queue, workOrders };
   }
 
@@ -138,15 +152,29 @@ export class DashboardService {
    */
   private async mkbfBack(now: Date, from: Date, days: number): Promise<DashboardBacks['mkbf']> {
     const prevFrom = new Date(from.getTime() - days * DAY_MS);
-    const where = { isUnscheduledReturn: true, reportedAt: { gte: from, lte: now }, vehicle: { application: 'FROTA' } };
+    const where = {
+      isUnscheduledReturn: true,
+      reportedAt: { gte: from, lte: now },
+      vehicle: { application: 'FROTA' },
+    };
     const [previous, rows, byVehicle] = await Promise.all([
       this.metrics.mkbf(prevFrom, from),
-      this.prisma.failureEvent.findMany({ where, select: { ccoDefect: true, catalogItem: { select: { system: true, description: true } } } }),
-      this.prisma.failureEvent.groupBy({ by: ['vehicleId'], where, _count: { _all: true }, orderBy: { _count: { vehicleId: 'desc' } }, take: 1 }),
+      this.prisma.failureEvent.findMany({
+        where,
+        select: { ccoDefect: true, catalogItem: { select: { system: true, description: true } } },
+      }),
+      this.prisma.failureEvent.groupBy({
+        by: ['vehicleId'],
+        where,
+        _count: { _all: true },
+        orderBy: { _count: { vehicleId: 'desc' } },
+        take: 1,
+      }),
     ]);
     const counts = new Map<string, number>();
     for (const r of rows) {
-      const name = r.catalogItem?.system ?? r.catalogItem?.description ?? r.ccoDefect ?? 'Sem classificação';
+      const name =
+        r.catalogItem?.system ?? r.catalogItem?.description ?? r.ccoDefect ?? 'Sem classificação';
       counts.set(name, (counts.get(name) ?? 0) + 1);
     }
     const topSystems = [...counts.entries()]
@@ -155,9 +183,19 @@ export class DashboardService {
       .map(([name, count]) => ({ name, count }));
     const worst = byVehicle[0];
     const worstVehicle = worst
-      ? await this.prisma.vehicle.findUnique({ where: { id: worst.vehicleId }, select: { code: true } }).then((v) => (v ? { code: v.code, count: worst._count._all } : null))
+      ? await this.prisma.vehicle
+          .findUnique({ where: { id: worst.vehicleId }, select: { code: true } })
+          .then((v) => (v ? { code: v.code, count: worst._count._all } : null))
       : null;
-    return { previous: { kmTraveled: previous.kmTraveled, unscheduledReturns: previous.unscheduledReturns, mkbf: previous.mkbf }, topSystems, worstVehicle };
+    return {
+      previous: {
+        kmTraveled: previous.kmTraveled,
+        unscheduledReturns: previous.unscheduledReturns,
+        mkbf: previous.mkbf,
+      },
+      topSystems,
+      worstVehicle,
+    };
   }
 
   /** Fila: quem são os mais antigos, quanto se espera em média e o movimento de hoje. */
@@ -171,14 +209,24 @@ export class DashboardService {
         take: 3,
         select: { enteredAt: true, vehicle: { select: { code: true } } },
       }),
-      this.prisma.queueEntry.findMany({ where: { startedAt: { gte: from } }, select: { enteredAt: true, startedAt: true } }),
+      this.prisma.queueEntry.findMany({
+        where: { startedAt: { gte: from } },
+        select: { enteredAt: true, startedAt: true },
+      }),
       this.prisma.queueEntry.count({ where: { enteredAt: { gte: today } } }),
       this.prisma.queueEntry.count({ where: { startedAt: { gte: today } } }),
     ]);
-    const waits = served.flatMap((q) => (q.startedAt ? [(q.startedAt.getTime() - q.enteredAt.getTime()) / HOUR_MS] : []));
+    const waits = served.flatMap((q) =>
+      q.startedAt ? [(q.startedAt.getTime() - q.enteredAt.getTime()) / HOUR_MS] : [],
+    );
     return {
-      oldest: oldest.map((q) => ({ code: q.vehicle.code, hours: Math.round(((now.getTime() - q.enteredAt.getTime()) / HOUR_MS) * 10) / 10 })),
-      averageWaitHours: waits.length ? Math.round((waits.reduce((a, b) => a + b, 0) / waits.length) * 10) / 10 : null,
+      oldest: oldest.map((q) => ({
+        code: q.vehicle.code,
+        hours: Math.round(((now.getTime() - q.enteredAt.getTime()) / HOUR_MS) * 10) / 10,
+      })),
+      averageWaitHours: waits.length
+        ? Math.round((waits.reduce((a, b) => a + b, 0) / waits.length) * 10) / 10
+        : null,
       enteredToday,
       startedToday,
     };
@@ -192,7 +240,12 @@ export class DashboardService {
       this.prisma.workOrder.findFirst({
         where: { ...openWhere, estimatedCompletionAt: { lt: now } },
         orderBy: { estimatedCompletionAt: 'asc' },
-        select: { id: true, code: true, estimatedCompletionAt: true, vehicle: { select: { code: true } } },
+        select: {
+          id: true,
+          code: true,
+          estimatedCompletionAt: true,
+          vehicle: { select: { code: true } },
+        },
       }),
     ]);
     const count = (st: WorkOrderStatus) => stages.find((s) => s.status === st)?._count._all ?? 0;
@@ -206,9 +259,190 @@ export class DashboardService {
         inCleaning: count(WorkOrderStatus.IN_CLEANING),
       },
       mostOverdue: overdue
-        ? { id: overdue.id, code: overdue.code, vehicleCode: overdue.vehicle.code, lateHours: Math.round(((now.getTime() - overdue.estimatedCompletionAt.getTime()) / HOUR_MS) * 10) / 10 }
+        ? {
+            id: overdue.id,
+            code: overdue.code,
+            vehicleCode: overdue.vehicle.code,
+            lateHours:
+              Math.round(
+                ((now.getTime() - overdue.estimatedCompletionAt.getTime()) / HOUR_MS) * 10,
+              ) / 10,
+          }
         : null,
     };
+  }
+
+  // --- Período dos gráficos: MKBF por dia/mês e disponibilidade por hora ---------
+
+  /**
+   * Série do MKBF para um período escolhido. Por dia, os pontos saem do quadro
+   * mensal (mesmo km e mesmas quebras das telas de indicador); por mês, da
+   * mesma conta do R1. Se nenhum dia do período tem dado (km nem quebra), a
+   * janela recua até o último dia com dado e `fellBack` avisa a tela.
+   */
+  async mkbfSeriesRange(q: MkbfSeriesQuery): Promise<MkbfSeries> {
+    const today = isoDay(new Date());
+    const to = q.to > today ? today : q.to;
+    const from = q.from > to ? to : q.from;
+    if (q.bucket === 'month') {
+      const points: MkbfSeriesPoint[] = [];
+      const now = new Date();
+      let km = 0;
+      let returns = 0;
+      for (let m = monthOf(from); m <= monthOf(to); m = shiftMonth(m, 1)) {
+        const [y, mm] = m.split('-').map(Number) as [number, number];
+        const start = new Date(y, mm - 1, 1);
+        const endOfMonth = new Date(y, mm, 0, 23, 59, 59, 999);
+        const end = endOfMonth > now ? now : endOfMonth;
+        const r = await this.metrics.mkbf(start, end);
+        km += r.kmTraveled;
+        returns += r.unscheduledReturns;
+        points.push({
+          key: m,
+          kmTraveled: r.kmTraveled,
+          unscheduledReturns: r.unscheduledReturns,
+          mkbf: r.mkbf,
+          mkbfToDate: returns > 0 ? Math.round(km / returns) : null,
+        });
+      }
+      return {
+        bucket: 'month',
+        points,
+        requested: { from: q.from, to: q.to },
+        used: { from, to },
+        fellBack: false,
+      };
+    }
+
+    // Dias com dado, do quadro mensal, cobrindo o período e até três meses antes (para o recuo).
+    const days = new Map<string, { km: number; failures: number }>();
+    for (let m = shiftMonth(monthOf(from), -3); m <= monthOf(to); m = shiftMonth(m, 1)) {
+      const board = await this.board.board(m).catch(() => null);
+      for (const d of board?.days ?? []) {
+        // Sem km não há MKBF: dia só com ficha (remessa de km ainda não chegou) fica de fora.
+        if (!d.empty && d.km > 0) days.set(d.date, { km: d.km, failures: d.failures });
+      }
+    }
+    const hasData = (a: string, b: string) => [...days.keys()].some((k) => k >= a && k <= b);
+    let usedFrom = from;
+    let usedTo = to;
+    let fellBack = false;
+    if (!hasData(from, to)) {
+      const last = [...days.keys()]
+        .filter((k) => k < from)
+        .sort()
+        .pop();
+      if (last) {
+        const span = Math.max(0, daysBetween(from, to) - 1); // daysBetween conta inclusivo
+        usedTo = last;
+        usedFrom = addDays(last, -span);
+        fellBack = true;
+      }
+    }
+    const points: MkbfSeriesPoint[] = [];
+    let km = 0;
+    let returns = 0;
+    for (let d = usedFrom; d <= usedTo; d = addDays(d, 1)) {
+      const row = days.get(d);
+      if (!row) continue;
+      km += row.km;
+      returns += row.failures;
+      points.push({
+        key: d,
+        kmTraveled: row.km,
+        unscheduledReturns: row.failures,
+        mkbf: row.failures > 0 ? Math.round(row.km / row.failures) : null,
+        mkbfToDate: returns > 0 ? Math.round(km / returns) : null,
+      });
+    }
+    return {
+      bucket: 'day',
+      points,
+      requested: { from: q.from, to: q.to },
+      used: { from: usedFrom, to: usedTo },
+      fellBack,
+    };
+  }
+
+  /**
+   * Disponibilidade por hora: a média de uma janela de dias e, se pedido, a
+   * curva de um dia. Carro parado é o mesmo do anel: da quebra à liberação.
+   * Dia pedido no futuro (ou hoje antes da primeira amostra) recua para o dia
+   * anterior e `fellBack` avisa a tela.
+   */
+  async availabilityHours(q: AvailabilityHoursQuery): Promise<AvailabilityHours> {
+    const now = new Date();
+    const today = isoDay(now);
+    const to = q.to > today ? today : q.to;
+    const from = q.from > to ? to : q.from;
+    let day = q.day ? (q.day > today ? today : q.day) : null;
+    let fellBack = false;
+    // Hoje antes de 00:30 ainda não tem amostra: a curva de hoje seria vazia.
+    if (day === today && now.getHours() === 0 && now.getMinutes() < 30) {
+      day = addDays(today, -1);
+      fellBack = true;
+    }
+    if (q.day && day !== q.day && q.day <= today) fellBack = true;
+
+    const windowStart = startOfDay(day && day < from ? day : from);
+    const [fleetSize, workOrders, returns] = await Promise.all([
+      this.prisma.vehicle.count({ where: { isActive: true } }),
+      this.prisma.workOrder.findMany({
+        where: {
+          openedAt: { lte: now },
+          OR: [{ releasedAt: null }, { releasedAt: { gte: windowStart } }],
+          status: { not: WorkOrderStatus.CANCELLED },
+        },
+        select: { vehicleId: true, openedAt: true, releasedAt: true },
+      }),
+      this.prisma.failureEvent.findMany({
+        where: {
+          isUnscheduledReturn: true,
+          reportedAt: { lte: now },
+          OR: [{ closedAt: null }, { closedAt: { gte: windowStart } }],
+          status: { not: EventStatus.CANCELLED },
+        },
+        select: { vehicleId: true, reportedAt: true, closedAt: true },
+      }),
+    ]);
+    const spans = [
+      ...workOrders.map((wo) => ({
+        vehicleId: wo.vehicleId,
+        from: wo.openedAt,
+        to: wo.releasedAt,
+      })),
+      ...returns.map((ev) => ({ vehicleId: ev.vehicleId, from: ev.reportedAt, to: ev.closedAt })),
+    ];
+    const rateAt = (t: Date): number => {
+      if (fleetSize === 0) return 0;
+      const down = new Set<string>();
+      for (const sp of spans) if (sp.from <= t && (!sp.to || sp.to >= t)) down.add(sp.vehicleId);
+      return (fleetSize - Math.min(down.size, fleetSize)) / fleetSize;
+    };
+
+    const totalDays = daysBetween(from, to) + 1;
+    const step = Math.max(1, Math.ceil(totalDays / 60));
+    const hours: HourAvailability[] = [];
+    for (let hour = 0; hour < 24; hour += 1) {
+      let sum = 0;
+      let samples = 0;
+      for (let i = 0; i < totalDays; i += step) {
+        const t = startOfDay(addDays(from, i));
+        t.setHours(hour, 30, 0, 0);
+        if (t > now) continue;
+        sum += rateAt(t);
+        samples += 1;
+      }
+      let todayRate: number | null = null;
+      if (day) {
+        const t = startOfDay(day);
+        t.setHours(hour, 30, 0, 0);
+        const sample = t <= now ? t : day === today && hour === now.getHours() ? now : null;
+        todayRate = sample ? rateAt(sample) : null;
+      }
+      hours.push({ hour, rate: samples ? sum / samples : 0, today: todayRate });
+    }
+    return { hours, day, requestedDay: q.day ?? null, fellBack, days: Math.ceil(totalDays / step) };
   }
 
   private async vehicles(now: Date): Promise<DashboardVehicle[]> {
@@ -247,7 +481,9 @@ export class DashboardService {
           event?.catalogItem?.description ??
           event?.reportedDescription ??
           (wo ? `OS ${wo.code}` : null),
-        hoursInState: since ? Math.round(((now.getTime() - since.getTime()) / HOUR_MS) * 10) / 10 : null,
+        hoursInState: since
+          ? Math.round(((now.getTime() - since.getTime()) / HOUR_MS) * 10) / 10
+          : null,
       };
     });
   }
@@ -257,7 +493,8 @@ export class DashboardService {
 
     for (let i = months - 1; i >= 0; i -= 1) {
       const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const end = i === 0 ? now : new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+      const end =
+        i === 0 ? now : new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
       const r = await this.metrics.mkbf(start, end);
       points.push({
         month: start.toISOString(),
@@ -308,7 +545,11 @@ export class DashboardService {
     }
 
     const spans = [
-      ...workOrders.map((wo) => ({ vehicleId: wo.vehicleId, from: wo.openedAt, to: wo.releasedAt })),
+      ...workOrders.map((wo) => ({
+        vehicleId: wo.vehicleId,
+        from: wo.openedAt,
+        to: wo.releasedAt,
+      })),
       ...returns.map((ev) => ({ vehicleId: ev.vehicleId, from: ev.reportedAt, to: ev.closedAt })),
     ];
 
@@ -339,9 +580,14 @@ export class DashboardService {
       // último ponto bater com o anel de disponibilidade.
       const todayAt = new Date(now);
       todayAt.setHours(hour, 30, 0, 0);
-      const todaySample = todayAt <= now ? todayAt : todayAt.getHours() === now.getHours() ? now : null;
+      const todaySample =
+        todayAt <= now ? todayAt : todayAt.getHours() === now.getHours() ? now : null;
 
-      result.push({ hour, rate: samples ? sum / samples : 0, today: todaySample ? rateAt(todaySample) : null });
+      result.push({
+        hour,
+        rate: samples ? sum / samples : 0,
+        today: todaySample ? rateAt(todaySample) : null,
+      });
     }
 
     return result;
@@ -411,10 +657,15 @@ export class DashboardService {
    */
   private async queue(now: Date) {
     const [waiting, inService, oldest] = await Promise.all([
-      this.prisma.vehicle.count({ where: { isActive: true, status: VehicleStatus.AWAITING_MAINTENANCE } }),
+      this.prisma.vehicle.count({
+        where: { isActive: true, status: VehicleStatus.AWAITING_MAINTENANCE },
+      }),
       this.prisma.vehicle.count({ where: { isActive: true, status: { in: IN_SHOP_STATUSES } } }),
       this.prisma.queueEntry.findFirst({
-        where: { status: QueueStatus.WAITING, vehicle: { status: VehicleStatus.AWAITING_MAINTENANCE } },
+        where: {
+          status: QueueStatus.WAITING,
+          vehicle: { status: VehicleStatus.AWAITING_MAINTENANCE },
+        },
         orderBy: { enteredAt: 'asc' },
         select: { enteredAt: true },
       }),
@@ -429,7 +680,7 @@ export class DashboardService {
     };
   }
 
-  private async workOrders(now: Date, from: Date) {
+  private async workOrders(now: Date, from: Date, to: Date = now) {
     const [open, overdue, released] = await Promise.all([
       this.prisma.workOrder.count({
         where: { status: { notIn: [WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED] } },
@@ -443,7 +694,7 @@ export class DashboardService {
       this.prisma.workOrder.findMany({
         where: {
           status: WorkOrderStatus.RELEASED,
-          releasedAt: { gte: from },
+          releasedAt: { gte: from, lte: to },
         },
         select: { downtimeMinutes: true },
       }),
@@ -496,4 +747,18 @@ export class DashboardService {
 
     return { degradedKm, pendingTriage, safetyEventsOpen };
   }
+}
+
+// --- datas civis -----------------------------------------------------------------
+function monthOf(iso: string): string {
+  return iso.slice(0, 7);
+}
+function shiftMonth(month: string, by: number): string {
+  const [y, m] = month.split('-').map(Number) as [number, number];
+  const d = new Date(y, m - 1 + by, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function startOfDay(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
 }

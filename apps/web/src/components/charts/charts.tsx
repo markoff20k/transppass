@@ -23,8 +23,8 @@ import {
   type HourAvailability,
   type MetricHistoryPoint,
   type MetricKey,
-  type MkbfPoint,
   type DayCount,
+  type MkbfSeriesPoint,
 } from '@app/shared';
 import { formatMinutes, formatNumber } from '@/lib/format';
 import { useChartZoom } from './use-chart-zoom';
@@ -121,8 +121,23 @@ function niceStep(span: number): number {
 
 // --- MKBF por mês ----------------------------------------------------------
 
-export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
-  const all = data.map((p) => ({ ...p, label: monthLabel(p.month) }));
+export function MkbfTrendChart({
+  points,
+  bucket,
+}: {
+  points: MkbfSeriesPoint[];
+  bucket: 'day' | 'month';
+}) {
+  // Por mês, cada ponto é o MKBF do mês; por dia, a linha é o acumulado do período (o do dia fica no tooltip).
+  const all = points.map((p) => ({
+    ...p,
+    month: p.key,
+    label:
+      bucket === 'month'
+        ? monthLabel(`${p.key}-01T12:00:00`)
+        : `${p.key.slice(8, 10)}/${p.key.slice(5, 7)}`,
+    y: bucket === 'month' ? p.mkbf : p.mkbfToDate,
+  }));
   // Zoom por mês: arrastar sobre o gráfico ou as lupas; mínimo de dois meses.
   const zoom = useChartZoom({
     prefKey: 'dash.zoom.mkbf',
@@ -131,8 +146,9 @@ export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
     min: 2,
   });
   const rows = zoom.visible;
-  const valid = rows.filter((r) => r.mkbf !== null).map((r) => r.mkbf as number);
-  const avg = valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
+  const valid = rows.filter((r) => r.y !== null).map((r) => r.y as number);
+  const avg =
+    bucket === 'month' && valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
 
   // Eixo apertado no intervalo real: a variação entre meses é o que importa,
   // não a distância até zero.
@@ -150,7 +166,11 @@ export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
     <div className="chart chart--fill chart--zoomable">
       <Legend
         items={[
-          { kind: 'area', color: 'var(--chart-1)', label: 'MKBF do mês' },
+          {
+            kind: 'area',
+            color: 'var(--chart-1)',
+            label: bucket === 'month' ? 'MKBF do mês' : 'MKBF acumulado no período',
+          },
           ...(avg !== null
             ? [
                 {
@@ -221,7 +241,7 @@ export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
                       color: 'var(--chart-1)',
                     },
                     { label: 'Km rodados', value: formatNumber(p.kmTraveled) },
-                    { label: 'Retornos', value: String(p.unscheduledReturns) },
+                    { label: 'Quebras', value: String(p.unscheduledReturns) },
                   ]}
                 />
               );
@@ -229,7 +249,7 @@ export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
           />
           <Area
             type="monotone"
-            dataKey="mkbf"
+            dataKey="y"
             stroke="var(--chart-1)"
             strokeWidth={2.4}
             fill="url(#mkbfFill)"
@@ -244,7 +264,7 @@ export function MkbfTrendChart({ data }: { data: MkbfPoint[] }) {
             isAnimationActive={false}
           >
             <LabelList
-              dataKey="mkbf"
+              dataKey="y"
               content={({ x, y, value, index }) => {
                 // Só o último mês leva o número: é o que o gestor lê de longe.
                 if (
@@ -280,11 +300,14 @@ export function AvailabilityByHourChart({
   data,
   target = 0.85,
   days = 7,
+  dayLabel = 'hoje',
 }: {
   data: HourAvailability[];
   target?: number;
   /** Dias da média, para a legenda. */
   days?: number;
+  /** Nome da curva do dia ("hoje", "21/11"); nulo quando só há média. */
+  dayLabel?: string | null;
 }) {
   const all = data.map((d) => ({
     hour: `${String(d.hour).padStart(2, '0')}h`,
@@ -319,14 +342,14 @@ export function AvailabilityByHourChart({
     <div className="chart chart--fill chart--zoomable">
       <Legend
         items={[
-          { kind: 'area', color, label: 'hoje' },
+          ...(dayLabel ? [{ kind: 'area' as const, color, label: dayLabel }] : []),
           { kind: 'line', color: 'var(--chart-2)', label: `média ${days} dias` },
           { kind: 'dash', color: 'var(--color-text-muted)', label: `meta ${targetPct}%` },
         ]}
         note={
-          worst ? (
+          worst && dayLabel ? (
             <>
-              pior faixa de hoje <b>{worst.hour}</b> ·{' '}
+              pior faixa de {dayLabel} <b>{worst.hour}</b> ·{' '}
               {(worst.today as number).toLocaleString('pt-BR')}%
             </>
           ) : undefined

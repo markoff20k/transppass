@@ -572,6 +572,65 @@ const WIDGET_SAMPLE: Record<
 };
 
 export const dashboardHandlers = [
+  http.get('*/api/dashboard/mkbf-series', async ({ request }) => {
+    await delay();
+    const url = new URL(request.url);
+    const bucket = url.searchParams.get('bucket') ?? 'day';
+    const from = url.searchParams.get('from') ?? '2026-11-01';
+    const to = url.searchParams.get('to') ?? '2026-11-22';
+    const points = [];
+    let km = 0;
+    let ret = 0;
+    if (bucket === 'month') {
+      MKBF_SERIES.forEach((mkbf, i) => {
+        const d = monthStart(MKBF_SERIES.length - 1 - i);
+        const kmM = mkbf * (11 + (i % 3));
+        km += kmM;
+        ret += 11 + (i % 3);
+        points.push({
+          key: d.toISOString().slice(0, 7),
+          kmTraveled: kmM,
+          unscheduledReturns: 11 + (i % 3),
+          mkbf,
+          mkbfToDate: Math.round(km / ret),
+        });
+      });
+    } else {
+      const start = new Date(`${from}T12:00:00`);
+      const end = new Date(`${to}T12:00:00`);
+      for (let d = new Date(start), i = 0; d <= end; d.setDate(d.getDate() + 1), i += 1) {
+        const kmD = 13_000 + (i % 5) * 900;
+        const r = i % 4 === 3 ? 5 : 3;
+        km += kmD;
+        ret += r;
+        points.push({
+          key: d.toISOString().slice(0, 10),
+          kmTraveled: kmD,
+          unscheduledReturns: r,
+          mkbf: Math.round(kmD / r),
+          mkbfToDate: Math.round(km / ret),
+        });
+      }
+    }
+    return HttpResponse.json({
+      bucket,
+      points,
+      requested: { from, to },
+      used: { from, to },
+      fellBack: false,
+    });
+  }),
+  http.get('*/api/dashboard/availability-hours', async ({ request }) => {
+    await delay();
+    const url = new URL(request.url);
+    const day = url.searchParams.get('day');
+    const hours = Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      rate: availabilityCurve(hour),
+      today: day ? (hour <= 17 ? availabilityCurve(hour) - 0.02 : null) : null,
+    }));
+    return HttpResponse.json({ hours, day, requestedDay: day, fellBack: false, days: 30 });
+  }),
   http.get('*/api/dashboard/widget', async ({ request }) => {
     await delay();
     const url = new URL(request.url);

@@ -27,15 +27,9 @@ import { NoticeBoard, TickerSwitch } from '@/components/dashboard/notice-board';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { SortableCards } from '@/components/ui/sortable-cards';
 import { WidgetsCard } from '@/components/dashboard/widgets';
+import { AvailabilityCard, MkbfCard } from '@/components/dashboard/chart-cards';
 import { useUiPref, useUiState } from '@/features/auth/use-ui-pref';
-import {
-  AvailabilityByHourChart,
-  DowntimeDonut,
-  EventsPerDayChart,
-  MkbfTrendChart,
-  RingGauge,
-  Sparkline,
-} from '@/components/charts/charts';
+import { DowntimeDonut, EventsPerDayChart, RingGauge, Sparkline } from '@/components/charts/charts';
 
 /**
  * Dashboard — a tela que abre depois do login.
@@ -68,13 +62,17 @@ const STAGES: { key: StageKey; statuses: VehicleStatus[]; family: Family; to: st
 
 export function DashboardPage() {
   const { t } = useI18n();
-  const [days] = useDashboardPeriod();
-  const periodLabel = t.dash.periodDays.replace('{n}', String(days));
+  const [period] = useDashboardPeriod();
+  const { days, back } = period;
+  const periodLabel = periodName(period, t);
 
   usePageHeader({
     eyebrow: t.dash.eyebrow,
     title: t.dash.title,
-    description: t.dash.subtitle.replace('{n}', String(days)),
+    description:
+      period.days === 1
+        ? t.dash.subtitleDay.replace('{p}', periodLabel)
+        : t.dash.subtitle.replace('{n}', String(days)),
     actions: (
       <>
         <TickerSwitch />
@@ -91,8 +89,8 @@ export function DashboardPage() {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['dashboard', days],
-    queryFn: () => api.get<DashboardData>(`/dashboard?days=${days}&months=12`),
+    queryKey: ['dashboard', days, back],
+    queryFn: () => api.get<DashboardData>(`/dashboard?days=${days}&back=${back}&months=12`),
     refetchInterval: 60_000,
     placeholderData: keepPreviousData,
   });
@@ -292,7 +290,7 @@ export function DashboardPage() {
                       data.workOrders.overdue > 0
                         ? `${data.workOrders.overdue} ${t.dash.overdue}`
                         : null,
-                      `${data.workOrders.releasedInPeriod} ${t.dash.releasedIn.replace('{n}', String(days))}`,
+                      `${data.workOrders.releasedInPeriod} ${period.days === 1 ? t.dash.releasedOn.replace('{p}', periodLabel) : t.dash.releasedIn.replace('{n}', String(days))}`,
                       data.workOrders.averageDowntimeMinutes !== null
                         ? `${t.dash.avg} ${formatMinutes(data.workOrders.averageDowntimeMinutes)} ${t.dash.perWo}`
                         : null,
@@ -321,23 +319,8 @@ export function DashboardPage() {
 
       {/* ---- Tendências ---- */}
       <section className="dash-row dash-row--charts">
-        <div className="tp-card dash-glass">
-          <div className="chart__title">
-            <h3>{t.dash.mkbfTrend}</h3>
-            <span className="chart__hint">{t.dash.mkbfTrendHint}</span>
-          </div>
-          <MkbfTrendChart data={data.mkbf.series} />
-        </div>
-
-        <div className="tp-card dash-glass">
-          <div className="chart__title">
-            <h3>{t.dash.availByHour}</h3>
-            <span className="chart__hint">
-              {t.dash.availByHourHint.replace('{n}', String(days))}
-            </span>
-          </div>
-          <AvailabilityByHourChart data={data.availabilityByHour} days={days} />
-        </div>
+        <MkbfCard />
+        <AvailabilityCard />
       </section>
 
       <section className="dash-row dash-row--bottom">
@@ -353,10 +336,9 @@ export function DashboardPage() {
           <div className="chart__title">
             <h3>{data.eventsBucket === 'week' ? t.dash.eventsPerWeek : t.dash.eventsPerDay}</h3>
             <span className="chart__hint">
-              {(data.eventsBucket === 'week'
-                ? t.dash.eventsPerWeekHint
-                : t.dash.eventsPerDayHint
-              ).replace('{n}', String(days))}
+              {(data.eventsBucket === 'week' ? t.dash.eventsPerWeekHint : t.dash.eventsPerDayHint)
+                .replace('{n}', String(days))
+                .replace('{p}', periodLabel)}
             </span>
           </div>
           <EventsPerDayChart data={data.eventsPerDay} bucket={data.eventsBucket} />
@@ -963,43 +945,98 @@ function isPeriod(n: number): n is (typeof DASHBOARD_PERIODS)[number] {
   return (DASHBOARD_PERIODS as readonly number[]).includes(n);
 }
 
-/** Período: a URL (compartilhável) vence quando traz um; senão vale o salvo na conta. */
-function useDashboardPeriod(): [number, (days: number) => void] {
+/**
+ * Período do Dashboard: um dia só (hoje, D-1, D-2) ou os últimos N dias.
+ * A URL (compartilhável) vence quando traz um; senão vale o salvo na conta.
+ */
+export interface DashPeriod {
+  days: number;
+  /** 0 = até agora; 1 = ontem; 2 = anteontem (só com days = 1). */
+  back: 0 | 1 | 2;
+}
+const DAY_PRESETS: { key: string; period: DashPeriod }[] = [
+  { key: 'hoje', period: { days: 1, back: 0 } },
+  { key: 'd1', period: { days: 1, back: 1 } },
+  { key: 'd2', period: { days: 1, back: 2 } },
+];
+const samePeriod = (a: DashPeriod, b: DashPeriod) => a.days === b.days && a.back === b.back;
+
+function parsePeriod(dias: string | null, antes: string | null): DashPeriod | null {
+  const d = Number(dias);
+  const b = Number(antes ?? 0);
+  if (!dias) return null;
+  if (d === 1 && (b === 0 || b === 1 || b === 2)) return { days: 1, back: b as 0 | 1 | 2 };
+  if (isPeriod(d)) return { days: d, back: 0 };
+  return null;
+}
+
+function useDashboardPeriod(): [DashPeriod, (p: DashPeriod) => void] {
   const [params, setParams] = useSearchParams();
-  const [saved, setSaved] = useUiPref<number>('dash.days', DEFAULT_DASHBOARD_PERIOD);
-  const fromUrl = Number(params.get('dias'));
-  const days =
-    params.get('dias') && isPeriod(fromUrl)
-      ? fromUrl
-      : isPeriod(saved)
-        ? saved
-        : DEFAULT_DASHBOARD_PERIOD;
-  const set = (d: number) => {
-    setSaved(d);
+  const [saved, setSaved] = useUiPref<DashPeriod>('dash.period', {
+    days: DEFAULT_DASHBOARD_PERIOD,
+    back: 0,
+  });
+  const period =
+    parsePeriod(params.get('dias'), params.get('antes')) ??
+    (saved.days === 1 || isPeriod(saved.days)
+      ? saved
+      : { days: DEFAULT_DASHBOARD_PERIOD, back: 0 });
+  const set = (p: DashPeriod) => {
+    setSaved(p);
     const next = new URLSearchParams(params);
-    next.set('dias', String(d));
+    next.set('dias', String(p.days));
+    if (p.back) next.set('antes', String(p.back));
+    else next.delete('antes');
     setParams(next, { replace: true });
   };
-  return [days, set];
+  return [period, set];
+}
+
+/** "hoje", "ontem", "anteontem" ou "7 dias": o nome do período para dicas e rodapés. */
+function periodName(p: DashPeriod, t: ReturnType<typeof useI18n>['t']): string {
+  if (p.days === 1)
+    return p.back === 0
+      ? t.dash.dayPresets.todayName
+      : p.back === 1
+        ? t.dash.dayPresets.d1Name
+        : t.dash.dayPresets.d2Name;
+  return t.dash.periodDays.replace('{n}', String(p.days));
 }
 
 function PeriodControl() {
   const { t } = useI18n();
-  const [days, setDays] = useDashboardPeriod();
+  const [period, setPeriod] = useDashboardPeriod();
   return (
-    <div className="tp-segmented" role="radiogroup" aria-label={t.dash.period}>
-      {DASHBOARD_PERIODS.map((d) => (
+    <div className="tp-segmented dash-period" role="radiogroup" aria-label={t.dash.period}>
+      {DAY_PRESETS.map(({ key, period: p }) => (
         <button
-          key={d}
+          key={key}
           type="button"
           role="radio"
-          aria-checked={d === days}
-          className={`tp-segmented__item${d === days ? ' is-active' : ''}`}
-          onClick={() => setDays(d)}
+          aria-checked={samePeriod(p, period)}
+          className={`tp-segmented__item${samePeriod(p, period) ? ' is-active' : ''}`}
+          title={periodName(p, t)}
+          onClick={() => setPeriod(p)}
         >
-          {t.dash.periodDays.replace('{n}', String(d))}
+          {t.dash.dayPresets[key as 'hoje' | 'd1' | 'd2']}
         </button>
       ))}
+      <i className="dash-period__sep" aria-hidden />
+      {DASHBOARD_PERIODS.map((d) => {
+        const p: DashPeriod = { days: d, back: 0 };
+        return (
+          <button
+            key={d}
+            type="button"
+            role="radio"
+            aria-checked={samePeriod(p, period)}
+            className={`tp-segmented__item${samePeriod(p, period) ? ' is-active' : ''}`}
+            onClick={() => setPeriod(p)}
+          >
+            {t.dash.periodDays.replace('{n}', String(d))}
+          </button>
+        );
+      })}
     </div>
   );
 }

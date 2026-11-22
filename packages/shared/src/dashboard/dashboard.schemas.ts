@@ -21,8 +21,10 @@ export const dashboardQuerySchema = z.object({
   days: z.coerce
     .number()
     .int()
-    .refine((d) => (DASHBOARD_PERIODS as readonly number[]).includes(d), 'Período inválido')
+    .refine((d) => d === 1 || (DASHBOARD_PERIODS as readonly number[]).includes(d), 'Período inválido')
     .default(DEFAULT_DASHBOARD_PERIOD),
+  /** Quantos dias atrás a janela termina: 0 = até agora, 1 = ontem (D-1), 2 = anteontem (D-2). */
+  back: z.coerce.number().int().min(0).max(2).default(0),
   /** Meses da série mensal do MKBF; por padrão cobre o período com folga. */
   months: z.coerce.number().int().min(3).max(24).optional(),
 });
@@ -273,4 +275,68 @@ export interface DashboardWidgetPref {
   period: WidgetPeriod;
   /** Carro específico; null ou ausente = frota inteira. */
   vehicleId?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Período dos gráficos do Dashboard (MKBF e disponibilidade por faixa horária):
+// atalhos Hoje / Ontem / 30 dias / 12 meses / personalizado. Quando o período
+// pedido não tem dado, a API recua para o dia mais próximo com dado e avisa.
+// ---------------------------------------------------------------------------
+
+export const CHART_PERIOD_PRESETS = ['today', 'yesterday', 'last30', 'months12', 'custom'] as const;
+export type ChartPeriodPreset = (typeof CHART_PERIOD_PRESETS)[number];
+
+export interface ChartPeriod {
+  preset: ChartPeriodPreset;
+  /** Só em "custom": dias civis AAAA-MM-DD. */
+  from?: string;
+  to?: string;
+}
+
+export const mkbfSeriesQuerySchema = z.object({
+  from: z.string().regex(ISO_DAY),
+  to: z.string().regex(ISO_DAY),
+  /** Um ponto por dia (períodos curtos) ou por mês. */
+  bucket: z.enum(['day', 'month']).default('day'),
+});
+export type MkbfSeriesQuery = z.infer<typeof mkbfSeriesQuerySchema>;
+
+export interface MkbfSeriesPoint {
+  /** Dia (AAAA-MM-DD) ou mês (AAAA-MM). */
+  key: string;
+  kmTraveled: number;
+  unscheduledReturns: number;
+  /** MKBF do próprio ponto; nulo sem quebra. */
+  mkbf: number | null;
+  /** MKBF acumulado do início do período até este ponto. */
+  mkbfToDate: number | null;
+}
+
+export interface MkbfSeries {
+  bucket: 'day' | 'month';
+  points: MkbfSeriesPoint[];
+  requested: { from: string; to: string };
+  /** O que foi mostrado de fato: igual ao pedido, ou recuado até o último dia com dado. */
+  used: { from: string; to: string };
+  fellBack: boolean;
+}
+
+export const availabilityHoursQuerySchema = z.object({
+  /** Dia da curva "hoje"; sem ele, só a média. */
+  day: z.string().regex(ISO_DAY).optional(),
+  /** Janela da média, dias civis inclusivos. */
+  from: z.string().regex(ISO_DAY),
+  to: z.string().regex(ISO_DAY),
+});
+export type AvailabilityHoursQuery = z.infer<typeof availabilityHoursQuerySchema>;
+
+export interface AvailabilityHours {
+  /** rate = média da janela; today = curva do dia pedido (nulo nas horas futuras ou sem dia). */
+  hours: HourAvailability[];
+  /** Dia mostrado na curva, já com o recuo aplicado; nulo quando só há média. */
+  day: string | null;
+  requestedDay: string | null;
+  fellBack: boolean;
+  /** Dias que entraram na média. */
+  days: number;
 }

@@ -300,7 +300,9 @@
   grid-row: 1;
   position: sticky;
   top: 0;
-  z-index: var(--tp-z-sticky);
+  /* Acima do cabeçalho da página e da barra de progresso: os menus do topo (Simulação, idioma,
+     notificações) nascem dentro deste contexto e não podem ficar por baixo deles. */
+  z-index: calc(var(--tp-z-sticky) + 2);
   display: flex;
   align-items: center;
   gap: var(--tp-space-3);
