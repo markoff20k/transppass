@@ -1922,7 +1922,7 @@ small.muted {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   height: 50px;
   min-width: 0;
@@ -2089,33 +2089,16 @@ small.muted {
   white-space: nowrap;
 }
 
-.ticker__close {
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-left: var(--tp-space-2);
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-.ticker__close:hover { background: var(--color-surface-sunken); color: var(--color-text); }
-.ticker-toggle { gap: 6px; }
-.ticker-toggle__count {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 999px;
-  font-family: var(--tp-font-mono);
-  font-size: 11px;
+/* Chave liga/desliga no cabeçalho do Dashboard. */
+.ticker-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: var(--tp-space-2);
+  font-size: var(--tp-text-sm);
   font-weight: 600;
-  color: var(--color-danger-text);
-  background: var(--color-danger-soft);
+  color: var(--color-text);
+  cursor: pointer;
 }
 
 .ticker--skeleton .ticker__beacon { background: var(--color-border); box-shadow: none; }
@@ -2130,7 +2113,7 @@ small.muted {
 }
 
 @media (max-width: 760px) {
-  .ticker { grid-template-columns: auto minmax(0, 1fr) auto; height: 46px; padding: 0 var(--tp-space-3); }
+  .ticker { grid-template-columns: auto minmax(0, 1fr); height: 46px; padding: 0 var(--tp-space-3); }
   .ticker__label { display: none; }
   .ticker__cap { padding-right: var(--tp-space-3); gap: 8px; }
   .ticker__meta { display: none; }

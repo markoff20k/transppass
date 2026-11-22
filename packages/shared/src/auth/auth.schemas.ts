@@ -76,6 +76,8 @@ export const userPreferencesSchema = z.object({
   notifications: z.boolean().default(true),
   toastPosition: z.enum(TOAST_POSITIONS).default('bottom-right'),
   panelLayout: z.enum(PANEL_LAYOUTS).default('side'),
+  /** Letreiro de avisos no topo do Dashboard: a pessoa pode desligar e a escolha fica na conta. */
+  ticker: z.boolean().default(true),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

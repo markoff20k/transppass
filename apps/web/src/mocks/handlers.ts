@@ -140,6 +140,16 @@ export const handlers = [
     return HttpResponse.json(publicUser);
   }),
 
+  http.patch('*/api/users/me/preferences', async ({ request }) => {
+    await delay();
+    const auth = requireAuth(request, '/api/users/me/preferences');
+    if ('error' in auth) return auth.error;
+    const body = (await request.json()) as Partial<typeof auth.user.preferences>;
+    auth.user.preferences = { ...auth.user.preferences, ...body };
+    const { password: _password, ...publicUser } = auth.user;
+    return HttpResponse.json(publicUser);
+  }),
+
   http.post('*/api/users/me/password', async ({ request }) => {
     await delay();
     const auth = requireAuth(request, '/api/users/me/password');

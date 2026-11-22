@@ -23,7 +23,7 @@ import { FleetLegend } from '@/components/fleet/fleet-legend';
 import { familyOf, type Family } from '@/components/fleet/fleet-legend.utils';
 import { BackFoot, BackHead, FlipButton, MaintenanceBack } from '@/components/fleet/fleet-card';
 import { useFlip } from '@/components/fleet/use-flip';
-import { NoticeBoard, TickerToggle } from '@/components/dashboard/notice-board';
+import { NoticeBoard, TickerSwitch } from '@/components/dashboard/notice-board';
 import {
   AvailabilityByHourChart,
   DowntimeDonut,
@@ -68,7 +68,7 @@ export function DashboardPage() {
     description: t.dash.subtitle.replace('{n}', String(days)),
     actions: (
       <>
-        <TickerToggle />
+        <TickerSwitch />
         <PeriodControl />
       </>
     ),

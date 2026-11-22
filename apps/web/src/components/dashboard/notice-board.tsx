@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Bell, X } from 'lucide-react';
-import type { DashboardNotice, DashboardNotices, NoticeSeverity } from '@app/shared';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import type { DashboardNotice, DashboardNotices, NoticeSeverity, PublicUser, UpdatePreferencesInput } from '@app/shared';
 import { api } from '@/lib/api-client';
 import { formatRelative } from '@/lib/format';
 import { useI18n } from '@/i18n/i18n.context';
+import { useAuth } from '@/features/auth/use-auth';
 
 /** Velocidade do letreiro, em pixels por segundo. */
 const SPEED = 64;
@@ -21,51 +21,48 @@ const noticesQuery = {
   placeholderData: keepPreviousData,
 } as const;
 
-// --- Letreiro fechado: escolha guardada no navegador, compartilhada entre o
-// letreiro e o botão do cabeçalho que o traz de volta.
-const HIDDEN_KEY = 'tp.dash.ticker';
-const HIDDEN_EVENT = 'tp:ticker';
-const readHidden = () => {
-  try {
-    return localStorage.getItem(HIDDEN_KEY) === 'closed';
-  } catch {
-    return false;
-  }
-};
-const subscribe = (cb: () => void) => {
-  window.addEventListener(HIDDEN_EVENT, cb);
-  window.addEventListener('storage', cb);
-  return () => {
-    window.removeEventListener(HIDDEN_EVENT, cb);
-    window.removeEventListener('storage', cb);
-  };
-};
-function useTickerHidden(): [boolean, (hidden: boolean) => void] {
-  const hidden = useSyncExternalStore(subscribe, readHidden, () => false);
-  const set = (next: boolean) => {
-    try {
-      if (next) localStorage.setItem(HIDDEN_KEY, 'closed');
-      else localStorage.removeItem(HIDDEN_KEY);
-    } catch {
-      /* sem armazenamento: vale só até recarregar */
-    }
-    window.dispatchEvent(new Event(HIDDEN_EVENT));
-  };
-  return [hidden, set];
+/** O letreiro está ligado para esta pessoa? Preferência da conta, ligada por padrão. */
+function useTickerOn(): boolean {
+  const { user } = useAuth();
+  return user?.preferences.ticker !== false;
 }
 
-/** Botão do cabeçalho que reabre o letreiro; só aparece enquanto ele está fechado. */
-export function TickerToggle() {
+/**
+ * Chave liga/desliga do letreiro, no cabeçalho do Dashboard. A escolha vai
+ * para as preferências da conta: desligou, fica desligado em qualquer
+ * navegador até ligar de novo. A chave vira na hora e volta se o servidor
+ * recusar.
+ */
+export function TickerSwitch() {
   const { t } = useI18n();
-  const [hidden, setHidden] = useTickerHidden();
-  const query = useQuery({ ...noticesQuery, enabled: hidden });
-  if (!hidden) return null;
-  const n = query.data?.items.length ?? 0;
+  const { user, updateUser } = useAuth();
+  const on = useTickerOn();
+  const save = useMutation({
+    mutationFn: (input: UpdatePreferencesInput) => api.patch<PublicUser>('/users/me/preferences', input),
+    onMutate: (input) => {
+      if (user) updateUser({ ...user, preferences: { ...user.preferences, ...input } });
+      return user;
+    },
+    onSuccess: (saved) => updateUser(saved),
+    onError: (_e, _input, previous) => {
+      if (previous) updateUser(previous);
+    },
+  });
+  if (!user) return null;
   return (
-    <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm ticker-toggle" onClick={() => setHidden(false)} title={t.dash.notices.show}>
-      <Bell size={14} aria-hidden /> {t.dash.notices.title}
-      {n > 0 && <b className="ticker-toggle__count">{n}</b>}
-    </button>
+    <label className="ticker-switch" title={t.dash.notices.switchHint}>
+      <span>{t.dash.notices.title}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        className={`tp-switch${on ? ' is-on' : ''}`}
+        disabled={save.isPending}
+        onClick={() => save.mutate({ ticker: !on })}
+      >
+        <i className="tp-switch__knob" />
+      </button>
+    </label>
   );
 }
 
@@ -74,15 +71,15 @@ export function TickerToggle() {
  * destino de um ônibus. À esquerda, a lanterna na cor do pior aviso e a
  * contagem; no meio, os avisos passando da direita para a esquerda, cada um
  * levando para a tela onde se resolve. Parar o mouse em cima segura o texto.
- * Sem aviso nenhum, o letreiro fica parado em "Tudo em dia". O "×" fecha e a
- * escolha fica guardada no navegador; o botão do cabeçalho traz de volta.
+ * Sem aviso nenhum, o letreiro fica parado em "Tudo em dia". Desligado pela
+ * chave do cabeçalho, não aparece.
  */
 export function NoticeBoard() {
   const { t } = useI18n();
-  const [hidden, setHidden] = useTickerHidden();
-  const query = useQuery({ ...noticesQuery, enabled: !hidden });
+  const on = useTickerOn();
+  const query = useQuery({ ...noticesQuery, enabled: on });
 
-  if (hidden) return null;
+  if (!on) return null;
   if (query.isPending && !query.data) return <TickerSkeleton />;
   if (!query.data) return null;
 
@@ -113,9 +110,6 @@ export function NoticeBoard() {
         <Reel items={items} />
       )}
       <span className="ticker__meta">{meta}</span>
-      <button type="button" className="ticker__close" onClick={() => setHidden(true)} aria-label={t.dash.notices.close} title={t.dash.notices.close}>
-        <X size={15} aria-hidden />
-      </button>
     </section>
   );
 }
