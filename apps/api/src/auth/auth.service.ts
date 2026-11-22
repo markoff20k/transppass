@@ -22,6 +22,9 @@ interface SessionMeta {
   ip?: string;
 }
 
+/** Janela em que o mesmo refresh token pode ser usado duas vezes (abas em paralelo) sem contar como roubo. */
+const REFRESH_REUSE_GRACE_MS = 60_000;
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -67,15 +70,25 @@ export class AuthService {
       include: { user: true },
     });
 
-    if (!stored || stored.revokedAt || stored.expiresAt < new Date() || !stored.user.isActive) {
-      // Reuso de token ja revogado indica roubo: derruba todas as sessoes do usuario.
-      if (stored?.revokedAt) await this.revokeAllForUser(stored.userId);
+    const now = new Date();
+    if (!stored || stored.expiresAt < now || !stored.user.isActive) {
+      throw new UnauthorizedException('Refresh token invalido ou expirado');
+    }
+    if (stored.revokedAt) {
+      // Duas abas do mesmo navegador renovam ao mesmo tempo com o mesmo token:
+      // a segunda chega segundos depois da primeira. Dentro da janela, é só
+      // isso, e cada aba recebe o seu par. Fora dela, reuso de token revogado
+      // indica roubo: derruba todas as sessões do usuário.
+      if (now.getTime() - stored.revokedAt.getTime() <= REFRESH_REUSE_GRACE_MS) {
+        return this.issueTokens(stored.user, meta);
+      }
+      await this.revokeAllForUser(stored.userId);
       throw new UnauthorizedException('Refresh token invalido ou expirado');
     }
 
     await this.prisma.refreshToken.update({
       where: { id: stored.id },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: now },
     });
 
     return this.issueTokens(stored.user, meta);
@@ -86,9 +99,10 @@ export class AuthService {
       where: { tokenHash: hashToken(refreshToken) },
       select: { userId: true, revokedAt: true },
     });
+    const now = new Date();
     await this.prisma.refreshToken.updateMany({
       where: { tokenHash: hashToken(refreshToken), revokedAt: null },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: now, expiresAt: now },
     });
     if (stored && !stored.revokedAt) {
       await this.audit.write({
@@ -102,10 +116,16 @@ export class AuthService {
     }
   }
 
+  /**
+   * Derruba todas as sessões da pessoa. Além de revogar, expira os tokens na
+   * hora: a tolerância de renovação em paralelo (REFRESH_REUSE_GRACE_MS) só
+   * vale para token rotacionado por uso normal, nunca para token derrubado.
+   */
   async revokeAllForUser(userId: string): Promise<void> {
+    const now = new Date();
     await this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: now, expiresAt: now },
     });
   }
 

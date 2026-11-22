@@ -29,4 +29,17 @@ export const tokenStorage = {
       /* nada a fazer */
     }
   },
+  /**
+   * Avisa quando OUTRA aba mexeu nos tokens: entrou (tokens novos), saiu ou
+   * teve a sessão derrubada (tokens limpos). O evento "storage" só dispara
+   * nas abas que não fizeram a mudança.
+   */
+  subscribe(listener: (tokens: AuthTokens | null) => void): () => void {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== KEY && e.key !== null) return;
+      listener(tokenStorage.get());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  },
 };

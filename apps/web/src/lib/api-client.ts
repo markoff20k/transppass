@@ -104,10 +104,11 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   let res = await send();
 
   if (res.status === 401 && !skipAuth) {
-    const hadSession = tokenStorage.get() !== null;
     if (await refreshTokens()) res = await send();
-    // Sem refresh possivel, ou 401 mesmo depois dele: a sessao acabou.
-    if (res.status === 401 && hadSession) sessionExpired();
+    // Sem refresh possivel, ou 401 mesmo depois dele: a sessao acabou. Vale
+    // tambem quando outra aba ja limpou os tokens e esta ainda tem o usuario
+    // em memoria: sem isto a tela fica viva mostrando "Unauthorized".
+    if (res.status === 401) sessionExpired();
   }
 
   if (res.status === 204) return undefined as T;

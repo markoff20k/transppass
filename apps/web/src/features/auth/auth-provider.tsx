@@ -36,6 +36,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [queryClient],
   );
 
+  // Outra aba do mesmo navegador saiu ou teve a sessão derrubada: esta aba
+  // sai junto, em vez de ficar viva com o usuário na tela e tudo em 401.
+  // Se outra aba entrou, esta recarrega a conta e segue sem pedir login.
+  useEffect(
+    () =>
+      tokenStorage.subscribe((tokens) => {
+        if (!tokens) {
+          setUser((current) => {
+            if (current) {
+              setExpired(true);
+              queryClient.clear();
+            }
+            return null;
+          });
+          return;
+        }
+        api
+          .get<PublicUser>('/auth/me')
+          .then((u) => {
+            setExpired(false);
+            setUser(u);
+          })
+          .catch(() => {});
+      }),
+    [queryClient],
+  );
+
   // Na carga inicial, valida o token guardado contra a API.
   useEffect(() => {
     if (!tokenStorage.get()) {
