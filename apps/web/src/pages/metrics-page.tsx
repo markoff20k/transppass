@@ -180,7 +180,7 @@ export function MetricsPage() {
   return (
     <RefreshVeil active={isPlaceholderData || (boardQ.isPlaceholderData && Boolean(board))} label={`Calculando ${monthLabel}`}>
       {board && <MonthReading insights={board.insights} onOpenDay={setOpenDay} />}
-      {boardLoading && <SectionSkeleton title="IA da Transppass - Insights" hint="a leitura do mês: o que fugiu do padrão e por quê, lido das planilhas do ERP-JB" loader={`Lendo ${monthLabel}`} />}
+      {boardLoading && <SectionSkeleton title="IA da Transppass - Insights" hint="a leitura do mês: o que fugiu do padrão e por quê, informado pelos agentes de Inteligência Artificial da Transppass (ia.Transppass); clique numa data para abrir o dia" loader={`Lendo ${monthLabel}`} />}
       {boardFailed && (
         <section className="tp-card">
           <div className="tp-alert tp-alert--warning dash-error" role="status">
