@@ -77,7 +77,7 @@ export function MkbfCard() {
         <ChartPeriodBar value={period} onChange={setPeriod} />
       </div>
       {s ? (
-        <RefreshVeil active={query.isFetching}>
+        <RefreshVeil active={query.isPlaceholderData} delay={0}>
           {s.bucket === 'hour' ? (
             <MkbfHourChart points={s.points} dayTotal={s.dayTotal} />
           ) : (
@@ -149,16 +149,16 @@ export function AvailabilityCard() {
       </div>
       {(() => {
         // Mesmo comportamento do MKBF: na troca de filtro o gráfico anterior fica
-        // sob o véu até o novo chegar; só sem nada carregado aparece o esqueleto.
+        // sob o véu (de imediato) até o novo chegar; o polling atualiza em silêncio.
         const d = daysQuery.data;
         const hours = s ? <AvailabilityByHourChart data={s.hours} days={s.days} dayLabel={dayLabel} /> : null;
         const days = d ? <AvailabilityByDayChart data={d.points} /> : null;
         if (single) {
-          if (hours) return <RefreshVeil active={query.isFetching}>{hours}</RefreshVeil>;
-          if (days) return <RefreshVeil active>{days}</RefreshVeil>;
+          if (hours) return <RefreshVeil active={query.isPlaceholderData} delay={0}>{hours}</RefreshVeil>;
+          if (days) return <RefreshVeil active delay={0}>{days}</RefreshVeil>;
         } else {
-          if (days) return <RefreshVeil active={daysQuery.isFetching}>{days}</RefreshVeil>;
-          if (hours) return <RefreshVeil active>{hours}</RefreshVeil>;
+          if (days) return <RefreshVeil active={daysQuery.isPlaceholderData} delay={0}>{days}</RefreshVeil>;
+          if (hours) return <RefreshVeil active delay={0}>{hours}</RefreshVeil>;
         }
         return <div className="chart chart--fill skeleton" />;
       })()}
