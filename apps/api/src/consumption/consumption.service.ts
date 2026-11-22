@@ -66,7 +66,7 @@ export class ConsumptionService {
     const [rawDays, source, monthly, firstMonth] = await Promise.all([
       this.carDays(energy, vehicles.map((v) => v.id), loadFrom, to),
       this.source(),
-      this.monthly(energy, vehicles, q.months),
+      this.monthly(energy, vehicles, q.months, to),
       this.firstMonth(energy),
     ]);
     // Dia em que a frota rodou e a planilha não tem ninguém é lacuna: o km dele sai da conta.
@@ -130,10 +130,9 @@ export class ConsumptionService {
       if (position > 0) rank = { position, of: peers.length };
     }
 
-    // Série mensal do carro: os 12 meses até hoje, direto das leituras (um carro só, cabe numa consulta).
-    const today = isoDay(new Date());
-    const monthFrom = `${addDays(today, -365).slice(0, 7)}-01`;
-    const allDays = await this.carDays(energy, [v.id], monthFrom, today);
+    // Série mensal do carro: os 12 meses até o fim do período escolhido, direto das leituras (um carro só, cabe numa consulta).
+    const monthFrom = `${addDays(to, -365).slice(0, 7)}-01`;
+    const allDays = await this.carDays(energy, [v.id], monthFrom, to);
     // Um carro só: dá para detectar o odômetro parado no ano inteiro e tirar os trechos da série também.
     const yearDays = dropStalls(allDays.values(), odometerStalls(energy, allDays.values()));
     const months = new Map<string, CarDay[]>();
@@ -143,7 +142,7 @@ export class ConsumptionService {
       list.push(d);
       months.set(m, list);
     }
-    const monthly: ConsumptionMonthPoint[] = this.lastMonths(today).map((m) => monthPoint(energy, m, months.get(m) ?? []));
+    const monthly: ConsumptionMonthPoint[] = this.lastMonths(to).map((m) => monthPoint(energy, m, months.get(m) ?? []));
 
     return {
       vehicle: { id: v.id, code: v.code, plate: v.plate, manufacturer: v.manufacturer, model: v.model, vehicleClass: v.vehicleClass, technology: v.technology, lot: v.lot },
@@ -233,16 +232,18 @@ export class ConsumptionService {
 
   /**
    * Série mensal da frota: os 12 meses até hoje, um ponto por mês, pelos
-   * totais por carro (só carros com consumo no mês entram no km). Não depende
-   * do período escolhido — ele é destacado na tela. Meses fechados ficam em
-   * cache; o corrente vai até hoje.
+   * totais por carro (só carros com consumo no mês entram no km). A série
+   * termina no mês do fim do período escolhido (`anchor`): com setembro na
+   * tela, são os 12 meses até setembro. Meses fechados ficam em cache; o
+   * corrente vai até hoje.
    */
-  private async monthly(energy: VehicleTechnology, vehicles: VehicleInfo[], months = 12): Promise<ConsumptionMonthPoint[]> {
+  private async monthly(energy: VehicleTechnology, vehicles: VehicleInfo[], months = 12, anchor?: string): Promise<ConsumptionMonthPoint[]> {
     const ids = vehicles.map((v) => v.id);
     const today = isoDay(new Date());
     const current = today.slice(0, 7);
+    const end = !anchor || anchor > today ? today : anchor;
     return Promise.all(
-      this.lastMonths(today, months).map(async (month) => {
+      this.lastMonths(end, months).map(async (month) => {
         const key = `${energy}|${month}`;
         const hit = this.monthCache.get(key);
         if (month !== current && hit && Date.now() - hit.at < MONTH_TTL_MS) return hit.value;

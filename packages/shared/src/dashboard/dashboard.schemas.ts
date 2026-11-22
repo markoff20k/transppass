@@ -348,3 +348,22 @@ export interface AvailabilityHours {
   /** Dias que entraram na média. */
   days: number;
 }
+
+export const availabilityDaysQuerySchema = z.object({
+  from: z.string().regex(ISO_DAY),
+  to: z.string().regex(ISO_DAY),
+});
+export type AvailabilityDaysQuery = z.infer<typeof availabilityDaysQuerySchema>;
+
+export interface AvailabilityDayPoint {
+  date: string;
+  /** Fração média de carros disponíveis no dia (24 amostras, uma por hora). */
+  rate: number;
+}
+
+/** Disponibilidade dia a dia num intervalo: o eixo do gráfico quando o período tem vários dias. */
+export interface AvailabilityDays {
+  points: AvailabilityDayPoint[];
+  from: string;
+  to: string;
+}

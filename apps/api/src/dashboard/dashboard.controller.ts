@@ -1,10 +1,13 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
+  availabilityDaysQuerySchema,
   availabilityHoursQuerySchema,
   dashboardQuerySchema,
   mkbfSeriesQuerySchema,
   widgetQuerySchema,
+  type AvailabilityDays,
+  type AvailabilityDaysQuery,
   type AvailabilityHours,
   type AvailabilityHoursQuery,
   type DashboardData,
@@ -52,6 +55,12 @@ export class DashboardController {
     @Query(new ZodValidationPipe(mkbfSeriesQuerySchema)) query: MkbfSeriesQuery,
   ): Promise<MkbfSeries> {
     return this.dashboard.mkbfSeriesRange(query);
+  }
+
+  /** Disponibilidade dia a dia num intervalo (eixo em dias quando o período tem vários). */
+  @Get('availability-days')
+  availabilityDays(@Query(new ZodValidationPipe(availabilityDaysQuerySchema)) query: AvailabilityDaysQuery): Promise<AvailabilityDays> {
+    return this.dashboard.availabilityDays(query);
   }
 
   /** Disponibilidade por hora: média de uma janela e a curva de um dia. */

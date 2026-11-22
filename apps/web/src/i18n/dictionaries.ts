@@ -265,6 +265,8 @@ const ptBR = {
     mkbfTrendHintHour: 'o dia hora a hora; o MKBF do dia fica na legenda',
     mkbfTrendHintDay: 'acumulado do período, dia a dia',
     availByHourHintRange: 'média de {r} · parado da quebra à liberação',
+    availByDay: 'Disponibilidade por dia',
+    availByDayHint: 'média de cada dia · {r} · parado da quebra à liberação',
     chartPeriod: {
       label: 'Período do gráfico',
       today: 'Hoje',
@@ -700,6 +702,8 @@ const en: Dictionary = {
     mkbfTrendHintHour: 'the day hour by hour; the day MKBF sits in the legend',
     mkbfTrendHintDay: 'period running total, day by day',
     availByHourHintRange: 'average of {r} · down from failure to release',
+    availByDay: 'Availability by day',
+    availByDayHint: 'daily average · {r} · down from failure to release',
     chartPeriod: {
       label: 'Chart period',
       today: 'Today',

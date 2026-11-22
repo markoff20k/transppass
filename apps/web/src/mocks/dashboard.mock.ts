@@ -620,6 +620,17 @@ export const dashboardHandlers = [
       fellBack: false,
     });
   }),
+  http.get('*/api/dashboard/availability-days', async ({ request }) => {
+    await delay();
+    const url = new URL(request.url);
+    const from = url.searchParams.get('from') ?? '2026-10-24';
+    const to = url.searchParams.get('to') ?? '2026-11-22';
+    const points = [];
+    for (let d = new Date(`${from}T12:00:00`), i = 0; d <= new Date(`${to}T12:00:00`); d.setDate(d.getDate() + 1), i += 1) {
+      points.push({ date: d.toISOString().slice(0, 10), rate: 0.9 + ((i * 7) % 10) / 100 });
+    }
+    return HttpResponse.json({ points, from, to });
+  }),
   http.get('*/api/dashboard/availability-hours', async ({ request }) => {
     await delay();
     const url = new URL(request.url);

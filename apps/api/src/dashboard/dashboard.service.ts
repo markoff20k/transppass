@@ -9,6 +9,8 @@ import {
 import {
   AVAILABLE_STATUSES,
   VehicleStatus,
+  type AvailabilityDays,
+  type AvailabilityDaysQuery,
   type AvailabilityHours,
   type AvailabilityHoursQuery,
   type DashboardBacks,
@@ -438,6 +440,56 @@ export class DashboardService {
    * Dia pedido no futuro (ou hoje antes da primeira amostra) recua para o dia
    * anterior e `fellBack` avisa a tela.
    */
+  /**
+   * Disponibilidade média de cada dia do intervalo (24 amostras por dia, em
+   * hh:30; intervalos longos amostram a cada 2 h). Mesmo critério de carro
+   * parado do anel e da curva por hora.
+   */
+  async availabilityDays(q: AvailabilityDaysQuery): Promise<AvailabilityDays> {
+    const now = new Date();
+    const today = isoDay(now);
+    const to = q.to > today ? today : q.to;
+    const from = q.from > to ? to : q.from;
+    const windowStart = startOfDay(from);
+    const [fleetSize, workOrders, returns] = await Promise.all([
+      this.prisma.vehicle.count({ where: { isActive: true } }),
+      this.prisma.workOrder.findMany({
+        where: { openedAt: { lte: now }, OR: [{ releasedAt: null }, { releasedAt: { gte: windowStart } }], status: { not: WorkOrderStatus.CANCELLED } },
+        select: { vehicleId: true, openedAt: true, releasedAt: true },
+      }),
+      this.prisma.failureEvent.findMany({
+        where: { isUnscheduledReturn: true, reportedAt: { lte: now }, OR: [{ closedAt: null }, { closedAt: { gte: windowStart } }], status: { not: EventStatus.CANCELLED } },
+        select: { vehicleId: true, reportedAt: true, closedAt: true },
+      }),
+    ]);
+    const spans = [
+      ...workOrders.map((wo) => ({ vehicleId: wo.vehicleId, from: wo.openedAt, to: wo.releasedAt })),
+      ...returns.map((ev) => ({ vehicleId: ev.vehicleId, from: ev.reportedAt, to: ev.closedAt })),
+    ];
+    const rateAt = (t: Date): number => {
+      if (fleetSize === 0) return 0;
+      const down = new Set<string>();
+      for (const sp of spans) if (sp.from <= t && (!sp.to || sp.to >= t)) down.add(sp.vehicleId);
+      return (fleetSize - Math.min(down.size, fleetSize)) / fleetSize;
+    };
+    const totalDays = daysBetween(from, to);
+    const hourStep = totalDays > 90 ? 2 : 1;
+    const points: AvailabilityDays['points'] = [];
+    for (let d = from; d <= to; d = addDays(d, 1)) {
+      let sum = 0;
+      let samples = 0;
+      for (let hour = 0; hour < 24; hour += hourStep) {
+        const t = startOfDay(d);
+        t.setHours(hour, 30, 0, 0);
+        if (t > now) continue;
+        sum += rateAt(t);
+        samples += 1;
+      }
+      if (samples) points.push({ date: d, rate: sum / samples });
+    }
+    return { points, from, to };
+  }
+
   async availabilityHours(q: AvailabilityHoursQuery): Promise<AvailabilityHours> {
     const now = new Date();
     const today = isoDay(now);

@@ -50,6 +50,7 @@ import {
   kpiToneClass,
   ratioFormula,
   unitsOf,
+  horizonTitle,
 } from '@/lib/consumption';
 
 /**
@@ -302,7 +303,7 @@ export function ConsumptionVehiclePage() {
           <section className="tp-card">
             <div className="tp-card__head">
               <div>
-                <h3>Últimos 12 meses</h3>
+                <h3>{horizonTitle(12, data.monthly, null)}</h3>
                 <span className="chart__hint">
                   {u.ratio} do carro mês a mês · clique num mês para abri-lo
                 </span>

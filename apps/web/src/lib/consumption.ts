@@ -140,3 +140,19 @@ export function monthLabel(key: string): string {
   const [y, m] = key.split('-').map(Number) as [number, number];
   return `${MONTHS_PT[m - 1]}/${String(y).slice(2)}`;
 }
+
+/**
+ * Título da série mensal: "Últimos 12 meses" quando ela termina no mês
+ * corrente; "12 meses até setembro 2026" quando o período escolhido é outro.
+ * No horizonte "Tudo", o primeiro mês com registro.
+ */
+export function horizonTitle(months: number, series: { month: string }[], firstMonth: string | null): string {
+  const last = series[series.length - 1]?.month;
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const toCurrent = !last || last === currentMonth;
+  if (months >= 60) return firstMonth ? `Desde ${monthLabel(firstMonth)}` : 'Todo o histórico';
+  if (toCurrent) return `Últimos ${months} meses`;
+  const [y, m] = last.split('-').map(Number) as [number, number];
+  return `${months} meses até ${new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`;
+}

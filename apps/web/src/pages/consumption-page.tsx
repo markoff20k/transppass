@@ -33,7 +33,6 @@ import { PeriodControl } from '@/components/ui/period-control';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
 import {
   comparisonOf,
-  isoOf,
   monthPeriod,
   periodLabel,
   periodPhrase,
@@ -62,9 +61,9 @@ import {
   fmtDeviation,
   fmtRatio,
   improvement,
-  monthLabel,
   ratioFormula,
   unitsOf,
+  horizonTitle,
 } from '@/lib/consumption';
 
 /**
@@ -151,10 +150,6 @@ function useHorizon(): [Horizon, (h: Horizon) => void] {
 }
 
 /** Mês de início da janela de `months` meses até hoje, "AAAA-MM". */
-function horizonStart(months: number): string {
-  const n = new Date();
-  return isoOf(n.getFullYear(), n.getMonth() - (months - 1), 1).slice(0, 7);
-}
 type SortKey = 'deviation' | 'ratio' | 'km' | 'amount' | 'code';
 
 /** Tecnologia (?energia=energia|diesel): na URL vence e fica salva na conta; sem ela, vale a salva. */
@@ -344,16 +339,9 @@ export function ConsumptionPage() {
       `/consumo${periodSearch(monthPeriod(y, m - 1), { energia: energy === VehicleTechnology.EBUS ? 'energia' : null, meses: months !== 12 ? String(months) : null })}`,
     );
   };
-  // O seletor de horizonte só aparece quando há registro antes dos 12 meses da série.
-  const hasHistory = Boolean(data.firstMonth && data.firstMonth < horizonStart(12));
-  const horizonLabel =
-    months === 12
-      ? 'Últimos 12 meses'
-      : months === 24
-        ? 'Últimos 24 meses'
-        : data.firstMonth
-          ? `Desde ${monthLabel(data.firstMonth)}`
-          : 'Todo o histórico';
+  // O seletor de horizonte só aparece quando há registro antes do início da série.
+  const hasHistory = Boolean(data.firstMonth && data.monthly[0] && data.firstMonth < data.monthly[0].month);
+  const horizonLabel = horizonTitle(months, data.monthly, data.firstMonth);
 
   const toggleSort = (key: SortKey) =>
     setSort((s) =>

@@ -234,9 +234,9 @@ function seriesAverage(energy: VehicleTechnology, rows: ConsumptionMonthPoint[])
 }
 
 /**
- * Série mensal até hoje. `highlight` (de/até do período escolhido) marca os
- * meses que ele toca, para o período se situar na tendência — a série não
- * muda com o período, só o destaque. A linha tracejada é a média do que
+ * Série mensal que termina no mês do período escolhido. `highlight` (de/até
+ * do período) marca os meses que ele toca, para o período se situar na
+ * tendência que o antecede. A linha tracejada é a média do que
  * está na tela; o hover compara cada mês com o anterior e com o mesmo mês do
  * ano anterior, quando há. Com `onSelectMonth`, clicar num mês abre-o como
  * período: é o "zoom" que leva da tendência à causa.

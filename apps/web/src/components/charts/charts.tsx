@@ -19,6 +19,7 @@ import {
 } from 'recharts';
 import {
   DOWNTIME_CAUSE_LABELS,
+  type AvailabilityDayPoint,
   type DowntimeByCause,
   type HourAvailability,
   type MetricHistoryPoint,
@@ -358,6 +359,73 @@ export function MkbfTrendChart({
             />
           </Area>
         </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// --- Disponibilidade dia a dia -----------------------------------------------
+
+/** Vários dias: a disponibilidade média de cada dia, com a meta; zoom por dia. */
+export function AvailabilityByDayChart({ data, target = 0.85 }: { data: AvailabilityDayPoint[]; target?: number }) {
+  const all = data.map((d) => ({
+    key: d.date,
+    label: `${d.date.slice(8, 10)}/${d.date.slice(5, 7)}`,
+    pct: Math.round(d.rate * 1000) / 10,
+  }));
+  const zoom = useChartZoom({ prefKey: 'dash.zoom.availabilityDays', rows: all, keyOf: (r) => r.key, min: 3 });
+  const rows = zoom.visible;
+  const targetPct = Math.round(target * 100);
+  const minPct = rows.length ? Math.min(...rows.map((r) => r.pct)) : 0;
+  const lo = Math.max(0, Math.floor(Math.min(minPct - 2, targetPct - 3) / 5) * 5);
+  const ticks: number[] = [];
+  for (let v = lo; v <= 100; v += 5) ticks.push(v);
+  const belowTarget = minPct < targetPct;
+  const color = belowTarget ? 'var(--chart-5)' : 'var(--chart-4)';
+  const avg = rows.length ? rows.reduce((a, r) => a + r.pct, 0) / rows.length : null;
+  const worst = rows.length ? rows.reduce((a, b) => (b.pct < a.pct ? b : a)) : null;
+  const tickEvery = rows.length > 40 ? 6 : rows.length > 20 ? 3 : rows.length > 10 ? 1 : 0;
+  return (
+    <div className="chart chart--fill chart--zoomable">
+      <Legend
+        items={[
+          { kind: 'area', color, label: 'disponibilidade do dia' },
+          { kind: 'dash', color: 'var(--color-text-muted)', label: `meta ${targetPct}%` },
+        ]}
+        note={
+          worst && avg !== null ? (
+            <>
+              média <b>{avg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</b> · pior dia <b>{worst.label}</b> · {worst.pct.toLocaleString('pt-BR')}%
+            </>
+          ) : undefined
+        }
+        tools={<ZoomTools zoom={zoom} rangeLabel={rows.length ? `${rows[0]!.label} – ${rows[rows.length - 1]!.label}` : ''} />}
+      />
+      <ResponsiveContainer>
+        <ComposedChart data={rows} margin={{ top: 12, right: 12, left: 0, bottom: 0 }} {...zoom.chartProps}>
+          <defs>
+            <linearGradient id="availDayFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.26} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey="label" axisLine={false} tickLine={false} interval={tickEvery} />
+          <YAxis axisLine={false} tickLine={false} width={44} domain={[lo, 100]} ticks={ticks} tickFormatter={(v: number) => `${v}%`} />
+          <ReferenceLine y={targetPct} />
+          {zoom.drag && rows[zoom.drag.a] && rows[zoom.drag.b] && (
+            <ReferenceArea x1={rows[zoom.drag.a]!.label} x2={rows[zoom.drag.b]!.label} fill="var(--color-brand)" fillOpacity={0.12} stroke="var(--color-brand)" strokeOpacity={0.5} />
+          )}
+          <Tooltip
+            cursor={{ stroke: 'var(--color-border-strong)' }}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const p = payload[0]!.payload as (typeof rows)[number];
+              return <Tip title={p.label} rows={[{ label: 'Disponibilidade', value: `${p.pct.toLocaleString('pt-BR')}%`, color }, { label: 'Meta', value: `${targetPct}%` }]} />;
+            }}
+          />
+          <Area type="monotone" dataKey="pct" stroke={color} strokeWidth={2.4} fill="url(#availDayFill)" dot={rows.length <= 31 ? { r: 3, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 } : false} activeDot={{ r: 5, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 }} isAnimationActive={false} />
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
