@@ -23,6 +23,7 @@ import {
   WorkOrderStatus,
   WorkOrderType,
 } from '@prisma/client';
+import { reconcileVehicleStatuses } from '../common/vehicle-status';
 
 /**
  * Seed de DEMONSTRAÇÃO — a garagem da Transppass inteira, em movimento.
@@ -1052,6 +1053,9 @@ export async function buildDemoScenario(prisma: PrismaClient, log: Log = console
   const thirdParty = await prisma.workOrder.findFirst({ where: { status: WorkOrderStatus.IN_PROGRESS, event: { catalogItem: { code: 'MEC-MOT-01' } } }, orderBy: { openedAt: 'asc' } });
   if (thirdParty) await prisma.workOrder.update({ where: { id: thirdParty.id }, data: { execution: 'THIRD_PARTY', supplierName: 'Retífica externa (mock)' } });
 
+  // Saneamento final: todo carro em etapa da garagem tem OS, quebra ou fila por trás; o resto volta ao pátio.
+  const fixed = await reconcileVehicleStatuses(prisma);
+  if (fixed.changed) log(`  saneamento: ${fixed.changed} carro(s) realinhado(s) ao processo`);
   const byStatus = await prisma.vehicle.groupBy({ by: ['status'], _count: { _all: true } });
   log('Seed de demonstração concluído.');
   log('  frota agora: ' + byStatus.map((s) => `${s.status} ${s._count._all}`).join(', '));

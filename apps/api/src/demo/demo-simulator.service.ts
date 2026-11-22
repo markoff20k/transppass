@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import type { DemoStatus } from '@app/shared';
 import { buildDemoScenario, clearDemoMovement } from './demo-scenario';
+import { reconcileVehicleStatuses } from '../common/vehicle-status';
 import {
   EventOrigin,
   EventStatus,
@@ -126,6 +127,22 @@ export class DemoSimulatorService implements OnModuleInit {
       // Primeiro pulso logo após subir, para a demonstração não esperar o relógio.
       setTimeout(() => void this.pulse(), 20_000);
     }
+    // Com ou sem simulação: carro deixado em etapa da garagem sem OS, quebra ou
+    // fila por trás (registro apagado, montagem interrompida) volta ao pátio.
+    setTimeout(() => void this.reconcile('ao subir'), 5_000);
+  }
+
+  /** Alinha o status dos carros ao processo e conta no log o que mudou. */
+  private async reconcile(when: string): Promise<number> {
+    if (this.phase || (await this.phaseElsewhere())) return 0;
+    try {
+      const { changed, details } = await reconcileVehicleStatuses(this.prisma);
+      if (changed) this.log.warn(`saneamento ${when}: ${changed} carro(s) realinhado(s) ao processo — ${details.slice(0, 8).join(', ')}${details.length > 8 ? '…' : ''}`);
+      return changed;
+    } catch (err) {
+      this.log.warn(`saneamento ${when} falhou: ${err instanceof Error ? err.message : String(err)}`);
+      return 0;
+    }
   }
 
   get isEnabled(): boolean {
@@ -167,7 +184,7 @@ export class DemoSimulatorService implements OnModuleInit {
       void this.runPhase('building', () => buildDemoScenario(this.prisma, (m) => this.log.log(m)), () => setTimeout(() => void this.pulse(), 3_000));
     } else if (!enabled && was) {
       this.log.log('desligado pelo sistema — limpando a demonstração');
-      void this.runPhase('clearing', () => clearDemoMovement(this.prisma, (m) => this.log.log(m)));
+      void this.runPhase('clearing', () => clearDemoMovement(this.prisma, (m) => this.log.log(m)), () => void this.reconcile('após limpar'));
     }
     return this.status();
   }
@@ -238,6 +255,7 @@ export class DemoSimulatorService implements OnModuleInit {
       await this.step(out, 'socorro', () => this.fieldServices(now, users));
       await this.step(out, 'oficina', () => this.workshop(now, users));
       await this.step(out, 'plantão', () => this.reserves(now, users));
+      await this.step(out, 'saneamento', () => this.reconcile('no pulso'));
       if (out.length) this.log.log(out.join(' · '));
       this.lastPulseAt = now;
       this.lastSteps = out;
