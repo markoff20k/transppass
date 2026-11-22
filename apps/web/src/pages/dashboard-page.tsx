@@ -26,6 +26,7 @@ import { useFlip } from '@/components/fleet/use-flip';
 import { NoticeBoard, TickerSwitch } from '@/components/dashboard/notice-board';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { SortableCards } from '@/components/ui/sortable-cards';
+import { WidgetsCard } from '@/components/dashboard/widgets';
 import { useUiPref, useUiState } from '@/features/auth/use-ui-pref';
 import {
   AvailabilityByHourChart,
@@ -311,6 +312,10 @@ export function DashboardPage() {
             ),
           },
           { key: 'fleet', render: (grip) => <FleetNow vehicles={data.vehicles} grip={grip} /> },
+          {
+            key: 'widgets',
+            render: (grip) => <WidgetsCard grip={grip} vehicles={data.vehicles} />,
+          },
         ]}
       />
 

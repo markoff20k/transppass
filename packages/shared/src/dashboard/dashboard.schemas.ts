@@ -203,3 +203,74 @@ export interface DashboardNotices {
   /** Até quando cada planilha do ERP-JB chegou (ISO yyyy-mm-dd), null sem dado. */
   dataThrough: { km: string | null; consumption: string | null; failures: string | null; lineDays: string | null };
 }
+
+// ---------------------------------------------------------------------------
+// Widgets do Dashboard: um indicador, um período, um número. A lista de widgets
+// de cada pessoa (e o período de cada um) fica em preferences.ui["dash.widgets"].
+// ---------------------------------------------------------------------------
+
+export const WIDGET_KINDS = [
+  'mkbf',
+  'breakdowns',
+  'km',
+  'availability',
+  'lostTrips',
+  'tripsDone',
+  'downtime',
+  'woReleased',
+  'woOpened',
+  'rescues',
+  'fieldResolution',
+  'triageSla',
+  'rework',
+  'consumptionDiesel',
+  'consumptionEbus',
+] as const;
+export type WidgetKind = (typeof WIDGET_KINDS)[number];
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+export const widgetQuerySchema = z.object({
+  kind: z.enum(WIDGET_KINDS),
+  /** Dias civis (AAAA-MM-DD), inclusivos, no fuso de São Paulo. */
+  from: z.string().regex(ISO_DAY),
+  to: z.string().regex(ISO_DAY),
+  /** Um carro só; sem ele, a frota inteira. */
+  vehicleId: z.string().uuid().optional(),
+});
+export type WidgetQuery = z.infer<typeof widgetQuerySchema>;
+
+export type WidgetUnit = 'km' | 'count' | 'pct' | 'minutes' | 'kml' | 'kmkwh';
+
+export interface DashboardWidget {
+  kind: WidgetKind;
+  from: string;
+  to: string;
+  value: number | null;
+  /** Mesmo indicador no período igual logo antes, para a variação. */
+  previous: number | null;
+  unit: WidgetUnit;
+  /** A conta por trás do número ("2.107.112 km ÷ 575 quebras"). */
+  detail: string | null;
+  /** Quanto maior, melhor? Decide a cor da variação. */
+  higherIsBetter: boolean;
+  /** Prefixo do carro, quando o widget é de um carro só. */
+  vehicleCode: string | null;
+}
+
+export const WIDGET_PERIOD_PRESETS = ['today', 'yesterday', 'd2', 'last7', 'last30', 'thisMonth', 'lastMonth', 'custom'] as const;
+export type WidgetPeriodPreset = (typeof WIDGET_PERIOD_PRESETS)[number];
+
+export interface WidgetPeriod {
+  preset: WidgetPeriodPreset;
+  /** Só em "custom": dias civis AAAA-MM-DD. */
+  from?: string;
+  to?: string;
+}
+
+export interface DashboardWidgetPref {
+  id: string;
+  kind: WidgetKind;
+  period: WidgetPeriod;
+  /** Carro específico; null ou ausente = frota inteira. */
+  vehicleId?: string | null;
+}

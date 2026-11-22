@@ -299,7 +299,7 @@ export class BoardService {
     return cores.map((c) => ({ month: c.month, fleetPct: c.totals.fleet.pct, failures: c.totals.failures, mkbf: c.totals.mkbf, tripsPct: c.totals.trips.pct }));
   }
 
-  private async consumptionSummary(energy: VehicleTechnology, from: string, to: string): Promise<BoardConsumption | null> {
+  async consumptionSummary(energy: VehicleTechnology, from: string, to: string): Promise<BoardConsumption | null> {
     try {
       const f = await this.consumption.fleet({ energy, from, to, months: 12 });
       if (f.current.vehicles === 0) return null;
