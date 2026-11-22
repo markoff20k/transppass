@@ -1434,7 +1434,7 @@ small.muted {
 .ccard { display: grid; gap: var(--tp-space-4); align-content: start; }
 .ccard.is-collapsed { gap: 0; }
 .ccard__head { display: flex; align-items: flex-start; justify-content: flex-start; gap: var(--tp-space-3); flex-wrap: wrap; }
-.ccard__head > div:first-child { display: grid; gap: 2px; min-width: 0; margin-right: auto; }
+.ccard__head > div:first-of-type { display: grid; gap: 2px; min-width: 0; margin-right: auto; }
 .ccard__head h3 { margin: 0; font-size: var(--tp-text-sm); }
 /* Botão fantasma padrão do sistema (tp-btn--ghost), só quadrado. */
 .ccard__toggle { flex: none; width: 28px; min-height: 28px; padding: 0; }
