@@ -525,7 +525,8 @@ function WidgetScopePicker({
             <Search size={14} aria-hidden />
             <input
               ref={input}
-              type="search"
+              type="text"
+              autoComplete="off"
               className="tp-input"
               placeholder={t.dash.widgets.scope.search}
               value={query}

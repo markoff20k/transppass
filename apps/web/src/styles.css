@@ -2179,6 +2179,7 @@ small.muted {
 .wperiod .period__panel.wscope__panel { width: 240px; grid-template-rows: auto auto; }
 .wscope__search { display: flex; align-items: center; gap: 6px; padding: 8px 8px 0; color: var(--color-text-muted); }
 .wscope__search .tp-input { flex: 1; min-width: 0; height: 32px; padding: 0 8px; font-size: var(--tp-text-xs); }
+.wscope__search .tp-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
 .wscope__none { padding: 8px 10px; font-size: var(--tp-text-xs); color: var(--color-text-muted); }
 
 /* O cartão (e a pilha reordenável) com painel aberto passa por cima dos vizinhos:
@@ -5164,7 +5165,7 @@ a.bus-card:hover { transform: translateY(-1px); }
 .period__body { display: grid; grid-template-columns: 220px minmax(0, 1fr); }
 
 .period__presets { display: grid; align-content: start; gap: 2px; padding: 8px; border-right: var(--tp-border-thin) solid var(--color-border); background: var(--color-surface-sunken); }
-.period__preset { position: relative; display: grid; gap: 1px; padding: 7px 30px 7px 10px; border: 0; border-radius: var(--tp-radius-sm); background: transparent; color: var(--color-text); font: inherit; font-size: var(--tp-text-sm); text-align: left; cursor: pointer; }
+.period__preset { position: relative; display: grid; justify-content: start; justify-items: start; gap: 1px; padding: 7px 30px 7px 10px; border: 0; border-radius: var(--tp-radius-sm); background: transparent; color: var(--color-text); font: inherit; font-size: var(--tp-text-sm); text-align: left; cursor: pointer; }
 .period__preset:hover { background: var(--color-surface-hover); }
 .period__preset:focus-visible { outline: 2px solid var(--color-brand); outline-offset: -2px; }
 .period__preset.is-active { background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--color-border); font-weight: var(--tp-weight-semibold); }
