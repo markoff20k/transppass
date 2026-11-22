@@ -743,6 +743,15 @@ export class DashboardService {
       },
     });
 
+    // Última linha de cada carro nos últimos 30 dias (planilha carro-linha-dia), para o cartão.
+    const lastLines = await this.prisma.vehicleLineDay.findMany({
+      where: { line: { not: null }, date: { gte: new Date(now.getTime() - 30 * DAY_MS) } },
+      orderBy: [{ vehicleId: 'asc' }, { date: 'desc' }],
+      distinct: ['vehicleId'],
+      select: { vehicleId: true, line: true },
+    });
+    const lineOf = new Map(lastLines.map((l) => [l.vehicleId, l.line]));
+
     return rows.map((v) => {
       const event = v.failureEvents[0];
       const wo = v.workOrders[0];
@@ -762,6 +771,10 @@ export class DashboardService {
         hoursInState: since
           ? Math.round(((now.getTime() - since.getTime()) / HOUR_MS) * 10) / 10
           : null,
+        model: v.model ?? null,
+        modelYear: v.modelYear ?? null,
+        lot: v.lot ?? null,
+        line: event?.lineCode ?? lineOf.get(v.id) ?? null,
       };
     });
   }

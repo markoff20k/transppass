@@ -5600,3 +5600,16 @@ a.bus-card:hover { transform: translateY(-1px); }
 .widget__info { flex: none; }
 .widget__info .tp-tip__body + .tp-tip__body { margin-top: 6px; }
 .widget__info .tp-tip__body b { font-weight: var(--tp-weight-semibold); color: var(--color-text); }
+
+/* Item 3: cartão do carro com ônibus pequeno à esquerda e a identificação ao lado e abaixo. */
+.bus-stage .bus-card:not(.bus-card--summary):not(.bus-card--back) { grid-template-rows: auto auto; align-content: start; }
+.bus-card__id { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: var(--tp-space-2); padding-right: 28px; min-width: 0; }
+.bus-card__pic { display: block; width: 96px; }
+.bus-card__pic .busr { width: 100%; height: auto; display: block; }
+.bus-card__ident { display: grid; gap: 2px; min-width: 0; }
+.bus-card__ident .bus-card__row { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+.bus-card__ident .bus-card__row b { line-height: 1.1; }
+.bus-card__model { font-size: var(--tp-text-xs); line-height: 18px; color: var(--color-text); font-weight: var(--tp-weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bus-stage .bus-card__text { grid-template-rows: 18px 18px 18px 22px 20px 18px; }
+.bus-card__tech, .bus-card__line { font-size: var(--tp-text-xs); line-height: 18px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bus-card__line { color: var(--color-text-secondary); }

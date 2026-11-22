@@ -66,6 +66,12 @@ export interface DashboardVehicle {
   reason: string | null;
   /** Horas desde que entrou no estado atual, quando o processo sabe. */
   hoursInState: number | null;
+  /** Item 3: identificação do carro no cartão — modelo, ano, lote e linha. */
+  model: string | null;
+  modelYear: number | null;
+  lot: string | null;
+  /** Linha da ocorrência em aberto; sem ela, a última linha em que o carro rodou (30 dias). */
+  line: string | null;
 }
 
 export interface DashboardData {

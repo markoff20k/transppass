@@ -49,6 +49,7 @@ const extraVehicles: DashboardVehicle[] = [
     status: VehicleStatus.IN_LINE,
     reason: null,
     hoursInState: null,
+    model: 'O500U 1826', modelYear: 2019, lot: 'AR9', line: '8622-10',
   },
   {
     id: 'v-202',
@@ -59,6 +60,7 @@ const extraVehicles: DashboardVehicle[] = [
     status: VehicleStatus.AWAITING_TRIAGE,
     reason: 'Ar-condicionado sem refrigeração',
     hoursInState: 0.4,
+    model: 'O500U 1826', modelYear: 2019, lot: 'AR9', line: '8622-10',
   },
   {
     id: 'v-203',
@@ -69,6 +71,7 @@ const extraVehicles: DashboardVehicle[] = [
     status: VehicleStatus.FIELD_SERVICE,
     reason: 'Alternador não carrega',
     hoursInState: 1.2,
+    model: 'O500U 1826', modelYear: 2019, lot: 'AR9', line: '8622-10',
   },
   {
     id: 'v-204',
@@ -79,6 +82,7 @@ const extraVehicles: DashboardVehicle[] = [
     status: VehicleStatus.IN_LINE,
     reason: null,
     hoursInState: null,
+    model: 'O500U 1826', modelYear: 2019, lot: 'AR9', line: '8622-10',
   },
   {
     id: 'v-205',
@@ -89,6 +93,7 @@ const extraVehicles: DashboardVehicle[] = [
     status: VehicleStatus.IN_INSPECTION,
     reason: 'OS OS-2026-000041',
     hoursInState: 5.5,
+    model: 'O500U 1826', modelYear: 2019, lot: 'AR9', line: '8622-10',
   },
   {
     id: 'v-206',
@@ -99,6 +104,7 @@ const extraVehicles: DashboardVehicle[] = [
     status: VehicleStatus.IN_LINE,
     reason: null,
     hoursInState: null,
+    model: 'O500U 1826', modelYear: 2019, lot: 'AR9', line: '8622-10',
   },
   {
     id: 'v-207',
@@ -109,6 +115,7 @@ const extraVehicles: DashboardVehicle[] = [
     status: VehicleStatus.AWAITING_MAINTENANCE,
     reason: 'Porta não fecha completamente',
     hoursInState: 3.1,
+    model: 'O500U 1826', modelYear: 2019, lot: 'AR9', line: '8622-10',
   },
   {
     id: 'v-208',
@@ -119,6 +126,7 @@ const extraVehicles: DashboardVehicle[] = [
     status: VehicleStatus.OUT_OF_SERVICE,
     reason: 'Aguardando vistoria',
     hoursInState: 72,
+    model: 'O500U 1826', modelYear: 2019, lot: 'AR9', line: '8622-10',
   },
 ];
 
@@ -130,6 +138,10 @@ function buildVehicles(): DashboardVehicle[] {
     vehicleClass: v.technology === 'EBUS' ? 'EPADRON_13M' : 'PADRON_13M',
     technology: v.technology,
     status: v.status,
+    model: 'O500U 1826',
+    modelYear: 2019,
+    lot: 'AR9',
+    line: '8622-10',
     reason:
       v.status === VehicleStatus.IN_MAINTENANCE
         ? 'Válvula APU com vazamento'

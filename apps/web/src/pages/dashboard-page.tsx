@@ -13,6 +13,8 @@ import {
   type DashboardDowntime,
   type DashboardEventsSeries,
   type DashboardRecentEvents,
+  VEHICLE_TECHNOLOGY_LABELS,
+  VEHICLE_CLASS_LABELS,
 } from '@app/shared';
 import { VEHICLE_STATE_FAMILY } from '@app/design-kit';
 import { ApiError, api } from '@/lib/api-client';
@@ -1010,18 +1012,35 @@ function BusCard({ vehicle }: { vehicle: DashboardVehicle }) {
             aria-label={`Abrir o carro ${vehicle.code}`}
           />
           <FlipButton code={vehicle.code} flip={f} corner />
-          <BusRender
-            vehicleClass={vehicle.vehicleClass}
-            technology={vehicle.technology}
-            status={vehicle.status}
-            code={vehicle.code}
-            width={260}
-          />
+          {/* Item 3: a ilustração encolhe para a identificação caber na frente do cartão. */}
+          <div className="bus-card__id">
+            <span className="bus-card__pic">
+              <BusRender
+                vehicleClass={vehicle.vehicleClass}
+                technology={vehicle.technology}
+                status={vehicle.status}
+                code={vehicle.code}
+                width={120}
+              />
+            </span>
+            <span className="bus-card__ident">
+              <span className="bus-card__row">
+                <b>{vehicle.code}</b>
+                <span className="tp-muted">{vehicle.plate}</span>
+              </span>
+            </span>
+          </div>
           <div className="bus-card__text">
-            <div className="bus-card__row">
-              <b>{vehicle.code}</b>
-              <span className="tp-muted">{vehicle.plate}</span>
-            </div>
+            <span className="bus-card__model" title={vehicle.model ?? undefined}>
+              {vehicle.model ?? 'modelo não informado'}
+              {vehicle.modelYear ? ` · ${vehicle.modelYear}` : ''}
+            </span>
+            <span className="bus-card__tech">
+              {VEHICLE_TECHNOLOGY_LABELS[vehicle.technology]}
+              {vehicle.vehicleClass ? ` · ${VEHICLE_CLASS_LABELS[vehicle.vehicleClass]}` : ''}
+              {vehicle.lot ? ` · lote ${vehicle.lot}` : ''}
+            </span>
+            <span className="bus-card__line">{vehicle.line ? `Linha ${vehicle.line}` : 'sem linha recente'}</span>
             <span className={`tp-state tp-state--${family}`}>
               {VEHICLE_STATUS_LABELS[vehicle.status]}
             </span>
