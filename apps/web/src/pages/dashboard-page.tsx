@@ -177,7 +177,9 @@ export function DashboardPage() {
                 head={
                   <>
                     <div>
-                      <h3>{t.dash.flowTitle}</h3>
+                      <h3>
+                        {t.dash.flowTitle} <LiveBadge />
+                      </h3>
                       <span className="chart__hint">{t.dash.flowHint}</span>
                     </div>
                     <ul className="dash-flow-legend" aria-label={t.dash.legendLabel}>
@@ -249,7 +251,9 @@ export function DashboardPage() {
                 label={t.dash.kpisTitle}
                 head={
                   <div>
-                    <h3>{t.dash.kpisTitle}</h3>
+                    <h3>
+                      {t.dash.kpisTitle} <LiveBadge />
+                    </h3>
                     <span className="chart__hint">{t.dash.kpisHint}</span>
                   </div>
                 }
