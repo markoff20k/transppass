@@ -7,6 +7,9 @@ import {
   mkbfSeriesQuerySchema,
   widgetQuerySchema,
   type AvailabilityDays,
+  type DashboardDowntime,
+  type DashboardEventsSeries,
+  type DashboardRecentEvents,
   type AvailabilityDaysQuery,
   type AvailabilityHours,
   type AvailabilityHoursQuery,
@@ -55,6 +58,24 @@ export class DashboardController {
     @Query(new ZodValidationPipe(mkbfSeriesQuerySchema)) query: MkbfSeriesQuery,
   ): Promise<MkbfSeries> {
     return this.dashboard.mkbfSeriesRange(query);
+  }
+
+  /** Quebras por hora, dia ou semana num intervalo (card "Quebras por…"). */
+  @Get('events-series')
+  eventsSeries(@Query(new ZodValidationPipe(availabilityDaysQuerySchema)) query: AvailabilityDaysQuery): Promise<DashboardEventsSeries> {
+    return this.dashboard.eventsSeries(query);
+  }
+
+  /** Últimos 6 eventos de um intervalo, recuando ao último dia com evento (card "Últimos eventos"). */
+  @Get('recent-events')
+  recentEvents(@Query(new ZodValidationPipe(availabilityDaysQuerySchema)) query: AvailabilityDaysQuery): Promise<DashboardRecentEvents> {
+    return this.dashboard.recentEvents(query);
+  }
+
+  /** Tempo parado por causa das OS liberadas num intervalo (card "Tempo parado por causa"). */
+  @Get('downtime')
+  downtime(@Query(new ZodValidationPipe(availabilityDaysQuerySchema)) query: AvailabilityDaysQuery): Promise<DashboardDowntime> {
+    return this.dashboard.downtime(query);
   }
 
   /** Disponibilidade dia a dia num intervalo (eixo em dias quando o período tem vários). */

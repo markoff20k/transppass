@@ -17,7 +17,7 @@ import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { BrandLoader } from '@/components/brand/brand-loader';
 
 /** Primeiro carregamento, sem gráfico anterior para pôr sob o véu: o loader da marca no lugar do gráfico. */
-const ChartLoading = () => (
+export const ChartLoading = () => (
   <div className="chart chart--fill chart-loading">
     <BrandLoader size={34} label="Carregando" />
   </div>
@@ -26,7 +26,7 @@ const ChartLoading = () => (
 const fmtDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
 /** Avisa uma vez por recuo: o período pedido não tinha dado e a API mostrou o mais próximo. */
-function useFallbackToast(key: string | null, requested: string | null, used: string | null) {
+export function useFallbackToast(key: string | null, requested: string | null, used: string | null) {
   const { t } = useI18n();
   const last = useRef<string | null>(null);
   useEffect(() => {

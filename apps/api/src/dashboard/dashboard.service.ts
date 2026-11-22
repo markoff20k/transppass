@@ -10,6 +10,9 @@ import {
   AVAILABLE_STATUSES,
   VehicleStatus,
   type AvailabilityDays,
+  type DashboardDowntime,
+  type DashboardEventsSeries,
+  type DashboardRecentEvents,
   type AvailabilityDaysQuery,
   type AvailabilityHours,
   type AvailabilityHoursQuery,
@@ -467,6 +470,81 @@ export class DashboardService {
    * hh:30; intervalos longos amostram a cada 2 h). Mesmo critério de carro
    * parado do anel e da curva por hora.
    */
+  /** Quebras (retornos não programados) num intervalo: por hora num dia só, por dia até 120 dias, por semana acima. */
+  async eventsSeries(q: AvailabilityDaysQuery): Promise<DashboardEventsSeries> {
+    const now = new Date();
+    const today = isoDay(now);
+    const reqTo = q.to > today ? today : q.to;
+    const reqFrom = q.from > reqTo ? reqTo : q.from;
+    // Sem quebra no período (remessa que ainda não chegou): recua até o último dia com quebra, mesmo tamanho de janela.
+    const { from, to, fellBack } = await this.fallbackWindow(reqFrom, reqTo);
+    const start = startOfDay(from);
+    const end = startOfDay(to);
+    end.setHours(23, 59, 59, 999);
+    const rows = await this.prisma.failureEvent.findMany({
+      where: { reportedAt: { gte: start, lte: end > now ? now : end }, isUnscheduledReturn: true },
+      select: { reportedAt: true },
+    });
+    if (from === to) {
+      const counts = Array.from({ length: 24 }, () => 0);
+      for (const r of rows) counts[r.reportedAt.getHours()] = (counts[r.reportedAt.getHours()] ?? 0) + 1;
+      return { points: counts.map((count, h) => ({ date: `${from}T${String(h).padStart(2, '0')}`, count })), bucket: 'hour', from, to, requested: { from: reqFrom, to: reqTo }, used: { from, to }, fellBack };
+    }
+    const days = daysBetween(from, to);
+    const bucket: 'day' | 'week' = days > 120 ? 'week' : 'day';
+    const size = bucket === 'week' ? 7 : 1;
+    const n = Math.ceil(days / size);
+    const counts = Array.from({ length: n }, () => 0);
+    for (const r of rows) {
+      const idx = Math.floor((startOfDay(isoDay(r.reportedAt)).getTime() - start.getTime()) / (DAY_MS * size));
+      if (idx >= 0 && idx < n) counts[idx] = (counts[idx] ?? 0) + 1;
+    }
+    return { points: counts.map((count, i) => ({ date: addDays(from, i * size), count })), bucket, from, to, requested: { from: reqFrom, to: reqTo }, used: { from, to }, fellBack };
+  }
+
+  /** Os 6 eventos mais recentes de um período; sem nenhum, os do último dia com evento antes dele. */
+  async recentEvents(q: AvailabilityDaysQuery): Promise<DashboardRecentEvents> {
+    const today = isoDay(new Date());
+    const reqTo = q.to > today ? today : q.to;
+    const reqFrom = q.from > reqTo ? reqTo : q.from;
+    const window = async (from: string, to: string) => {
+      const end = startOfDay(to);
+      end.setHours(23, 59, 59, 999);
+      return (await this.events.list({ page: 1, perPage: 6, from: startOfDay(from), to: end })).data;
+    };
+    let events = await window(reqFrom, reqTo);
+    if (events.length > 0) return { events, requested: { from: reqFrom, to: reqTo }, used: { from: reqFrom, to: reqTo }, fellBack: false };
+    const last = await this.prisma.failureEvent.findFirst({ where: { reportedAt: { lt: startOfDay(reqFrom) } }, orderBy: { reportedAt: 'desc' }, select: { reportedAt: true } });
+    if (!last) return { events, requested: { from: reqFrom, to: reqTo }, used: { from: reqFrom, to: reqTo }, fellBack: false };
+    const usedTo = isoDay(last.reportedAt);
+    const usedFrom = addDays(usedTo, -(daysBetween(reqFrom, reqTo) - 1));
+    events = await window(usedFrom, usedTo);
+    return { events, requested: { from: reqFrom, to: reqTo }, used: { from: usedFrom, to: usedTo }, fellBack: true };
+  }
+
+  /** Janela pedida, ou a mesma janela recuada até o último dia com quebra quando a pedida não tem nenhuma. */
+  private async fallbackWindow(from: string, to: string): Promise<{ from: string; to: string; fellBack: boolean }> {
+    const end = startOfDay(to);
+    end.setHours(23, 59, 59, 999);
+    const any = await this.prisma.failureEvent.count({ where: { isUnscheduledReturn: true, reportedAt: { gte: startOfDay(from), lte: end } } });
+    if (any > 0) return { from, to, fellBack: false };
+    const last = await this.prisma.failureEvent.findFirst({ where: { isUnscheduledReturn: true, reportedAt: { lt: startOfDay(from) } }, orderBy: { reportedAt: 'desc' }, select: { reportedAt: true } });
+    if (!last) return { from, to, fellBack: false };
+    const usedTo = isoDay(last.reportedAt);
+    return { from: addDays(usedTo, -(daysBetween(from, to) - 1)), to: usedTo, fellBack: true };
+  }
+
+  /** Tempo parado por causa das OS liberadas num intervalo. */
+  async downtime(q: AvailabilityDaysQuery): Promise<DashboardDowntime> {
+    const today = isoDay(new Date());
+    const to = q.to > today ? today : q.to;
+    const from = q.from > to ? to : q.from;
+    const end = startOfDay(to);
+    end.setHours(23, 59, 59, 999);
+    const r = await this.metrics.r1({ from: startOfDay(from), to: end });
+    return { downtimeByCause: r.downtimeByCause, totalDowntimeMinutes: r.totalDowntimeMinutes, from, to };
+  }
+
   async availabilityDays(q: AvailabilityDaysQuery): Promise<AvailabilityDays> {
     const now = new Date();
     const today = isoDay(now);

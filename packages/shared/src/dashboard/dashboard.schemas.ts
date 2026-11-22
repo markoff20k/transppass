@@ -371,3 +371,33 @@ export interface AvailabilityDays {
   from: string;
   to: string;
 }
+
+// --- Cards de baixo do Dashboard, cada um com o próprio período ---------------
+
+/** Quebras por hora (um dia), por dia (até 120 dias) ou por semana. Na hora, `date` = "AAAA-MM-DDTHH". */
+export interface DashboardEventsSeries {
+  points: DayCount[];
+  bucket: 'hour' | 'day' | 'week';
+  from: string;
+  to: string;
+  requested: { from: string; to: string };
+  /** O que foi mostrado de fato: igual ao pedido, ou recuado até o último dia com quebra. */
+  used: { from: string; to: string };
+  fellBack: boolean;
+}
+
+/** Últimos eventos de um período, com o mesmo recuo quando o período não tem nenhum. */
+export interface DashboardRecentEvents {
+  events: import('../events/event.schemas.js').FailureEventSummary[];
+  requested: { from: string; to: string };
+  used: { from: string; to: string };
+  fellBack: boolean;
+}
+
+/** Tempo parado das OS liberadas no período, por etapa. */
+export interface DashboardDowntime {
+  downtimeByCause: DowntimeByCause[];
+  totalDowntimeMinutes: number;
+  from: string;
+  to: string;
+}

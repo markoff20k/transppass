@@ -595,23 +595,23 @@ export function EventsPerDayChart({
   bucket = 'day',
 }: {
   data: DayCount[];
-  bucket?: 'day' | 'week';
+  bucket?: 'hour' | 'day' | 'week';
 }) {
-  // Barras = quebras do dia (ou da semana); linha = média móvel de 7 dias (4 semanas), que tira o ruído.
-  const win = bucket === 'week' ? 4 : 7;
+  // Barras = quebras do dia (da semana, da hora); linha = média móvel de 7 dias (4 semanas, 3 horas), que tira o ruído.
+  const win = bucket === 'week' ? 4 : bucket === 'hour' ? 3 : 7;
   const rows = data.map((d, i) => {
-    const dt = new Date(`${d.date}T12:00:00`);
+    const dt = new Date(bucket === 'hour' ? `${d.date.slice(0, 10)}T12:00:00` : `${d.date}T12:00:00`);
     const slice = data.slice(Math.max(0, i - (win - 1)), i + 1);
     const avg = Math.round((slice.reduce((s, x) => s + x.count, 0) / slice.length) * 10) / 10;
     return {
       ...d,
       avg,
-      label: `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`,
+      label: bucket === 'hour' ? `${d.date.slice(11, 13)}h` : `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`,
     };
   });
   const last = rows[rows.length - 1];
   const total = rows.reduce((s, r) => s + r.count, 0);
-  const unit = bucket === 'week' ? 'semana' : 'dia';
+  const unit = bucket === 'week' ? 'semana' : bucket === 'hour' ? 'hora' : 'dia';
   const tick = Math.max(0, Math.ceil(rows.length / 7) - 1);
 
   return (
@@ -622,14 +622,15 @@ export function EventsPerDayChart({
           {
             kind: 'line',
             color: 'var(--chart-1)',
-            label: bucket === 'week' ? 'média de 4 semanas' : 'média de 7 dias',
+            label: bucket === 'week' ? 'média de 4 semanas' : bucket === 'hour' ? 'média de 3 horas' : 'média de 7 dias',
           },
         ]}
         note={
           last ? (
             <>
-              {bucket === 'week' ? 'semana atual' : 'hoje'} <b>{last.count}</b> · período{' '}
-              {formatNumber(total)}
+              {bucket === 'hour' ? 'no dia' : bucket === 'week' ? 'semana atual' : 'último dia'}{' '}
+              <b>{bucket === 'hour' ? formatNumber(total) : last.count}</b>
+              {bucket === 'hour' ? '' : ` · período ${formatNumber(total)}`}
             </>
           ) : undefined
         }

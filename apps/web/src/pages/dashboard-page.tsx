@@ -10,6 +10,9 @@ import {
   type VehicleStatus,
   type DashboardData,
   type DashboardVehicle,
+  type DashboardDowntime,
+  type DashboardEventsSeries,
+  type DashboardRecentEvents,
 } from '@app/shared';
 import { VEHICLE_STATE_FAMILY } from '@app/design-kit';
 import { ApiError, api } from '@/lib/api-client';
@@ -27,7 +30,10 @@ import { NoticeBoard, TickerSwitch } from '@/components/dashboard/notice-board';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { SortableCards } from '@/components/ui/sortable-cards';
 import { WidgetsCard } from '@/components/dashboard/widgets';
-import { AvailabilityCard, MkbfCard } from '@/components/dashboard/chart-cards';
+import { AvailabilityCard, ChartLoading, MkbfCard, useFallbackToast } from '@/components/dashboard/chart-cards';
+import { ChartPeriodBar } from '@/components/charts/chart-period';
+import { resolveChartPeriod, useChartPeriod } from '@/components/charts/use-chart-period';
+import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { CustomRangeItem } from '@/components/charts/chart-period';
 import { LiveBadge } from '@/components/ui/live-badge';
 import { KpiAi } from '@/components/ui/flip-kpi';
@@ -337,38 +343,121 @@ export function DashboardPage() {
       </section>
 
       <section className="dash-row dash-row--bottom">
-        <div className="tp-card dash-glass">
-          <div className="chart__title">
-            <h3>{t.dash.downtime}</h3>
-            <span className="chart__hint">{t.dash.downtimeHint}</span>
-          </div>
-          <DowntimeDonut data={data.downtimeByCause} totalMinutes={data.totalDowntimeMinutes} />
-        </div>
+        <DowntimeCard />
+        <EventsCard />
+        <RecentEventsCard />
+      </section>
 
-        <div className="tp-card dash-glass">
-          <div className="chart__title">
-            <h3>{data.eventsBucket === 'week' ? t.dash.eventsPerWeek : t.dash.eventsPerDay}</h3>
-            <span className="chart__hint">
-              {(data.eventsBucket === 'week' ? t.dash.eventsPerWeekHint : t.dash.eventsPerDayHint)
-                .replace('{n}', String(days))
-                .replace('{p}', periodLabel)}
-            </span>
-          </div>
-          <EventsPerDayChart data={data.eventsPerDay} bucket={data.eventsBucket} />
-        </div>
+      <p className="tp-muted dash-updated">
+        {t.dash.updated} {formatDateTime(data.generatedAt)}
+      </p>
+    </div>
+  );
+}
 
-        <div className="tp-card dash-glass">
-          <div className="tp-card__head">
-            <div className="chart__title">
-              <h3>{t.dash.recentEvents}</h3>
-              <span className="chart__hint">{periodLabel}</span>
-            </div>
-            <Link to="/eventos" className="tp-btn tp-btn--ghost tp-btn--sm">
-              {t.dash.seeAll}
-            </Link>
-          </div>
+// ---------------------------------------------------------------------------
+
+/**
+ * Os três cards de baixo, cada um com o próprio período (salvo na conta), como
+ * os gráficos de MKBF e disponibilidade: o véu na troca de filtro e o loader
+ * da marca no primeiro carregamento.
+ */
+const BOTTOM_PRESETS = ['today', 'yesterday', 'last30', 'months12', 'custom'] as const;
+
+function DowntimeCard() {
+  const { t } = useI18n();
+  const [period, setPeriod] = useChartPeriod('dash.period.downtime', 'last30');
+  const { from, to } = resolveChartPeriod(period);
+  const query = useQuery({
+    queryKey: ['dashboard', 'downtime', from, to],
+    queryFn: () => api.get<DashboardDowntime>(`/dashboard/downtime?from=${from}&to=${to}`),
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
+  });
+  const d = query.data;
+  return (
+    <div className="tp-card dash-glass">
+      <div className="chart__title chart__title--tools">
+        <div>
+          <h3>{t.dash.downtime}</h3>
+          <span className="chart__hint">{t.dash.downtimeHint} · {rangeLabel(from, to)}</span>
+        </div>
+        <ChartPeriodBar value={period} onChange={setPeriod} presets={BOTTOM_PRESETS} />
+      </div>
+      {d ? (
+        <RefreshVeil active={query.isPlaceholderData} delay={0}>
+          <DowntimeDonut data={d.downtimeByCause} totalMinutes={d.totalDowntimeMinutes} />
+        </RefreshVeil>
+      ) : (
+        <ChartLoading />
+      )}
+    </div>
+  );
+}
+
+function EventsCard() {
+  const { t } = useI18n();
+  const [period, setPeriod] = useChartPeriod('dash.period.events', 'last30');
+  const { from, to } = resolveChartPeriod(period);
+  const query = useQuery({
+    queryKey: ['dashboard', 'events-series', from, to],
+    queryFn: () => api.get<DashboardEventsSeries>(`/dashboard/events-series?from=${from}&to=${to}`),
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
+  });
+  const d = query.data;
+  useFallbackToast(d?.fellBack ? `events:${d.requested.to}>${d.used.to}` : null, d?.requested.to ?? null, d?.used.to ?? null);
+  // O título segue o eixo pedido (não o do dado anterior que está sob o véu).
+  const bucket = from === to ? 'hour' : daysInRange(from, to) > 120 ? 'week' : 'day';
+  return (
+    <div className="tp-card dash-glass">
+      <div className="chart__title chart__title--tools">
+        <div>
+          <h3>{bucket === 'hour' ? t.dash.eventsPerHour : bucket === 'week' ? t.dash.eventsPerWeek : t.dash.eventsPerDay}</h3>
+          <span className="chart__hint">{t.dash.eventsHint.replace('{r}', rangeLabel(d?.used.from ?? from, d?.used.to ?? to))}</span>
+        </div>
+        <ChartPeriodBar value={period} onChange={setPeriod} presets={BOTTOM_PRESETS} />
+      </div>
+      {d ? (
+        <RefreshVeil active={query.isPlaceholderData} delay={0}>
+          <EventsPerDayChart data={d.points} bucket={d.bucket} />
+        </RefreshVeil>
+      ) : (
+        <ChartLoading />
+      )}
+    </div>
+  );
+}
+
+function RecentEventsCard() {
+  const { t } = useI18n();
+  const [period, setPeriod] = useChartPeriod('dash.period.recent', 'last30');
+  const { from, to } = resolveChartPeriod(period);
+  const query = useQuery({
+    queryKey: ['dashboard', 'recent-events', from, to],
+    queryFn: () => api.get<DashboardRecentEvents>(`/dashboard/recent-events?from=${from}&to=${to}`),
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
+  });
+  const d = query.data;
+  const rows = d?.events;
+  useFallbackToast(d?.fellBack ? `recent:${d.requested.to}>${d.used.to}` : null, d?.requested.to ?? null, d?.used.to ?? null);
+  return (
+    <div className="tp-card dash-glass">
+      <div className="tp-card__head">
+        <div className="chart__title">
+          <h3>{t.dash.recentEvents}</h3>
+          <span className="chart__hint">{rangeLabel(d?.used.from ?? from, d?.used.to ?? to)}</span>
+        </div>
+        <Link to="/eventos" className="tp-btn tp-btn--ghost tp-btn--sm">
+          {t.dash.seeAll}
+        </Link>
+      </div>
+      <ChartPeriodBar value={period} onChange={setPeriod} presets={BOTTOM_PRESETS} />
+      {rows ? (
+        <RefreshVeil active={query.isPlaceholderData} delay={0}>
           <ul className="recent-list">
-            {data.recentEvents.map((e) => (
+            {rows.map((e) => (
               <li key={e.id}>
                 <div className="recent-list__main">
                   <b>{e.vehicleCode}</b>
@@ -382,19 +471,15 @@ export function DashboardPage() {
                 </div>
               </li>
             ))}
-            {data.recentEvents.length === 0 && <li className="tp-muted">{t.dash.noEvents}</li>}
+            {rows.length === 0 && <li className="tp-muted">{t.dash.noEvents}</li>}
           </ul>
-        </div>
-      </section>
-
-      <p className="tp-muted dash-updated">
-        {t.dash.updated} {formatDateTime(data.generatedAt)}
-      </p>
+        </RefreshVeil>
+      ) : (
+        <ChartLoading />
+      )}
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
 
 type Tone = 'good' | 'warn' | 'danger' | 'brand' | 'neutral';
 
