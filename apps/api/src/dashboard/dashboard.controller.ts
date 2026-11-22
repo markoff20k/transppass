@@ -1,7 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { dashboardQuerySchema, type DashboardData, type DashboardNotices, type DashboardQuery, type UserRole } from '@app/shared';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { dashboardQuerySchema, type DashboardData, type DashboardNotices, type DashboardQuery } from '@app/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { DashboardService } from './dashboard.service';
@@ -25,12 +24,9 @@ export class DashboardController {
     return this.dashboard.build(query);
   }
 
-  /** Avisos e alertas do cartão de cima: garagem, dados do ERP-JB, caixa do usuário e quadro. */
+  /** Letreiro do Dashboard: fatos em andamento (socorro, SLA de OS e peça, fila, reserva, preventiva), uma linha cada. */
   @Get('notices')
-  notices(
-    @CurrentUser('sub') userId: string,
-    @CurrentUser('role') role: UserRole,
-  ): Promise<DashboardNotices> {
-    return this.noticesService.build(userId, role);
+  notices(): Promise<DashboardNotices> {
+    return this.noticesService.build();
   }
 }

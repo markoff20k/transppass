@@ -186,16 +186,16 @@ const notifications: { id: string; title: string; body: string; createdAt: strin
 ];
 
 function buildNotices() {
-  const h = (n: number) => new Date(Date.now() - n * 3_600_000).toISOString();
+  const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
   const items = [
-    { id: 'safety', severity: 'critical', kind: 'safety', title: '2 falhas de segurança em aberto', text: 'Carro 10001 e 10004. Falha marcada como de segurança sem encerramento: tem prioridade sobre qualquer outra OS.', to: '/eventos', at: h(5), source: 'Eventos', count: 2, notificationId: null },
-    { id: 'parts-overdue', severity: 'critical', kind: 'parts', title: '1 peça com prazo vencido', text: 'A mais antiga venceu há 26 h, carro 10003. Carro parado sem ninguém trabalhando nele até a peça chegar.', to: '/estoque', at: h(26), source: 'Estoque', count: 1, notificationId: null },
-    { id: 'triage', severity: 'warning', kind: 'triage', title: '1 evento aguardando triagem', text: 'O mais antigo espera há 3 h. Sem triagem o carro não entra na fila nem volta à linha.', to: '/triagem', at: h(3), source: 'Triagem', count: 1, notificationId: null },
-    { id: 'inbox:n-2', severity: 'warning', kind: 'notification', title: 'Prazo de peça vencido — carro 10003', text: 'PNE-CUI-01 — Cuíca de freio. Prazo era ontem (Aguardando compra).', to: '/estoque', at: h(3), source: 'Notificação', count: null, notificationId: 'n-2' },
-    { id: 'data-through', severity: 'info', kind: 'data', title: 'Dados do ERP-JB até 18/11', text: 'Km até 18/11, fichas até 18/11, consumo até 18/11, carro-linha-dia até 18/11. MKBF, consumo e o quadro diário do mês seguem parciais até a próxima carga.', to: '/indicadores', at: '2026-11-18T12:00:00.000Z', source: 'ERP-JB', count: null, notificationId: null },
-    { id: 'inbox:n-1', severity: 'info', kind: 'notification', title: 'Previsão de retorno do carro 10002 mudou', text: 'Nova previsão de conclusão: hoje, 16:40.', to: '/fila', at: h(0.4), source: 'Notificação', count: null, notificationId: 'n-1' },
-    { id: 'board:mkbf', severity: 'good', kind: 'indicator', title: 'MKBF 8.420 km, melhorou 2,6% vs outubro', text: '1.284.000 km rodados ÷ 152 quebras. Média dos últimos 6 meses: 7.510 km, o mês está acima.', to: '/indicadores', at: '2026-11-18T12:00:00.000Z', source: 'Indicadores', count: null, notificationId: null },
-  ].filter((i) => i.notificationId === null || notifications.some((n) => n.id === i.notificationId && !n.readAt));
+    { id: 'rescue:1', severity: 'critical', kind: 'rescue', area: 'Socorro', title: 'Carro 10001 quebrado na linha 8012 (Av. Raimundo Pereira de Magalhães) há 52 min, aguardando socorro há 40 min', text: 'Ficha EV-2026-0418: motor sem partida. Registrada às 09:12.', to: '/socorro', at: ago(52), vehicleCode: '10001' },
+    { id: 'wo:1', severity: 'critical', kind: 'workorders', area: 'Oficina', title: 'OS OS-2026-0392 do carro 10003 estourou o prazo há 1 dia, parada aguardando peça', text: 'Aberta há 3 dias, previsão de conclusão era 20/11, 16:00.', to: '/os/wo-1', at: ago(26 * 60), vehicleCode: '10003' },
+    { id: 'triage:1', severity: 'warning', kind: 'triage', area: 'CCO', title: 'Carro 10004 na linha 8056 com porta não fecha aguardando triagem há 14 min', text: 'Ficha EV-2026-0421 sem decisão: ninguém disse ainda se o carro recebe socorro, recolhe ou segue viagem.', to: '/triagem', at: ago(14), vehicleCode: '10004' },
+    { id: 'part:1', severity: 'warning', kind: 'parts', area: 'Almoxarifado', title: 'Cuíca de freio dianteira do carro 10003 com prazo vencido há 5 h, OS OS-2026-0392 parada', text: 'Motivo da espera: aguardando compra. Escalonada ao PCM há 2 h.', to: '/os/wo-1', at: ago(5 * 60), vehicleCode: '10003' },
+    { id: 'replacement:1', severity: 'warning', kind: 'replacement', area: 'Plantão', title: 'Linha 8012 ainda sem carro reserva, janela fecha em 12 min', text: 'Troca pedida há 18 min para substituir o carro 10001. Sem reserva a viagem se perde.', to: '/plantao', at: ago(-12), vehicleCode: '10001' },
+    { id: 'preventive:1', severity: 'warning', kind: 'preventive', area: 'PCM', title: 'Preventiva Revisão B do carro 10002 vencida desde 18/11, carro rodando', text: 'Prevista para 120.000 km e ainda sem parada agendada na oficina.', to: '/preventiva', at: ago(3 * 24 * 60), vehicleCode: '10002' },
+    { id: 'release:1', severity: 'good', kind: 'release', area: 'Oficina', title: 'Carro 10005 liberado para a linha há 35 min após 6 h parado', text: 'OS OS-2026-0401 encerrada com inspeção aprovada.', to: '/os/wo-2', at: ago(35), vehicleCode: '10005' },
+  ];
   const counts = { critical: 0, warning: 0, info: 0, good: 0 } as Record<string, number>;
   for (const i of items) counts[i.severity] = (counts[i.severity] ?? 0) + 1;
   return { generatedAt: new Date().toISOString(), items, counts, dataThrough: { km: '2026-11-18', consumption: '2026-11-18', failures: '2026-11-18', lineDays: '2026-11-18' } };

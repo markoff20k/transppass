@@ -137,34 +137,39 @@ export const NOTICE_SEVERITIES = ['critical', 'warning', 'info', 'good'] as cons
 export type NoticeSeverity = (typeof NOTICE_SEVERITIES)[number];
 
 export type NoticeKind =
-  | 'safety'
-  | 'parts'
-  | 'workorders'
+  | 'rescue'
   | 'triage'
+  | 'safety'
+  | 'workorders'
+  | 'parts'
   | 'queue'
+  | 'replacement'
   | 'preventive'
-  | 'km'
-  | 'data'
-  | 'sheet'
-  | 'indicator'
-  | 'notification';
+  | 'inspection'
+  | 'release'
+  | 'data';
 
+/**
+ * Uma linha do letreiro do Dashboard: um fato real em andamento no sistema
+ * ("carro 81-123 quebrado na linha 8012 há 52 min, aguardando reboque"),
+ * com a área responsável na frente e o caminho para a tela onde se resolve.
+ */
 export interface DashboardNotice {
   id: string;
   severity: NoticeSeverity;
   kind: NoticeKind;
+  /** Área responsável, como aparece entre colchetes: "Socorro", "Oficina", "Almoxarifado". */
+  area: string;
+  /** A frase do letreiro, já com o tempo decorrido ("há 52 min"). */
   title: string;
+  /** Detalhe a mais, mostrado ao parar o mouse. */
   text: string;
   /** Rota no app onde o assunto se resolve; null quando é só para saber. */
   to: string | null;
-  /** Quando aconteceu, ou a data a que se refere (ISO). */
+  /** Quando começou, ou a data a que se refere (ISO). */
   at: string | null;
-  /** Origem curta, para o rodapé do item ("Oficina", "ERP-JB", "Indicadores"). */
-  source: string;
-  /** Quantidade por trás do item, quando é uma contagem (3 OS, 12 peças). */
-  count: number | null;
-  /** Notificação da caixa do usuário: pode ser dada como ciente. */
-  notificationId: string | null;
+  /** Prefixo do carro envolvido, quando há um. */
+  vehicleCode: string | null;
 }
 
 export interface DashboardNotices {
