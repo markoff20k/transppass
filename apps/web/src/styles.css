@@ -1436,20 +1436,8 @@ small.muted {
 .ccard__head { display: flex; align-items: flex-start; justify-content: flex-start; gap: var(--tp-space-3); flex-wrap: wrap; }
 .ccard__head > div:first-child { display: grid; gap: 2px; min-width: 0; margin-right: auto; }
 .ccard__head h3 { margin: 0; font-size: var(--tp-text-sm); }
-.ccard__toggle {
-  flex: none;
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: var(--color-surface-sunken);
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-.ccard__toggle:hover { color: var(--color-text); }
+/* Botão fantasma padrão do sistema (tp-btn--ghost), só quadrado. */
+.ccard__toggle { flex: none; width: 28px; min-height: 28px; padding: 0; }
 .ccard__toggle svg { transition: transform 240ms ease; }
 .ccard.is-collapsed .ccard__toggle svg { transform: rotate(-90deg); }
 .ccard__body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 320ms ease; }
@@ -1988,7 +1976,7 @@ small.muted {
   background: linear-gradient(160deg, var(--dash-glass-top), var(--dash-glass-bottom));
 }
 .dash-kpi__face--back .dash-kpi__head { align-items: center; }
-.dash-kpi__back-actions { display: inline-flex; align-items: center; gap: 4px; }
+.dash-kpi__back-actions { display: inline-flex; align-items: center; gap: 2px; margin: -4px -6px -4px 0; }
 .dash-kpi__head-right {
   display: inline-flex;
   align-items: center;
@@ -2002,28 +1990,31 @@ small.muted {
   display: inline-grid;
   place-items: center;
   flex: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  color: var(--color-text-muted);
-  background: var(--color-surface-sunken);
+  width: 18px;
+  height: 18px;
+  border-radius: var(--tp-radius-sm, 6px);
+  color: var(--color-text-secondary);
   transition: color 160ms ease, background 160ms ease;
 }
-.dash-kpi__face--front:hover .dash-kpi__flip { color: var(--color-brand-text); background: var(--color-brand-soft); }
+.dash-kpi__face--front:hover .dash-kpi__flip { color: var(--color-text); background: var(--color-surface-hover); }
+/* Mesmo padrão do botão fantasma: transparente, hover em surface-hover. */
 .dash-kpi__unflip {
   display: inline-grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  line-height: 1;
   padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: var(--color-surface-sunken);
-  color: var(--color-text-muted);
+  border-radius: var(--tp-radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
   cursor: pointer;
   flex: none;
+  transition: color 160ms ease, background 160ms ease;
 }
-.dash-kpi__unflip:hover { color: var(--color-text); background: var(--color-surface-sunken); }
+.dash-kpi__unflip:hover { color: var(--color-text); background: var(--color-surface-hover); }
 
 /* O verso: linhas curtas rótulo/valor, barra fina por baixo quando é ranking. */
 .kpi-back__list {
@@ -2050,17 +2041,50 @@ small.muted {
 .kpi-back__open {
   display: inline-grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--color-surface-sunken);
-  color: var(--color-brand-text);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--tp-radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  transition: color 160ms ease, background 160ms ease;
 }
-.kpi-back__open:hover { color: var(--color-brand); }
+.kpi-back__open:hover { color: var(--color-text); background: var(--color-surface-hover); }
 
 @media (prefers-reduced-motion: reduce) {
   .dash-kpi__inner { transition: none; }
 }
+
+/* ---- Cartões reordenáveis (alça no cabeçalho, ordem salva na conta) ------ */
+.sortable { position: relative; min-width: 0; }
+.sortable.is-dragging { opacity: 0.55; }
+.sortable::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--color-brand-solid, var(--color-primary));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.sortable.is-over-before::before { top: -10px; opacity: 1; }
+.sortable.is-over-after::before { bottom: -10px; opacity: 1; }
+.sortable__grip {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 28px;
+  margin-left: -6px;
+  border-radius: var(--tp-radius-md);
+  color: var(--color-text-muted);
+  cursor: grab;
+  transition: color 160ms ease, background 160ms ease;
+}
+.sortable__grip:hover { color: var(--color-text); background: var(--color-surface-hover); }
+.sortable.is-dragging .sortable__grip { cursor: grabbing; }
 
 /* ---- Letreiro de avisos (uma linha, como o painel de destino do ônibus) -- */
 

@@ -25,7 +25,8 @@ import { BackFoot, BackHead, FlipButton, MaintenanceBack } from '@/components/fl
 import { useFlip } from '@/components/fleet/use-flip';
 import { NoticeBoard, TickerSwitch } from '@/components/dashboard/notice-board';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
-import { useUiPref } from '@/features/auth/use-ui-pref';
+import { SortableCards } from '@/components/ui/sortable-cards';
+import { useUiPref, useUiState } from '@/features/auth/use-ui-pref';
 import {
   AvailabilityByHourChart,
   DowntimeDonut,
@@ -154,142 +155,164 @@ export function DashboardPage() {
       {staleNotice}
       {/* ---- Avisos e alertas: o que pede atenção, antes de qualquer número ---- */}
       <NoticeBoard />
-      {/* ---- Centro de comando: anel, fluxo e os três números ---- */}
-      <CollapsibleCard
-        id="dash.flow"
-        className="dash-hero dash-glass"
-        label={t.dash.title}
-        head={
-          <>
-            <div>
-              <h3>{t.dash.flowTitle}</h3>
-              <span className="chart__hint">{t.dash.flowHint}</span>
-            </div>
-            <ul className="dash-flow-legend" aria-label={t.dash.legendLabel}>
-              <li className="dash-flow-legend__item dash-flow-legend__item--waiting">
-                {t.dash.flowLegend.waiting}
-              </li>
-              <li className="dash-flow-legend__item dash-flow-legend__item--working">
-                {t.dash.flowLegend.working}
-              </li>
-              <li className="dash-flow-legend__item dash-flow-legend__item--stopped">
-                {t.dash.flowLegend.stopped}
-              </li>
-              <li className="dash-flow-legend__item dash-flow-legend__item--empty">
-                {t.dash.flowLegend.empty}
-              </li>
-            </ul>
-          </>
-        }
-      >
-        <div className="dash-hero__grid">
-          <div className="dash-gauge">
-            <div className="dash-gauge__ring">
-              <RingGauge
-                value={availabilityPct}
-                target={AVAILABILITY_TARGET}
-                tone={availabilityTone}
-                label={t.dash.availability}
-              />
-              <div className="dash-gauge__center">
-                <strong className="dash-gauge__value">
-                  {availabilityPct.toLocaleString('pt-BR')}
-                  <small>%</small>
-                </strong>
-                <span className="dash-gauge__label">{t.dash.availability}</span>
-              </div>
-            </div>
-            <div className="dash-gauge__foot">
-              <span className="dash-gauge__ready">
-                <b>{data.fleet.available}</b> {t.dash.of} <b>{data.fleet.total}</b>{' '}
-                {t.dash.readyBuses}
-              </span>
-              <span className="dash-gauge__meta">
-                <Delta value={data.fleet.availabilityDelta} suffix=" pp" label={t.dash.vs7d} />
-                <span className="dash-gauge__target">
-                  {t.dash.target} {AVAILABILITY_TARGET}%
-                </span>
-              </span>
-            </div>
-          </div>
-          <div className="dash-flow-wrap">
-            <GarageFlow byStatus={data.fleet.byStatus} />
-            <StatusSummary byStatus={data.fleet.byStatus} total={data.fleet.total} />
-          </div>
-        </div>
-      </CollapsibleCard>
-      {/* ---- Os três números, cada um com o porquê no verso ---- */}
-      <CollapsibleCard
-        id="dash.kpis"
-        className="dash-kpis dash-glass"
-        label={t.dash.kpisTitle}
-        head={
-          <div>
-            <h3>{t.dash.kpisTitle}</h3>
-            <span className="chart__hint">{t.dash.kpisHint}</span>
-          </div>
-        }
-      >
-        <div className="dash-kpis__grid">
-          <Kpi
-            label={t.dash.mkbf}
-            hint={`${t.dash.mkbfHint} · ${periodLabel}`}
-            value={
-              data.mkbf.period.mkbf === null ? '—' : `${formatNumber(data.mkbf.period.mkbf)} km`
-            }
-            tone="brand"
-            spark={data.mkbf.series.map((p) => p.mkbf)}
-            sparkColor="var(--chart-1)"
-            note={
-              data.mkbf.period.mkbf === null
-                ? t.dash.noReturns
-                : `${formatNumber(data.mkbf.period.kmTraveled)} km ÷ ${formatNumber(data.mkbf.period.unscheduledReturns)} ${t.dash.breakdowns}`
-            }
-            back={<MkbfBack data={data} />}
-            backTo="/indicadores"
-            backLabel={t.dash.back.openIndicators}
-          />
-          <Kpi
-            label={t.dash.inQueue}
-            hint={t.dash.inQueueHint}
-            value={String(data.queue.waiting)}
-            tone={data.queue.waiting > 3 ? 'warn' : 'neutral'}
-            note={
-              data.queue.oldestWaitingHours !== null
-                ? `+ ${data.queue.inService} ${t.dash.inService} · ${t.dash.oldest} ${data.queue.oldestWaitingHours}${t.dash.hours}`
-                : `+ ${data.queue.inService} ${t.dash.inService}`
-            }
-            back={<QueueBack data={data} />}
-            backTo="/fila"
-            backLabel={t.dash.back.openQueue}
-          />
-          <Kpi
-            label={t.dash.openWo}
-            hint={t.dash.openWoHint}
-            value={String(data.workOrders.open)}
-            tone={data.workOrders.overdue > 0 ? 'danger' : 'neutral'}
-            note={[
-              data.workOrders.overdue > 0 ? `${data.workOrders.overdue} ${t.dash.overdue}` : null,
-              `${data.workOrders.releasedInPeriod} ${t.dash.releasedIn.replace('{n}', String(days))}`,
-              data.workOrders.averageDowntimeMinutes !== null
-                ? `${t.dash.avg} ${formatMinutes(data.workOrders.averageDowntimeMinutes)} ${t.dash.perWo}`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            back={<WorkOrdersBack data={data} />}
-            backTo={
-              data.backs.workOrders.mostOverdue
-                ? `/os/${data.backs.workOrders.mostOverdue.id}`
-                : '/os'
-            }
-            backLabel={t.dash.back.openWo}
-          />
-        </div>
-      </CollapsibleCard>
-
-      {/* ---- A frota, carro a carro ---- */}
-      <FleetNow vehicles={data.vehicles} />
+      {/* ---- Centro de comando: fluxo, os três números e a frota; a pessoa arrasta para reordenar ---- */}
+      <SortableCards
+        prefKey="dash.order"
+        items={[
+          {
+            key: 'flow',
+            render: (grip) => (
+              <CollapsibleCard
+                id="dash.flow"
+                grip={grip}
+                className="dash-hero dash-glass"
+                label={t.dash.title}
+                head={
+                  <>
+                    <div>
+                      <h3>{t.dash.flowTitle}</h3>
+                      <span className="chart__hint">{t.dash.flowHint}</span>
+                    </div>
+                    <ul className="dash-flow-legend" aria-label={t.dash.legendLabel}>
+                      <li className="dash-flow-legend__item dash-flow-legend__item--waiting">
+                        {t.dash.flowLegend.waiting}
+                      </li>
+                      <li className="dash-flow-legend__item dash-flow-legend__item--working">
+                        {t.dash.flowLegend.working}
+                      </li>
+                      <li className="dash-flow-legend__item dash-flow-legend__item--stopped">
+                        {t.dash.flowLegend.stopped}
+                      </li>
+                      <li className="dash-flow-legend__item dash-flow-legend__item--empty">
+                        {t.dash.flowLegend.empty}
+                      </li>
+                    </ul>
+                  </>
+                }
+              >
+                <div className="dash-hero__grid">
+                  <div className="dash-gauge">
+                    <div className="dash-gauge__ring">
+                      <RingGauge
+                        value={availabilityPct}
+                        target={AVAILABILITY_TARGET}
+                        tone={availabilityTone}
+                        label={t.dash.availability}
+                      />
+                      <div className="dash-gauge__center">
+                        <strong className="dash-gauge__value">
+                          {availabilityPct.toLocaleString('pt-BR')}
+                          <small>%</small>
+                        </strong>
+                        <span className="dash-gauge__label">{t.dash.availability}</span>
+                      </div>
+                    </div>
+                    <div className="dash-gauge__foot">
+                      <span className="dash-gauge__ready">
+                        <b>{data.fleet.available}</b> {t.dash.of} <b>{data.fleet.total}</b>{' '}
+                        {t.dash.readyBuses}
+                      </span>
+                      <span className="dash-gauge__meta">
+                        <Delta
+                          value={data.fleet.availabilityDelta}
+                          suffix=" pp"
+                          label={t.dash.vs7d}
+                        />
+                        <span className="dash-gauge__target">
+                          {t.dash.target} {AVAILABILITY_TARGET}%
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                  <div className="dash-flow-wrap">
+                    <GarageFlow byStatus={data.fleet.byStatus} />
+                    <StatusSummary byStatus={data.fleet.byStatus} total={data.fleet.total} />
+                  </div>
+                </div>
+              </CollapsibleCard>
+            ),
+          },
+          {
+            key: 'kpis',
+            render: (grip) => (
+              <CollapsibleCard
+                id="dash.kpis"
+                grip={grip}
+                className="dash-kpis dash-glass"
+                label={t.dash.kpisTitle}
+                head={
+                  <div>
+                    <h3>{t.dash.kpisTitle}</h3>
+                    <span className="chart__hint">{t.dash.kpisHint}</span>
+                  </div>
+                }
+              >
+                <div className="dash-kpis__grid">
+                  <Kpi
+                    label={t.dash.mkbf}
+                    hint={`${t.dash.mkbfHint} · ${periodLabel}`}
+                    value={
+                      data.mkbf.period.mkbf === null
+                        ? '—'
+                        : `${formatNumber(data.mkbf.period.mkbf)} km`
+                    }
+                    tone="brand"
+                    spark={data.mkbf.series.map((p) => p.mkbf)}
+                    sparkColor="var(--chart-1)"
+                    note={
+                      data.mkbf.period.mkbf === null
+                        ? t.dash.noReturns
+                        : `${formatNumber(data.mkbf.period.kmTraveled)} km ÷ ${formatNumber(data.mkbf.period.unscheduledReturns)} ${t.dash.breakdowns}`
+                    }
+                    back={<MkbfBack data={data} />}
+                    backTo="/indicadores"
+                    backLabel={t.dash.back.openIndicators}
+                  />
+                  <Kpi
+                    label={t.dash.inQueue}
+                    hint={t.dash.inQueueHint}
+                    value={String(data.queue.waiting)}
+                    tone={data.queue.waiting > 3 ? 'warn' : 'neutral'}
+                    note={
+                      data.queue.oldestWaitingHours !== null
+                        ? `+ ${data.queue.inService} ${t.dash.inService} · ${t.dash.oldest} ${data.queue.oldestWaitingHours}${t.dash.hours}`
+                        : `+ ${data.queue.inService} ${t.dash.inService}`
+                    }
+                    back={<QueueBack data={data} />}
+                    backTo="/fila"
+                    backLabel={t.dash.back.openQueue}
+                  />
+                  <Kpi
+                    label={t.dash.openWo}
+                    hint={t.dash.openWoHint}
+                    value={String(data.workOrders.open)}
+                    tone={data.workOrders.overdue > 0 ? 'danger' : 'neutral'}
+                    note={[
+                      data.workOrders.overdue > 0
+                        ? `${data.workOrders.overdue} ${t.dash.overdue}`
+                        : null,
+                      `${data.workOrders.releasedInPeriod} ${t.dash.releasedIn.replace('{n}', String(days))}`,
+                      data.workOrders.averageDowntimeMinutes !== null
+                        ? `${t.dash.avg} ${formatMinutes(data.workOrders.averageDowntimeMinutes)} ${t.dash.perWo}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    back={<WorkOrdersBack data={data} />}
+                    backTo={
+                      data.backs.workOrders.mostOverdue
+                        ? `/os/${data.backs.workOrders.mostOverdue.id}`
+                        : '/os'
+                    }
+                    backLabel={t.dash.back.openWo}
+                  />
+                </div>
+              </CollapsibleCard>
+            ),
+          },
+          { key: 'fleet', render: (grip) => <FleetNow vehicles={data.vehicles} grip={grip} /> },
+        ]}
+      />
 
       {/* ---- Tendências ---- */}
       <section className="dash-row dash-row--charts">
@@ -742,9 +765,9 @@ function StatusSummary({
  * cabeçalho. A legenda é também o filtro: passar o mouse realça a família,
  * clicar deixa só ela na grade (clicar de novo, ou em "Todos", volta).
  */
-function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
+function FleetNow({ vehicles, grip }: { vehicles: DashboardVehicle[]; grip?: ReactNode }) {
   const { t } = useI18n();
-  const [selected, setSelected] = useState<Family | null>(null);
+  const [selected, setSelected] = useUiState<Family | null>('dashboard.fleetStatus', null);
   const [hovered, setHovered] = useState<Family | null>(null);
 
   const visible = selected ? vehicles.filter((v) => familyOf(v.status) === selected) : vehicles;
@@ -761,6 +784,7 @@ function FleetNow({ vehicles }: { vehicles: DashboardVehicle[] }) {
   return (
     <CollapsibleCard
       id="dash.fleet"
+      grip={grip}
       className="tp-card dash-glass dash-fleet"
       headClassName="tp-card__head dash-fleet__head"
       label={t.dash.fleetNow}

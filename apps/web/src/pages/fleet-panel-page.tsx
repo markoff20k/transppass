@@ -26,6 +26,7 @@ import { BrandLoader } from '@/components/brand/brand-loader';
 import { InfoTip } from '@/components/ui/info-tip';
 import { Pager } from '@/components/ui/pager';
 import { pagerOf, usePagerState } from '@/lib/pager';
+import { useUiState } from '@/features/auth/use-ui-pref';
 
 interface PanelResponse {
   summary: FleetPanelSummary;
@@ -42,12 +43,13 @@ function ProjectionTip({ align = 'end' }: { align?: 'start' | 'center' | 'end' }
     <InfoTip label="O que é a projeção de km" align={align} className="fleet-tip">
       <b>Projeção de km</b>
       <span>
-        A partir da média diária de cada carro, o sistema estima o km de hoje e em que dia ele chega à
-        próxima preventiva (RF-14). É o que alimenta a programação.
+        A partir da média diária de cada carro, o sistema estima o km de hoje e em que dia ele chega
+        à próxima preventiva (RF-14). É o que alimenta a programação.
       </span>
       <span>
-        Sem leitura de odômetro há mais de {KM_DEGRADATION_DAYS} dias a estimativa fica desatualizada e o
-        carro entra em alerta até alguém lançar o km. Carros com telemetria atualizam sozinhos.
+        Sem leitura de odômetro há mais de {KM_DEGRADATION_DAYS} dias a estimativa fica
+        desatualizada e o carro entra em alerta até alguém lançar o km. Carros com telemetria
+        atualizam sozinhos.
       </span>
     </InfoTip>
   );
@@ -58,42 +60,49 @@ function ProjectionTip({ align = 'end' }: { align?: 'start' | 'center' | 'end' }
  *
  * Duas leituras da mesma frota: a grade de cards, para bater o olho e ver a
  * garagem; a tabela, para conferir km e leitura carro a carro. A preferência
- * fica no navegador. A legenda das famílias é também o filtro rápido.
+ * e os filtros ficam na conta; a URL, quando traz o filtro, vence e é gravada.
+ * A legenda das famílias é também o filtro rápido.
  */
 export function FleetPanelPage() {
   const [params, setParams] = useSearchParams();
-  const [view, setView] = useState<View>(() => {
-    try {
-      return (localStorage.getItem('tp.fleet.view') as View) || 'grid';
-    } catch {
-      return 'grid';
-    }
-  });
-  const [family, setFamily] = useState<Family | null>(null);
+  const [view, setView] = useUiState<View>('frota.view', 'grid');
+  const [family, setFamily] = useUiState<Family | null>('frota.family', null);
   const [hovered, setHovered] = useState<Family | null>(null);
 
-  const technology = (params.get('technology') ?? '') as VehicleTechnology | '';
-  const status = (params.get('status') ?? '') as VehicleStatus | '';
-  const search = params.get('search') ?? '';
-  const vehicleClass = (params.get('class') ?? '') as VehicleClass | '';
-  const lot = params.get('lot') ?? '';
-  const onlyStale = params.get('stale') === '1';
+  const [savedTechnology, setSavedTechnology] = useUiState<string>('frota.energy', '');
+  const [savedStatus, setSavedStatus] = useUiState<string>('frota.status', '');
+  const [savedSearch, setSavedSearch] = useUiState<string>('frota.search', '');
+  const [savedClass, setSavedClass] = useUiState<string>('frota.cls', '');
+  const [savedLot, setSavedLot] = useUiState<string>('frota.lot', '');
+  const [savedOnlyStale, setSavedOnlyStale] = useUiState<boolean>('frota.onlyStale', false);
+
+  const fromUrl = (key: string, saved: string) =>
+    params.has(key) ? (params.get(key) ?? '') : saved;
+  const technology = fromUrl('technology', savedTechnology) as VehicleTechnology | '';
+  const status = fromUrl('status', savedStatus) as VehicleStatus | '';
+  const search = fromUrl('search', savedSearch);
+  const vehicleClass = fromUrl('class', savedClass) as VehicleClass | '';
+  const lot = fromUrl('lot', savedLot);
+  const onlyStale = params.has('stale') ? params.get('stale') === '1' : savedOnlyStale;
+
+  const savedSetters: Record<string, (value: string) => void> = {
+    technology: setSavedTechnology,
+    status: setSavedStatus,
+    search: setSavedSearch,
+    class: setSavedClass,
+    lot: setSavedLot,
+    stale: (value) => setSavedOnlyStale(value === '1'),
+  };
 
   const setParam = (key: string, value: string) => {
+    savedSetters[key]?.(value);
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
     setParams(next, { replace: true });
   };
 
-  const changeView = (v: View) => {
-    setView(v);
-    try {
-      localStorage.setItem('tp.fleet.view', v);
-    } catch {
-      /* sem persistência */
-    }
-  };
+  const changeView = (v: View) => setView(v);
 
   usePageHeader({
     eyebrow: 'Operação',
@@ -157,7 +166,12 @@ export function FleetPanelPage() {
     .filter((r) => (onlyStale ? r.isKmDegraded : true));
   const focus = hovered ?? family;
   const stale = summary.degradedKmCount;
-  const staleTone = stale === 0 ? 'tp-kpi--good' : stale >= Math.max(3, rows.length * 0.25) ? 'tp-kpi--danger' : 'tp-kpi--warn';
+  const staleTone =
+    stale === 0
+      ? 'tp-kpi--good'
+      : stale >= Math.max(3, rows.length * 0.25)
+        ? 'tp-kpi--danger'
+        : 'tp-kpi--warn';
 
   const pager = pagerOf(tablePaging, visible.length);
   const gridPager = pagerOf(gridPaging, visible.length);
@@ -179,11 +193,16 @@ export function FleetPanelPage() {
           </strong>
           <span className="tp-kpi__note">em linha ou prontos no pátio</span>
         </div>
-        <div className={`tp-kpi ${availabilityPct >= AVAILABILITY_TARGET ? 'tp-kpi--good' : availabilityPct >= AVAILABILITY_TARGET - 10 ? 'tp-kpi--warn' : 'tp-kpi--danger'}`}>
+        <div
+          className={`tp-kpi ${availabilityPct >= AVAILABILITY_TARGET ? 'tp-kpi--good' : availabilityPct >= AVAILABILITY_TARGET - 10 ? 'tp-kpi--warn' : 'tp-kpi--danger'}`}
+        >
           <span className="tp-kpi__label">Disponibilidade</span>
           <strong className="tp-kpi__value">{availabilityPct.toLocaleString('pt-BR')}%</strong>
           <span className="tp-kpi__note">
-            meta {AVAILABILITY_TARGET}% · {availabilityPct >= AVAILABILITY_TARGET ? 'dentro da meta' : `faltam ${(AVAILABILITY_TARGET - availabilityPct).toLocaleString('pt-BR')} pp`}
+            meta {AVAILABILITY_TARGET}% ·{' '}
+            {availabilityPct >= AVAILABILITY_TARGET
+              ? 'dentro da meta'
+              : `faltam ${(AVAILABILITY_TARGET - availabilityPct).toLocaleString('pt-BR')} pp`}
           </span>
         </div>
         <div className={`tp-kpi ${staleTone}`}>
@@ -195,11 +214,18 @@ export function FleetPanelPage() {
             <small className="tp-kpi__of"> / {summary.total}</small>
           </strong>
           <span className="tp-kpi__note">
-            {stale === 0
-              ? `todos os carros com km lido nos últimos ${KM_DEGRADATION_DAYS} dias`
-              : manualStale > 0
-                ? <>sem leitura há mais de {KM_DEGRADATION_DAYS} dias · <Link to="/km" className="tp-kpi__link">lançar km</Link></>
-                : `sem leitura há mais de ${KM_DEGRADATION_DAYS} dias`}
+            {stale === 0 ? (
+              `todos os carros com km lido nos últimos ${KM_DEGRADATION_DAYS} dias`
+            ) : manualStale > 0 ? (
+              <>
+                sem leitura há mais de {KM_DEGRADATION_DAYS} dias ·{' '}
+                <Link to="/km" className="tp-kpi__link">
+                  lançar km
+                </Link>
+              </>
+            ) : (
+              `sem leitura há mais de ${KM_DEGRADATION_DAYS} dias`
+            )}
           </span>
         </div>
       </div>
@@ -208,9 +234,16 @@ export function FleetPanelPage() {
         <div className="tp-card__head dash-fleet__head">
           <div>
             <h3>A frota agora</h3>
-            <span className="chart__hint">cada carro no estado em que está — a legenda filtra por família</span>
+            <span className="chart__hint">
+              cada carro no estado em que está — a legenda filtra por família
+            </span>
           </div>
-          <FleetLegend statuses={rows.map((r) => r.status)} selected={family} onSelect={setFamily} onHover={setHovered} />
+          <FleetLegend
+            statuses={rows.map((r) => r.status)}
+            selected={family}
+            onSelect={setFamily}
+            onHover={setHovered}
+          />
         </div>
 
         <div className="tp-toolbar">
@@ -238,7 +271,12 @@ export function FleetPanelPage() {
               </option>
             ))}
           </select>
-          <select className="tp-select" aria-label="Classe" value={vehicleClass} onChange={(e) => setParam('class', e.target.value)}>
+          <select
+            className="tp-select"
+            aria-label="Classe"
+            value={vehicleClass}
+            onChange={(e) => setParam('class', e.target.value)}
+          >
             <option value="">Todas as classes</option>
             {Object.entries(VEHICLE_CLASS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
@@ -246,7 +284,12 @@ export function FleetPanelPage() {
               </option>
             ))}
           </select>
-          <select className="tp-select" aria-label="Lote" value={lot} onChange={(e) => setParam('lot', e.target.value)}>
+          <select
+            className="tp-select"
+            aria-label="Lote"
+            value={lot}
+            onChange={(e) => setParam('lot', e.target.value)}
+          >
             <option value="">Todos os lotes</option>
             <option value="E8">Lote E8</option>
             <option value="AR9">Lote AR9</option>
@@ -265,19 +308,38 @@ export function FleetPanelPage() {
             ))}
           </select>
           <label className="tp-check tp-check--inline">
-            <input type="checkbox" checked={onlyStale} onChange={(e) => setParam('stale', e.target.checked ? '1' : '')} />
+            <input
+              type="checkbox"
+              checked={onlyStale}
+              onChange={(e) => setParam('stale', e.target.checked ? '1' : '')}
+            />
             só odômetro atrasado
           </label>
           <span className="tp-muted tp-toolbar__count">
-            {visible.length === rows.length ? `${rows.length} carro(s)` : `${visible.length} de ${rows.length} carro(s)`}
+            {visible.length === rows.length
+              ? `${rows.length} carro(s)`
+              : `${visible.length} de ${rows.length} carro(s)`}
           </span>
         </div>
 
         <ul className="fleet-guide" aria-label="Como ler os cards">
-          <li><span className="fleet-guide__swatch" aria-hidden /> chip = estado do carro agora · clique no card para abrir o carro</li>
-          <li><span className="fleet-guide__flip" aria-hidden><Wrench size={10} /></span> vira o card e mostra a manutenção sem sair da tela</li>
-          <li><Clock3 size={12} aria-hidden /> odômetro = quando o km foi lido pela última vez</li>
-          <li><TechIcon technology={VehicleTechnology.DIESEL} /> diesel · <TechIcon technology={VehicleTechnology.EBUS} /> elétrico</li>
+          <li>
+            <span className="fleet-guide__swatch" aria-hidden /> chip = estado do carro agora ·
+            clique no card para abrir o carro
+          </li>
+          <li>
+            <span className="fleet-guide__flip" aria-hidden>
+              <Wrench size={10} />
+            </span>{' '}
+            vira o card e mostra a manutenção sem sair da tela
+          </li>
+          <li>
+            <Clock3 size={12} aria-hidden /> odômetro = quando o km foi lido pela última vez
+          </li>
+          <li>
+            <TechIcon technology={VehicleTechnology.DIESEL} /> diesel ·{' '}
+            <TechIcon technology={VehicleTechnology.EBUS} /> elétrico
+          </li>
         </ul>
 
         {visible.length === 0 ? (
@@ -320,18 +382,28 @@ export function FleetPanelPage() {
                     <tr key={row.id} className={row.isKmDegraded ? 'is-warning' : undefined}>
                       <td className="is-strong">{row.code}</td>
                       <td className="tp-muted">{row.plate}</td>
-                      <td className="tp-muted">{row.vehicleClass ? VEHICLE_CLASS_LABELS[row.vehicleClass] : '—'}{row.lot ? ` · ${row.lot}` : ''}</td>
+                      <td className="tp-muted">
+                        {row.vehicleClass ? VEHICLE_CLASS_LABELS[row.vehicleClass] : '—'}
+                        {row.lot ? ` · ${row.lot}` : ''}
+                      </td>
                       <td>
                         <span className="fleet-tech-cell">
-                          <TechIcon technology={row.technology} /> {VEHICLE_TECHNOLOGY_LABELS[row.technology]}
+                          <TechIcon technology={row.technology} />{' '}
+                          {VEHICLE_TECHNOLOGY_LABELS[row.technology]}
                         </span>
                       </td>
                       <td>
-                        <span className={`tp-state tp-state--${fam}`}>{VEHICLE_STATUS_LABELS[row.status]}</span>
+                        <span className={`tp-state tp-state--${fam}`}>
+                          {VEHICLE_STATUS_LABELS[row.status]}
+                        </span>
                       </td>
                       <td className="is-num">{formatNumber(row.currentKm)}</td>
-                      <td className="is-num">{row.avgDailyKm === null ? '—' : formatNumber(Math.round(row.avgDailyKm))}</td>
-                      <td className="is-num">{row.projectedKm === null ? '—' : formatNumber(row.projectedKm)}</td>
+                      <td className="is-num">
+                        {row.avgDailyKm === null ? '—' : formatNumber(Math.round(row.avgDailyKm))}
+                      </td>
+                      <td className="is-num">
+                        {row.projectedKm === null ? '—' : formatNumber(row.projectedKm)}
+                      </td>
                       <td>
                         <span className={`fleet-reading fleet-reading--${reading.tone}`}>
                           <Clock3 size={12} aria-hidden /> {reading.text.replace('odômetro ', '')}

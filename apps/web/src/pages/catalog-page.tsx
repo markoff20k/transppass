@@ -20,6 +20,7 @@ import {
   type TransppassCodeRow,
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
+import { useUiState } from '@/features/auth/use-ui-pref';
 import { formatDateTime } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
@@ -30,7 +31,11 @@ import { formatNumber } from '@/lib/format';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
 
-type Panel = { kind: 'closed' } | { kind: 'item' } | { kind: 'reason'; list: ReasonCodeList } | { kind: 'kit'; item: FailureCatalogItem };
+type Panel =
+  | { kind: 'closed' }
+  | { kind: 'item' }
+  | { kind: 'reason'; list: ReasonCodeList }
+  | { kind: 'kit'; item: FailureCatalogItem };
 
 /**
  * RF-32/33 — catálogo de falhas e as cinco listas de códigos de motivo.
@@ -41,7 +46,7 @@ type Panel = { kind: 'closed' } | { kind: 'item' } | { kind: 'reason'; list: Rea
  */
 export function CatalogPage() {
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useUiState<string>('cad-catalogo.search', '');
   const [panel, setPanel] = useState<Panel>({ kind: 'closed' });
 
   usePageHeader({
@@ -49,7 +54,11 @@ export function CatalogPage() {
     title: 'Catálogo de falhas',
     description: 'Flags que dirigem o processo e as cinco listas de códigos de motivo.',
     actions: (
-      <button type="button" className="tp-btn tp-btn--primary tp-btn--sm" onClick={() => setPanel({ kind: 'item' })}>
+      <button
+        type="button"
+        className="tp-btn tp-btn--primary tp-btn--sm"
+        onClick={() => setPanel({ kind: 'item' })}
+      >
         <Plus size={14} /> Nova falha
       </button>
     ),
@@ -68,14 +77,19 @@ export function CatalogPage() {
     queryFn: () => api.get<ReasonCode[]>('/catalog/reason-codes?onlyActive=false'),
   });
 
-  const byList = (list: ReasonCodeList) => (reasonCodes.data ?? []).filter((rc) => rc.list === list);
+  const byList = (list: ReasonCodeList) =>
+    (reasonCodes.data ?? []).filter((rc) => rc.list === list);
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['catalog'] });
     void queryClient.invalidateQueries({ queryKey: ['plans', 'catalog-kits'] });
   };
   // Kaizen 2 — kit corretivo vigente de cada falha.
-  const kits = useQuery({ queryKey: ['plans', 'catalog-kits'], queryFn: () => api.get<CatalogKitRow[]>('/plans/catalog-kits') });
-  const kitOf = (itemId: string) => (kits.data ?? []).find((k) => k.catalogItemId === itemId) ?? null;
+  const kits = useQuery({
+    queryKey: ['plans', 'catalog-kits'],
+    queryFn: () => api.get<CatalogKitRow[]>('/plans/catalog-kits'),
+  });
+  const kitOf = (itemId: string) =>
+    (kits.data ?? []).find((k) => k.catalogItemId === itemId) ?? null;
 
   const pager = usePager('catalogo', (items.data?.data ?? []).length, search);
   return (
@@ -83,8 +97,20 @@ export function CatalogPage() {
       <CatalogVersions items={items.data?.data ?? []} onPublished={invalidate} />
       <section className="tp-card">
         <div className="tp-card__head">
-          <div><h3>Falhas do catálogo</h3><span className="chart__hint">atalhos de falhas frequentes — cada um pré-preenche o código composto</span></div>
-          <input type="search" className="tp-input" style={{ maxWidth: 260 }} placeholder="Código ou descrição" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div>
+            <h3>Falhas do catálogo</h3>
+            <span className="chart__hint">
+              atalhos de falhas frequentes — cada um pré-preenche o código composto
+            </span>
+          </div>
+          <input
+            type="search"
+            className="tp-input"
+            style={{ maxWidth: 260 }}
+            placeholder="Código ou descrição"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
         {items.isPending ? (
@@ -104,28 +130,47 @@ export function CatalogPage() {
                 </tr>
               </thead>
               <tbody>
-                {pager.slice((items.data?.data ?? [])).map((item) => (
+                {pager.slice(items.data?.data ?? []).map((item) => (
                   <tr key={item.id} className={item.isActive ? undefined : 'is-inactive'}>
                     <td className="is-strong">{item.code}</td>
                     <td>{item.description}</td>
-                    <td>{item.failureModeCode && item.subsystemCode ? <code className="fcode__inline">{item.failureModeCode}-{item.subsystemCode}</code> : <span className="tp-muted">{item.system ?? '—'}</span>}</td>
+                    <td>
+                      {item.failureModeCode && item.subsystemCode ? (
+                        <code className="fcode__inline">
+                          {item.failureModeCode}-{item.subsystemCode}
+                        </code>
+                      ) : (
+                        <span className="tp-muted">{item.system ?? '—'}</span>
+                      )}
+                    </td>
                     <td>
                       <span className="tp-row">
-                        {item.isSafety && <span className="tp-badge tp-badge--danger">segurança</span>}
-                        {item.isFastTrack && <span className="tp-badge tp-badge--brand">fast-track</span>}
+                        {item.isSafety && (
+                          <span className="tp-badge tp-badge--danger">segurança</span>
+                        )}
+                        {item.isFastTrack && (
+                          <span className="tp-badge tp-badge--brand">fast-track</span>
+                        )}
                         {item.isDeferrable && <span className="tp-badge">deferível</span>}
                       </span>
                     </td>
                     <td className="is-num">{item.estimatedRepairMinutes ?? '—'}</td>
                     <td className="is-num">
-                      {item.fieldResolutionRate === null ? '—' : `${(item.fieldResolutionRate * 100).toFixed(0)}% (${item.fieldResolutionSamples})`}
+                      {item.fieldResolutionRate === null
+                        ? '—'
+                        : `${(item.fieldResolutionRate * 100).toFixed(0)}% (${item.fieldResolutionSamples})`}
                     </td>
                     <td>
                       {(() => {
                         const kit = kitOf(item.id);
                         return (
-                          <button type="button" className={`tp-btn tp-btn--sm ${kit ? 'tp-btn--ghost' : 'tp-btn--secondary'}`} onClick={() => setPanel({ kind: 'kit', item })}>
-                            <Package size={13} /> {kit ? `${kit.items.length} item(ns) · v${kit.version}` : 'Montar kit'}
+                          <button
+                            type="button"
+                            className={`tp-btn tp-btn--sm ${kit ? 'tp-btn--ghost' : 'tp-btn--secondary'}`}
+                            onClick={() => setPanel({ kind: 'kit', item })}
+                          >
+                            <Package size={13} />{' '}
+                            {kit ? `${kit.items.length} item(ns) · v${kit.version}` : 'Montar kit'}
                           </button>
                         );
                       })()}
@@ -146,18 +191,26 @@ export function CatalogPage() {
       <section className="tp-card">
         <div className="tp-card__head">
           <h3>Códigos de motivo (RF-33)</h3>
-          <span className="tp-muted">desativa, nunca exclui — registros antigos seguem legíveis</span>
+          <span className="tp-muted">
+            desativa, nunca exclui — registros antigos seguem legíveis
+          </span>
         </div>
         <div className="tp-alert tp-alert--warning">
-          O conteúdo definitivo das cinco listas é dependência declarada do PRD (seção 9) e precisa ser
-          fechado por PCM, Estoque, Manutenção e Operação antes do R1. O que está aqui é carga inicial.
+          O conteúdo definitivo das cinco listas é dependência declarada do PRD (seção 9) e precisa
+          ser fechado por PCM, Estoque, Manutenção e Operação antes do R1. O que está aqui é carga
+          inicial.
         </div>
         <div className="reason-grid">
           {Object.values(ReasonCodeList).map((list) => (
             <div key={list} className="reason-col">
               <div className="tp-row" style={{ justifyContent: 'space-between' }}>
                 <h3 style={{ margin: 0 }}>{REASON_CODE_LIST_LABELS[list]}</h3>
-                <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setPanel({ kind: 'reason', list })} aria-label={`Novo código em ${REASON_CODE_LIST_LABELS[list]}`}>
+                <button
+                  type="button"
+                  className="tp-btn tp-btn--ghost tp-btn--sm"
+                  onClick={() => setPanel({ kind: 'reason', list })}
+                  aria-label={`Novo código em ${REASON_CODE_LIST_LABELS[list]}`}
+                >
                   <Plus size={14} />
                 </button>
               </div>
@@ -175,14 +228,44 @@ export function CatalogPage() {
         </div>
       </section>
 
-      <NewItemDrawer open={panel.kind === 'item'} onClose={() => setPanel({ kind: 'closed' })} onDone={() => { setPanel({ kind: 'closed' }); invalidate(); }} />
-      <NewReasonDrawer list={panel.kind === 'reason' ? panel.list : null} onClose={() => setPanel({ kind: 'closed' })} onDone={() => { setPanel({ kind: 'closed' }); invalidate(); }} />
-      <CorrectiveKitDrawer item={panel.kind === 'kit' ? panel.item : null} kit={panel.kind === 'kit' ? kitOf(panel.item.id) : null} onClose={() => setPanel({ kind: 'closed' })} onDone={() => { setPanel({ kind: 'closed' }); invalidate(); }} />
+      <NewItemDrawer
+        open={panel.kind === 'item'}
+        onClose={() => setPanel({ kind: 'closed' })}
+        onDone={() => {
+          setPanel({ kind: 'closed' });
+          invalidate();
+        }}
+      />
+      <NewReasonDrawer
+        list={panel.kind === 'reason' ? panel.list : null}
+        onClose={() => setPanel({ kind: 'closed' })}
+        onDone={() => {
+          setPanel({ kind: 'closed' });
+          invalidate();
+        }}
+      />
+      <CorrectiveKitDrawer
+        item={panel.kind === 'kit' ? panel.item : null}
+        kit={panel.kind === 'kit' ? kitOf(panel.item.id) : null}
+        onClose={() => setPanel({ kind: 'closed' })}
+        onDone={() => {
+          setPanel({ kind: 'closed' });
+          invalidate();
+        }}
+      />
     </>
   );
 }
 
-function NewItemDrawer({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
+function NewItemDrawer({
+  open,
+  onClose,
+  onDone,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [error, setError] = useState<string | null>(null);
   const {
     register,
@@ -199,7 +282,8 @@ function NewItemDrawer({ open, onClose, onDone }: { open: boolean; onClose: () =
 
   const mutation = useMutation({
     meta: { success: 'Falha adicionada ao rascunho' },
-    mutationFn: (input: CreateFailureCatalogItemInput) => api.post<FailureCatalogItem>('/catalog/items', input),
+    mutationFn: (input: CreateFailureCatalogItemInput) =>
+      api.post<FailureCatalogItem>('/catalog/items', input),
     onSuccess: () => {
       reset();
       setError(null);
@@ -217,48 +301,91 @@ function NewItemDrawer({ open, onClose, onDone }: { open: boolean; onClose: () =
       description="Entra na versão rascunho. A versão publicada é imutável (RF-32)."
       footer={
         <>
-          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button>
-          <button type="submit" form="item-form" className="tp-btn tp-btn--primary" disabled={mutation.isPending}>
+          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            form="item-form"
+            className="tp-btn tp-btn--primary"
+            disabled={mutation.isPending}
+          >
             {mutation.isPending ? 'Salvando…' : 'Criar falha'}
           </button>
         </>
       }
     >
-      <form id="item-form" className="tp-stack" onSubmit={handleSubmit((v) => mutation.mutate(v))} noValidate>
+      <form
+        id="item-form"
+        className="tp-stack"
+        onSubmit={handleSubmit((v) => mutation.mutate(v))}
+        noValidate
+      >
         <div className="tp-facts">
           <div className="tp-field">
-            <label className="tp-label" htmlFor="ci-code">Código</label>
-            <input id="ci-code" className="tp-input" placeholder="ELE-ALT-02" {...register('code')} />
+            <label className="tp-label" htmlFor="ci-code">
+              Código
+            </label>
+            <input
+              id="ci-code"
+              className="tp-input"
+              placeholder="ELE-ALT-02"
+              {...register('code')}
+            />
             {errors.code && <span className="tp-error">{errors.code.message}</span>}
           </div>
           <div className="tp-field">
-            <label className="tp-label" htmlFor="ci-min">Reparo estimado (min)</label>
-            <input id="ci-min" className="tp-input tp-input--num" type="number" {...register('estimatedRepairMinutes')} />
+            <label className="tp-label" htmlFor="ci-min">
+              Reparo estimado (min)
+            </label>
+            <input
+              id="ci-min"
+              className="tp-input tp-input--num"
+              type="number"
+              {...register('estimatedRepairMinutes')}
+            />
           </div>
           <div className="tp-field is-full">
-            <label className="tp-label" htmlFor="ci-desc">Descrição</label>
+            <label className="tp-label" htmlFor="ci-desc">
+              Descrição
+            </label>
             <input id="ci-desc" className="tp-input" {...register('description')} />
             {errors.description && <span className="tp-error">{errors.description.message}</span>}
           </div>
           <div className="tp-field">
-            <label className="tp-label" htmlFor="ci-sys">Sistema</label>
+            <label className="tp-label" htmlFor="ci-sys">
+              Sistema
+            </label>
             <input id="ci-sys" className="tp-input" {...register('system')} />
           </div>
           <div className="tp-field">
-            <label className="tp-label" htmlFor="ci-sub">Subsistema</label>
+            <label className="tp-label" htmlFor="ci-sub">
+              Subsistema
+            </label>
             <input id="ci-sub" className="tp-input" {...register('subsystem')} />
           </div>
           <div className="tp-field is-full">
-            <label className="tp-label" htmlFor="ci-cause">Causa provável</label>
+            <label className="tp-label" htmlFor="ci-cause">
+              Causa provável
+            </label>
             <input id="ci-cause" className="tp-input" {...register('probableCause')} />
           </div>
         </div>
 
         <div className="tp-stack tp-stack--tight">
           <h3>Flags que dirigem o processo</h3>
-          <label className="tp-check"><input type="checkbox" {...register('isSafety')} /> Segurança — bloqueia retorno à linha e deferimento (RF-05)</label>
-          <label className="tp-check"><input type="checkbox" {...register('isFastTrack')} /> Fast-track — abre OS e prioriza sozinho ao recolher (RF-06)</label>
-          <label className="tp-check"><input type="checkbox" disabled={isSafety} {...register('isDeferrable')} /> Deferível — pode esperar a parada programada</label>
+          <label className="tp-check">
+            <input type="checkbox" {...register('isSafety')} /> Segurança — bloqueia retorno à linha
+            e deferimento (RF-05)
+          </label>
+          <label className="tp-check">
+            <input type="checkbox" {...register('isFastTrack')} /> Fast-track — abre OS e prioriza
+            sozinho ao recolher (RF-06)
+          </label>
+          <label className="tp-check">
+            <input type="checkbox" disabled={isSafety} {...register('isDeferrable')} /> Deferível —
+            pode esperar a parada programada
+          </label>
           {isSafety && <span className="tp-help">Falha de segurança nunca é deferível.</span>}
           {errors.isDeferrable && <span className="tp-error">{errors.isDeferrable.message}</span>}
         </div>
@@ -273,47 +400,118 @@ function NewItemDrawer({ open, onClose, onDone }: { open: boolean; onClose: () =
  * Kaizen 2 — o kit corretivo da falha: o que o Estoque separa quando esta
  * falha recolhe um carro. Mudar os itens cria versão nova, como no preventivo.
  */
-function CorrectiveKitDrawer({ item, kit, onClose, onDone }: { item: FailureCatalogItem | null; kit: CatalogKitRow | null; onClose: () => void; onDone: () => void }) {
+function CorrectiveKitDrawer({
+  item,
+  kit,
+  onClose,
+  onDone,
+}: {
+  item: FailureCatalogItem | null;
+  kit: CatalogKitRow | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [items, setItems] = useState<{ materialId: string; quantity: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const materials = useQuery({ queryKey: ['materials', 'catalog'], queryFn: () => api.get<MaterialOption[]>('/materials/catalog'), enabled: Boolean(item) });
+  const materials = useQuery({
+    queryKey: ['materials', 'catalog'],
+    queryFn: () => api.get<MaterialOption[]>('/materials/catalog'),
+    enabled: Boolean(item),
+  });
   const byId = new Map((materials.data ?? []).map((m) => [m.id, m]));
   useEffect(() => {
     setError(null);
-    setItems((kit?.items ?? []).map((i) => ({ materialId: i.materialId, quantity: String(i.quantity) })));
+    setItems(
+      (kit?.items ?? []).map((i) => ({ materialId: i.materialId, quantity: String(i.quantity) })),
+    );
   }, [item, kit]);
   const save = useMutation({
     meta: { success: 'Kit corretivo salvo' },
     mutationFn: (input: CreateKitInput) => api.post(`/plans/catalog-items/${item?.id}/kit`, input),
     onSuccess: onDone,
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível salvar o kit'),
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : 'Não foi possível salvar o kit'),
   });
   const submit = () => {
     if (!item) return;
-    const parsed = createKitSchema.safeParse({ code: kit?.code ?? `KIT-${item.code}`, name: kit?.name ?? `Kit corretivo — ${item.description}`, items: items.filter((i) => i.materialId) });
+    const parsed = createKitSchema.safeParse({
+      code: kit?.code ?? `KIT-${item.code}`,
+      name: kit?.name ?? `Kit corretivo — ${item.description}`,
+      items: items.filter((i) => i.materialId),
+    });
     if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
     if (parsed.data.items.length === 0) return setError('Acrescente ao menos um material');
     setError(null);
     save.mutate(parsed.data);
   };
-  const setItem = (i: number, patch: Partial<{ materialId: string; quantity: string }>) => setItems((rows) => rows.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+  const setItem = (i: number, patch: Partial<{ materialId: string; quantity: string }>) =>
+    setItems((rows) => rows.map((it, j) => (j === i ? { ...it, ...patch } : it)));
   return (
-    <Drawer open={Boolean(item)} onClose={onClose} eyebrow={item ? `${item.code} · ${item.description}` : undefined} title={kit ? `Kit corretivo · v${kit.version}` : 'Montar kit corretivo'}
+    <Drawer
+      open={Boolean(item)}
+      onClose={onClose}
+      eyebrow={item ? `${item.code} · ${item.description}` : undefined}
+      title={kit ? `Kit corretivo · v${kit.version}` : 'Montar kit corretivo'}
       description="O que o Estoque separa quando esta falha recolhe um carro. Na OS, a sub-OS pede o kit inteiro com um clique (Kaizen 2)."
-      footer={<><button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button><button type="button" className="tp-btn tp-btn--primary" disabled={save.isPending} onClick={submit}>{kit ? 'Salvar nova versão' : 'Criar kit'}</button></>}>
+      footer={
+        <>
+          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="tp-btn tp-btn--primary"
+            disabled={save.isPending}
+            onClick={submit}
+          >
+            {kit ? 'Salvar nova versão' : 'Criar kit'}
+          </button>
+        </>
+      }
+    >
       <div className="tp-stack">
         <div className="tp-field field-materials">
           <span className="tp-label">Materiais do kit</span>
           {items.length === 0 && <span className="tp-help">Nenhum item ainda.</span>}
           {items.map((it, i) => (
             <div key={i} className="field-materials__row field-materials__row--kit">
-              <SearchSelect value={it.materialId} onChange={(id) => setItem(i, { materialId: id })} placeholder="Código, descrição ou referência"
-                options={(materials.data ?? []).map((m) => ({ id: m.id, label: m.description, hint: `${m.code}${m.manufacturerRef ? ` · ${m.manufacturerRef}` : ''} · saldo ${formatNumber(m.stockQty)}` }))} />
-              <input className="tp-input" type="number" min={0} step="any" value={it.quantity} placeholder={byId.get(it.materialId)?.unit ?? 'qtd'} onChange={(e) => setItem(i, { quantity: e.target.value })} />
-              <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" aria-label="Remover" onClick={() => setItems((rows) => rows.filter((_, j) => j !== i))}><Trash2 size={14} /></button>
+              <SearchSelect
+                value={it.materialId}
+                onChange={(id) => setItem(i, { materialId: id })}
+                placeholder="Código, descrição ou referência"
+                options={(materials.data ?? []).map((m) => ({
+                  id: m.id,
+                  label: m.description,
+                  hint: `${m.code}${m.manufacturerRef ? ` · ${m.manufacturerRef}` : ''} · saldo ${formatNumber(m.stockQty)}`,
+                }))}
+              />
+              <input
+                className="tp-input"
+                type="number"
+                min={0}
+                step="any"
+                value={it.quantity}
+                placeholder={byId.get(it.materialId)?.unit ?? 'qtd'}
+                onChange={(e) => setItem(i, { quantity: e.target.value })}
+              />
+              <button
+                type="button"
+                className="tp-btn tp-btn--ghost tp-btn--sm"
+                aria-label="Remover"
+                onClick={() => setItems((rows) => rows.filter((_, j) => j !== i))}
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
           ))}
-          <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" style={{ justifySelf: 'start' }} onClick={() => setItems((rows) => [...rows, { materialId: '', quantity: '1' }])}><Plus size={14} /> Adicionar material</button>
+          <button
+            type="button"
+            className="tp-btn tp-btn--ghost tp-btn--sm"
+            style={{ justifySelf: 'start' }}
+            onClick={() => setItems((rows) => [...rows, { materialId: '', quantity: '1' }])}
+          >
+            <Plus size={14} /> Adicionar material
+          </button>
         </div>
         {error && <p className="tp-error">{error}</p>}
       </div>
@@ -321,7 +519,15 @@ function CorrectiveKitDrawer({ item, kit, onClose, onDone }: { item: FailureCata
   );
 }
 
-function NewReasonDrawer({ list, onClose, onDone }: { list: ReasonCodeList | null; onClose: () => void; onDone: () => void }) {
+function NewReasonDrawer({
+  list,
+  onClose,
+  onDone,
+}: {
+  list: ReasonCodeList | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [error, setError] = useState<string | null>(null);
   const {
     register,
@@ -332,7 +538,8 @@ function NewReasonDrawer({ list, onClose, onDone }: { list: ReasonCodeList | nul
 
   const mutation = useMutation({
     meta: { success: 'Código de motivo criado' },
-    mutationFn: (input: CreateReasonCodeInput) => api.post<ReasonCode>('/catalog/reason-codes', input),
+    mutationFn: (input: CreateReasonCodeInput) =>
+      api.post<ReasonCode>('/catalog/reason-codes', input),
     onSuccess: () => {
       reset();
       setError(null);
@@ -352,22 +559,38 @@ function NewReasonDrawer({ list, onClose, onDone }: { list: ReasonCodeList | nul
       description="Códigos são desativados, nunca excluídos (RF-33)."
       footer={
         <>
-          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button>
-          <button type="submit" form="reason-form" className="tp-btn tp-btn--primary" disabled={mutation.isPending}>
+          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            form="reason-form"
+            className="tp-btn tp-btn--primary"
+            disabled={mutation.isPending}
+          >
             {mutation.isPending ? 'Salvando…' : 'Criar código'}
           </button>
         </>
       }
     >
-      <form id="reason-form" className="tp-stack" onSubmit={handleSubmit((v) => mutation.mutate({ ...v, list }))} noValidate>
+      <form
+        id="reason-form"
+        className="tp-stack"
+        onSubmit={handleSubmit((v) => mutation.mutate({ ...v, list }))}
+        noValidate
+      >
         <input type="hidden" value={list} {...register('list')} />
         <div className="tp-field">
-          <label className="tp-label" htmlFor="rc-code">Código</label>
+          <label className="tp-label" htmlFor="rc-code">
+            Código
+          </label>
           <input id="rc-code" className="tp-input" placeholder="SEG" {...register('code')} />
           {errors.code && <span className="tp-error">{errors.code.message}</span>}
         </div>
         <div className="tp-field">
-          <label className="tp-label" htmlFor="rc-desc">Descrição</label>
+          <label className="tp-label" htmlFor="rc-desc">
+            Descrição
+          </label>
           <input id="rc-desc" className="tp-input" {...register('description')} />
           {errors.description && <span className="tp-error">{errors.description.message}</span>}
         </div>
@@ -390,14 +613,29 @@ interface CatalogVersion {
  * versão sob a qual um evento passado foi registrado. Itens novos entram no
  * rascunho; publicar é o que os põe em uso.
  */
-function CatalogVersions({ items, onPublished }: { items: FailureCatalogItem[]; onPublished: () => void }) {
+function CatalogVersions({
+  items,
+  onPublished,
+}: {
+  items: FailureCatalogItem[];
+  onPublished: () => void;
+}) {
   const [error, setError] = useState<string | null>(null);
-  const published = useQuery({ queryKey: ['catalog', 'versions', 'published'], queryFn: () => api.get<CatalogVersion | null>('/catalog/versions/published') });
-  const draft = useQuery({ queryKey: ['catalog', 'versions', 'draft'], queryFn: () => api.get<CatalogVersion>('/catalog/versions/draft') });
+  const published = useQuery({
+    queryKey: ['catalog', 'versions', 'published'],
+    queryFn: () => api.get<CatalogVersion | null>('/catalog/versions/published'),
+  });
+  const draft = useQuery({
+    queryKey: ['catalog', 'versions', 'draft'],
+    queryFn: () => api.get<CatalogVersion>('/catalog/versions/draft'),
+  });
   const publish = useMutation({
     meta: { success: 'Catálogo publicado — já vale na triagem e nas OS' },
     mutationFn: () => api.post(`/catalog/versions/${draft.data?.id}/publish`),
-    onSuccess: () => { setError(null); onPublished(); },
+    onSuccess: () => {
+      setError(null);
+      onPublished();
+    },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível publicar'),
   });
   const draftItems = draft.data ? items.filter((i) => i.versionId === draft.data!.id).length : 0;
@@ -405,8 +643,14 @@ function CatalogVersions({ items, onPublished }: { items: FailureCatalogItem[]; 
     <section className="catalog-versions">
       <div className={`tp-kpi ${published.data ? 'tp-kpi--good' : ''}`}>
         <span className="tp-kpi__label">Versão em uso</span>
-        <strong className="tp-kpi__value">{published.data ? `v${published.data.version}` : '—'}</strong>
-        <span className="tp-kpi__note">{published.data?.publishedAt ? `publicada em ${formatDateTime(published.data.publishedAt)}` : 'nenhuma versão publicada'}</span>
+        <strong className="tp-kpi__value">
+          {published.data ? `v${published.data.version}` : '—'}
+        </strong>
+        <span className="tp-kpi__note">
+          {published.data?.publishedAt
+            ? `publicada em ${formatDateTime(published.data.publishedAt)}`
+            : 'nenhuma versão publicada'}
+        </span>
       </div>
       <div className={`tp-kpi ${draftItems > 0 ? 'tp-kpi--warn' : ''}`}>
         <span className="tp-kpi__label">Rascunho</span>
@@ -414,9 +658,18 @@ function CatalogVersions({ items, onPublished }: { items: FailureCatalogItem[]; 
         <span className="tp-kpi__note">{draftItems} item(ns) aguardando publicação</span>
       </div>
       <div className="catalog-versions__action">
-        <p className="tp-muted">Itens novos entram no rascunho. Publicar põe a versão em uso para triagem, socorro e OS; eventos antigos continuam na versão em que foram registrados.</p>
-        <button type="button" className="tp-btn tp-btn--primary tp-btn--sm" disabled={!draft.data || draftItems === 0 || publish.isPending} onClick={() => publish.mutate()}>
-          <BookCheck size={14} /> {publish.isPending ? 'Publicando…' : `Publicar v${draft.data?.version ?? ''}`}
+        <p className="tp-muted">
+          Itens novos entram no rascunho. Publicar põe a versão em uso para triagem, socorro e OS;
+          eventos antigos continuam na versão em que foram registrados.
+        </p>
+        <button
+          type="button"
+          className="tp-btn tp-btn--primary tp-btn--sm"
+          disabled={!draft.data || draftItems === 0 || publish.isPending}
+          onClick={() => publish.mutate()}
+        >
+          <BookCheck size={14} />{' '}
+          {publish.isPending ? 'Publicando…' : `Publicar v${draft.data?.version ?? ''}`}
         </button>
         {error && <span className="tp-error">{error}</span>}
       </div>
@@ -426,38 +679,94 @@ function CatalogVersions({ items, onPublished }: { items: FailureCatalogItem[]; 
 
 /** A classificação que a Transppass usa hoje (defeito alegado × defeito constatado), lado a lado com o padrão de codificação. */
 function TransppassCodes() {
-  const codes = useQuery({ queryKey: ['catalog', 'transppass-codes'], queryFn: () => api.get<TransppassCodeRow[]>('/catalog/transppass-codes'), staleTime: 300_000 });
-  const [kind, setKind] = useState<'ALEGADO' | 'CONSTATADO'>('CONSTATADO');
-  const [q, setQ] = useState('');
-  const rows = (codes.data ?? []).filter((c) => c.kind === kind && (!q || c.code.includes(q) || c.description.toLowerCase().includes(q.toLowerCase()) || (c.group ?? '').toLowerCase().includes(q.toLowerCase())));
+  const codes = useQuery({
+    queryKey: ['catalog', 'transppass-codes'],
+    queryFn: () => api.get<TransppassCodeRow[]>('/catalog/transppass-codes'),
+    staleTime: 300_000,
+  });
+  const [kind, setKind] = useUiState<'ALEGADO' | 'CONSTATADO'>(
+    'cad-catalogo.codesKind',
+    'CONSTATADO',
+  );
+  const [q, setQ] = useUiState<string>('cad-catalogo.codesSearch', '');
+  const rows = (codes.data ?? []).filter(
+    (c) =>
+      c.kind === kind &&
+      (!q ||
+        c.code.includes(q) ||
+        c.description.toLowerCase().includes(q.toLowerCase()) ||
+        (c.group ?? '').toLowerCase().includes(q.toLowerCase())),
+  );
   const codesPager = usePager('codigos-transppass', rows.length, `${kind}|${q}`);
   if (!codes.data || codes.data.length === 0) return null;
   const fichas = codes.data.filter((c) => c.kind === 'FICHA');
   return (
     <section className="tp-card">
       <div className="tp-card__head">
-        <div><h3>Classificação da Transppass</h3><span className="chart__hint">os códigos do sistema atual (arquivo "Serviços"): o que o motorista alega e o que a oficina constata. O de-para com o padrão Modo × Subsistema é o próximo passo.</span></div>
+        <div>
+          <h3>Classificação da Transppass</h3>
+          <span className="chart__hint">
+            os códigos do sistema atual (arquivo "Serviços"): o que o motorista alega e o que a
+            oficina constata. O de-para com o padrão Modo × Subsistema é o próximo passo.
+          </span>
+        </div>
         <div className="tp-btn-group" role="group" aria-label="Tabela">
-          <button type="button" className={`tp-btn tp-btn--sm ${kind === 'ALEGADO' ? '' : 'tp-btn--secondary'}`} aria-pressed={kind === 'ALEGADO'} onClick={() => setKind('ALEGADO')}>Defeito alegado · {codes.data.filter((c) => c.kind === 'ALEGADO').length}</button>
-          <button type="button" className={`tp-btn tp-btn--sm ${kind === 'CONSTATADO' ? '' : 'tp-btn--secondary'}`} aria-pressed={kind === 'CONSTATADO'} onClick={() => setKind('CONSTATADO')}>Defeito constatado · {codes.data.filter((c) => c.kind === 'CONSTATADO').length}</button>
+          <button
+            type="button"
+            className={`tp-btn tp-btn--sm ${kind === 'ALEGADO' ? '' : 'tp-btn--secondary'}`}
+            aria-pressed={kind === 'ALEGADO'}
+            onClick={() => setKind('ALEGADO')}
+          >
+            Defeito alegado · {codes.data.filter((c) => c.kind === 'ALEGADO').length}
+          </button>
+          <button
+            type="button"
+            className={`tp-btn tp-btn--sm ${kind === 'CONSTATADO' ? '' : 'tp-btn--secondary'}`}
+            aria-pressed={kind === 'CONSTATADO'}
+            onClick={() => setKind('CONSTATADO')}
+          >
+            Defeito constatado · {codes.data.filter((c) => c.kind === 'CONSTATADO').length}
+          </button>
         </div>
       </div>
       <div className="tp-toolbar">
-        <input type="search" className="tp-input" style={{ maxWidth: 320 }} placeholder="Código, descrição ou grupo" aria-label="Buscar código" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input
+          type="search"
+          className="tp-input"
+          style={{ maxWidth: 320 }}
+          placeholder="Código, descrição ou grupo"
+          aria-label="Buscar código"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
         <span className="tp-muted tp-toolbar__count">{rows.length} código(s)</span>
       </div>
       <div className="tp-table-wrap">
         <table className="tp-table tp-table--compact">
-          <thead><tr><th>Código</th><th>Descrição</th><th>Grupo</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Descrição</th>
+              <th>Grupo</th>
+            </tr>
+          </thead>
           <tbody>
             {codesPager.slice(rows).map((c) => (
-              <tr key={`${c.kind}-${c.code}`}><td className="tp-mono is-strong">{c.code}</td><td>{c.description}</td><td className="tp-muted">{c.group ?? '—'}</td></tr>
+              <tr key={`${c.kind}-${c.code}`}>
+                <td className="tp-mono is-strong">{c.code}</td>
+                <td>{c.description}</td>
+                <td className="tp-muted">{c.group ?? '—'}</td>
+              </tr>
             ))}
           </tbody>
         </table>
         <Pager pager={codesPager} label="códigos" />
       </div>
-      {fichas.length > 0 && <p className="tp-muted" style={{ margin: 0, fontSize: 'var(--tp-text-xs)' }}>Tipos de ficha: {fichas.map((f) => `${f.code} ${f.description}`).join(' · ')}</p>}
+      {fichas.length > 0 && (
+        <p className="tp-muted" style={{ margin: 0, fontSize: 'var(--tp-text-xs)' }}>
+          Tipos de ficha: {fichas.map((f) => `${f.code} ${f.description}`).join(' · ')}
+        </p>
+      )}
     </section>
   );
 }

@@ -23,6 +23,7 @@ import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/compo
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { pagerOf, usePagerState } from '@/lib/pager';
+import { useUiState } from '@/features/auth/use-ui-pref';
 
 /**
  * RF-01/RF-02 — registro do evento pelo CCO.
@@ -34,7 +35,7 @@ import { pagerOf, usePagerState } from '@/lib/pager';
 export function EventsPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<EventStatus | ''>('');
+  const [status, setStatus] = useUiState<EventStatus | ''>('eventos.status', '');
 
   usePageHeader({
     eyebrow: 'Operação',

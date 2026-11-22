@@ -15,6 +15,7 @@ export function CollapsibleCard({
   className,
   headClassName,
   head,
+  grip,
   label,
   children,
 }: {
@@ -23,6 +24,8 @@ export function CollapsibleCard({
   className?: string;
   headClassName?: string;
   head: ReactNode;
+  /** Alça de arrastar (vem do SortableCards), antes do título. */
+  grip?: ReactNode;
   label?: string;
   children: ReactNode;
 }) {
@@ -35,10 +38,11 @@ export function CollapsibleCard({
       aria-label={label}
     >
       <div className={`ccard__head${headClassName ? ` ${headClassName}` : ''}`}>
+        {grip}
         {head}
         <button
           type="button"
-          className="ccard__toggle"
+          className="tp-btn tp-btn--ghost tp-btn--sm ccard__toggle"
           aria-expanded={!collapsed}
           onClick={() => setCollapsed(!collapsed)}
           title={title}

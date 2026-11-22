@@ -21,6 +21,7 @@ import { BrandLoader } from '@/components/brand/brand-loader';
 import { formatDate } from '@/lib/format';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { useUiState } from '@/features/auth/use-ui-pref';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; technician: TechnicianRow };
 
@@ -32,15 +33,20 @@ type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; technician
 export function TechniciansPage() {
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>({ kind: 'closed' });
-  const [search, setSearch] = useState('');
-  const [showInactive, setShowInactive] = useState(false);
+  const [search, setSearch] = useUiState<string>('cad-tecnicos.search', '');
+  const [showInactive, setShowInactive] = useUiState<boolean>('cad-tecnicos.showInactive', false);
 
   usePageHeader({
     eyebrow: 'Cadastros',
     title: 'Técnicos',
-    description: 'Quem executa e quem inspeciona: especialidade, tecnologia e nível de experiência.',
+    description:
+      'Quem executa e quem inspeciona: especialidade, tecnologia e nível de experiência.',
     actions: (
-      <button type="button" className="tp-btn tp-btn--primary tp-btn--sm" onClick={() => setMode({ kind: 'create' })}>
+      <button
+        type="button"
+        className="tp-btn tp-btn--primary tp-btn--sm"
+        onClick={() => setMode({ kind: 'create' })}
+      >
         <Plus size={14} /> Novo técnico
       </button>
     ),
@@ -48,11 +54,14 @@ export function TechniciansPage() {
 
   const { data, isPending } = useQuery({
     queryKey: ['technicians', showInactive],
-    queryFn: () => api.get<TechnicianRow[]>(`/technicians?onlyActive=${showInactive ? 'false' : 'true'}`),
+    queryFn: () =>
+      api.get<TechnicianRow[]>(`/technicians?onlyActive=${showInactive ? 'false' : 'true'}`),
   });
   const all = data ?? [];
   const q = search.trim().toLowerCase();
-  const rows = all.filter((t) => !q || `${t.name} ${t.registration} ${t.specialtyName}`.toLowerCase().includes(q));
+  const rows = all.filter(
+    (t) => !q || `${t.name} ${t.registration} ${t.specialtyName}`.toLowerCase().includes(q),
+  );
   const active = all.filter((t) => t.isActive);
   const byLevel = (l: TechnicianLevel) => active.filter((t) => t.level === l).length;
   const inspectors = active.filter((t) => t.isInspector).length;
@@ -66,24 +75,41 @@ export function TechniciansPage() {
         <div className="tp-kpi tp-kpi--brand">
           <span className="tp-kpi__label">Técnicos ativos</span>
           <strong className="tp-kpi__value">{active.length}</strong>
-          <span className="tp-kpi__note">{new Set(active.map((t) => t.specialtyCode)).size} especialidade(s)</span>
+          <span className="tp-kpi__note">
+            {new Set(active.map((t) => t.specialtyCode)).size} especialidade(s)
+          </span>
         </div>
         <div className="tp-kpi">
           <span className="tp-kpi__label">Por nível</span>
           <strong className="tp-kpi__value tp-kpi__value--sm">
             N1 {byLevel(1)} · N2 {byLevel(2)} · N3 {byLevel(3)}
           </strong>
-          <span className="tp-kpi__note">critério de classificação é da Manutenção (Kaizen 17)</span>
+          <span className="tp-kpi__note">
+            critério de classificação é da Manutenção (Kaizen 17)
+          </span>
         </div>
         <div className={`tp-kpi ${inspectors > 0 ? 'tp-kpi--good' : 'tp-kpi--warn'}`}>
           <span className="tp-kpi__label">Inspetores</span>
           <strong className="tp-kpi__value">{inspectors}</strong>
           <span className="tp-kpi__note">quem aprova a sub-OS (RF-20)</span>
         </div>
-        <div className={`tp-kpi ${active.some((t) => t.missingHighVoltage) ? 'tp-kpi--danger' : ebus > 0 ? 'tp-kpi--good' : 'tp-kpi--warn'}`}>
+        <div
+          className={`tp-kpi ${active.some((t) => t.missingHighVoltage) ? 'tp-kpi--danger' : ebus > 0 ? 'tp-kpi--good' : 'tp-kpi--warn'}`}
+        >
           <span className="tp-kpi__label">Habilitados em eBUS</span>
-          <strong className="tp-kpi__value">{ebus}{active.some((t) => t.missingHighVoltage) && <small className="tp-kpi__of"> · {active.filter((t) => t.missingHighVoltage).length} sem alta tensão</small>}</strong>
-          <span className="tp-kpi__note">{active.filter((t) => t.trainingsExpiring > 0).length} com treinamento vencido ou vencendo em 30 dias</span>
+          <strong className="tp-kpi__value">
+            {ebus}
+            {active.some((t) => t.missingHighVoltage) && (
+              <small className="tp-kpi__of">
+                {' '}
+                · {active.filter((t) => t.missingHighVoltage).length} sem alta tensão
+              </small>
+            )}
+          </strong>
+          <span className="tp-kpi__note">
+            {active.filter((t) => t.trainingsExpiring > 0).length} com treinamento vencido ou
+            vencendo em 30 dias
+          </span>
         </div>
       </div>
 
@@ -91,16 +117,30 @@ export function TechniciansPage() {
         <div className="tp-card__head">
           <div>
             <h3>Técnicos cadastrados</h3>
-            <span className="chart__hint">clique na linha para editar — técnico é desativado, nunca apagado</span>
+            <span className="chart__hint">
+              clique na linha para editar — técnico é desativado, nunca apagado
+            </span>
           </div>
           <label className="tp-check tp-check--inline">
-            <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> mostrar desativados
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+            />{' '}
+            mostrar desativados
           </label>
         </div>
         <div className="tp-toolbar">
           <label className="tp-search">
             <Search size={15} aria-hidden />
-            <input type="search" className="tp-input" placeholder="Nome, matrícula ou especialidade" aria-label="Buscar técnico" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input
+              type="search"
+              className="tp-input"
+              placeholder="Nome, matrícula ou especialidade"
+              aria-label="Buscar técnico"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </label>
           <span className="tp-muted tp-toolbar__count">{rows.length} técnico(s)</span>
         </div>
@@ -124,23 +164,76 @@ export function TechniciansPage() {
               </thead>
               <tbody>
                 {pager.slice(rows).map((t) => (
-                  <tr key={t.id} className={`is-clickable${t.isActive ? '' : ' is-inactive'}`} tabIndex={0} onClick={() => setMode({ kind: 'edit', technician: t })} onKeyDown={(e) => e.key === 'Enter' && setMode({ kind: 'edit', technician: t })}>
+                  <tr
+                    key={t.id}
+                    className={`is-clickable${t.isActive ? '' : ' is-inactive'}`}
+                    tabIndex={0}
+                    onClick={() => setMode({ kind: 'edit', technician: t })}
+                    onKeyDown={(e) => e.key === 'Enter' && setMode({ kind: 'edit', technician: t })}
+                  >
                     <td className="tp-mono">{t.registration}</td>
-                    <td className="is-strong">{t.name}{!t.isActive && <span className="tp-badge tp-badge--status" style={{ marginLeft: 6 }}>desativado</span>}</td>
+                    <td className="is-strong">
+                      {t.name}
+                      {!t.isActive && (
+                        <span className="tp-badge tp-badge--status" style={{ marginLeft: 6 }}>
+                          desativado
+                        </span>
+                      )}
+                    </td>
                     <td>{t.specialtyName}</td>
-                    <td className="tp-muted">{t.technologies.map((x) => VEHICLE_TECHNOLOGY_LABELS[x]).join(' · ')}</td>
-                    <td><span className={`tp-badge tp-badge--status tech-level tech-level--${t.level}`}>N{t.level}</span></td>
-                    <td>{t.isInspector ? <span className="tp-badge tp-badge--status tp-badge--info"><ShieldCheck size={12} /> inspetor</span> : <span className="tp-muted">—</span>}</td>
+                    <td className="tp-muted">
+                      {t.technologies.map((x) => VEHICLE_TECHNOLOGY_LABELS[x]).join(' · ')}
+                    </td>
+                    <td>
+                      <span
+                        className={`tp-badge tp-badge--status tech-level tech-level--${t.level}`}
+                      >
+                        N{t.level}
+                      </span>
+                    </td>
+                    <td>
+                      {t.isInspector ? (
+                        <span className="tp-badge tp-badge--status tp-badge--info">
+                          <ShieldCheck size={12} /> inspetor
+                        </span>
+                      ) : (
+                        <span className="tp-muted">—</span>
+                      )}
+                    </td>
                     <td>
                       <span className={t.trainings ? '' : 'tp-muted'}>{t.trainings}</span>
-                      {t.missingHighVoltage && <span className="tp-badge tp-badge--status tp-badge--danger" style={{ marginLeft: 6 }}>sem alta tensão</span>}
-                      {t.trainingsExpiring > 0 && <span className="tp-badge tp-badge--status tp-badge--warning" style={{ marginLeft: 6 }}>{t.trainingsExpiring} vencendo</span>}
+                      {t.missingHighVoltage && (
+                        <span
+                          className="tp-badge tp-badge--status tp-badge--danger"
+                          style={{ marginLeft: 6 }}
+                        >
+                          sem alta tensão
+                        </span>
+                      )}
+                      {t.trainingsExpiring > 0 && (
+                        <span
+                          className="tp-badge tp-badge--status tp-badge--warning"
+                          style={{ marginLeft: 6 }}
+                        >
+                          {t.trainingsExpiring} vencendo
+                        </span>
+                      )}
                     </td>
                     <td className="is-num">{t.openTasks}</td>
-                    <td className="is-action"><button type="button" className="tp-btn tp-btn--secondary tp-btn--sm"><Pencil size={14} aria-hidden /> Editar</button></td>
+                    <td className="is-action">
+                      <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm">
+                        <Pencil size={14} aria-hidden /> Editar
+                      </button>
+                    </td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={9} className="tp-table__empty">Nenhum técnico. A base vem da Manutenção (Kaizen 16).</td></tr>}
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="tp-table__empty">
+                      Nenhum técnico. A base vem da Manutenção (Kaizen 16).
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
             <Pager pager={pager} label="técnicos" />
@@ -148,27 +241,65 @@ export function TechniciansPage() {
         )}
       </section>
 
-      <TechnicianDrawer mode={mode} onClose={() => setMode({ kind: 'closed' })} onDone={() => { setMode({ kind: 'closed' }); invalidate(); }} />
+      <TechnicianDrawer
+        mode={mode}
+        onClose={() => setMode({ kind: 'closed' })}
+        onDone={() => {
+          setMode({ kind: 'closed' });
+          invalidate();
+        }}
+      />
     </>
   );
 }
 
-const EMPTY = { registration: '', name: '', specialtyId: '', technologies: [VehicleTechnology.DIESEL] as VehicleTechnology[], level: '1', isInspector: false };
+const EMPTY = {
+  registration: '',
+  name: '',
+  specialtyId: '',
+  technologies: [VehicleTechnology.DIESEL] as VehicleTechnology[],
+  level: '1',
+  isInspector: false,
+};
 
-function TechnicianDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () => void; onDone: () => void }) {
+function TechnicianDrawer({
+  mode,
+  onClose,
+  onDone,
+}: {
+  mode: Mode;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const editing = mode.kind === 'edit' ? mode.technician : null;
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState<string | null>(null);
-  const specialties = useQuery({ queryKey: ['catalog', 'specialties'], queryFn: () => api.get<{ id: string; code: string; name: string }[]>('/catalog/specialties'), enabled: mode.kind !== 'closed' });
+  const specialties = useQuery({
+    queryKey: ['catalog', 'specialties'],
+    queryFn: () => api.get<{ id: string; code: string; name: string }[]>('/catalog/specialties'),
+    enabled: mode.kind !== 'closed',
+  });
 
   useEffect(() => {
     setError(null);
-    setForm(editing ? { registration: editing.registration, name: editing.name, specialtyId: editing.specialtyId, technologies: editing.technologies, level: String(editing.level), isInspector: editing.isInspector } : EMPTY);
+    setForm(
+      editing
+        ? {
+            registration: editing.registration,
+            name: editing.name,
+            specialtyId: editing.specialtyId,
+            technologies: editing.technologies,
+            level: String(editing.level),
+            isInspector: editing.isInspector,
+          }
+        : EMPTY,
+    );
   }, [editing, mode.kind]);
 
   const save = useMutation({
     meta: { success: 'Técnico salvo' },
-    mutationFn: (input: CreateTechnicianInput) => (editing ? api.patch(`/technicians/${editing.id}`, input) : api.post('/technicians', input)),
+    mutationFn: (input: CreateTechnicianInput) =>
+      editing ? api.patch(`/technicians/${editing.id}`, input) : api.post('/technicians', input),
     onSuccess: onDone,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Não foi possível salvar'),
   });
@@ -185,31 +316,95 @@ function TechnicianDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () =
     setError(null);
     save.mutate(parsed.data);
   };
-  const toggleTech = (t: VehicleTechnology) => setForm((f) => ({ ...f, technologies: f.technologies.includes(t) ? f.technologies.filter((x) => x !== t) : [...f.technologies, t] }));
+  const toggleTech = (t: VehicleTechnology) =>
+    setForm((f) => ({
+      ...f,
+      technologies: f.technologies.includes(t)
+        ? f.technologies.filter((x) => x !== t)
+        : [...f.technologies, t],
+    }));
 
   return (
-    <Drawer open={mode.kind !== 'closed'} onClose={onClose} eyebrow={editing ? `Técnico · ${editing.registration}` : 'Novo técnico'} title={editing ? editing.name : 'Cadastrar técnico'}
+    <Drawer
+      open={mode.kind !== 'closed'}
+      onClose={onClose}
+      eyebrow={editing ? `Técnico · ${editing.registration}` : 'Novo técnico'}
+      title={editing ? editing.name : 'Cadastrar técnico'}
       description="Especialidade, tecnologias em que atua e nível de experiência (Kaizen 15–17)."
-      footer={<>
-        {editing && <button type="button" className={`tp-btn ${editing.isActive ? 'tp-btn--danger' : 'tp-btn--secondary'}`} disabled={toggle.isPending} onClick={() => toggle.mutate()}>{editing.isActive ? 'Desativar' : 'Reativar'}</button>}
-        <span style={{ flex: 1 }} />
-        <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button>
-        <button type="button" className="tp-btn tp-btn--primary" disabled={save.isPending} onClick={submit}>{editing ? 'Salvar' : 'Cadastrar'}</button>
-      </>}>
+      footer={
+        <>
+          {editing && (
+            <button
+              type="button"
+              className={`tp-btn ${editing.isActive ? 'tp-btn--danger' : 'tp-btn--secondary'}`}
+              disabled={toggle.isPending}
+              onClick={() => toggle.mutate()}
+            >
+              {editing.isActive ? 'Desativar' : 'Reativar'}
+            </button>
+          )}
+          <span style={{ flex: 1 }} />
+          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="tp-btn tp-btn--primary"
+            disabled={save.isPending}
+            onClick={submit}
+          >
+            {editing ? 'Salvar' : 'Cadastrar'}
+          </button>
+        </>
+      }
+    >
       <div className="tp-stack">
         <div className="tp-grid-2">
-          <label className="tp-field"><span className="tp-label">Matrícula</span><input className="tp-input" value={form.registration} onChange={(e) => setForm((f) => ({ ...f, registration: e.target.value }))} placeholder="04521" /></label>
-          <label className="tp-field"><span className="tp-label">Nível</span>
-            <select className="tp-select" value={form.level} onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}>
-              {([1, 2, 3] as TechnicianLevel[]).map((l) => <option key={l} value={l}>{TECHNICIAN_LEVEL_LABELS[l]}</option>)}
+          <label className="tp-field">
+            <span className="tp-label">Matrícula</span>
+            <input
+              className="tp-input"
+              value={form.registration}
+              onChange={(e) => setForm((f) => ({ ...f, registration: e.target.value }))}
+              placeholder="04521"
+            />
+          </label>
+          <label className="tp-field">
+            <span className="tp-label">Nível</span>
+            <select
+              className="tp-select"
+              value={form.level}
+              onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}
+            >
+              {([1, 2, 3] as TechnicianLevel[]).map((l) => (
+                <option key={l} value={l}>
+                  {TECHNICIAN_LEVEL_LABELS[l]}
+                </option>
+              ))}
             </select>
           </label>
         </div>
-        <label className="tp-field"><span className="tp-label">Nome</span><input className="tp-input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} /></label>
-        <label className="tp-field"><span className="tp-label">Especialidade</span>
-          <select className="tp-select" value={form.specialtyId} onChange={(e) => setForm((f) => ({ ...f, specialtyId: e.target.value }))}>
+        <label className="tp-field">
+          <span className="tp-label">Nome</span>
+          <input
+            className="tp-input"
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          />
+        </label>
+        <label className="tp-field">
+          <span className="tp-label">Especialidade</span>
+          <select
+            className="tp-select"
+            value={form.specialtyId}
+            onChange={(e) => setForm((f) => ({ ...f, specialtyId: e.target.value }))}
+          >
             <option value="">Selecione…</option>
-            {(specialties.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {(specialties.data ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
           </select>
         </label>
         <div className="tp-field">
@@ -217,18 +412,31 @@ function TechnicianDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () =
           <div className="tp-row">
             {Object.values(VehicleTechnology).map((t) => (
               <label key={t} className="tp-check tp-check--inline">
-                <input type="checkbox" checked={form.technologies.includes(t)} onChange={() => toggleTech(t)} /> {VEHICLE_TECHNOLOGY_LABELS[t]}
+                <input
+                  type="checkbox"
+                  checked={form.technologies.includes(t)}
+                  onChange={() => toggleTech(t)}
+                />{' '}
+                {VEHICLE_TECHNOLOGY_LABELS[t]}
               </label>
             ))}
           </div>
           <span className="tp-help">eBUS exige habilitação em alta tensão.</span>
         </div>
         <label className="tp-check">
-          <input type="checkbox" checked={form.isInspector} onChange={(e) => setForm((f) => ({ ...f, isInspector: e.target.checked }))} />
+          <input
+            type="checkbox"
+            checked={form.isInspector}
+            onChange={(e) => setForm((f) => ({ ...f, isInspector: e.target.checked }))}
+          />
           Também é inspetor (aprova ou reprova sub-OS — RF-20)
         </label>
         {editing && <Trainings technicianId={editing.id} />}
-        {!editing && <span className="tp-help">Cadastre o técnico para registrar a matriz de treinamentos.</span>}
+        {!editing && (
+          <span className="tp-help">
+            Cadastre o técnico para registrar a matriz de treinamentos.
+          </span>
+        )}
         {error && <p className="tp-error">{error}</p>}
       </div>
     </Drawer>
@@ -238,41 +446,123 @@ function TechnicianDrawer({ mode, onClose, onDone }: { mode: Mode; onClose: () =
 /** Kaizen — matriz de treinamentos do técnico: o que fez, quando vence. */
 function Trainings({ technicianId }: { technicianId: string }) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ kind: 'PLANO_MANUTENCAO', title: '', completedAt: '', validUntil: '', hours: '' });
+  const [form, setForm] = useState({
+    kind: 'PLANO_MANUTENCAO',
+    title: '',
+    completedAt: '',
+    validUntil: '',
+    hours: '',
+  });
   const [error, setError] = useState<string | null>(null);
-  const list = useQuery({ queryKey: ['technicians', 'trainings', technicianId], queryFn: () => api.get<TrainingRow[]>(`/technicians/${technicianId}/trainings`) });
-  const refresh = () => { void queryClient.invalidateQueries({ queryKey: ['technicians'] }); setError(null); };
-  const add = useMutation({ mutationFn: (input: CreateTrainingInput) => api.post<TrainingRow[]>(`/technicians/${technicianId}/trainings`, input), onSuccess: () => { refresh(); setForm({ kind: 'PLANO_MANUTENCAO', title: '', completedAt: '', validUntil: '', hours: '' }); }, onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao registrar') });
-  const remove = useMutation({ mutationFn: (id: string) => api.delete<TrainingRow[]>(`/technicians/${technicianId}/trainings/${id}`), onSuccess: refresh });
+  const list = useQuery({
+    queryKey: ['technicians', 'trainings', technicianId],
+    queryFn: () => api.get<TrainingRow[]>(`/technicians/${technicianId}/trainings`),
+  });
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['technicians'] });
+    setError(null);
+  };
+  const add = useMutation({
+    mutationFn: (input: CreateTrainingInput) =>
+      api.post<TrainingRow[]>(`/technicians/${technicianId}/trainings`, input),
+    onSuccess: () => {
+      refresh();
+      setForm({ kind: 'PLANO_MANUTENCAO', title: '', completedAt: '', validUntil: '', hours: '' });
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao registrar'),
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) =>
+      api.delete<TrainingRow[]>(`/technicians/${technicianId}/trainings/${id}`),
+    onSuccess: refresh,
+  });
   const submit = () => {
-    const parsed = createTrainingSchema.safeParse({ ...form, validUntil: form.validUntil || undefined, hours: form.hours || undefined });
+    const parsed = createTrainingSchema.safeParse({
+      ...form,
+      validUntil: form.validUntil || undefined,
+      hours: form.hours || undefined,
+    });
     if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'Dados inválidos');
     add.mutate(parsed.data);
   };
   return (
     <div className="tp-field">
-      <span className="tp-label"><GraduationCap size={13} /> Matriz de treinamentos <span className="tp-label__hint">Kaizen · capacitação</span></span>
+      <span className="tp-label">
+        <GraduationCap size={13} /> Matriz de treinamentos{' '}
+        <span className="tp-label__hint">Kaizen · capacitação</span>
+      </span>
       <ul className="task-tools">
         {(list.data ?? []).map((t) => (
           <li key={t.id} className={t.isExpired ? 'tp-error' : undefined}>
             <span>{t.title}</span>
-            <code className="tp-mono">{TRAINING_KINDS[t.kind]} · {formatDate(t.completedAt)}{t.validUntil ? ` → ${formatDate(t.validUntil)}` : ''}{t.isExpired ? ' · vencido' : ''}</code>
-            <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" aria-label={`Remover ${t.title}`} onClick={() => remove.mutate(t.id)}><Trash2 size={13} /></button>
+            <code className="tp-mono">
+              {TRAINING_KINDS[t.kind]} · {formatDate(t.completedAt)}
+              {t.validUntil ? ` → ${formatDate(t.validUntil)}` : ''}
+              {t.isExpired ? ' · vencido' : ''}
+            </code>
+            <button
+              type="button"
+              className="tp-btn tp-btn--ghost tp-btn--sm"
+              aria-label={`Remover ${t.title}`}
+              onClick={() => remove.mutate(t.id)}
+            >
+              <Trash2 size={13} />
+            </button>
           </li>
         ))}
-        {(list.data ?? []).length === 0 && <li className="tp-muted">Nenhum treinamento registrado.</li>}
+        {(list.data ?? []).length === 0 && (
+          <li className="tp-muted">Nenhum treinamento registrado.</li>
+        )}
       </ul>
       <div className="tp-grid-2">
-        <select className="tp-select" value={form.kind} onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value }))}>
-          {Object.entries(TRAINING_KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        <select
+          className="tp-select"
+          value={form.kind}
+          onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value }))}
+        >
+          {Object.entries(TRAINING_KINDS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
         </select>
-        <input className="tp-input" placeholder="Nome do treinamento" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+        <input
+          className="tp-input"
+          placeholder="Nome do treinamento"
+          value={form.title}
+          onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+        />
       </div>
       <div className="tp-grid-2">
-        <label className="tp-field"><span className="tp-label">Concluído em</span><input className="tp-input" type="date" value={form.completedAt} onChange={(e) => setForm((f) => ({ ...f, completedAt: e.target.value }))} /></label>
-        <label className="tp-field"><span className="tp-label">Válido até</span><input className="tp-input" type="date" value={form.validUntil} onChange={(e) => setForm((f) => ({ ...f, validUntil: e.target.value }))} /></label>
+        <label className="tp-field">
+          <span className="tp-label">Concluído em</span>
+          <input
+            className="tp-input"
+            type="date"
+            value={form.completedAt}
+            onChange={(e) => setForm((f) => ({ ...f, completedAt: e.target.value }))}
+          />
+        </label>
+        <label className="tp-field">
+          <span className="tp-label">Válido até</span>
+          <input
+            className="tp-input"
+            type="date"
+            value={form.validUntil}
+            onChange={(e) => setForm((f) => ({ ...f, validUntil: e.target.value }))}
+          />
+        </label>
       </div>
-      <div className="tp-row tp-row--end"><button type="button" className="tp-btn tp-btn--sm" disabled={add.isPending} onClick={submit}><Plus size={14} /> Registrar treinamento</button></div>
+      <div className="tp-row tp-row--end">
+        <button
+          type="button"
+          className="tp-btn tp-btn--sm"
+          disabled={add.isPending}
+          onClick={submit}
+        >
+          <Plus size={14} /> Registrar treinamento
+        </button>
+      </div>
       {error && <p className="tp-error">{error}</p>}
     </div>
   );

@@ -1,6 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CONSUMPTION_MAX_DAYS, consumptionComparisonWindow, consumptionSpanDays } from '@app/shared';
+import {
+  CONSUMPTION_MAX_DAYS,
+  consumptionComparisonWindow,
+  consumptionSpanDays,
+} from '@app/shared';
+import { useUiState } from '@/features/auth/use-ui-pref';
 
 /**
  * Período de análise das telas de consumo.
@@ -72,7 +77,12 @@ function inferKind(from: string, to: string, today: string): PeriodKind {
   const sameMonth = f.y === t.y && f.m0 === t.m0;
   if (sameMonth && (t.d === lastDayOf(t.y, t.m0) || to === today)) return 'month';
   const sameQuarter = f.y === t.y && Math.floor(f.m0 / 3) === Math.floor(t.m0 / 3);
-  if (f.m0 % 3 === 0 && sameQuarter && ((t.m0 === f.m0 + 2 && t.d === lastDayOf(t.y, t.m0)) || to === today)) return 'quarter';
+  if (
+    f.m0 % 3 === 0 &&
+    sameQuarter &&
+    ((t.m0 === f.m0 + 2 && t.d === lastDayOf(t.y, t.m0)) || to === today)
+  )
+    return 'quarter';
   if (f.m0 === 0 && f.y === t.y && ((t.m0 === 11 && t.d === 31) || to === today)) return 'year';
   return to === today ? 'last' : 'custom';
 }
@@ -83,7 +93,13 @@ export function makePeriod(from: string, to: string): Period {
   const end = to > today ? today : to;
   const start = from > end ? end : from;
   const kind = inferKind(start, end, today);
-  return { from: start, to: end, kind, isCurrent: end === today && (kind === 'month' || kind === 'quarter' || kind === 'year'), days: consumptionSpanDays(start, end) };
+  return {
+    from: start,
+    to: end,
+    kind,
+    isCurrent: end === today && (kind === 'month' || kind === 'quarter' || kind === 'year'),
+    days: consumptionSpanDays(start, end),
+  };
 }
 
 export function currentMonth(): Period {
@@ -120,11 +136,27 @@ export function periodPresets(): PeriodPreset[] {
     { id: 'this-month', label: 'Este mês', make: () => makePeriod(isoOf(n.y, n.m0, 1), today) },
     { id: 'last-month', label: 'Mês passado', make: () => monthPeriod(n.y, n.m0 - 1) },
     { id: 'last-7', label: 'Últimos 7 dias', make: () => makePeriod(shiftDays(today, -6), today) },
-    { id: 'last-30', label: 'Últimos 30 dias', make: () => makePeriod(shiftDays(today, -29), today) },
-    { id: 'last-90', label: 'Últimos 90 dias', make: () => makePeriod(shiftDays(today, -89), today) },
-    { id: 'this-quarter', label: 'Este trimestre', make: () => makePeriod(isoOf(n.y, Math.floor(n.m0 / 3) * 3, 1), today) },
+    {
+      id: 'last-30',
+      label: 'Últimos 30 dias',
+      make: () => makePeriod(shiftDays(today, -29), today),
+    },
+    {
+      id: 'last-90',
+      label: 'Últimos 90 dias',
+      make: () => makePeriod(shiftDays(today, -89), today),
+    },
+    {
+      id: 'this-quarter',
+      label: 'Este trimestre',
+      make: () => makePeriod(isoOf(n.y, Math.floor(n.m0 / 3) * 3, 1), today),
+    },
     { id: 'this-year', label: 'Este ano', make: () => makePeriod(isoOf(n.y, 0, 1), today) },
-    { id: 'last-12m', label: 'Últimos 12 meses', make: () => makePeriod(isoOf(n.y - 1, n.m0, n.d + 1), today) },
+    {
+      id: 'last-12m',
+      label: 'Últimos 12 meses',
+      make: () => makePeriod(isoOf(n.y - 1, n.m0, n.d + 1), today),
+    },
   ];
 }
 
@@ -156,7 +188,8 @@ export function validateRange(from: string, to: string): string | null {
   const today = todayIso();
   if (to > today) return 'A data final não pode passar de hoje.';
   if (from > to) return 'O início precisa vir antes do fim.';
-  if (consumptionSpanDays(from, to) > CONSUMPTION_MAX_DAYS) return `No máximo ${CONSUMPTION_MAX_DAYS} dias (13 meses) por consulta.`;
+  if (consumptionSpanDays(from, to) > CONSUMPTION_MAX_DAYS)
+    return `No máximo ${CONSUMPTION_MAX_DAYS} dias (13 meses) por consulta.`;
   return null;
 }
 
@@ -165,7 +198,12 @@ export function validateRange(from: string, to: string): string | null {
 export function parsePeriodParams(params: URLSearchParams): Period {
   const de = params.get('de');
   const ate = params.get('ate');
-  if (isValidDay(de) && isValidDay(ate) && validateRange(de, ate > todayIso() ? todayIso() : ate) === null) return makePeriod(de, ate);
+  if (
+    isValidDay(de) &&
+    isValidDay(ate) &&
+    validateRange(de, ate > todayIso() ? todayIso() : ate) === null
+  )
+    return makePeriod(de, ate);
   // Legado das telas de indicador: ?mes=AAAA-MM.
   const mes = params.get('mes');
   const m = mes ? /^(\d{4})-(\d{2})$/.exec(mes) : null;
@@ -177,11 +215,21 @@ export function parsePeriodParams(params: URLSearchParams): Period {
   return currentMonth();
 }
 
+/**
+ * A URL vence quando traz o período (link compartilhado); sem ele vale o que a
+ * pessoa escolheu por último, salvo na conta. Toda troca grava nos dois.
+ */
 export function usePeriod(): [Period, (p: Period) => void] {
   const [params, setParams] = useSearchParams();
-  const period = useMemo(() => parsePeriodParams(params), [params]);
+  const [saved, setSaved] = useUiState<{ from: string; to: string } | null>('consumo.period', null);
+  const inUrl = params.has('de') || params.has('ate') || params.has('mes');
+  const period = useMemo(() => {
+    if (inUrl || !saved) return parsePeriodParams(params);
+    return parsePeriodParams(new URLSearchParams({ de: saved.from, ate: saved.to }));
+  }, [params, inUrl, saved]);
   const set = useCallback(
     (p: Period) => {
+      setSaved(isDefaultPeriod(p) ? null : { from: p.from, to: p.to });
       const next = new URLSearchParams(params);
       next.delete('mes');
       if (isDefaultPeriod(p)) {
@@ -193,13 +241,16 @@ export function usePeriod(): [Period, (p: Period) => void] {
       }
       setParams(next, { replace: true });
     },
-    [params, setParams],
+    [params, setParams, setSaved],
   );
   return [period, set];
 }
 
 /** Query string que carrega o período (e outros parâmetros) para outra tela: "" quando é o padrão. */
-export function periodSearch(p: Period, extra: Record<string, string | null | undefined> = {}): string {
+export function periodSearch(
+  p: Period,
+  extra: Record<string, string | null | undefined> = {},
+): string {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(extra)) if (v) q.set(k, v);
   if (!isDefaultPeriod(p)) {
@@ -212,8 +263,34 @@ export function periodSearch(p: Period, extra: Record<string, string | null | un
 
 // --- Rótulos ---------------------------------------------------------------------------
 
-const MONTH_LONG = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-const MONTH_SHORT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const MONTH_LONG = [
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
+];
+const MONTH_SHORT = [
+  'jan',
+  'fev',
+  'mar',
+  'abr',
+  'mai',
+  'jun',
+  'jul',
+  'ago',
+  'set',
+  'out',
+  'nov',
+  'dez',
+];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export const monthName = (m0: number) => MONTH_LONG[((m0 % 12) + 12) % 12]!;
@@ -233,11 +310,16 @@ export function rangeLabel(from: string, to: string): string {
 export function periodLabel(p: Period): string {
   const f = parts(p.from);
   switch (p.kind) {
-    case 'month': return `${cap(monthName(f.m0))} ${f.y}`;
-    case 'quarter': return `${quarterOf(f.m0)}º trimestre ${f.y}`;
-    case 'year': return String(f.y);
-    case 'last': return p.days >= 365 ? 'Últimos 12 meses' : `Últimos ${p.days} dias`;
-    default: return rangeLabel(p.from, p.to);
+    case 'month':
+      return `${cap(monthName(f.m0))} ${f.y}`;
+    case 'quarter':
+      return `${quarterOf(f.m0)}º trimestre ${f.y}`;
+    case 'year':
+      return String(f.y);
+    case 'last':
+      return p.days >= 365 ? 'Últimos 12 meses' : `Últimos ${p.days} dias`;
+    default:
+      return rangeLabel(p.from, p.to);
   }
 }
 
@@ -246,11 +328,18 @@ export function periodPhrase(p: Period): string {
   const f = parts(p.from);
   const t = parts(p.to);
   switch (p.kind) {
-    case 'month': return `em ${monthName(f.m0)} de ${f.y}`;
-    case 'quarter': return `no ${quarterOf(f.m0)}º trimestre de ${f.y}`;
-    case 'year': return `em ${f.y}`;
-    case 'last': return p.days >= 365 ? 'nos últimos 12 meses' : `nos últimos ${p.days} dias`;
-    default: return f.y === t.y ? `entre ${f.d} ${monthShort(f.m0)} e ${t.d} ${monthShort(t.m0)} ${t.y}` : `entre ${f.d} ${monthShort(f.m0)} ${f.y} e ${t.d} ${monthShort(t.m0)} ${t.y}`;
+    case 'month':
+      return `em ${monthName(f.m0)} de ${f.y}`;
+    case 'quarter':
+      return `no ${quarterOf(f.m0)}º trimestre de ${f.y}`;
+    case 'year':
+      return `em ${f.y}`;
+    case 'last':
+      return p.days >= 365 ? 'nos últimos 12 meses' : `nos últimos ${p.days} dias`;
+    default:
+      return f.y === t.y
+        ? `entre ${f.d} ${monthShort(f.m0)} e ${t.d} ${monthShort(t.m0)} ${t.y}`
+        : `entre ${f.d} ${monthShort(f.m0)} ${f.y} e ${t.d} ${monthShort(t.m0)} ${t.y}`;
   }
 }
 
@@ -265,15 +354,23 @@ export interface Comparison {
 
 /** O período de comparação com os rótulos prontos. Aceita as datas devolvidas pela API; sem elas, calcula igual. */
 export function comparisonOf(p: Period, prevFrom?: string, prevTo?: string): Comparison {
-  const w = prevFrom && prevTo ? { from: prevFrom, to: prevTo } : consumptionComparisonWindow(p.from, p.to);
+  const w =
+    prevFrom && prevTo ? { from: prevFrom, to: prevTo } : consumptionComparisonWindow(p.from, p.to);
   const f = parts(w.from);
   const cur = parts(p.from);
   let name: string;
   switch (p.kind) {
-    case 'month': name = f.y === cur.y ? monthName(f.m0) : `${monthName(f.m0)} de ${f.y}`; break;
-    case 'quarter': name = `${quarterOf(f.m0)}º tri ${f.y}`; break;
-    case 'year': name = String(f.y); break;
-    default: name = `${consumptionSpanDays(w.from, w.to)} dias anteriores`;
+    case 'month':
+      name = f.y === cur.y ? monthName(f.m0) : `${monthName(f.m0)} de ${f.y}`;
+      break;
+    case 'quarter':
+      name = `${quarterOf(f.m0)}º tri ${f.y}`;
+      break;
+    case 'year':
+      name = String(f.y);
+      break;
+    default:
+      name = `${consumptionSpanDays(w.from, w.to)} dias anteriores`;
   }
   return { ...w, name, range: rangeLabel(w.from, w.to) };
 }

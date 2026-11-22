@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Clock3, LayoutGrid, List, Search } from 'lucide-react';
@@ -13,6 +13,7 @@ import {
 import { api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes } from '@/lib/format';
 import { workOrderStatusTone } from '@/lib/tones';
+import { useUiState } from '@/features/auth/use-ui-pref';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusRender } from '@/components/bus/bus-render';
 import { BrandLoader } from '@/components/brand/brand-loader';
@@ -22,17 +23,51 @@ import { MaintenanceHistorySection } from './work-orders-history';
 
 /** Filtro virtual: os três portões antes de liberar o carro (RN-04). */
 const RELEASING = 'RELEASING';
-const RELEASING_STATUSES: string[] = [WorkOrderStatus.TECH_CLOSED, WorkOrderStatus.IN_INSPECTION, WorkOrderStatus.IN_CLEANING];
+const RELEASING_STATUSES: string[] = [
+  WorkOrderStatus.TECH_CLOSED,
+  WorkOrderStatus.IN_INSPECTION,
+  WorkOrderStatus.IN_CLEANING,
+];
 
 type View = 'board' | 'table';
 type ColumnKey = 'open' | 'progress' | 'part' | 'release';
 
 /** As quatro colunas do quadro: o caminho da OS da abertura à liberação. */
-const COLUMNS: { key: ColumnKey; title: string; hint: string; statuses: string[]; tone: 'waiting' | 'working' | 'stopped' | 'running' }[] = [
-  { key: 'open', title: 'Aberta', hint: 'aguardando o mecânico', statuses: [WorkOrderStatus.OPEN], tone: 'waiting' },
-  { key: 'progress', title: 'Em execução', hint: 'na valeta agora', statuses: [WorkOrderStatus.IN_PROGRESS], tone: 'working' },
-  { key: 'part', title: 'Aguardando peça', hint: 'parada pelo Estoque', statuses: [WorkOrderStatus.WAITING_PART], tone: 'stopped' },
-  { key: 'release', title: 'Liberação', hint: 'encerramento, inspeção e limpeza', statuses: RELEASING_STATUSES, tone: 'running' },
+const COLUMNS: {
+  key: ColumnKey;
+  title: string;
+  hint: string;
+  statuses: string[];
+  tone: 'waiting' | 'working' | 'stopped' | 'running';
+}[] = [
+  {
+    key: 'open',
+    title: 'Aberta',
+    hint: 'aguardando o mecânico',
+    statuses: [WorkOrderStatus.OPEN],
+    tone: 'waiting',
+  },
+  {
+    key: 'progress',
+    title: 'Em execução',
+    hint: 'na valeta agora',
+    statuses: [WorkOrderStatus.IN_PROGRESS],
+    tone: 'working',
+  },
+  {
+    key: 'part',
+    title: 'Aguardando peça',
+    hint: 'parada pelo Estoque',
+    statuses: [WorkOrderStatus.WAITING_PART],
+    tone: 'stopped',
+  },
+  {
+    key: 'release',
+    title: 'Liberação',
+    hint: 'encerramento, inspeção e limpeza',
+    statuses: RELEASING_STATUSES,
+    tone: 'running',
+  },
 ];
 
 function columnOf(status: string): ColumnKey | null {
@@ -47,31 +82,21 @@ function statusToColumn(status: string): ColumnKey | null {
 /** Lista das OS-mãe: o quadro da garagem, da abertura à liberação. */
 export function WorkOrdersPage() {
   // O dashboard chega aqui com ?status=IN_PROGRESS (Oficina) ou ?status=RELEASING (Liberação).
+  // Na URL o parâmetro vence e fica salvo na conta; sem ele, vale o que a pessoa escolheu da última vez.
   const [params, setParams] = useSearchParams();
-  const status = params.get('status') ?? '';
+  const [savedStatus, setSavedStatus] = useUiState<string>('os.status', '');
+  const status = params.has('status') ? (params.get('status') ?? '') : savedStatus;
   const setStatus = (value: string) => {
+    setSavedStatus(value);
     const next = new URLSearchParams(params);
     if (value) next.set('status', value);
     else next.delete('status');
     setParams(next, { replace: true });
   };
-  const [onlyOverdue, setOnlyOverdue] = useState(false);
-  const [search, setSearch] = useState('');
-  const [view, setView] = useState<View>(() => {
-    try {
-      return (localStorage.getItem('tp.os.view') as View) || 'board';
-    } catch {
-      return 'board';
-    }
-  });
-  const changeView = (v: View) => {
-    setView(v);
-    try {
-      localStorage.setItem('tp.os.view', v);
-    } catch {
-      /* sem persistência */
-    }
-  };
+  const [onlyOverdue, setOnlyOverdue] = useUiState<boolean>('os.onlyOverdue', false);
+  const [search, setSearch] = useUiState<string>('os.search', '');
+  const [view, setView] = useUiState<View>('os.view', 'board');
+  const changeView = (v: View) => setView(v);
 
   usePageHeader({
     eyebrow: 'Execução',
@@ -79,10 +104,20 @@ export function WorkOrdersPage() {
     description: 'O que está prendendo carro na garagem agora, da abertura à liberação.',
     actions: (
       <div className="tp-btn-group" role="group" aria-label="Modo de visualização">
-        <button type="button" className={`tp-btn tp-btn--sm ${view === 'board' ? '' : 'tp-btn--secondary'}`} aria-pressed={view === 'board'} onClick={() => changeView('board')}>
+        <button
+          type="button"
+          className={`tp-btn tp-btn--sm ${view === 'board' ? '' : 'tp-btn--secondary'}`}
+          aria-pressed={view === 'board'}
+          onClick={() => changeView('board')}
+        >
           <LayoutGrid size={14} /> Quadro
         </button>
-        <button type="button" className={`tp-btn tp-btn--sm ${view === 'table' ? '' : 'tp-btn--secondary'}`} aria-pressed={view === 'table'} onClick={() => changeView('table')}>
+        <button
+          type="button"
+          className={`tp-btn tp-btn--sm ${view === 'table' ? '' : 'tp-btn--secondary'}`}
+          aria-pressed={view === 'table'}
+          onClick={() => changeView('table')}
+        >
           <List size={14} /> Tabela
         </button>
       </div>
@@ -117,7 +152,12 @@ export function WorkOrdersPage() {
   const clock = open.reduce((sum, r) => sum + r.downtimeMinutes, 0);
 
   const q = search.trim().toLowerCase();
-  const matches = (r: WorkOrderSummary) => (!q || r.code.toLowerCase().includes(q) || r.vehicleCode.toLowerCase().includes(q) || r.vehiclePlate.toLowerCase().includes(q)) && (!onlyOverdue || r.isOverdue);
+  const matches = (r: WorkOrderSummary) =>
+    (!q ||
+      r.code.toLowerCase().includes(q) ||
+      r.vehicleCode.toLowerCase().includes(q) ||
+      r.vehiclePlate.toLowerCase().includes(q)) &&
+    (!onlyOverdue || r.isOverdue);
 
   const rows = listQuery.data?.data ?? [];
   const pager = pagerOf(paging, listQuery.data?.meta.total ?? 0);
@@ -128,7 +168,11 @@ export function WorkOrdersPage() {
       const col = columnOf(r.status);
       if (col) byColumn.get(col)!.push(r);
     }
-    for (const list of byColumn.values()) list.sort((a, b) => Number(b.isOverdue) - Number(a.isOverdue) || b.downtimeMinutes - a.downtimeMinutes);
+    for (const list of byColumn.values())
+      list.sort(
+        (a, b) =>
+          Number(b.isOverdue) - Number(a.isOverdue) || b.downtimeMinutes - a.downtimeMinutes,
+      );
     return byColumn;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, q, onlyOverdue]);
@@ -168,25 +212,53 @@ export function WorkOrdersPage() {
         <div className="tp-card__head">
           <div>
             <h3>{view === 'board' ? 'Quadro da garagem' : 'Ordens de serviço'}</h3>
-            <span className="chart__hint">{view === 'board' ? 'cada OS anda da esquerda para a direita; as mais antigas e as estouradas ficam no topo' : 'clique na OS para abrir as sub-OS, os portões e o relógio'}</span>
+            <span className="chart__hint">
+              {view === 'board'
+                ? 'cada OS anda da esquerda para a direita; as mais antigas e as estouradas ficam no topo'
+                : 'clique na OS para abrir as sub-OS, os portões e o relógio'}
+            </span>
           </div>
         </div>
         <div className="tp-toolbar">
           <label className="tp-search">
             <Search size={15} aria-hidden />
-            <input type="search" className="tp-input" placeholder="OS, prefixo ou placa" aria-label="Buscar OS" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input
+              type="search"
+              className="tp-input"
+              placeholder="OS, prefixo ou placa"
+              aria-label="Buscar OS"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </label>
-          <select className="tp-select" style={{ maxWidth: 260 }} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Estado">
+          <select
+            className="tp-select"
+            style={{ maxWidth: 260 }}
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            aria-label="Estado"
+          >
             <option value="">Todos os estados</option>
             <option value={RELEASING}>Na liberação (encerrada, inspeção, limpeza)</option>
             {Object.entries(WORK_ORDER_STATUS_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
           <label className="tp-check tp-check--inline">
-            <input type="checkbox" checked={onlyOverdue} onChange={(e) => setOnlyOverdue(e.target.checked)} /> só estouradas
+            <input
+              type="checkbox"
+              checked={onlyOverdue}
+              onChange={(e) => setOnlyOverdue(e.target.checked)}
+            />{' '}
+            só estouradas
           </label>
-          <span className="tp-muted tp-toolbar__count">{view === 'board' ? `${[...board.values()].reduce((s, l) => s + l.length, 0)} OS no quadro` : `${pager.total.toLocaleString('pt-BR')} OS`}</span>
+          <span className="tp-muted tp-toolbar__count">
+            {view === 'board'
+              ? `${[...board.values()].reduce((s, l) => s + l.length, 0)} OS no quadro`
+              : `${pager.total.toLocaleString('pt-BR')} OS`}
+          </span>
         </div>
 
         {isPending ? (
@@ -197,7 +269,11 @@ export function WorkOrdersPage() {
               const list = board.get(col.key) ?? [];
               const colClock = list.reduce((s, r) => s + r.downtimeMinutes, 0);
               return (
-                <section key={col.key} className={`wob__col wob__col--${col.key}${focus === col.key ? ' is-focus' : ''}`} aria-label={col.title}>
+                <section
+                  key={col.key}
+                  className={`wob__col wob__col--${col.key}${focus === col.key ? ' is-focus' : ''}`}
+                  aria-label={col.title}
+                >
                   <header className="wob__head">
                     <span className={`wob__dot wob__dot--${col.tone}`} aria-hidden />
                     <div className="wob__title">
@@ -206,10 +282,15 @@ export function WorkOrdersPage() {
                     </div>
                     <span className="wob__count">{list.length}</span>
                   </header>
-                  <span className="wob__clock"><Clock3 size={12} aria-hidden /> {colClock ? formatMinutes(colClock) : '—'} acumulado</span>
+                  <span className="wob__clock">
+                    <Clock3 size={12} aria-hidden /> {colClock ? formatMinutes(colClock) : '—'}{' '}
+                    acumulado
+                  </span>
                   <div className="wob__list">
                     {list.length === 0 && <div className="wob__empty">Nenhuma OS aqui.</div>}
-                    {list.map((r) => <BoardCard key={r.id} row={r} />)}
+                    {list.map((r) => (
+                      <BoardCard key={r.id} row={r} />
+                    ))}
                   </div>
                 </section>
               );
@@ -242,23 +323,52 @@ export function WorkOrdersPage() {
                       </td>
                       <td>
                         <b>{row.vehicleCode}</b>
-                        <span className="tp-muted" style={{ marginLeft: 6 }}>{row.vehiclePlate}</span>
+                        <span className="tp-muted" style={{ marginLeft: 6 }}>
+                          {row.vehiclePlate}
+                        </span>
                       </td>
-                      <td className="tp-muted" style={{ whiteSpace: 'normal', maxWidth: 260 }}>{row.reason ?? '—'}</td>
+                      <td className="tp-muted" style={{ whiteSpace: 'normal', maxWidth: 260 }}>
+                        {row.reason ?? '—'}
+                      </td>
                       <td className="tp-muted">{WORK_ORDER_TYPE_LABELS[row.type]}</td>
                       <td>
-                        <span className={`tp-badge tp-badge--status ${workOrderStatusTone(row.status)}`}>{WORK_ORDER_STATUS_LABELS[row.status]}</span>
-                        {row.execution === WorkOrderExecution.THIRD_PARTY && <span className="tp-badge tp-badge--status tp-badge--warning" style={{ marginLeft: 6 }} title={row.supplierName ?? undefined}>terceiro</span>}
+                        <span
+                          className={`tp-badge tp-badge--status ${workOrderStatusTone(row.status)}`}
+                        >
+                          {WORK_ORDER_STATUS_LABELS[row.status]}
+                        </span>
+                        {row.execution === WorkOrderExecution.THIRD_PARTY && (
+                          <span
+                            className="tp-badge tp-badge--status tp-badge--warning"
+                            style={{ marginLeft: 6 }}
+                            title={row.supplierName ?? undefined}
+                          >
+                            terceiro
+                          </span>
+                        )}
                       </td>
-                      <td className={`is-num${row.isOverdue ? ' tp-error' : ''}`}>{formatMinutes(row.downtimeMinutes)}</td>
+                      <td className={`is-num${row.isOverdue ? ' tp-error' : ''}`}>
+                        {formatMinutes(row.downtimeMinutes)}
+                      </td>
                       <td className="tp-muted">
                         {formatDateTime(row.estimatedCompletionAt)}
-                        {row.isOverdue && <span className="tp-badge tp-badge--danger" style={{ marginLeft: 6 }}>estourada</span>}
+                        {row.isOverdue && (
+                          <span className="tp-badge tp-badge--danger" style={{ marginLeft: 6 }}>
+                            estourada
+                          </span>
+                        )}
                       </td>
                       <td>
-                        <span className="tp-progress" title={`${row.tasksDone} de ${row.taskCount} sub-OS concluída(s)`}>
-                          <i className="tp-progress__bar" aria-hidden><b style={{ width: `${pct}%` }} /></i>
-                          <span className="tp-progress__text">{row.tasksDone}/{row.taskCount}</span>
+                        <span
+                          className="tp-progress"
+                          title={`${row.tasksDone} de ${row.taskCount} sub-OS concluída(s)`}
+                        >
+                          <i className="tp-progress__bar" aria-hidden>
+                            <b style={{ width: `${pct}%` }} />
+                          </i>
+                          <span className="tp-progress__text">
+                            {row.tasksDone}/{row.taskCount}
+                          </span>
                         </span>
                       </td>
                     </tr>
@@ -279,28 +389,56 @@ export function WorkOrdersPage() {
 /** Card da OS no quadro: o carro, o motivo, o relógio e quanto do serviço já andou. */
 function BoardCard({ row }: { row: WorkOrderSummary }) {
   const pct = row.taskCount ? Math.round((row.tasksDone / row.taskCount) * 100) : 0;
-  const tone = row.isOverdue ? 'stopped' : COLUMNS.find((c) => c.statuses.includes(row.status))?.tone ?? 'waiting';
+  const tone = row.isOverdue
+    ? 'stopped'
+    : (COLUMNS.find((c) => c.statuses.includes(row.status))?.tone ?? 'waiting');
   return (
     <Link to={`/os/${row.id}`} className={`wob-card${row.isOverdue ? ' is-overdue' : ''}`}>
       <header className="wob-card__head">
         <span className="wob-card__code">{row.code}</span>
-        <span className={`fleet-chip fleet-chip--${tone}`}>{row.isOverdue ? 'estourada' : WORK_ORDER_STATUS_LABELS[row.status]}</span>
+        <span className={`fleet-chip fleet-chip--${tone}`}>
+          {row.isOverdue ? 'estourada' : WORK_ORDER_STATUS_LABELS[row.status]}
+        </span>
       </header>
       <div className="wob-card__render">
-        <BusRender vehicleClass={row.vehicleClass} technology={row.technology} code={row.vehicleCode} width={240} title={`Carro ${row.vehicleCode}`} />
+        <BusRender
+          vehicleClass={row.vehicleClass}
+          technology={row.technology}
+          code={row.vehicleCode}
+          width={240}
+          title={`Carro ${row.vehicleCode}`}
+        />
       </div>
       <div className="wob-card__vehicle">
         <b>{row.vehicleCode}</b>
         <span className="tp-mono">{row.vehiclePlate}</span>
-        <span className="wob-card__type">{WORK_ORDER_TYPE_LABELS[row.type]}{row.execution === WorkOrderExecution.THIRD_PARTY ? ' · terceiro' : ''}</span>
+        <span className="wob-card__type">
+          {WORK_ORDER_TYPE_LABELS[row.type]}
+          {row.execution === WorkOrderExecution.THIRD_PARTY ? ' · terceiro' : ''}
+        </span>
       </div>
-      <p className="wob-card__reason">{row.status === WorkOrderStatus.IN_CLEANING ? 'Reparo aprovado · ' : row.status === WorkOrderStatus.IN_INSPECTION ? 'Reparo em conferência · ' : row.status === WorkOrderStatus.TECH_CLOSED ? 'Serviço concluído · ' : ''}{row.reason ?? 'Sem motivo registrado'}</p>
+      <p className="wob-card__reason">
+        {row.status === WorkOrderStatus.IN_CLEANING
+          ? 'Reparo aprovado · '
+          : row.status === WorkOrderStatus.IN_INSPECTION
+            ? 'Reparo em conferência · '
+            : row.status === WorkOrderStatus.TECH_CLOSED
+              ? 'Serviço concluído · '
+              : ''}
+        {row.reason ?? 'Sem motivo registrado'}
+      </p>
       <div className="wob-card__progress">
-        <span className="fleet-card__bar"><i style={{ width: `${pct}%` }} /></span>
-        <span className="wob-card__progress-text">{row.tasksDone}/{row.taskCount} sub-OS</span>
+        <span className="fleet-card__bar">
+          <i style={{ width: `${pct}%` }} />
+        </span>
+        <span className="wob-card__progress-text">
+          {row.tasksDone}/{row.taskCount} sub-OS
+        </span>
       </div>
       <footer className="wob-card__foot">
-        <span className={row.isOverdue ? 'tp-error' : undefined}><Clock3 size={12} aria-hidden /> {formatMinutes(row.downtimeMinutes)}</span>
+        <span className={row.isOverdue ? 'tp-error' : undefined}>
+          <Clock3 size={12} aria-hidden /> {formatMinutes(row.downtimeMinutes)}
+        </span>
         <span className="tp-muted">previsão {formatDateTime(row.estimatedCompletionAt)}</span>
       </footer>
     </Link>

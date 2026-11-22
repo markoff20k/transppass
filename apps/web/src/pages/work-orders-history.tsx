@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 import type { MaintenanceHistoryRow, MaintenanceHistorySummary, Paginated } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate, formatDateTime, formatNumber } from '@/lib/format';
+import { useUiState } from '@/features/auth/use-ui-pref';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { pagerOf, usePagerState } from '@/lib/pager';
@@ -13,7 +14,8 @@ import { pagerOf, usePagerState } from '@/lib/pager';
 const ymdBr = (ymd: string) => ymd.split('-').reverse().join('/');
 
 /** Valor em reais com centavos ("1.234,50"), para os unitários e totais das peças. */
-const brl = (value: number) => value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const brl = (value: number) =>
+  value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
  * Selo do tipo da ficha, com o mesmo critério da página do carro: preventiva
@@ -47,12 +49,18 @@ function errorMessageOf(error: unknown): string {
  * aconteceu com cada carro, por período, tipo de ficha e defeito.
  */
 export function MaintenanceHistorySection() {
-  const [search, setSearch] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [kind, setKind] = useState('');
-  const [onlyBreakdowns, setOnlyBreakdowns] = useState(false);
-  const [onlyPreventive, setOnlyPreventive] = useState(false);
+  const [search, setSearch] = useUiState<string>('os.history.search', '');
+  const [from, setFrom] = useUiState<string>('os.history.from', '');
+  const [to, setTo] = useUiState<string>('os.history.to', '');
+  const [kind, setKind] = useUiState<string>('os.history.kind', '');
+  const [onlyBreakdowns, setOnlyBreakdowns] = useUiState<boolean>(
+    'os.history.onlyBreakdowns',
+    false,
+  );
+  const [onlyPreventive, setOnlyPreventive] = useUiState<boolean>(
+    'os.history.onlyPreventive',
+    false,
+  );
   const [openId, setOpenId] = useState<string | null>(null);
 
   const term = useDeferredValue(search.trim().slice(0, SEARCH_MAX));
@@ -75,14 +83,42 @@ export function MaintenanceHistorySection() {
 
   const paging = usePagerState('work-orders-history', filterQs);
   const listQuery = useQuery({
-    queryKey: ['work-orders', 'history', 'list', paging.page, paging.pageSize, term, from, to, kind, onlyBreakdowns, onlyPreventive],
-    queryFn: () => api.get<Paginated<MaintenanceHistoryRow>>(`/work-orders/history?page=${paging.page}&perPage=${paging.pageSize}${filterQs ? `&${filterQs}` : ''}`),
+    queryKey: [
+      'work-orders',
+      'history',
+      'list',
+      paging.page,
+      paging.pageSize,
+      term,
+      from,
+      to,
+      kind,
+      onlyBreakdowns,
+      onlyPreventive,
+    ],
+    queryFn: () =>
+      api.get<Paginated<MaintenanceHistoryRow>>(
+        `/work-orders/history?page=${paging.page}&perPage=${paging.pageSize}${filterQs ? `&${filterQs}` : ''}`,
+      ),
     placeholderData: keepPreviousData,
     enabled: !periodInvalid,
   });
   const summaryQuery = useQuery({
-    queryKey: ['work-orders', 'history', 'summary', term, from, to, kind, onlyBreakdowns, onlyPreventive],
-    queryFn: () => api.get<MaintenanceHistorySummary>(`/work-orders/history/summary${filterQs ? `?${filterQs}` : ''}`),
+    queryKey: [
+      'work-orders',
+      'history',
+      'summary',
+      term,
+      from,
+      to,
+      kind,
+      onlyBreakdowns,
+      onlyPreventive,
+    ],
+    queryFn: () =>
+      api.get<MaintenanceHistorySummary>(
+        `/work-orders/history/summary${filterQs ? `?${filterQs}` : ''}`,
+      ),
     placeholderData: keepPreviousData,
     enabled: !periodInvalid,
   });
@@ -102,16 +138,23 @@ export function MaintenanceHistorySection() {
       <div className="tp-card__head">
         <div>
           <h3>Histórico de manutenção</h3>
-          <span className="chart__hint">fichas e OS do ERP-JB importadas da Transppass: o que o motorista alegou, o que a oficina constatou e o que foi feito · A, S e T são as quebras que contam no MKBF</span>
+          <span className="chart__hint">
+            fichas e OS do ERP-JB importadas da Transppass: o que o motorista alegou, o que a
+            oficina constatou e o que foi feito · A, S e T são as quebras que contam no MKBF
+          </span>
         </div>
         {summary && !periodInvalid && summary.total > 0 && summary.firstAt && summary.lastAt && (
-          <span className="tp-muted">{formatNumber(summary.total)} fichas · {formatDate(summary.firstAt)} a {formatDate(summary.lastAt)}</span>
+          <span className="tp-muted">
+            {formatNumber(summary.total)} fichas · {formatDate(summary.firstAt)} a{' '}
+            {formatDate(summary.lastAt)}
+          </span>
         )}
       </div>
 
       {summaryFailed && !periodInvalid && (
         <div className="tp-alert tp-alert--danger" role="alert">
-          Não foi possível carregar os totais e a lista de tipos de ficha. A tabela abaixo continua funcionando; o filtro por tipo fica indisponível até recarregar.
+          Não foi possível carregar os totais e a lista de tipos de ficha. A tabela abaixo continua
+          funcionando; o filtro por tipo fica indisponível até recarregar.
         </div>
       )}
 
@@ -123,7 +166,9 @@ export function MaintenanceHistorySection() {
           </div>
           <div>
             <dt>Quebras (A/S/T)</dt>
-            <dd className={summary.breakdowns > 0 ? 'tp-error' : undefined}>{formatNumber(summary.breakdowns)}</dd>
+            <dd className={summary.breakdowns > 0 ? 'tp-error' : undefined}>
+              {formatNumber(summary.breakdowns)}
+            </dd>
           </div>
           <div>
             <dt>Preventivas</dt>
@@ -139,43 +184,92 @@ export function MaintenanceHistorySection() {
       <div className="tp-toolbar">
         <label className="tp-search">
           <Search size={15} aria-hidden />
-          <input type="search" className="tp-input" placeholder="OS, ficha, prefixo, placa ou defeito" aria-label="Buscar no histórico" maxLength={SEARCH_MAX} value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input
+            type="search"
+            className="tp-input"
+            placeholder="OS, ficha, prefixo, placa ou defeito"
+            aria-label="Buscar no histórico"
+            maxLength={SEARCH_MAX}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </label>
-        <input type="date" className="tp-input woh-date" aria-label="De" value={from} max={to || undefined} aria-invalid={periodInvalid || undefined} aria-describedby={periodInvalid ? 'woh-period-error' : undefined} onChange={(e) => setFrom(e.target.value)} />
-        <input type="date" className="tp-input woh-date" aria-label="Até" value={to} min={from || undefined} aria-invalid={periodInvalid || undefined} aria-describedby={periodInvalid ? 'woh-period-error' : undefined} onChange={(e) => setTo(e.target.value)} />
+        <input
+          type="date"
+          className="tp-input woh-date"
+          aria-label="De"
+          value={from}
+          max={to || undefined}
+          aria-invalid={periodInvalid || undefined}
+          aria-describedby={periodInvalid ? 'woh-period-error' : undefined}
+          onChange={(e) => setFrom(e.target.value)}
+        />
+        <input
+          type="date"
+          className="tp-input woh-date"
+          aria-label="Até"
+          value={to}
+          min={from || undefined}
+          aria-invalid={periodInvalid || undefined}
+          aria-describedby={periodInvalid ? 'woh-period-error' : undefined}
+          onChange={(e) => setTo(e.target.value)}
+        />
         <select
           className="tp-select"
           value={kind}
           onChange={(e) => setKind(e.target.value)}
           aria-label="Tipo de ficha"
           disabled={summaryQuery.isPending || summaryFailed}
-          title={summaryFailed ? 'Lista de tipos indisponível: os totais não carregaram' : undefined}
+          title={
+            summaryFailed ? 'Lista de tipos indisponível: os totais não carregaram' : undefined
+          }
         >
           <option value="">Todos os tipos</option>
           {kindOptions.map((k) => (
-            <option key={k.kind} value={k.kind}>{k.label} ({formatNumber(k.count)})</option>
+            <option key={k.kind} value={k.kind}>
+              {k.label} ({formatNumber(k.count)})
+            </option>
           ))}
           {kindMissing && <option value={kind}>{kind} (0)</option>}
         </select>
         <label className="tp-check tp-check--inline">
-          <input type="checkbox" checked={onlyBreakdowns} onChange={(e) => setOnlyBreakdowns(e.target.checked)} /> só quebras (A/S/T)
+          <input
+            type="checkbox"
+            checked={onlyBreakdowns}
+            onChange={(e) => setOnlyBreakdowns(e.target.checked)}
+          />{' '}
+          só quebras (A/S/T)
         </label>
         <label className="tp-check tp-check--inline">
-          <input type="checkbox" checked={onlyPreventive} onChange={(e) => setOnlyPreventive(e.target.checked)} /> só preventivas
+          <input
+            type="checkbox"
+            checked={onlyPreventive}
+            onChange={(e) => setOnlyPreventive(e.target.checked)}
+          />{' '}
+          só preventivas
         </label>
-        {!listQuery.isPending && !periodInvalid && <span className="tp-muted tp-toolbar__count">{formatNumber(pager.total)} fichas</span>}
+        {!listQuery.isPending && !periodInvalid && (
+          <span className="tp-muted tp-toolbar__count">{formatNumber(pager.total)} fichas</span>
+        )}
       </div>
 
       {periodInvalid ? (
         <div id="woh-period-error" className="tp-table__empty tp-error" role="alert">
-          Período inválido: a data inicial ({ymdBr(from)}) é maior que a final ({ymdBr(to)}). Ajuste as datas para consultar.
+          Período inválido: a data inicial ({ymdBr(from)}) é maior que a final ({ymdBr(to)}). Ajuste
+          as datas para consultar.
         </div>
       ) : listQuery.isPending ? (
         <BrandLoader size={44} label="Carregando o histórico" />
       ) : listQuery.isError ? (
-        <div className="tp-table__empty" role="alert">{errorMessageOf(listQuery.error)}</div>
+        <div className="tp-table__empty" role="alert">
+          {errorMessageOf(listQuery.error)}
+        </div>
       ) : rows.length === 0 ? (
-        <div className="tp-table__empty">{!hasFilters && (summary?.total ?? 0) === 0 ? 'Nenhum histórico importado ainda.' : 'Nenhuma ficha com esses filtros.'}</div>
+        <div className="tp-table__empty">
+          {!hasFilters && (summary?.total ?? 0) === 0
+            ? 'Nenhum histórico importado ainda.'
+            : 'Nenhuma ficha com esses filtros.'}
+        </div>
       ) : (
         <div className="tp-table-wrap">
           <table className="tp-table tp-table--compact">
@@ -197,7 +291,13 @@ export function MaintenanceHistorySection() {
                 const isOpen = openId === r.id;
                 const detailId = `woh-detail-${r.id}`;
                 return (
-                  <HistoryRow key={r.id} row={r} isOpen={isOpen} detailId={detailId} onToggle={() => toggle(r.id)} />
+                  <HistoryRow
+                    key={r.id}
+                    row={r}
+                    isOpen={isOpen}
+                    detailId={detailId}
+                    onToggle={() => toggle(r.id)}
+                  />
                 );
               })}
             </tbody>
@@ -209,7 +309,17 @@ export function MaintenanceHistorySection() {
   );
 }
 
-function HistoryRow({ row: r, isOpen, detailId, onToggle }: { row: MaintenanceHistoryRow; isOpen: boolean; detailId: string; onToggle: () => void }) {
+function HistoryRow({
+  row: r,
+  isOpen,
+  detailId,
+  onToggle,
+}: {
+  row: MaintenanceHistoryRow;
+  isOpen: boolean;
+  detailId: string;
+  onToggle: () => void;
+}) {
   const action = r.actions ?? r.fieldActions;
   // Soltar o mouse depois de arrastar para copiar o "constatado" ou a OS também
   // dispara click na linha; com texto selecionado, não abrimos nem fechamos.
@@ -233,7 +343,11 @@ function HistoryRow({ row: r, isOpen, detailId, onToggle }: { row: MaintenanceHi
               onToggle();
             }}
           >
-            {isOpen ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
+            {isOpen ? (
+              <ChevronDown size={14} aria-hidden />
+            ) : (
+              <ChevronRight size={14} aria-hidden />
+            )}
             <span className="tp-mono">{r.externalOs}</span>
           </button>
           {r.ficha && <span className="mat-sub">ficha {r.ficha}</span>}
@@ -242,11 +356,15 @@ function HistoryRow({ row: r, isOpen, detailId, onToggle }: { row: MaintenanceHi
           <Link to={`/frota/${r.vehicleId}`} onClick={(e) => e.stopPropagation()}>
             <b>{r.vehicleCode}</b>
           </Link>
-          <span className="tp-muted" style={{ marginLeft: 6 }}>{r.vehiclePlate}</span>
+          <span className="tp-muted" style={{ marginLeft: 6 }}>
+            {r.vehiclePlate}
+          </span>
         </td>
         <td>
           <span className={kindBadgeClass(r)}>{r.kindLabel ?? r.kind}</span>
-          {r.isPreventive && r.kind !== 'PV' && <span className="mat-sub">com item preventivo</span>}
+          {r.isPreventive && r.kind !== 'PV' && (
+            <span className="mat-sub">com item preventivo</span>
+          )}
         </td>
         <td style={{ whiteSpace: 'normal', minWidth: 160 }}>
           <span className="mat-desc">{r.allegedText ?? '—'}</span>
@@ -258,7 +376,9 @@ function HistoryRow({ row: r, isOpen, detailId, onToggle }: { row: MaintenanceHi
         </td>
         <td style={{ whiteSpace: 'normal', minWidth: 180 }} className="tp-muted">
           {action ?? '—'}
-          {r.items.length > 0 && <span className="mat-sub">{r.items.map((i) => i.componentLabel).join(' · ')}</span>}
+          {r.items.length > 0 && (
+            <span className="mat-sub">{r.items.map((i) => i.componentLabel).join(' · ')}</span>
+          )}
         </td>
         <td className="is-num">
           {r.materials.length ? (
@@ -295,11 +415,19 @@ function HistoryRow({ row: r, isOpen, detailId, onToggle }: { row: MaintenanceHi
                         <tr key={`${i.componentCode ?? i.componentLabel}-${idx}`}>
                           <td>
                             <span className="mat-desc">{i.componentLabel}</span>
-                            {i.componentCode && <span className="mat-sub tp-mono">{i.componentCode}</span>}
+                            {i.componentCode && (
+                              <span className="mat-sub tp-mono">{i.componentCode}</span>
+                            )}
                           </td>
-                          <td className="is-num">{i.kmAtService === null ? '—' : formatNumber(i.kmAtService)}</td>
-                          <td className="is-num">{i.kmLimit === null ? '—' : formatNumber(i.kmLimit)}</td>
-                          <td className="tp-muted" style={{ whiteSpace: 'normal' }}>{i.note ?? '—'}</td>
+                          <td className="is-num">
+                            {i.kmAtService === null ? '—' : formatNumber(i.kmAtService)}
+                          </td>
+                          <td className="is-num">
+                            {i.kmLimit === null ? '—' : formatNumber(i.kmLimit)}
+                          </td>
+                          <td className="tp-muted" style={{ whiteSpace: 'normal' }}>
+                            {i.note ?? '—'}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

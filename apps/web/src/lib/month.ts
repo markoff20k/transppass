@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom';
+import { useUiState } from '@/features/auth/use-ui-pref';
 
 /**
  * Mês de referência das telas de indicador.
@@ -41,10 +42,13 @@ export function parseMonth(raw: string | null): ReferenceMonth {
   return toMonth(now.getFullYear(), now.getMonth());
 }
 
+/** A URL vence quando traz ?mes= (link compartilhado); senão vale o mês salvo na conta. */
 export function useReferenceMonth(): [ReferenceMonth, (m: ReferenceMonth) => void] {
   const [params, setParams] = useSearchParams();
-  const month = parseMonth(params.get('mes'));
+  const [saved, setSaved] = useUiState<string | null>('indicadores.month', null);
+  const month = parseMonth(params.has('mes') ? params.get('mes') : saved);
   const set = (m: ReferenceMonth) => {
+    setSaved(m.isCurrent ? null : m.key);
     const next = new URLSearchParams(params);
     if (m.isCurrent) next.delete('mes');
     else next.set('mes', m.key);
@@ -63,13 +67,17 @@ export function monthRange(m: ReferenceMonth): { from: Date; to: Date | null } {
 
 /** O mês em dias "AAAA-MM-DD": do dia 1 ao último dia (ou a hoje, no mês corrente). */
 export function monthDays(m: ReferenceMonth): { from: string; to: string } {
-  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const last = m.isCurrent ? new Date() : new Date(m.year, m.month + 1, 0);
   return { from: iso(new Date(m.year, m.month, 1)), to: iso(last) };
 }
 
 export function formatMonth(m: ReferenceMonth): string {
-  return new Date(m.year, m.month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  return new Date(m.year, m.month, 1).toLocaleDateString('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 /** Nome do mês anterior ao de referência ("outubro"), para "vs outubro". */
