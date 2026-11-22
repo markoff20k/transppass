@@ -2195,6 +2195,25 @@ small.muted {
   .dash-widgets__grid { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* ---- Zoom nos gráficos (arrastar sobre o gráfico, lupas e "Tudo") --------- */
+.chart__legend-tools { margin-left: auto; display: inline-flex; align-items: center; }
+.chart__zoom { display: inline-flex; align-items: center; gap: 2px; }
+.chart__zoom-range {
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-brand-soft);
+  color: var(--color-brand-text);
+  font-size: var(--tp-text-2xs);
+  font-weight: var(--tp-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.chart__zoom-btn { width: 28px; min-height: 28px; padding: 0; color: var(--color-text-muted); }
+.chart__zoom-btn:disabled { opacity: 0.35; cursor: default; }
+/* Arrastar seleciona: cursor de mira e sem seleção de texto no meio do gesto. */
+.chart--zoomable .recharts-wrapper { cursor: crosshair; user-select: none; -webkit-user-select: none; }
+
 /* ---- Letreiro de avisos (uma linha, como o painel de destino do ônibus) -- */
 
 /* Um cartão como os outros da página: mesmo vidro, mesmo raio, mesma sombra.

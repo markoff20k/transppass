@@ -92,7 +92,7 @@ export function DashboardPage() {
     isFetching,
   } = useQuery({
     queryKey: ['dashboard', days],
-    queryFn: () => api.get<DashboardData>(`/dashboard?days=${days}`),
+    queryFn: () => api.get<DashboardData>(`/dashboard?days=${days}&months=12`),
     refetchInterval: 60_000,
     placeholderData: keepPreviousData,
   });

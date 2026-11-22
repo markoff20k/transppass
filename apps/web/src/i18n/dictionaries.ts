@@ -264,6 +264,12 @@ const ptBR = {
     collapse: 'Recolher',
     expand: 'Expandir',
     dragToReorder: 'Arrastar para mudar a ordem',
+    zoom: {
+      in: 'Aproximar',
+      out: 'Afastar',
+      all: 'Ver tudo',
+      dragHint: 'Arraste sobre o gráfico para aproximar um trecho',
+    },
     widgets: {
       title: 'Indicadores',
       hint: 'cada cartão com o seu período; adicione, remova e a escolha fica na sua conta',
@@ -665,6 +671,12 @@ const en: Dictionary = {
     collapse: 'Collapse',
     expand: 'Expand',
     dragToReorder: 'Drag to reorder',
+    zoom: {
+      in: 'Zoom in',
+      out: 'Zoom out',
+      all: 'Show all',
+      dragHint: 'Drag over the chart to zoom into a span',
+    },
     widgets: {
       title: 'Indicators',
       hint: 'each card with its own period; add or remove and the choice stays in your account',
