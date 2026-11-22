@@ -77,11 +77,18 @@ export class DashboardService {
       from.setHours(0, 0, 0, 0);
     }
     const months = query.months ?? Math.max(6, Math.ceil(days / 30) + 1);
+    // Os cartões "de agora" não seguem o período: MKBF dos últimos 30 dias e OS liberadas hoje.
+    const last30From = new Date(now.getTime() - 29 * DAY_MS);
+    last30From.setHours(0, 0, 0, 0);
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
 
     const [
       vehicles,
       mkbfSeries,
       periodMkbf,
+      last30Mkbf,
+      releasedToday,
       availabilityByHour,
       availabilityDelta,
       r1,
@@ -96,6 +103,8 @@ export class DashboardService {
       this.vehicles(now),
       this.mkbfSeries(now, months),
       this.metrics.mkbf(from, periodEnd),
+      this.metrics.mkbf(last30From, now),
+      this.prisma.workOrder.count({ where: { releasedAt: { gte: todayStart, lte: now } } }),
       this.availabilityByHour(now, from),
       this.availabilityDelta(now),
       this.metrics.r1({ from, to: periodEnd }),
@@ -105,7 +114,7 @@ export class DashboardService {
       this.materials(now),
       this.alerts(),
       this.events.list({ page: 1, perPage: 6, from, to: periodEnd }),
-      this.backs(now, from, days),
+      this.backs(now, last30From, 30),
     ]);
 
     const byStatus = Object.fromEntries(Object.values(VehicleStatus).map((s) => [s, 0])) as Record<
@@ -135,6 +144,11 @@ export class DashboardService {
           unscheduledReturns: periodMkbf.unscheduledReturns,
           mkbf: periodMkbf.mkbf,
         },
+        last30: {
+          kmTraveled: last30Mkbf.kmTraveled,
+          unscheduledReturns: last30Mkbf.unscheduledReturns,
+          mkbf: last30Mkbf.mkbf,
+        },
       },
       availabilityByHour,
       downtimeByCause: r1.downtimeByCause,
@@ -142,7 +156,7 @@ export class DashboardService {
       eventsPerDay: perDay.points,
       eventsBucket: perDay.bucket,
       queue,
-      workOrders,
+      workOrders: { ...workOrders, releasedToday },
       materials,
       alerts,
       backs,

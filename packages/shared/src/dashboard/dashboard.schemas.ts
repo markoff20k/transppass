@@ -89,6 +89,8 @@ export interface DashboardData {
     series: MkbfPoint[];
     /** MKBF da janela escolhida: km rodados ÷ retornos não programados. */
     period: { kmTraveled: number; unscheduledReturns: number; mkbf: number | null };
+    /** MKBF dos últimos 30 dias até agora: o número do cartão "Indicadores de agora", que não segue o período. */
+    last30: { kmTraveled: number; unscheduledReturns: number; mkbf: number | null };
   };
 
   availabilityByHour: HourAvailability[];
@@ -109,6 +111,8 @@ export interface DashboardData {
     overdue: number;
     /** Liberadas na janela escolhida. */
     releasedInPeriod: number;
+    /** Liberadas hoje (o cartão "Indicadores de agora" não segue o período). */
+    releasedToday: number;
     averageDowntimeMinutes: number | null;
   };
 
@@ -132,7 +136,7 @@ export interface DashboardData {
 
 export interface DashboardBacks {
   mkbf: {
-    /** Mesmo tamanho de janela, logo antes do período. */
+    /** Os 30 dias logo antes dos últimos 30 (o cartão não segue o período). */
     previous: { kmTraveled: number; unscheduledReturns: number; mkbf: number | null };
     /** Até três sistemas com mais quebras no período (nome do catálogo ou grupo do CCO). */
     topSystems: { name: string; count: number }[];

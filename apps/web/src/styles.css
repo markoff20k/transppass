@@ -2659,6 +2659,11 @@ small.muted {
   flex-wrap: wrap;
   row-gap: var(--tp-space-2);
 }
+/* Busca pelo número do carro: campo curto, da altura dos botões do cabeçalho. */
+.dash-fleet__search { flex: 0 1 190px; max-width: 190px; }
+.dash-fleet__search input.tp-input[type='search'] { height: 28px; min-height: 28px; padding-top: 0; padding-bottom: 0; font-size: var(--tp-text-xs); }
+.dash-fleet__search svg { left: 9px; width: 13px; height: 13px; }
+.dash-fleet__search input.tp-input[type='search'] { padding-left: 28px; }
 
 .fleet-legend {
   display: inline-flex;

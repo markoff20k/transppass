@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownRight, ArrowUpRight, Minus, RefreshCw, Repeat2, Undo2 } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Minus, RefreshCw, Repeat2, Search, Undo2 } from 'lucide-react';
 import {
   DASHBOARD_PERIODS,
   DEFAULT_DASHBOARD_PERIOD,
@@ -261,19 +261,19 @@ export function DashboardPage() {
                 <div className="dash-kpis__grid">
                   <Kpi
                     label={t.dash.mkbf}
-                    hint={`${t.dash.mkbfHint} · ${periodLabel}`}
+                    hint={`${t.dash.mkbfHint} · ${t.dash.last30}`}
                     value={
-                      data.mkbf.period.mkbf === null
+                      data.mkbf.last30.mkbf === null
                         ? '—'
-                        : `${formatNumber(data.mkbf.period.mkbf)} km`
+                        : `${formatNumber(data.mkbf.last30.mkbf)} km`
                     }
                     tone="brand"
                     spark={data.mkbf.series.map((p) => p.mkbf)}
                     sparkColor="var(--chart-1)"
                     note={
-                      data.mkbf.period.mkbf === null
+                      data.mkbf.last30.mkbf === null
                         ? t.dash.noReturns
-                        : `${formatNumber(data.mkbf.period.kmTraveled)} km ÷ ${formatNumber(data.mkbf.period.unscheduledReturns)} ${t.dash.breakdowns}`
+                        : `${formatNumber(data.mkbf.last30.kmTraveled)} km ÷ ${formatNumber(data.mkbf.last30.unscheduledReturns)} ${t.dash.breakdowns}`
                     }
                     back={<MkbfBack data={data} />}
                     backTo="/indicadores"
@@ -302,7 +302,7 @@ export function DashboardPage() {
                       data.workOrders.overdue > 0
                         ? `${data.workOrders.overdue} ${t.dash.overdue}`
                         : null,
-                      `${data.workOrders.releasedInPeriod} ${period.days === 1 || isCustom(period) ? t.dash.releasedOn.replace('{p}', periodLabel) : t.dash.releasedIn.replace('{n}', String(days))}`,
+                      `${data.workOrders.releasedToday} ${t.dash.releasedToday}`,
                       data.workOrders.averageDowntimeMinutes !== null
                         ? `${t.dash.avg} ${formatMinutes(data.workOrders.averageDowntimeMinutes)} ${t.dash.perWo}`
                         : null,
@@ -560,7 +560,7 @@ function BackRow({
 function MkbfBack({ data }: { data: DashboardData }) {
   const { t } = useI18n();
   const b = data.backs.mkbf;
-  const cur = data.mkbf.period;
+  const cur = data.mkbf.last30;
   const pct =
     b.previous.mkbf && cur.mkbf ? ((cur.mkbf - b.previous.mkbf) / b.previous.mkbf) * 100 : null;
   return (
@@ -767,15 +767,20 @@ function StatusSummary({
 function FleetNow({ vehicles, grip }: { vehicles: DashboardVehicle[]; grip?: ReactNode }) {
   const { t } = useI18n();
   const [selected, setSelected] = useUiState<Family | null>('dashboard.fleetStatus', null);
+  const [search, setSearch] = useUiState<string>('dashboard.fleetSearch', '');
   const [hovered, setHovered] = useState<Family | null>(null);
 
-  const visible = selected ? vehicles.filter((v) => familyOf(v.status) === selected) : vehicles;
+  // Busca pelo número do carro (ou placa): acha o carro onde ele estiver, rodando inclusive.
+  const q = search.trim().toLowerCase();
+  const matches = (v: DashboardVehicle) =>
+    !q || v.code.toLowerCase().includes(q) || v.plate.toLowerCase().includes(q);
+  const visible = (selected ? vehicles.filter((v) => familyOf(v.status) === selected) : vehicles).filter(matches);
   const focus = hovered ?? selected;
 
   // Numa frota de centenas de carros, 400 ônibus iguais rodando não dizem nada:
   // eles viram um cartão com a soma, e a grade mostra quem está na garagem.
   const big = vehicles.length > 60;
-  const collapseRunning = big && selected !== 'running';
+  const collapseRunning = big && selected !== 'running' && !q;
   const running = vehicles.filter((v) => familyOf(v.status) === 'running');
   const shown = collapseRunning ? visible.filter((v) => familyOf(v.status) !== 'running') : visible;
   const inLine = running.filter((v) => v.status === 'IN_LINE').length;
@@ -803,6 +808,17 @@ function FleetNow({ vehicles, grip }: { vehicles: DashboardVehicle[]; grip?: Rea
             onSelect={setSelected}
             onHover={setHovered}
           />
+          <label className="tp-search dash-fleet__search">
+            <Search size={15} aria-hidden />
+            <input
+              type="search"
+              className="tp-input"
+              placeholder={t.dash.searchCar}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label={t.dash.searchCar}
+            />
+          </label>
           <Link to="/frota" className="tp-btn tp-btn--ghost tp-btn--sm">
             {t.dash.seeAll}
           </Link>
@@ -834,7 +850,9 @@ function FleetNow({ vehicles, grip }: { vehicles: DashboardVehicle[]; grip?: Rea
         ))}
       </div>
       {shown.length === 0 && !collapseRunning && (
-        <p className="tp-muted dash-fleet__empty">{t.dash.legendEmpty}</p>
+        <p className="tp-muted dash-fleet__empty">
+          {q ? t.dash.searchEmpty.replace('{q}', search.trim()) : t.dash.legendEmpty}
+        </p>
       )}
     </CollapsibleCard>
   );
