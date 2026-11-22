@@ -97,6 +97,8 @@ export class NoticesService {
       orderBy: { dispatchedAt: 'asc' },
       select: {
         id: true,
+        kind: true,
+        reclassifiedAt: true,
         dispatchedAt: true,
         arrivedAt: true,
         supportVehicleCode: true,
@@ -107,17 +109,18 @@ export class NoticesService {
       const e = f.event;
       const min = minutesBetween(e.reportedAt, now);
       const where = [e.lineCode ? `na linha ${e.lineCode}` : 'na rua', e.locationDescription ? `(${short(e.locationDescription, 40)})` : null].filter(Boolean).join(' ');
+      const who = f.kind === 'PAM' ? 'PAM' : 'socorro';
       const stage = f.arrivedAt
-        ? `socorro no local ${since(f.arrivedAt, now)}${f.supportVehicleCode ? ` (${f.supportVehicleCode})` : ''}`
-        : `aguardando socorro ${since(f.dispatchedAt, now)}`;
+        ? `${who} no local ${since(f.arrivedAt, now)}${f.supportVehicleCode ? ` (${f.supportVehicleCode})` : ''}`
+        : `aguardando ${who} ${since(f.dispatchedAt, now)}`;
       const failure = short(e.catalogItem?.description ?? e.reportedDescription);
       return {
         id: `rescue:${f.id}`,
         severity: min >= RESCUE_CRIT_MIN ? 'critical' : min >= RESCUE_WARN_MIN ? 'warning' : 'info',
         kind: 'rescue',
-        area: 'Socorro',
+        area: f.kind === 'PAM' ? 'PAM' : 'Socorro',
         title: `Carro ${e.vehicle.code} quebrado ${where} ${since(e.reportedAt, now)}, ${stage}`,
-        text: `Ficha ${e.code}${failure ? `: ${lower(failure)}` : ''}. Registrada às ${fmtClock(e.reportedAt)}.`,
+        text: `Ficha ${e.code}${failure ? `: ${lower(failure)}` : ''}. Registrada às ${fmtClock(e.reportedAt)}.${f.reclassifiedAt ? ` PAM passou de 30 min e virou Socorro às ${fmtClock(f.reclassifiedAt)}.` : ''}`,
         to: '/socorro',
         at: e.reportedAt.toISOString(),
         vehicleCode: e.vehicle.code,

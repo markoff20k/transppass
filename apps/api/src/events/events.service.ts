@@ -6,6 +6,7 @@ import {
   TriageDestination,
   VehicleStatus,
   WorkOrderType,
+  FieldServiceKind,
 } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import {
@@ -27,7 +28,9 @@ import {
   type FieldStepInput,
   type Paginated,
   type TriageInput,
+  PAM_LIMIT_MINUTES,
 } from '@app/shared';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit.service';
 import { DowntimeService } from '../common/downtime.service';
@@ -212,7 +215,8 @@ export class EventsService {
             where: { id: eventId },
             data: { status: EventStatus.FIELD_SERVICE },
           });
-          await tx.fieldService.create({ data: { eventId } });
+          // Item 17: o atendimento na rua começa como PAM, salvo quando o PCM já manda Socorro.
+          await tx.fieldService.create({ data: { eventId, kind: input.fieldKind ?? FieldServiceKind.PAM } });
           await tx.vehicle.update({
             where: { id: event.vehicleId },
             data: { status: VehicleStatus.FIELD_SERVICE },
@@ -533,6 +537,20 @@ export class EventsService {
 
   // --- Consultas ------------------------------------------------------------
 
+  /**
+   * Item 17 — PAM que passou de PAM_LIMIT_MINUTES vira Socorro, a cada minuto. Conta
+   * do despacho do atendimento; atendimento já encerrado ou com desfecho não muda.
+   */
+  @Cron('* * * * *', { name: 'pam-to-socorro' })
+  async reclassifyStalePam(now = new Date()): Promise<number> {
+    const limit = new Date(now.getTime() - PAM_LIMIT_MINUTES * 60_000);
+    const r = await this.prisma.fieldService.updateMany({
+      where: { kind: FieldServiceKind.PAM, outcome: null, finishedAt: null, dispatchedAt: { lte: limit } },
+      data: { kind: FieldServiceKind.SOCORRO, reclassifiedAt: now },
+    });
+    return r.count;
+  }
+
   async findOne(id: string): Promise<FailureEventSummary> {
     const event = await this.prisma.failureEvent.findUnique({
       where: { id },
@@ -733,6 +751,8 @@ function toSummary(event: EventWithRelations, rules: FailureCodeRule[]): Failure
     fieldService: event.fieldService
       ? {
           id: event.fieldService.id,
+          kind: event.fieldService.kind,
+          reclassifiedAt: event.fieldService.reclassifiedAt?.toISOString() ?? null,
           dispatchedAt: event.fieldService.dispatchedAt.toISOString(),
           arrivedAt: event.fieldService.arrivedAt?.toISOString() ?? null,
           startedAt: event.fieldService.startedAt?.toISOString() ?? null,

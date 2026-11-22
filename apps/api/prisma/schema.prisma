@@ -1137,23 +1137,34 @@ enum FieldOutcome {
   CANCELLED
 }
 
+/// Item 17 do cliente — atendimento na rua: PAM (Ponto de Apoio de Manutencao, solucao
+/// em ate 30 min) ou Socorro (carro parado ha mais de 30 min, afetando a linha). Um PAM
+/// que passa de 30 min vira Socorro sozinho.
+enum FieldServiceKind {
+  PAM
+  SOCORRO
+}
+
 /// RF-04 — status por toque, constatacao de catalogo e desfecho em um botao.
 model FieldService {
-  id                       String        @id @default(uuid()) @db.Uuid
-  eventId                  String        @unique @db.Uuid
-  dispatchedAt             DateTime      @default(now())
+  id                       String           @id @default(uuid()) @db.Uuid
+  eventId                  String           @unique @db.Uuid
+  dispatchedAt             DateTime         @default(now())
+  kind                     FieldServiceKind @default(SOCORRO)
+  /// Quando o PAM passou de 30 minutos e foi reclassificado como Socorro.
+  reclassifiedAt           DateTime?
   arrivedAt                DateTime?
   startedAt                DateTime?
   finishedAt               DateTime?
-  technicianId             String?       @db.Uuid
-  supportVehicleCode       String?       @db.VarChar(16)
-  confirmedCatalogItemId   String?       @db.Uuid
-  confirmedFailureModeCode String?       @db.VarChar(2)
-  confirmedSubsystemCode   String?       @db.VarChar(7)
-  confirmedPosition        String?       @db.VarChar(2)
-  confirmedFailureCode     String?       @db.VarChar(16)
+  technicianId             String?          @db.Uuid
+  supportVehicleCode       String?          @db.VarChar(16)
+  confirmedCatalogItemId   String?          @db.Uuid
+  confirmedFailureModeCode String?          @db.VarChar(2)
+  confirmedSubsystemCode   String?          @db.VarChar(7)
+  confirmedPosition        String?          @db.VarChar(2)
+  confirmedFailureCode     String?          @db.VarChar(16)
   outcome                  FieldOutcome?
-  note                     String?       @db.VarChar(500)
+  note                     String?          @db.VarChar(500)
 
   event                FailureEvent           @relation(fields: [eventId], references: [id], onDelete: Cascade)
   confirmedCatalogItem FailureCatalogItem?    @relation("FieldConfirmedFailure", fields: [confirmedCatalogItemId], references: [id])

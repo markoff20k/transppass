@@ -5,6 +5,8 @@ import {
   ReasonCodeList,
   TRIAGE_DESTINATION_LABELS,
   TriageDestination,
+  FieldServiceKind,
+  FIELD_SERVICE_KIND_HINTS,
   type FailureEventSummary,
   type Paginated,
   type ReasonCode,
@@ -140,6 +142,14 @@ export function TriagePage() {
   );
 }
 
+type Choice = 'PAM' | 'SOCORRO' | 'RECALL' | 'DEFER';
+const CHOICES: { key: Choice; label: string; hint: string }[] = [
+  { key: 'PAM', label: 'PAM', hint: FIELD_SERVICE_KIND_HINTS.PAM },
+  { key: 'SOCORRO', label: 'Socorro', hint: FIELD_SERVICE_KIND_HINTS.SOCORRO },
+  { key: 'RECALL', label: TRIAGE_DESTINATION_LABELS.RECALL, hint: 'O carro vem para a garagem e entra na fila da oficina' },
+  { key: 'DEFER', label: TRIAGE_DESTINATION_LABELS.DEFER, hint: 'O carro segue rodando; a falha vira escopo da manutenção noturna' },
+];
+
 function TriageDrawer({
   event,
   onClose,
@@ -149,7 +159,10 @@ function TriageDrawer({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [destination, setDestination] = useState<TriageDestination>(TriageDestination.RECALL);
+  // Item 1 e 17: quatro saídas — PAM, Socorro (atendimento na rua), Oficina e Segue na linha.
+  const [choice, setChoice] = useState<Choice>('RECALL');
+  const destination: TriageDestination = choice === 'PAM' || choice === 'SOCORRO' ? TriageDestination.FIELD : choice;
+  const fieldKind = choice === 'PAM' ? FieldServiceKind.PAM : choice === 'SOCORRO' ? FieldServiceKind.SOCORRO : undefined;
   const [reclassify, setReclassify] = useState(false);
   const [code, setCode] = useState<FailureCodeValue>(EMPTY_FAILURE_CODE);
   const [reasonCodeId, setReasonCodeId] = useState('');
@@ -196,7 +209,7 @@ function TriageDrawer({
             disabled={mutation.isPending || (destination === TriageDestination.DEFER && !reasonCodeId)}
             onClick={() => {
               setError(null);
-              mutation.mutate({ destination, reasonCodeId: reasonCodeId || undefined, note: note || undefined, ...(reclassify ? toCodeFields(code) : {}) });
+              mutation.mutate({ destination, fieldKind, reasonCodeId: reasonCodeId || undefined, note: note || undefined, ...(reclassify ? toCodeFields(code) : {}) });
             }}
           >
             {mutation.isPending ? 'Registrando…' : 'Confirmar destino'}
@@ -292,22 +305,24 @@ function TriageDrawer({
       </div>
 
       <div className="tp-stack">
-        <h3>Destino (RF-03)</h3>
-        {Object.values(TriageDestination).map((dest) => {
-          const disabled = dest === TriageDestination.DEFER && deferBlocked;
+        <h3>Saída da triagem</h3>
+        {CHOICES.map((c) => {
+          const disabled = c.key === 'DEFER' && deferBlocked;
           return (
-            <label key={dest} className="tp-radio-card">
+            <label key={c.key} className="tp-radio-card">
               <input
                 type="radio"
                 name="destination"
-                value={dest}
-                checked={destination === dest}
+                value={c.key}
+                checked={choice === c.key}
                 disabled={disabled}
-                onChange={() => setDestination(dest)}
+                onChange={() => setChoice(c.key)}
               />
               <span>
-                {TRIAGE_DESTINATION_LABELS[dest]}
-                {disabled && <span className="tp-help" style={{ display: 'block' }}>bloqueado pelo catálogo</span>}
+                {c.label}
+                <span className="tp-help" style={{ display: 'block' }}>
+                  {disabled ? 'bloqueado pelo catálogo' : c.hint}
+                </span>
               </span>
             </label>
           );

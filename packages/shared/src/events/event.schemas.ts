@@ -48,7 +48,31 @@ export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   CANCELLED: 'Cancelado',
 };
 
-/** RF-03 — os três destinos da triagem. */
+/**
+ * Item 17 — atendimento na rua: PAM (Ponto de Apoio de Manutenção, solução em até
+ * 30 min) ou Socorro (carro parado há mais de 30 min, afetando a linha). Um PAM que
+ * passa de PAM_LIMIT_MINUTES é reclassificado como Socorro automaticamente.
+ */
+export const FieldServiceKind = {
+  PAM: 'PAM',
+  SOCORRO: 'SOCORRO',
+} as const;
+export type FieldServiceKind = (typeof FieldServiceKind)[keyof typeof FieldServiceKind];
+
+export const FIELD_SERVICE_KIND_LABELS: Record<FieldServiceKind, string> = {
+  PAM: 'PAM',
+  SOCORRO: 'Socorro',
+};
+
+export const FIELD_SERVICE_KIND_HINTS: Record<FieldServiceKind, string> = {
+  PAM: 'Ponto de Apoio de Manutenção: solução na rua em até 30 minutos',
+  SOCORRO: 'Carro parado há mais de 30 minutos, afetando a linha',
+};
+
+/** Minutos que um PAM pode durar antes de virar Socorro. */
+export const PAM_LIMIT_MINUTES = 30;
+
+/** RF-03 — os destinos da triagem (item 1: na rua, oficina ou segue na linha). */
 export const TriageDestination = {
   FIELD: 'FIELD',
   RECALL: 'RECALL',
@@ -57,9 +81,9 @@ export const TriageDestination = {
 export type TriageDestination = (typeof TriageDestination)[keyof typeof TriageDestination];
 
 export const TRIAGE_DESTINATION_LABELS: Record<TriageDestination, string> = {
-  FIELD: 'Socorro em campo',
-  RECALL: 'Recolher',
-  DEFER: 'Deferir para a parada programada',
+  FIELD: 'Atendimento na rua',
+  RECALL: 'Oficina',
+  DEFER: 'Segue na linha (manutenção à noite)',
 };
 
 export const FieldOutcome = {
@@ -137,6 +161,8 @@ export const eventQuerySchema = z.object({
 export const triageSchema = z
   .object({
     destination: z.nativeEnum(TriageDestination),
+    /** Atendimento na rua: PAM (padrão) ou Socorro. */
+    fieldKind: z.nativeEnum(FieldServiceKind).optional(),
     /** Obrigatório ao deferir: é decisão que adia atendimento. */
     reasonCodeId: z.string().uuid().optional(),
     note: z.string().trim().max(255).optional(),
@@ -251,6 +277,9 @@ export interface FailureEventSummary {
   } | null;
   fieldService: {
     id: string;
+    kind: FieldServiceKind;
+    /** Quando o PAM passou de 30 min e virou Socorro. */
+    reclassifiedAt: string | null;
     dispatchedAt: string;
     arrivedAt: string | null;
     startedAt: string | null;

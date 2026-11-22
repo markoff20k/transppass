@@ -11,6 +11,9 @@ import {
   type FailureEventSummary,
   type MaterialOption,
   type Paginated,
+  FieldServiceKind,
+  FIELD_SERVICE_KIND_HINTS,
+  PAM_LIMIT_MINUTES,
 } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDateTime, formatMinutes } from '@/lib/format';
@@ -32,7 +35,7 @@ import { BrandLoader } from '@/components/brand/brand-loader';
  * (RF-05), e o painel já mostra isso desabilitando as opções.
  */
 export function FieldServicePage() {
-  usePageHeader({ eyebrow: 'Operação', title: 'Socorro em campo', description: 'Apontamento por toque, desfecho em um botão.' });
+  usePageHeader({ eyebrow: 'Operação', title: 'Atendimento na rua', description: 'PAM resolve em até 30 minutos; passou disso, vira Socorro sozinho. Apontamento por toque, desfecho em um botão.' });
 
   const queryClient = useQueryClient();
   const now = useNow();
@@ -49,6 +52,8 @@ export function FieldServicePage() {
   const rows = events.data?.data ?? [];
   const awaitingArrival = rows.filter((r) => !r.fieldService?.arrivedAt);
   const repairing = rows.filter((r) => r.fieldService?.startedAt && !r.fieldService.finishedAt);
+  const pam = rows.filter((r) => r.fieldService?.kind === FieldServiceKind.PAM).length;
+  const socorro = rows.length - pam;
   const oldestMinutes = rows.length
     ? Math.max(...rows.map((r) => minutesSince(r.fieldService?.dispatchedAt ?? r.reportedAt, now)))
     : null;
@@ -66,6 +71,9 @@ export function FieldServicePage() {
         <div className={`tp-kpi ${rows.length > 0 ? 'tp-kpi--brand' : ''}`}>
           <span className="tp-kpi__label">Atendimentos em curso</span>
           <strong className="tp-kpi__value">{rows.length}</strong>
+          <span className="tp-kpi__note">
+            {pam} PAM · {socorro} Socorro
+          </span>
         </div>
         <div className={`tp-kpi ${awaitingArrival.length > 0 ? 'tp-kpi--warn' : ''}`}>
           <span className="tp-kpi__label">Aguardando chegada</span>
@@ -193,6 +201,7 @@ function FieldCard({
           <span className="tp-muted">{event.vehiclePlate}</span>
         </div>
         <div className="field-card__tags">
+          <FieldKindBadge field={field} now={now} />
           {event.catalog?.isSafety && <span className="tp-badge tp-badge--danger">segurança</span>}
           {event.catalog?.isFastTrack && <span className="tp-badge tp-badge--warning">fast-track</span>}
           <button
@@ -497,5 +506,30 @@ function DispatchDrawer({ event, onClose, onDone }: { event: FailureEventSummary
         {error && <p className="tp-error">{error}</p>}
       </div>
     </Drawer>
+  );
+}
+
+/**
+ * Item 17 — PAM ou Socorro. O PAM mostra quanto falta dos 30 minutos; ao passar,
+ * a API o reclassifica e o selo vira Socorro, com a hora da troca no título.
+ */
+function FieldKindBadge({ field, now }: { field: FailureEventSummary['fieldService']; now: number }) {
+  if (!field) return null;
+  if (field.kind === FieldServiceKind.PAM) {
+    const used = minutesSince(field.dispatchedAt, now);
+    const left = Math.max(0, PAM_LIMIT_MINUTES - used);
+    return (
+      <span className={`tp-badge ${left <= 5 ? 'tp-badge--warning' : 'tp-badge--info'}`} title={FIELD_SERVICE_KIND_HINTS.PAM}>
+        PAM · {left} min
+      </span>
+    );
+  }
+  return (
+    <span
+      className="tp-badge tp-badge--danger"
+      title={field.reclassifiedAt ? `PAM passou de ${PAM_LIMIT_MINUTES} min e virou Socorro às ${formatDateTime(field.reclassifiedAt).slice(-5)}` : FIELD_SERVICE_KIND_HINTS.SOCORRO}
+    >
+      Socorro{field.reclassifiedAt ? ' · ex-PAM' : ''}
+    </span>
   );
 }
