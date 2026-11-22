@@ -5593,3 +5593,10 @@ a.bus-card:hover { transform: translateY(-1px); }
 .dash-skel__bus-row { display: flex; justify-content: space-between; align-items: center; }
 @media (prefers-reduced-motion: reduce) { .dash-skel__ring, .dash-skel__ring-inner, .skel::after { animation: none; } }
 @media (max-width: 900px) { .dash-skel__hero { grid-template-columns: minmax(0, 1fr); justify-items: center; } }
+
+/* Item 2: o (i) do widget ao lado do nome, como nas etapas do Fluxo da garagem. */
+.widget__title { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.widget__title .tp-kpi__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.widget__info { flex: none; }
+.widget__info .tp-tip__body + .tp-tip__body { margin-top: 6px; }
+.widget__info .tp-tip__body b { font-weight: var(--tp-weight-semibold); color: var(--color-text); }

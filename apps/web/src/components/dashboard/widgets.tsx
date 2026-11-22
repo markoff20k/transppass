@@ -26,6 +26,7 @@ import { formatMinutes, formatNumber } from '@/lib/format';
 import { isoOf, makePeriod, rangeLabel, shiftDays, todayIso } from '@/lib/period';
 import { useI18n } from '@/i18n/i18n.context';
 import { useUiState } from '@/features/auth/use-ui-pref';
+import { InfoTip } from '@/components/ui/info-tip';
 import { toast } from '@/lib/toast';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
 
@@ -118,9 +119,10 @@ export function WidgetsCard({
         <p className="dash-widgets__empty">{t.dash.widgets.empty}</p>
       ) : (
         <div className="dash-widgets__grid">
-          {widgets.map((w) => (
+          {widgets.map((w, index) => (
             <Widget
               key={w.id}
+              index={index}
               pref={w}
               vehicles={vehicles}
               onPeriod={(period) => update(w.id, { period })}
@@ -161,12 +163,14 @@ function AddWidget({ onAdd }: { onAdd: (kind: WidgetKind) => void }) {
 }
 
 function Widget({
+  index,
   pref,
   vehicles,
   onPeriod,
   onVehicle,
   onRemove,
 }: {
+  index: number;
   pref: DashboardWidgetPref;
   vehicles: DashboardVehicle[];
   onPeriod: (p: WidgetPeriod) => void;
@@ -220,8 +224,23 @@ function Widget({
       aria-label={meta.label}
     >
       <div className="widget__head">
-        <span className="tp-kpi__label" title={meta.hint}>
-          {meta.label}
+        <span className="widget__title">
+          <span className="tp-kpi__label" title={meta.hint}>
+            {meta.label}
+          </span>
+          {/* Item 2: objetivo e fórmula do indicador, no mesmo (i) das etapas do Fluxo da garagem. */}
+          <InfoTip label={`${t.dash.widgets.about.title}: ${meta.label}`} align={index % 4 === 0 ? 'start' : index % 4 === 3 ? 'end' : 'center'} className="widget__info">
+            <span className="tp-tip__title">
+              <i className="tp-tip__dot" aria-hidden />
+              {meta.label}
+            </span>
+            <span className="tp-tip__body">
+              <b>{t.dash.widgets.about.goal}:</b> {t.dash.widgets.about[pref.kind].goal}
+            </span>
+            <span className="tp-tip__body">
+              <b>{t.dash.widgets.about.formula}:</b> {t.dash.widgets.about[pref.kind].formula}
+            </span>
+          </InfoTip>
         </span>
         <button
           type="button"
