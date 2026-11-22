@@ -29,6 +29,7 @@ import { SortableCards } from '@/components/ui/sortable-cards';
 import { WidgetsCard } from '@/components/dashboard/widgets';
 import { AvailabilityCard, MkbfCard } from '@/components/dashboard/chart-cards';
 import { CustomRangeItem } from '@/components/charts/chart-period';
+import { LiveBadge } from '@/components/ui/live-badge';
 import { rangeLabel, shiftDays, todayIso } from '@/lib/period';
 import { useUiPref, useUiState } from '@/features/auth/use-ui-pref';
 import { DowntimeDonut, EventsPerDayChart, RingGauge, Sparkline } from '@/components/charts/charts';
@@ -785,7 +786,9 @@ function FleetNow({ vehicles, grip }: { vehicles: DashboardVehicle[]; grip?: Rea
       head={
         <>
           <div>
-            <h3>{t.dash.fleetNow}</h3>
+            <h3>
+              {t.dash.fleetNow} <LiveBadge />
+            </h3>
             <span className="chart__hint">
               {big ? t.dash.fleetNowHintBig : t.dash.fleetNowHint}
             </span>
