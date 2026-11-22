@@ -11,7 +11,7 @@ import { DemoSimulatorService } from './demo-simulator.service';
 /**
  * Simulador de demonstração pelo cabeçalho: qualquer pessoa autenticada vê se
  * ele está ligado; ADMIN e PCM ligam, desligam e "avançam a garagem" sem
- * esperar os 5 minutos.
+ * esperar o próximo minuto.
  */
 @ApiTags('demo')
 @ApiBearerAuth()

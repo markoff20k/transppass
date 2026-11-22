@@ -27,6 +27,8 @@ import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { MaterialsService } from '../materials/materials.service';
 import { OperationsService } from '../operations/operations.service';
 
+/** Intervalo do pulso, em minutos (o cron abaixo acompanha). */
+const PULSE_MIN = 1;
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
@@ -71,7 +73,7 @@ type Users = Record<'admin' | 'cco' | 'pcm' | 'manut' | 'estoque' | 'plantao', {
 /**
  * Simulador de demonstração — a garagem continua viva sem ninguém operar.
  *
- * Ligado por DEMO_SIMULATOR=true. A cada 5 minutos ele faz, pela própria API
+ * Ligado por DEMO_SIMULATOR=true. A cada minuto ele faz, pela própria API
  * de negócio (nunca escrevendo estado direto), o que a operação faria:
  *
  *  - telemetria dos eBUS lança km de hora em hora; o diesel ganha lançamento
@@ -123,7 +125,7 @@ export class DemoSimulatorService implements OnModuleInit {
     }
 
     if (this.enabled) {
-      this.log.log(`ligado${this.source === 'setting' ? ' pelo sistema' : ''} — a garagem anda sozinha a cada 5 minutos${SPEED !== 1 ? ` (acelerado ${SPEED}×)` : ''}${this.allHours ? ' (sem horário de operação)' : ''}`);
+      this.log.log(`ligado${this.source === 'setting' ? ' pelo sistema' : ''} — a garagem anda sozinha a cada minuto${SPEED !== 1 ? ` (acelerado ${SPEED}×)` : ''}${this.allHours ? ' (sem horário de operação)' : ''}`);
       // Primeiro pulso logo após subir, para a demonstração não esperar o relógio.
       setTimeout(() => void this.pulse(), 20_000);
     }
@@ -230,7 +232,7 @@ export class DemoSimulatorService implements OnModuleInit {
     return this.allHours ? 12 : now.getHours();
   }
 
-  @Cron('*/5 * * * *', { name: 'demo-pulse' })
+  @Cron('* * * * *', { name: 'demo-pulse' })
   async pulse(): Promise<string[]> {
     if (!this.enabled || this.busy || this.phase) return [];
     this.busy = true;
@@ -368,8 +370,8 @@ export class DemoSimulatorService implements OnModuleInit {
     const hour = this.hour(now);
     if (hour < 5 || hour > 23) return 0;
     const inLine = await this.prisma.vehicle.count({ where: { isActive: true, status: VehicleStatus.IN_LINE } });
-    // 15 falhas/dia em 18 h de operação, a cada 5 min → ~0,07 por pulso para 400 carros.
-    const expected = (inLine / 400) * (15 / 216) * SPEED;
+    // 15 falhas/dia em 18 h de operação, repartidas pelos pulsos do dia (~0,014 por pulso de 1 min para 400 carros).
+    const expected = (inLine / 400) * (15 / ((18 * 60) / PULSE_MIN)) * SPEED;
     let n = 0;
     while (Math.random() < expected - n) n += 1;
     if (n === 0) return 0;
