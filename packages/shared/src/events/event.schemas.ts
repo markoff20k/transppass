@@ -120,6 +120,16 @@ export const eventQuerySchema = z.object({
   pendingTriage: z.coerce.boolean().optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
+  // Filtros por coluna da tabela de eventos (texto = "contém", sem distinguir maiúsculas).
+  code: z.string().trim().max(40).optional(),
+  /** Prefixo ou placa do carro. */
+  vehicle: z.string().trim().max(40).optional(),
+  failureCode: z.string().trim().max(20).optional(),
+  /** Descrição da falha: catálogo, texto do registro ou defeito do CCO. */
+  failure: z.string().trim().max(80).optional(),
+  origin: z.nativeEnum(EventOrigin).optional(),
+  /** Só com OS aberta a partir do evento, ou só sem. */
+  workOrder: z.enum(['with', 'without']).optional(),
 });
 
 // --- Triagem (RF-03) --------------------------------------------------------

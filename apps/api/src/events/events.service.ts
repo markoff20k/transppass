@@ -60,7 +60,9 @@ export class EventsService {
     if (!vehicle) throw new NotFoundException('Carro não encontrado');
     if (!vehicle.isActive) throw new BadRequestException('Carro inativo não aceita evento');
 
-    const catalogItem = input.catalogItemId ? await this.requireCatalogItem(input.catalogItemId) : null;
+    const catalogItem = input.catalogItemId
+      ? await this.requireCatalogItem(input.catalogItemId)
+      : null;
     // O atalho do catálogo pré-preenche o código; o que vier explícito vence.
     const fields = {
       failureModeCode: input.failureModeCode ?? catalogItem?.failureModeCode ?? null,
@@ -76,7 +78,10 @@ export class EventsService {
           vehicleId: input.vehicleId,
           catalogItemId: input.catalogItemId,
           ...fields,
-          failureCode: fields.failureModeCode && fields.subsystemCode ? composeFailureCode(fields.failureModeCode, fields.subsystemCode, fields.position) : null,
+          failureCode:
+            fields.failureModeCode && fields.subsystemCode
+              ? composeFailureCode(fields.failureModeCode, fields.subsystemCode, fields.position)
+              : null,
           isSafety: flags.isSafety,
           isFastTrack: flags.isFastTrack,
           reportedDescription: input.reportedDescription,
@@ -106,7 +111,13 @@ export class EventsService {
       action: 'event.create',
       entity: 'FailureEvent',
       entityId: event.id,
-      after: { code: event.code, vehicleId: input.vehicleId, catalogItemId: input.catalogItemId, failureCode: event.failureCode, flags },
+      after: {
+        code: event.code,
+        vehicleId: input.vehicleId,
+        catalogItemId: input.catalogItemId,
+        failureCode: event.failureCode,
+        flags,
+      },
     });
 
     return this.findOne(event.id);
@@ -134,12 +145,21 @@ export class EventsService {
       ? await this.requireCatalogItem(input.catalogItemId)
       : event.catalogItem;
     const fields = {
-      failureModeCode: input.failureModeCode ?? (input.catalogItemId ? catalogItem?.failureModeCode : event.failureModeCode) ?? null,
-      subsystemCode: input.subsystemCode ?? (input.catalogItemId ? catalogItem?.subsystemCode : event.subsystemCode) ?? null,
+      failureModeCode:
+        input.failureModeCode ??
+        (input.catalogItemId ? catalogItem?.failureModeCode : event.failureModeCode) ??
+        null,
+      subsystemCode:
+        input.subsystemCode ??
+        (input.catalogItemId ? catalogItem?.subsystemCode : event.subsystemCode) ??
+        null,
       position: input.position ?? event.position ?? null,
     };
     const flags = await this.flagsFor(fields, catalogItem);
-    const failureCode = fields.failureModeCode && fields.subsystemCode ? composeFailureCode(fields.failureModeCode, fields.subsystemCode, fields.position) : null;
+    const failureCode =
+      fields.failureModeCode && fields.subsystemCode
+        ? composeFailureCode(fields.failureModeCode, fields.subsystemCode, fields.position)
+        : null;
     const failureName = failureCode ?? catalogItem?.code ?? 'esta falha';
 
     // RF-05 — o bloqueio de segurança vale nos dois destinos que deixam o carro
@@ -152,7 +172,9 @@ export class EventsService {
 
     if (input.destination === TriageDestination.DEFER) {
       if (!flags.isDeferrable) {
-        throw new BadRequestException(`A falha ${failureName} não é deferível segundo as regras do catálogo`);
+        throw new BadRequestException(
+          `A falha ${failureName} não é deferível segundo as regras do catálogo`,
+        );
       }
       await this.requireReasonCode(input.reasonCodeId, ReasonCodeList.EVENT_DEFERRAL);
     }
@@ -219,7 +241,11 @@ export class EventsService {
             data: {
               vehicleId: event.vehicleId,
               description:
-                describeFailureCode(fields.failureModeCode, fields.subsystemCode, fields.position) ??
+                describeFailureCode(
+                  fields.failureModeCode,
+                  fields.subsystemCode,
+                  fields.position,
+                ) ??
                 catalogItem?.description ??
                 event.reportedDescription ??
                 'Falha deferida na triagem',
@@ -374,16 +400,29 @@ export class EventsService {
       : event.catalogItem;
     // Constatação no código composto: explícita, ou herdada do atalho/registro.
     const confirmedFields = {
-      confirmedFailureModeCode: input.confirmedFailureModeCode ?? (input.confirmedCatalogItemId ? confirmed?.failureModeCode : event.failureModeCode) ?? null,
-      confirmedSubsystemCode: input.confirmedSubsystemCode ?? (input.confirmedCatalogItemId ? confirmed?.subsystemCode : event.subsystemCode) ?? null,
+      confirmedFailureModeCode:
+        input.confirmedFailureModeCode ??
+        (input.confirmedCatalogItemId ? confirmed?.failureModeCode : event.failureModeCode) ??
+        null,
+      confirmedSubsystemCode:
+        input.confirmedSubsystemCode ??
+        (input.confirmedCatalogItemId ? confirmed?.subsystemCode : event.subsystemCode) ??
+        null,
       confirmedPosition: input.confirmedPosition ?? event.position ?? null,
     };
     const confirmedFailureCode =
       confirmedFields.confirmedFailureModeCode && confirmedFields.confirmedSubsystemCode
-        ? composeFailureCode(confirmedFields.confirmedFailureModeCode, confirmedFields.confirmedSubsystemCode, confirmedFields.confirmedPosition)
+        ? composeFailureCode(
+            confirmedFields.confirmedFailureModeCode,
+            confirmedFields.confirmedSubsystemCode,
+            confirmedFields.confirmedPosition,
+          )
         : null;
     const flags = await this.flagsFor(
-      { failureModeCode: confirmedFields.confirmedFailureModeCode, subsystemCode: confirmedFields.confirmedSubsystemCode },
+      {
+        failureModeCode: confirmedFields.confirmedFailureModeCode,
+        subsystemCode: confirmedFields.confirmedSubsystemCode,
+      },
       confirmed,
     );
 
@@ -445,7 +484,10 @@ export class EventsService {
         });
       } else {
         // Rebocado ou voltou por meios próprios: segue para a garagem.
-        await tx.failureEvent.update({ where: { id: eventId }, data: { isSafety: flags.isSafety, isFastTrack: flags.isFastTrack } });
+        await tx.failureEvent.update({
+          where: { id: eventId },
+          data: { isSafety: flags.isSafety, isFastTrack: flags.isFastTrack },
+        });
         await this.recallToGarage(tx, {
           eventId,
           vehicleId: event.vehicleId,
@@ -479,7 +521,11 @@ export class EventsService {
       action: 'field.outcome',
       entity: 'FieldService',
       entityId: event.fieldService.id,
-      after: { outcome: input.outcome, confirmedCatalogItemId: input.confirmedCatalogItemId, confirmedFailureCode },
+      after: {
+        outcome: input.outcome,
+        confirmedCatalogItemId: input.confirmedCatalogItemId,
+        confirmedFailureCode,
+      },
     });
 
     return this.findOne(eventId);
@@ -503,9 +549,32 @@ export class EventsService {
   }
 
   async list(query: EventQuery): Promise<Paginated<FailureEventSummary>> {
+    const contains = (value: string): Prisma.StringFilter => ({
+      contains: value,
+      mode: 'insensitive',
+    });
+    const and: Prisma.FailureEventWhereInput[] = [];
+    if (query.vehicle)
+      and.push({
+        vehicle: { OR: [{ code: contains(query.vehicle) }, { plate: contains(query.vehicle) }] },
+      });
+    if (query.failure) {
+      and.push({
+        OR: [
+          { catalogItem: { description: contains(query.failure) } },
+          { reportedDescription: contains(query.failure) },
+          { ccoDefect: contains(query.failure) },
+        ],
+      });
+    }
     const where: Prisma.FailureEventWhereInput = {
       ...(query.status ? { status: query.status } : {}),
       ...(query.vehicleId ? { vehicleId: query.vehicleId } : {}),
+      ...(query.origin ? { origin: query.origin } : {}),
+      ...(query.code ? { code: contains(query.code) } : {}),
+      ...(query.failureCode ? { failureCode: contains(query.failureCode) } : {}),
+      ...(query.workOrder === 'with' ? { workOrder: { isNot: null } } : {}),
+      ...(query.workOrder === 'without' ? { workOrder: null } : {}),
       // Fila de triagem: registrados que ainda não têm decisão.
       ...(query.pendingTriage ? { triage: null, status: EventStatus.REGISTERED } : {}),
       ...(query.from || query.to
@@ -516,6 +585,7 @@ export class EventsService {
             },
           }
         : {}),
+      ...(and.length ? { AND: and } : {}),
     };
 
     const [rows, total] = await this.prisma.$transaction([
@@ -537,7 +607,11 @@ export class EventsService {
     ]);
 
     const rules = await this.rules();
-    return paginate(rows.map((r) => toSummary(r, rules)), total, { page: query.page, perPage: query.perPage });
+    return paginate(
+      rows.map((r) => toSummary(r, rules)),
+      total,
+      { page: query.page, perPage: query.perPage },
+    );
   }
 
   async summary(): Promise<EventsSummary> {
@@ -545,7 +619,9 @@ export class EventsService {
     startOfToday.setHours(0, 0, 0, 0);
     const [registeredToday, awaitingTriage, deferred, openRows, rules] = await Promise.all([
       this.prisma.failureEvent.count({ where: { reportedAt: { gte: startOfToday } } }),
-      this.prisma.failureEvent.count({ where: { status: { in: [EventStatus.REGISTERED, EventStatus.IN_TRIAGE] } } }),
+      this.prisma.failureEvent.count({
+        where: { status: { in: [EventStatus.REGISTERED, EventStatus.IN_TRIAGE] } },
+      }),
       this.prisma.failureEvent.count({ where: { status: EventStatus.DEFERRED } }),
       this.prisma.failureEvent.findMany({
         where: { status: { notIn: [EventStatus.CLOSED, EventStatus.CANCELLED] } },
@@ -632,7 +708,10 @@ function toSummary(event: EventWithRelations, rules: FailureCodeRule[]): Failure
     position: event.position,
     failureCode: event.failureCode,
     // Ocorrência real importada: o texto da ficha (alegado → constatado) diz mais que o código genérico do de-para.
-    failureLabel: event.isImported && event.reportedDescription ? realEventLabel(event.reportedDescription) : describeFailureCode(event.failureModeCode, event.subsystemCode, event.position),
+    failureLabel:
+      event.isImported && event.reportedDescription
+        ? realEventLabel(event.reportedDescription)
+        : describeFailureCode(event.failureModeCode, event.subsystemCode, event.position),
     flags,
     reportedDescription: event.reportedDescription,
     origin: event.origin,
@@ -673,5 +752,8 @@ export function realEventLabel(text: string): string {
   const parts = text.split(' · ');
   const found = parts.find((p) => p.startsWith('constatado: '));
   const first = parts[0]?.startsWith('CCO: ') ? parts[0].slice(5) : parts[0];
-  return [first, found ? `→ ${found.slice('constatado: '.length)}` : null].filter(Boolean).join(' ').slice(0, 90);
+  return [first, found ? `→ ${found.slice('constatado: '.length)}` : null]
+    .filter(Boolean)
+    .join(' ')
+    .slice(0, 90);
 }

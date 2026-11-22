@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import {
   EVENT_ORIGIN_LABELS,
   EVENT_STATUS_LABELS,
@@ -19,7 +19,11 @@ import { formatDateTime } from '@/lib/format';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { Drawer } from '@/components/ui/drawer';
 import { FailureCodePicker } from '@/components/failure-code/failure-code-picker';
-import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
+import {
+  EMPTY_FAILURE_CODE,
+  toCodeFields,
+  type FailureCodeValue,
+} from '@/components/failure-code/failure-code.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { pagerOf, usePagerState } from '@/lib/pager';
@@ -35,32 +39,87 @@ import { useUiState } from '@/features/auth/use-ui-pref';
 export function EventsPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  // Filtros por coluna, todos salvos na conta; o texto vai à API depois de uma pausa na digitação.
   const [status, setStatus] = useUiState<EventStatus | ''>('eventos.status', '');
+  const [code, setCode] = useUiState<string>('eventos.code', '');
+  const [vehicle, setVehicle] = useUiState<string>('eventos.vehicle', '');
+  const [failureCode, setFailureCode] = useUiState<string>('eventos.failureCode', '');
+  const [failure, setFailure] = useUiState<string>('eventos.failure', '');
+  const [origin, setOrigin] = useUiState<EventOrigin | ''>('eventos.origin', '');
+  const [from, setFrom] = useUiState<string>('eventos.from', '');
+  const [to, setTo] = useUiState<string>('eventos.to', '');
+  const [wo, setWo] = useUiState<'' | 'with' | 'without'>('eventos.wo', '');
+  const codeQ = useDeferredValue(code.trim());
+  const vehicleQ = useDeferredValue(vehicle.trim());
+  const failureCodeQ = useDeferredValue(failureCode.trim());
+  const failureQ = useDeferredValue(failure.trim());
+  const filterKey = [status, codeQ, vehicleQ, failureCodeQ, failureQ, origin, from, to, wo].join(
+    '|',
+  );
+  const anyFilter = filterKey.replace(/\|/g, '') !== '';
+  const clearFilters = () => {
+    setStatus('');
+    setCode('');
+    setVehicle('');
+    setFailureCode('');
+    setFailure('');
+    setOrigin('');
+    setFrom('');
+    setTo('');
+    setWo('');
+  };
+  const qs = new URLSearchParams();
+  if (status) qs.set('status', status);
+  if (codeQ) qs.set('code', codeQ);
+  if (vehicleQ) qs.set('vehicle', vehicleQ);
+  if (failureCodeQ) qs.set('failureCode', failureCodeQ);
+  if (failureQ) qs.set('failure', failureQ);
+  if (origin) qs.set('origin', origin);
+  if (from) qs.set('from', `${from}T00:00:00`);
+  if (to) qs.set('to', `${to}T23:59:59.999`);
+  if (wo) qs.set('workOrder', wo);
+  const filterQs = qs.toString();
 
   usePageHeader({
     eyebrow: 'Operação',
     title: 'Eventos',
     description: 'Registro de falhas com o catálogo ajudando — hora e local automáticos.',
     actions: (
-      <button type="button" className="tp-btn tp-btn--primary tp-btn--sm" onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="tp-btn tp-btn--primary tp-btn--sm"
+        onClick={() => setOpen(true)}
+      >
         <Plus size={14} /> Registrar evento
       </button>
     ),
   });
 
   // A tabela vem paginada da API (são milhares de eventos); os números do topo contam a base inteira.
-  const paging = usePagerState('events', status);
+  const paging = usePagerState('events', filterKey);
   const events = useQuery({
-    queryKey: ['events', 'list', paging.page, paging.pageSize, status],
-    queryFn: () => api.get<Paginated<FailureEventSummary>>(`/events?page=${paging.page}&perPage=${paging.pageSize}${status ? `&status=${status}` : ''}`),
+    queryKey: ['events', 'list', paging.page, paging.pageSize, filterKey],
+    queryFn: () =>
+      api.get<Paginated<FailureEventSummary>>(
+        `/events?page=${paging.page}&perPage=${paging.pageSize}${filterQs ? `&${filterQs}` : ''}`,
+      ),
     placeholderData: keepPreviousData,
     refetchInterval: 30_000,
   });
-  const summary = useQuery({ queryKey: ['events', 'summary'], queryFn: () => api.get<EventsSummary>('/events/summary'), refetchInterval: 30_000 });
+  const summary = useQuery({
+    queryKey: ['events', 'summary'],
+    queryFn: () => api.get<EventsSummary>('/events/summary'),
+    refetchInterval: 30_000,
+  });
 
   const rows = events.data?.data ?? [];
   const pager = pagerOf(paging, events.data?.meta.total ?? 0);
-  const { registeredToday = 0, awaitingTriage = 0, safetyOpen = 0, deferred = 0 } = summary.data ?? {};
+  const {
+    registeredToday = 0,
+    awaitingTriage = 0,
+    safetyOpen = 0,
+    deferred = 0,
+  } = summary.data ?? {};
 
   return (
     <>
@@ -91,26 +150,29 @@ export function EventsPage() {
         <div className="tp-card__head">
           <div>
             <h3>Eventos</h3>
-            <span className="chart__hint">o mais recente primeiro — 20 por página, mude o tamanho no rodapé</span>
+            <span className="chart__hint">
+              o mais recente primeiro — 20 por página, mude o tamanho no rodapé
+            </span>
           </div>
           <div className="tp-card__tools">
-            <select className="tp-select" style={{ maxWidth: 220 }} value={status} onChange={(e) => setStatus(e.target.value as EventStatus | '')}>
-              <option value="">Todos os estados</option>
-              {Object.entries(EVENT_STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+            {anyFilter && (
+              <button
+                type="button"
+                className="tp-btn tp-btn--ghost tp-btn--sm"
+                onClick={clearFilters}
+              >
+                <X size={14} aria-hidden /> Limpar filtros
+              </button>
+            )}
             <span className="tp-muted">{pager.total.toLocaleString('pt-BR')} evento(s)</span>
           </div>
         </div>
 
         {events.isPending ? (
           <BrandLoader size={44} label="Carregando" />
-        ) : rows.length === 0 ? (
-          <div className="tp-table__empty">Nenhum evento registrado.</div>
         ) : (
           <div className="tp-table-wrap">
-            <table className="tp-table">
+            <table className="tp-table tp-table--filters">
               <thead>
                 <tr>
                   <th>Evento</th>
@@ -122,19 +184,146 @@ export function EventsPage() {
                   <th>Registrado</th>
                   <th>OS</th>
                 </tr>
+                {/* Filtros por coluna: um controle embaixo de cada título, salvos na conta. */}
+                <tr className="tp-table__filters">
+                  <th>
+                    <input
+                      type="text"
+                      className="tp-input"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      placeholder="EV-…"
+                      aria-label="Filtrar por evento"
+                    />
+                  </th>
+                  <th>
+                    <input
+                      type="text"
+                      className="tp-input"
+                      value={vehicle}
+                      onChange={(e) => setVehicle(e.target.value)}
+                      placeholder="Prefixo ou placa"
+                      aria-label="Filtrar por carro"
+                    />
+                  </th>
+                  <th>
+                    <input
+                      type="text"
+                      className="tp-input"
+                      value={failureCode}
+                      onChange={(e) => setFailureCode(e.target.value)}
+                      placeholder="NR-031…"
+                      aria-label="Filtrar por código"
+                    />
+                  </th>
+                  <th>
+                    <input
+                      type="text"
+                      className="tp-input"
+                      value={failure}
+                      onChange={(e) => setFailure(e.target.value)}
+                      placeholder="Descrição"
+                      aria-label="Filtrar por falha"
+                    />
+                  </th>
+                  <th>
+                    <select
+                      className="tp-select"
+                      value={origin}
+                      onChange={(e) => setOrigin(e.target.value as EventOrigin | '')}
+                      aria-label="Filtrar por origem"
+                    >
+                      <option value="">Todas</option>
+                      {Object.entries(EVENT_ORIGIN_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th>
+                    <select
+                      className="tp-select"
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value as EventStatus | '')}
+                      aria-label="Filtrar por estado"
+                    >
+                      <option value="">Todos</option>
+                      {Object.entries(EVENT_STATUS_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </th>
+                  <th>
+                    <span className="tp-table__dates">
+                      <input
+                        type="date"
+                        className="tp-input"
+                        value={from}
+                        max={to || undefined}
+                        onChange={(e) => setFrom(e.target.value)}
+                        aria-label="Registrado de"
+                      />
+                      <input
+                        type="date"
+                        className="tp-input"
+                        value={to}
+                        min={from || undefined}
+                        onChange={(e) => setTo(e.target.value)}
+                        aria-label="Registrado até"
+                      />
+                    </span>
+                  </th>
+                  <th>
+                    <select
+                      className="tp-select"
+                      value={wo}
+                      onChange={(e) => setWo(e.target.value as '' | 'with' | 'without')}
+                      aria-label="Filtrar por OS"
+                    >
+                      <option value="">Todas</option>
+                      <option value="with">Com OS</option>
+                      <option value="without">Sem OS</option>
+                    </select>
+                  </th>
+                </tr>
               </thead>
               <tbody>
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="tp-table__empty-row">
+                      {anyFilter ? 'Nenhum evento com esses filtros.' : 'Nenhum evento registrado.'}
+                    </td>
+                  </tr>
+                )}
                 {rows.map((event) => (
                   <tr key={event.id}>
                     <td className="is-strong">{event.code}</td>
                     <td>
                       {event.vehicleCode}
-                      <span className="tp-muted" style={{ marginLeft: 6 }}>{event.vehiclePlate}</span>
+                      <span className="tp-muted" style={{ marginLeft: 6 }}>
+                        {event.vehiclePlate}
+                      </span>
                     </td>
-                    <td>{event.failureCode ? <code className="fcode__inline">{event.failureCode}</code> : <span className="tp-muted">—</span>}</td>
+                    <td>
+                      {event.failureCode ? (
+                        <code className="fcode__inline">{event.failureCode}</code>
+                      ) : (
+                        <span className="tp-muted">—</span>
+                      )}
+                    </td>
                     <td className="is-wrap">
-                      {event.failureLabel ?? event.catalog?.description ?? event.reportedDescription ?? '—'}
-                      {event.flags.isSafety && <span className="tp-badge tp-badge--danger" style={{ marginLeft: 6 }}>segurança</span>}
+                      {event.failureLabel ??
+                        event.catalog?.description ??
+                        event.reportedDescription ??
+                        '—'}
+                      {event.flags.isSafety && (
+                        <span className="tp-badge tp-badge--danger" style={{ marginLeft: 6 }}>
+                          segurança
+                        </span>
+                      )}
                     </td>
                     <td className="tp-muted">{EVENT_ORIGIN_LABELS[event.origin]}</td>
                     <td>
@@ -144,7 +333,11 @@ export function EventsPage() {
                     </td>
                     <td className="tp-muted">{formatDateTime(event.reportedAt)}</td>
                     <td>
-                      {event.workOrderId ? <Link to={`/os/${event.workOrderId}`}>{event.workOrderCode}</Link> : '—'}
+                      {event.workOrderId ? (
+                        <Link to={`/os/${event.workOrderId}`}>{event.workOrderCode}</Link>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -185,7 +378,15 @@ function statusBadge(status: EventStatus): string {
   }
 }
 
-function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
+function NewEventDrawer({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
   const [vehicleId, setVehicleId] = useState('');
   const [catalogItemId, setCatalogItemId] = useState('');
   const [code, setCode] = useState<FailureCodeValue>(EMPTY_FAILURE_CODE);
@@ -214,11 +415,19 @@ function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: 
   const pickShortcut = (id: string) => {
     setCatalogItemId(id);
     const item = (catalog.data?.data ?? []).find((i) => i.id === id);
-    if (item?.failureModeCode && item.subsystemCode) setCode({ failureModeCode: item.failureModeCode, subsystemCode: item.subsystemCode, position: '' });
+    if (item?.failureModeCode && item.subsystemCode)
+      setCode({
+        failureModeCode: item.failureModeCode,
+        subsystemCode: item.subsystemCode,
+        position: '',
+      });
   };
 
   const mutation = useMutation({
-    meta: { success: (d: unknown) => `Evento ${(d as { code?: string } | undefined)?.code ?? ''} registrado — segue para a triagem` },
+    meta: {
+      success: (d: unknown) =>
+        `Evento ${(d as { code?: string } | undefined)?.code ?? ''} registrado — segue para a triagem`,
+    },
     mutationFn: (body: CreateEventInput) => api.post<FailureEventSummary>('/events', body),
     onSuccess: () => {
       setVehicleId('');
@@ -230,7 +439,8 @@ function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: 
       setError(null);
       onCreated();
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao registrar o evento'),
+    onError: (err) =>
+      setError(err instanceof ApiError ? err.message : 'Falha ao registrar o evento'),
   });
 
   return (
@@ -271,20 +481,36 @@ function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: 
         <label className="tp-label" htmlFor="ev-vehicle">
           Carro <span className="tp-label__required">obrigatório</span>
         </label>
-        <select id="ev-vehicle" className="tp-select" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
+        <select
+          id="ev-vehicle"
+          className="tp-select"
+          value={vehicleId}
+          onChange={(e) => setVehicleId(e.target.value)}
+        >
           <option value="">Selecione…</option>
           {(vehicles.data?.data ?? []).map((v) => (
-            <option key={v.id} value={v.id}>{v.code} — {v.plate}</option>
+            <option key={v.id} value={v.id}>
+              {v.code} — {v.plate}
+            </option>
           ))}
         </select>
       </div>
 
       <div className="tp-field">
-        <label className="tp-label" htmlFor="ev-cat">Falha frequente <span className="tp-label__hint">atalho — preenche o código abaixo</span></label>
-        <select id="ev-cat" className="tp-select" value={catalogItemId} onChange={(e) => pickShortcut(e.target.value)}>
+        <label className="tp-label" htmlFor="ev-cat">
+          Falha frequente <span className="tp-label__hint">atalho — preenche o código abaixo</span>
+        </label>
+        <select
+          id="ev-cat"
+          className="tp-select"
+          value={catalogItemId}
+          onChange={(e) => pickShortcut(e.target.value)}
+        >
           <option value="">Escolher pelo código…</option>
           {(catalog.data?.data ?? []).map((item) => (
-            <option key={item.id} value={item.id}>{item.code} — {item.description}</option>
+            <option key={item.id} value={item.id}>
+              {item.code} — {item.description}
+            </option>
           ))}
         </select>
       </div>
@@ -299,7 +525,9 @@ function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: 
             </div>
             <div>
               <dt>Reparo estimado</dt>
-              <dd>{selected.estimatedRepairMinutes ? `${selected.estimatedRepairMinutes} min` : '—'}</dd>
+              <dd>
+                {selected.estimatedRepairMinutes ? `${selected.estimatedRepairMinutes} min` : '—'}
+              </dd>
             </div>
             <div>
               <dt>Resolve em campo</dt>
@@ -311,40 +539,83 @@ function NewEventDrawer({ open, onClose, onCreated }: { open: boolean; onClose: 
             </div>
           </dl>
           {selected.isSafety && (
-            <div className="tp-alert tp-alert--danger">Falha de segurança: bloqueia retorno à linha e deferimento (RF-05).</div>
+            <div className="tp-alert tp-alert--danger">
+              Falha de segurança: bloqueia retorno à linha e deferimento (RF-05).
+            </div>
           )}
           {selected.isFastTrack && (
-            <div className="tp-alert tp-alert--info">Fast-track: ao recolher, a OS e a priorização são geradas pelo sistema (RF-06).</div>
+            <div className="tp-alert tp-alert--info">
+              Fast-track: ao recolher, a OS e a priorização são geradas pelo sistema (RF-06).
+            </div>
           )}
         </div>
       )}
 
       <div className="tp-stack">
-        <h3>Código da falha <span className="tp-label__hint">Modo × Sistema/Subsistema × Posição</span></h3>
-        <FailureCodePicker value={code} onChange={setCode} catalogFlags={selected ?? null} idPrefix="ev" />
+        <h3>
+          Código da falha{' '}
+          <span className="tp-label__hint">Modo × Sistema/Subsistema × Posição</span>
+        </h3>
+        <FailureCodePicker
+          value={code}
+          onChange={setCode}
+          catalogFlags={selected ?? null}
+          idPrefix="ev"
+        />
       </div>
 
       <div className="tp-field">
-        <label className="tp-label" htmlFor="ev-desc">Observação <span className="tp-label__hint">texto livre, não entra no código</span></label>
-        <textarea id="ev-desc" className="tp-textarea" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+        <label className="tp-label" htmlFor="ev-desc">
+          Observação <span className="tp-label__hint">texto livre, não entra no código</span>
+        </label>
+        <textarea
+          id="ev-desc"
+          className="tp-textarea"
+          rows={3}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
       </div>
 
       <div className="tp-facts">
         <div className="tp-field">
-          <label className="tp-label" htmlFor="ev-line">Linha</label>
-          <input id="ev-line" className="tp-input" value={lineCode} onChange={(e) => setLineCode(e.target.value)} />
+          <label className="tp-label" htmlFor="ev-line">
+            Linha
+          </label>
+          <input
+            id="ev-line"
+            className="tp-input"
+            value={lineCode}
+            onChange={(e) => setLineCode(e.target.value)}
+          />
         </div>
         <div className="tp-field">
-          <label className="tp-label" htmlFor="ev-origin">Origem</label>
-          <select id="ev-origin" className="tp-select" value={origin} onChange={(e) => setOrigin(e.target.value as EventOrigin)}>
+          <label className="tp-label" htmlFor="ev-origin">
+            Origem
+          </label>
+          <select
+            id="ev-origin"
+            className="tp-select"
+            value={origin}
+            onChange={(e) => setOrigin(e.target.value as EventOrigin)}
+          >
             {Object.entries(EVENT_ORIGIN_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
         </div>
         <div className="tp-field is-full">
-          <label className="tp-label" htmlFor="ev-loc">Local</label>
-          <input id="ev-loc" className="tp-input" value={location} onChange={(e) => setLocation(e.target.value)} />
+          <label className="tp-label" htmlFor="ev-loc">
+            Local
+          </label>
+          <input
+            id="ev-loc"
+            className="tp-input"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+          />
         </div>
       </div>
 

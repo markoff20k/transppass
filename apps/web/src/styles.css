@@ -2214,6 +2214,33 @@ small.muted {
 /* Arrastar seleciona: cursor de mira e sem seleção de texto no meio do gesto. */
 .chart--zoomable .recharts-wrapper { cursor: crosshair; user-select: none; -webkit-user-select: none; }
 
+/* ---- Filtros por coluna (segunda linha do cabeçalho da tabela) --------------- */
+.tp-table__filters th {
+  top: var(--tp-table-head-h, 41px);
+  padding: 4px 8px 8px;
+  font-weight: var(--tp-weight-normal);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.tp-table__filters th:first-child { padding-left: var(--tp-space-4); }
+.tp-table__filters input.tp-input,
+.tp-table__filters select.tp-select {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: var(--tp-text-xs);
+  border-color: var(--color-border);
+}
+.tp-table__filters input.tp-input::placeholder { color: var(--color-text-muted); opacity: 0.8; }
+.tp-table__dates { display: inline-flex; gap: 4px; }
+.tp-table__dates input.tp-input { width: 128px; }
+.tp-table__empty-row { padding: var(--tp-space-6) var(--tp-space-4); text-align: center; color: var(--color-text-muted); }
+
+/* Gráficos com zoom: o clique para arrastar não deixa a borda de foco. */
+.chart--zoomable .recharts-wrapper:focus:not(:focus-visible) { outline: none; }
+
 /* ---- Letreiro de avisos (uma linha, como o painel de destino do ônibus) -- */
 
 /* Um cartão como os outros da página: mesmo vidro, mesmo raio, mesma sombra.
