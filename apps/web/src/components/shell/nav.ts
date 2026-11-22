@@ -44,6 +44,11 @@ export interface NavItem {
   roles?: UserRole[];
   /** Subitens: o detalhe de um indicador mora embaixo de Indicadores, não solto no menu. */
   children?: NavItem[];
+  /**
+   * Tela pausada a pedido do cliente: continua no código, mas sai do menu e dos
+   * atalhos, e a rota volta para o Dashboard. O texto diz qual ajuste pausou.
+   */
+  paused?: string;
 }
 
 export interface NavGroup {
@@ -62,7 +67,7 @@ export const NAV_GROUPS: NavGroup[] = [
     key: 'operation',
     items: [
       { to: '/', key: 'dashboard', icon: LayoutDashboard },
-      { to: '/daily', key: 'daily', icon: Sunrise, roles: [ADMIN, PCM, MANUTENCAO, CCO, PLANTAO, GESTAO] },
+      { to: '/daily', key: 'daily', icon: Sunrise, roles: [ADMIN, PCM, MANUTENCAO, CCO, PLANTAO, GESTAO], paused: 'Ajuste 6 do cliente' },
       { to: '/frota', key: 'fleet', icon: Bus },
       { to: '/checklist', key: 'dailyCheck', icon: ListChecks, roles: [ADMIN, PCM, MANUTENCAO, MECANICO, INSPETOR, CCO, PLANTAO] },
       { to: '/eventos', key: 'events', icon: Activity, roles: [ADMIN, CCO, PCM, MANUTENCAO, INSPETOR, LIMPEZA] },
@@ -78,7 +83,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/os', key: 'workOrders', icon: Wrench, roles: [ADMIN, MANUTENCAO, MECANICO, INSPETOR, PCM, LIMPEZA] },
       { to: '/estoque', key: 'stock', icon: Package, roles: [ADMIN, ESTOQUE, MANUTENCAO, PCM] },
-      { to: '/qualidade-pecas', key: 'partsLab', icon: FlaskConical, roles: [ADMIN, ESTOQUE, MANUTENCAO, PCM, INSPETOR] },
+      { to: '/qualidade-pecas', key: 'partsLab', icon: FlaskConical, roles: [ADMIN, ESTOQUE, MANUTENCAO, PCM, INSPETOR], paused: 'Ajuste 11 do cliente' },
       { to: '/componentes', key: 'components', icon: Cog, roles: [ADMIN, PCM, MANUTENCAO, GESTAO] },
     ],
   },
@@ -116,8 +121,13 @@ export const NAV_GROUPS: NavGroup[] = [
 
 /** Os itens que o perfil pode ver, na ordem do menu. */
 export function navItemsFor(role: UserRole | undefined): NavItem[] {
-  return NAV_GROUPS.flatMap((g) => g.items).filter((i) => !i.roles || (role !== undefined && i.roles.includes(role)));
+  return NAV_GROUPS.flatMap((g) => g.items).filter((i) => !i.paused && (!i.roles || (role !== undefined && i.roles.includes(role))));
 }
+
+/** Rotas das telas pausadas (ajustes 6 e 11): o roteador as manda de volta ao Dashboard. */
+export const PAUSED_PATHS = new Set(
+  NAV_GROUPS.flatMap((g) => g.items.flatMap((i) => [i, ...(i.children ?? [])])).filter((i) => i.paused).map((i) => i.to),
+);
 
 export function navItemByKey(key: string): NavItem | undefined {
   return NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === key);

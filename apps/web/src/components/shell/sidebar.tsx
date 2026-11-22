@@ -20,7 +20,7 @@ export function Sidebar({ collapsed, onToggleCollapse, onNavigate, drawer, onClo
   const { user, logout } = useAuth();
   const { t } = useI18n();
 
-  const allowed = (i: NavItem) => !i.roles || (user && i.roles.includes(user.role));
+  const allowed = (i: NavItem) => !i.paused && (!i.roles || (user && i.roles.includes(user.role)));
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
     items: g.items.filter(allowed).map((i) => (i.children ? { ...i, children: i.children.filter(allowed) } : i)),

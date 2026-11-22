@@ -1,4 +1,6 @@
+import type { ReactElement } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { PAUSED_PATHS } from '@/components/shell/nav';
 import { ProtectedRoute } from '@/features/auth/protected-route';
 import { AppShell } from '@/components/shell/app-shell';
 import { DashboardPage } from '@/pages/dashboard-page';
@@ -36,6 +38,14 @@ import { VehiclePage } from '@/pages/vehicle-page';
 import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/password-pages';
 import { FirstAccessPage } from '@/pages/first-access-page';
 
+/**
+ * Tela pausada pelo cliente (ajustes 6 e 11): o componente continua no projeto
+ * e volta com uma linha em nav.ts; enquanto isso, quem abre o endereço cai no Dashboard.
+ */
+function screen(path: string, element: ReactElement) {
+  return { path, element: PAUSED_PATHS.has(path) ? <Navigate to="/" replace /> : element };
+}
+
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/esqueci-senha', element: <ForgotPasswordPage /> },
@@ -52,7 +62,7 @@ export const router = createBrowserRouter([
           { path: '/', element: <DashboardPage /> },
           { path: '/frota', element: <FleetPanelPage /> },
           { path: '/frota/:id', element: <VehiclePage /> },
-          { path: '/daily', element: <DailyPage /> },
+          screen('/daily', <DailyPage />),
           { path: '/checklist', element: <DailyCheckPage /> },
           { path: '/km', element: <OdometerEntryPage /> },
           { path: '/cadastros/frota', element: <VehiclesPage /> },
@@ -62,7 +72,7 @@ export const router = createBrowserRouter([
           { path: '/cadastros/materiais', element: <MaterialsPage /> },
           { path: '/cadastros/tecnicos', element: <TechniciansPage /> },
           { path: '/cadastros/fornecedores', element: <SuppliersPage /> },
-          { path: '/qualidade-pecas', element: <PartsLabPage /> },
+          screen('/qualidade-pecas', <PartsLabPage />),
           { path: '/auditorias', element: <AuditsPage /> },
           { path: '/componentes', element: <ComponentsPage /> },
           // R1 — Corretivo e execucao
