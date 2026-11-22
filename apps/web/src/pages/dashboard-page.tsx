@@ -25,6 +25,7 @@ import { BackFoot, BackHead, FlipButton, MaintenanceBack } from '@/components/fl
 import { useFlip } from '@/components/fleet/use-flip';
 import { NoticeBoard, TickerSwitch } from '@/components/dashboard/notice-board';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
+import { useUiPref } from '@/features/auth/use-ui-pref';
 import {
   AvailabilityByHourChart,
   DowntimeDonut,
@@ -555,7 +556,7 @@ function MkbfBack({ data }: { data: DashboardData }) {
         <BackRow label={t.dash.back.topSystems} value={t.dash.back.noReturns} />
       ) : (
         b.topSystems
-          .slice(0, 2)
+          .slice(0, 1)
           .map((sys, i) => (
             <BackRow
               key={sys.name}
@@ -929,33 +930,23 @@ function DashboardSkeleton() {
 // Período do histórico: na URL (?dias=90) para ser compartilhável, e lembrado
 // no navegador para a pessoa não escolher de novo a cada visita.
 
-const PERIOD_KEY = 'tp.dash.days';
-
 function isPeriod(n: number): n is (typeof DASHBOARD_PERIODS)[number] {
   return (DASHBOARD_PERIODS as readonly number[]).includes(n);
 }
 
-function readPeriod(raw: string | null): number {
-  const fromUrl = Number(raw);
-  if (raw && isPeriod(fromUrl)) return fromUrl;
-  try {
-    const saved = Number(localStorage.getItem(PERIOD_KEY));
-    if (isPeriod(saved)) return saved;
-  } catch {
-    /* sem storage */
-  }
-  return DEFAULT_DASHBOARD_PERIOD;
-}
-
+/** Período: a URL (compartilhável) vence quando traz um; senão vale o salvo na conta. */
 function useDashboardPeriod(): [number, (days: number) => void] {
   const [params, setParams] = useSearchParams();
-  const days = readPeriod(params.get('dias'));
+  const [saved, setSaved] = useUiPref<number>('dash.days', DEFAULT_DASHBOARD_PERIOD);
+  const fromUrl = Number(params.get('dias'));
+  const days =
+    params.get('dias') && isPeriod(fromUrl)
+      ? fromUrl
+      : isPeriod(saved)
+        ? saved
+        : DEFAULT_DASHBOARD_PERIOD;
   const set = (d: number) => {
-    try {
-      localStorage.setItem(PERIOD_KEY, String(d));
-    } catch {
-      /* sem storage */
-    }
+    setSaved(d);
     const next = new URLSearchParams(params);
     next.set('dias', String(d));
     setParams(next, { replace: true });

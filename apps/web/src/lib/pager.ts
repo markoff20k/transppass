@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useUiPref } from '@/features/auth/use-ui-pref';
 
 /**
  * Paginação única do sistema: toda tabela mostra 20 linhas por página e o
- * usuário escolhe outro tamanho, que fica guardado por tabela neste navegador.
+ * usuário escolhe outro tamanho, que fica guardado por tabela na conta dele
+ * (volta igual depois de refresh, logoff ou em outro navegador).
  *
  * Dois modos, a mesma barra:
  *  - lista em memória: `usePager(key, rows.length)` e `pager.slice(rows)`;
@@ -27,18 +29,10 @@ export interface PagerModel extends PagerState {
   slice: <T>(rows: T[]) => T[];
 }
 
-function readSize(key: string): number {
-  try {
-    const n = Number(localStorage.getItem(`tp.pageSize.${key}`));
-    return (PAGE_SIZES as readonly number[]).includes(n) ? n : DEFAULT_PAGE_SIZE;
-  } catch {
-    return DEFAULT_PAGE_SIZE;
-  }
-}
-
 /** Página e tamanho da página; `resetKey` muda quando os filtros mudam e volta à página 1. */
 export function usePagerState(key: string, resetKey = ''): PagerState {
-  const [pageSize, setSize] = useState(() => readSize(key));
+  const [saved, setSaved] = useUiPref<number>(`pageSize.${key}`, DEFAULT_PAGE_SIZE);
+  const pageSize = (PAGE_SIZES as readonly number[]).includes(saved) ? saved : DEFAULT_PAGE_SIZE;
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -46,13 +40,8 @@ export function usePagerState(key: string, resetKey = ''): PagerState {
   }, [resetKey]);
 
   const setPageSize = (size: number) => {
-    setSize(size);
+    setSaved(size);
     setPage(1);
-    try {
-      localStorage.setItem(`tp.pageSize.${key}`, String(size));
-    } catch {
-      /* sem persistência: a escolha vale só nesta tela */
-    }
   };
 
   return { page, pageSize, setPage, setPageSize };
@@ -69,7 +58,7 @@ export function pagerOf(state: PagerState, total: number): PagerModel {
     pages,
     from: total === 0 ? 0 : start + 1,
     to: Math.min(total, start + state.pageSize),
-    slice: <T,>(rows: T[]) => rows.slice(start, start + state.pageSize),
+    slice: <T>(rows: T[]) => rows.slice(start, start + state.pageSize),
   };
 }
 
