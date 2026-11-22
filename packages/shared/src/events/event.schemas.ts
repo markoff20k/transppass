@@ -133,7 +133,14 @@ export const createEventSchema = z.object({
   locationDescription: z.string().trim().max(255).optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
+  /** Item 12: RE de quem registra. Sem ele, a API usa a matrícula do cadastro da pessoa. */
+  reporterRegistration: z.string().trim().min(1, 'Informe o RE').max(32).optional(),
+  /** Item 13: data e hora do evento. Sem ela, vale a hora do registro. */
+  reportedAt: z.coerce.date().optional(),
 }).superRefine(positionRefinement('subsystemCode', 'position'));
+
+/** Item 13: até quanto tempo para trás a data do evento pode ser ajustada. */
+export const EVENT_BACKDATE_MAX_DAYS = 7;
 
 export const eventQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -210,6 +217,14 @@ export const fieldOutcomeSchema = z.object({
 })
   .superRefine(positionRefinement('confirmedSubsystemCode', 'confirmedPosition'));
 
+/** Item 16: tempo estimado do reparo na rua, informado (ou confirmado) pelo técnico. */
+export const fieldEstimateSchema = z.object({
+  minutes: z.coerce.number().int('Minutos inteiros').min(5, 'No mínimo 5 minutos').max(720, 'No máximo 12 horas'),
+});
+
+/** Sugestão quando não há catálogo nem histórico: o limite do PAM. */
+export const DEFAULT_FIELD_REPAIR_MINUTES = 30;
+
 export const dispatchFieldServiceSchema = z.object({
   technicianId: z.string().uuid().optional(),
   supportVehicleCode: z.string().trim().max(16).optional(),
@@ -221,6 +236,7 @@ export type TriageInput = z.infer<typeof triageSchema>;
 export type FieldStepInput = z.infer<typeof fieldStepSchema>;
 export type FieldOutcomeInput = z.infer<typeof fieldOutcomeSchema>;
 export type DispatchFieldServiceInput = z.infer<typeof dispatchFieldServiceSchema>;
+export type FieldEstimateInput = z.infer<typeof fieldEstimateSchema>;
 
 /** Inteligência do catálogo exibida no registro e na triagem (RF-02). */
 export interface CatalogIntelligence {
@@ -263,6 +279,8 @@ export interface FailureEventSummary {
   origin: EventOrigin;
   status: EventStatus;
   reportedAt: string;
+  /** Item 12: RE de quem registrou. */
+  reporterRegistration: string | null;
   lineCode: string | null;
   locationDescription: string | null;
   isUnscheduledReturn: boolean;
@@ -287,6 +305,12 @@ export interface FailureEventSummary {
     outcome: FieldOutcome | null;
     supportVehicleCode: string | null;
     confirmedFailureCode: string | null;
+    /** Item 16: estimativa gravada pelo técnico (null enquanto ninguém confirmou). */
+    estimatedRepairMinutes: number | null;
+    estimateSetAt: string | null;
+    /** O que o sistema sugere: a mediana real de rua do subsistema; sem ela, 30 min no PAM e o tempo do catálogo no Socorro. */
+    suggestedRepairMinutes: number;
+    suggestionSource: 'catalog' | 'history' | 'default';
   } | null;
   workOrderId: string | null;
   workOrderCode: string | null;

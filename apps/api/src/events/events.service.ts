@@ -10,6 +10,9 @@ import {
 } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import {
+  DEFAULT_FIELD_REPAIR_MINUTES,
+  EVENT_BACKDATE_MAX_DAYS,
+  type FieldEstimateInput,
   FAST_TRACK_ENABLED,
   FIELD_OUTCOMES_RETURNING_TO_LINE,
   FieldOutcome,
@@ -75,6 +78,21 @@ export class EventsService {
     };
     const flags = await this.flagsFor(fields, catalogItem);
 
+    // Item 13: a data vem preenchida com o agora e pode ser ajustada, mas nunca para o futuro.
+    const now = Date.now();
+    const reportedAt = input.reportedAt ?? new Date(now);
+    if (reportedAt.getTime() > now + 5 * 60_000) {
+      throw new BadRequestException('A data e hora do evento não pode estar no futuro');
+    }
+    if (reportedAt.getTime() < now - EVENT_BACKDATE_MAX_DAYS * 86_400_000) {
+      throw new BadRequestException(`A data do evento pode voltar no máximo ${EVENT_BACKDATE_MAX_DAYS} dias`);
+    }
+    // Item 12: o RE digitado; sem ele, a matrícula do cadastro de quem registra.
+    const reporterRegistration =
+      input.reporterRegistration ??
+      (await this.prisma.user.findUnique({ where: { id: actorId }, select: { registration: true } }))?.registration ??
+      null;
+
     const event = await this.prisma.$transaction(async (tx) => {
       const created = await tx.failureEvent.create({
         data: {
@@ -88,6 +106,8 @@ export class EventsService {
               : null,
           isSafety: flags.isSafety,
           isFastTrack: flags.isFastTrack,
+          reportedAt,
+          reporterRegistration,
           reportedDescription: input.reportedDescription,
           origin: input.origin,
           operatorId: input.operatorId,
@@ -387,6 +407,53 @@ export class EventsService {
     return this.findOne(eventId);
   }
 
+  /**
+   * Item 16: o técnico confirma ou ajusta o tempo estimado do reparo na rua. A
+   * previsão de término conta a partir do início do reparo (ou de agora, se o
+   * reparo ainda não começou).
+   */
+  async fieldEstimate(eventId: string, input: FieldEstimateInput, actorId: string): Promise<FailureEventSummary> {
+    const field = await this.prisma.fieldService.findUnique({ where: { eventId } });
+    if (!field) throw new NotFoundException('Atendimento na rua não encontrado para este evento');
+    if (field.outcome || field.finishedAt) throw new BadRequestException('Este atendimento já terminou');
+    await this.prisma.fieldService.update({
+      where: { eventId },
+      data: { estimatedRepairMinutes: input.minutes, estimateSetAt: new Date() },
+    });
+    await this.audit.write({
+      actorId,
+      action: 'field.estimate',
+      entity: 'FieldService',
+      entityId: field.id,
+      before: { estimatedRepairMinutes: field.estimatedRepairMinutes },
+      after: { estimatedRepairMinutes: input.minutes },
+    });
+    return this.findOne(eventId);
+  }
+
+  private repairMediansCache: { at: number; map: Map<string, number> } | null = null;
+
+  /**
+   * Mediana real do reparo na rua (início → fim) por subsistema, com no mínimo
+   * cinco atendimentos. Guardada por 10 minutos: muda devagar.
+   */
+  private async fieldRepairMedians(): Promise<Map<string, number>> {
+    if (this.repairMediansCache && Date.now() - this.repairMediansCache.at < 600_000) return this.repairMediansCache.map;
+    const rows = await this.prisma.$queryRaw<{ subsystem: string; minutes: number }[]>`
+      select coalesce(fs."confirmedSubsystemCode", e."subsystemCode") as subsystem,
+             percentile_cont(0.5) within group (order by extract(epoch from fs."finishedAt" - fs."startedAt") / 60)::float as minutes
+        from field_services fs
+        join failure_events e on e.id = fs."eventId"
+       where fs."startedAt" is not null and fs."finishedAt" > fs."startedAt"
+         and fs."finishedAt" - fs."startedAt" < interval '12 hours'
+         and coalesce(fs."confirmedSubsystemCode", e."subsystemCode") is not null
+       group by 1
+      having count(*) >= 5`;
+    const map = new Map(rows.map((r) => [r.subsystem, Math.max(5, Math.round(Number(r.minutes) / 5) * 5)]));
+    this.repairMediansCache = { at: Date.now(), map };
+    return map;
+  }
+
   /** Desfecho em um botão. É aqui que a taxa de campo do catálogo se realimenta. */
   async fieldOutcome(
     eventId: string,
@@ -564,7 +631,7 @@ export class EventsService {
       },
     });
     if (!event) throw new NotFoundException('Evento não encontrado');
-    return toSummary(event, await this.rules());
+    return toSummary(event, await this.rules(), event.fieldService ? await this.fieldRepairMedians() : undefined);
   }
 
   async list(query: EventQuery): Promise<Paginated<FailureEventSummary>> {
@@ -626,8 +693,9 @@ export class EventsService {
     ]);
 
     const rules = await this.rules();
+    const medians = rows.some((r) => r.fieldService) ? await this.fieldRepairMedians() : undefined;
     return paginate(
-      rows.map((r) => toSummary(r, rules)),
+      rows.map((r) => toSummary(r, rules, medians)),
       total,
       { page: query.page, perPage: query.perPage },
     );
@@ -698,8 +766,18 @@ type EventWithRelations = Prisma.FailureEventGetPayload<{
   };
 }>;
 
-function toSummary(event: EventWithRelations, rules: FailureCodeRule[]): FailureEventSummary {
+function toSummary(event: EventWithRelations, rules: FailureCodeRule[], medians?: Map<string, number>): FailureEventSummary {
   const flags = resolveFailureFlags(rules, event, event.catalogItem);
+  // Item 16: o sistema sugere — a mediana real do reparo na rua para o subsistema;
+  // sem histórico, o PAM sugere o próprio limite (30 min) e o Socorro, o tempo do catálogo.
+  const catalogMinutes = event.catalogItem?.estimatedRepairMinutes ?? null;
+  const historyMinutes = event.subsystemCode ? (medians?.get(event.subsystemCode) ?? null) : null;
+  const isPam = event.fieldService?.kind === FieldServiceKind.PAM;
+  const suggestion: { minutes: number; source: 'catalog' | 'history' | 'default' } = historyMinutes
+    ? { minutes: historyMinutes, source: 'history' }
+    : !isPam && catalogMinutes
+      ? { minutes: catalogMinutes, source: 'catalog' }
+      : { minutes: DEFAULT_FIELD_REPAIR_MINUTES, source: 'default' };
   return {
     id: event.id,
     code: event.code,
@@ -736,6 +814,7 @@ function toSummary(event: EventWithRelations, rules: FailureCodeRule[]): Failure
     origin: event.origin,
     status: event.status,
     reportedAt: event.reportedAt.toISOString(),
+    reporterRegistration: event.reporterRegistration,
     lineCode: event.lineCode,
     locationDescription: event.locationDescription,
     isUnscheduledReturn: event.isUnscheduledReturn,
@@ -761,6 +840,10 @@ function toSummary(event: EventWithRelations, rules: FailureCodeRule[]): Failure
           outcome: event.fieldService.outcome,
           supportVehicleCode: event.fieldService.supportVehicleCode,
           confirmedFailureCode: event.fieldService.confirmedFailureCode,
+          estimatedRepairMinutes: event.fieldService.estimatedRepairMinutes,
+          estimateSetAt: event.fieldService.estimateSetAt?.toISOString() ?? null,
+          suggestedRepairMinutes: suggestion.minutes,
+          suggestionSource: suggestion.source,
         }
       : null,
     workOrderId: event.workOrder?.id ?? null,

@@ -342,7 +342,7 @@ export const r1Handlers = [
     else if (status) rows = all.filter((e) => e.status === status);
     // Um evento aguardando triagem e um socorro em campo, para os contadores da sidebar.
     if (pending && rows.length === 0) rows = [{ ...all[3]!, id: 'ev-pend', code: 'EV-2026-000143', status: EventStatus.REGISTERED, vehicleCode: '10005', vehiclePlate: 'ABC1D27', waitingSeconds: 25 * 60, reportedAt: ago(0.4) }];
-    if (status === EventStatus.FIELD_SERVICE && rows.length === 0) rows = [{ ...all[2]!, id: 'ev-field', code: 'EV-2026-000144', status: EventStatus.FIELD_SERVICE, vehicleCode: '10006', vehiclePlate: 'ABC1D28', reportedAt: ago(1.2), fieldService: { id: 'fs-1', kind: 'SOCORRO', reclassifiedAt: ago(0.6), dispatchedAt: ago(1.1), arrivedAt: ago(0.7), startedAt: null, finishedAt: null, outcome: null, supportVehicleCode: 'APOIO-2', confirmedFailureCode: null } }];
+    if (status === EventStatus.FIELD_SERVICE && rows.length === 0) rows = [{ ...all[2]!, id: 'ev-field', code: 'EV-2026-000144', status: EventStatus.FIELD_SERVICE, vehicleCode: '10006', vehiclePlate: 'ABC1D28', reportedAt: ago(1.2), fieldService: { id: 'fs-1', kind: 'SOCORRO', reclassifiedAt: ago(0.6), dispatchedAt: ago(1.1), arrivedAt: ago(0.7), startedAt: null, finishedAt: null, outcome: null, supportVehicleCode: 'APOIO-2', confirmedFailureCode: null, estimatedRepairMinutes: null, estimateSetAt: null, suggestedRepairMinutes: 30, suggestionSource: 'default' } }];
     return HttpResponse.json(pageOf(rows, url));
   }),
   http.get('*/api/events/summary', () => HttpResponse.json({ registeredToday: 4, awaitingTriage: 1, safetyOpen: 2, deferred: 6 })),

@@ -1058,7 +1058,10 @@ model FailureEvent {
   origin              EventOrigin
   status              EventStatus @default(REGISTERED)
   reportedById        String      @db.Uuid
+  /// Item 13: data e hora do evento; vem preenchida com a hora do registro e pode ser ajustada.
   reportedAt          DateTime    @default(now())
+  /// Item 12: RE (registro) do colaborador que registrou o evento, como digitado na hora.
+  reporterRegistration String?    @db.VarChar(32)
   operatorId          String?     @db.Uuid
   lineCode            String?     @db.VarChar(16)
   locationDescription String?     @db.VarChar(255)
@@ -1153,6 +1156,9 @@ model FieldService {
   kind                     FieldServiceKind @default(SOCORRO)
   /// Quando o PAM passou de 30 minutos e foi reclassificado como Socorro.
   reclassifiedAt           DateTime?
+  /// Item 16: tempo estimado do reparo na rua, sugerido pelo sistema e ajustado pelo técnico.
+  estimatedRepairMinutes   Int?
+  estimateSetAt            DateTime?
   arrivedAt                DateTime?
   startedAt                DateTime?
   finishedAt               DateTime?

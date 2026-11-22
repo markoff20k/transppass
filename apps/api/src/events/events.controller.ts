@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
+  fieldEstimateSchema,
+  type FieldEstimateInput,
   createEventSchema,
   dispatchFieldServiceSchema,
   eventQuerySchema,
@@ -90,6 +92,17 @@ export class EventsController {
     @CurrentUser('sub') actorId: string,
   ): Promise<FailureEventSummary> {
     return this.events.fieldStep(id, body, actorId);
+  }
+
+  /** Item 16: o técnico confirma ou ajusta o tempo estimado do reparo. */
+  @Post(':id/field/estimate')
+  @Roles(UserRole.ADMIN, UserRole.SOCORRO, UserRole.PCM, UserRole.CCO)
+  estimate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(fieldEstimateSchema)) body: FieldEstimateInput,
+    @CurrentUser('sub') actorId: string,
+  ): Promise<FailureEventSummary> {
+    return this.events.fieldEstimate(id, body, actorId);
   }
 
   @Post(':id/field/outcome')

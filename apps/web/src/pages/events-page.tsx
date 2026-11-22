@@ -3,6 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, X } from 'lucide-react';
 import {
+  EVENT_BACKDATE_MAX_DAYS,
   FAST_TRACK_ENABLED,
   EVENT_ORIGIN_LABELS,
   EVENT_STATUS_LABELS,
@@ -26,6 +27,7 @@ import {
   type FailureCodeValue,
 } from '@/components/failure-code/failure-code.utils';
 import { BrandLoader } from '@/components/brand/brand-loader';
+import { useAuth } from '@/features/auth/use-auth';
 import { Pager } from '@/components/ui/pager';
 import { pagerOf, usePagerState } from '@/lib/pager';
 import { useUiState } from '@/features/auth/use-ui-pref';
@@ -104,7 +106,7 @@ export function EventsPage() {
   usePageHeader({
     eyebrow: 'Operação',
     title: 'Eventos',
-    description: 'Registro de falhas com o catálogo ajudando — hora e local automáticos.',
+    description: 'Registro de falhas com o catálogo ajudando — data e hora preenchidas e ajustáveis.',
     actions: (
       <button
         type="button"
@@ -352,7 +354,10 @@ export function EventsPage() {
                         {EVENT_STATUS_LABELS[event.status]}
                       </span>
                     </td>
-                    <td className="tp-muted">{formatDateTime(event.reportedAt)}</td>
+                    <td className="tp-muted">
+                      {formatDateTime(event.reportedAt)}
+                      {event.reporterRegistration && <span className="ev-re">RE {event.reporterRegistration}</span>}
+                    </td>
                     <td>
                       {event.workOrderId ? (
                         <Link to={`/os/${event.workOrderId}`}>{event.workOrderCode}</Link>
@@ -416,6 +421,24 @@ function NewEventDrawer({
   const [location, setLocation] = useState('');
   const [origin, setOrigin] = useState<EventOrigin>(EventOrigin.CCO);
   const [error, setError] = useState<string | null>(null);
+  // Item 12: RE de quem registra, preenchido com a matrícula do cadastro.
+  const { user } = useAuth();
+  const [registration, setRegistration] = useState(user?.registration ?? '');
+  // Item 13: data e hora do evento, preenchidas com o agora a cada abertura e editáveis.
+  const [occurredAt, setOccurredAt] = useState(() => toLocalInput(new Date()));
+  useEffect(() => {
+    if (!open) return;
+    setOccurredAt(toLocalInput(new Date()));
+    setRegistration((r) => r || user?.registration || '');
+  }, [open, user?.registration]);
+  const occurred = occurredAt ? new Date(occurredAt) : null;
+  const occurredError = !occurred || Number.isNaN(occurred.getTime())
+    ? 'Informe a data e a hora'
+    : occurred.getTime() > Date.now() + 5 * 60_000
+      ? 'A data e hora não pode estar no futuro'
+      : occurred.getTime() < Date.now() - EVENT_BACKDATE_MAX_DAYS * 86_400_000
+        ? `Pode voltar no máximo ${EVENT_BACKDATE_MAX_DAYS} dias`
+        : null;
 
   const vehicles = useQuery({
     queryKey: ['vehicles', 'select'],
@@ -457,6 +480,7 @@ function NewEventDrawer({
       setDescription('');
       setLineCode('');
       setLocation('');
+      setOccurredAt(toLocalInput(new Date()));
       setError(null);
       onCreated();
     },
@@ -470,7 +494,7 @@ function NewEventDrawer({
       onClose={onClose}
       eyebrow="Novo evento"
       title="Registrar evento"
-      description="Hora e local automáticos. A falha do catálogo dirige a triagem (RF-01)."
+      description="Data e hora vêm preenchidas e podem ser ajustadas. A falha do catálogo dirige a triagem (RF-01)."
       footer={
         <>
           <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>
@@ -479,7 +503,7 @@ function NewEventDrawer({
           <button
             type="button"
             className="tp-btn tp-btn--primary"
-            disabled={!vehicleId || !codeComplete || mutation.isPending}
+            disabled={!vehicleId || !codeComplete || !registration.trim() || Boolean(occurredError) || mutation.isPending}
             onClick={() => {
               setError(null);
               mutation.mutate({
@@ -490,6 +514,8 @@ function NewEventDrawer({
                 origin,
                 lineCode: lineCode || undefined,
                 locationDescription: location || undefined,
+                reporterRegistration: registration.trim(),
+                reportedAt: occurred ?? undefined,
               });
             }}
           >
@@ -498,6 +524,38 @@ function NewEventDrawer({
         </>
       }
     >
+      <div className="tp-facts">
+        <div className="tp-field">
+          <label className="tp-label" htmlFor="ev-re">
+            RE do colaborador <span className="tp-label__required">obrigatório</span>
+          </label>
+          <input
+            id="ev-re"
+            className="tp-input"
+            value={registration}
+            onChange={(e) => setRegistration(e.target.value)}
+            maxLength={32}
+            inputMode="numeric"
+            autoComplete="off"
+          />
+          <span className="tp-help">Registro de quem está registrando o evento.</span>
+        </div>
+        <div className="tp-field">
+          <label className="tp-label" htmlFor="ev-when">
+            Data e hora do evento <span className="tp-label__required">obrigatório</span>
+          </label>
+          <input
+            id="ev-when"
+            type="datetime-local"
+            className="tp-input"
+            value={occurredAt}
+            max={toLocalInput(new Date())}
+            onChange={(e) => setOccurredAt(e.target.value)}
+          />
+          {occurredError ? <span className="tp-error">{occurredError}</span> : <span className="tp-help">Preenchida com a hora do registro.</span>}
+        </div>
+      </div>
+
       <div className="tp-field">
         <label className="tp-label" htmlFor="ev-vehicle">
           Carro <span className="tp-label__required">obrigatório</span>
@@ -643,4 +701,10 @@ function NewEventDrawer({
       {error && <div className="tp-alert tp-alert--danger">{error}</div>}
     </Drawer>
   );
+}
+
+/** Valor de um campo datetime-local na hora local (o navegador não aceita ISO com fuso). */
+function toLocalInput(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import {
-  FAILURE_MODES,
   POSITION_OPTIONS,
+  failureModesFor,
   VMRS_SYSTEMS,
   composeFailureCode,
   resolveFailureFlags,
@@ -10,12 +10,15 @@ import {
   type ResolvedFlags,
 } from '@app/shared';
 import { useFailureRules, type FailureCodeValue } from './failure-code.utils';
+import { SearchSelect } from '@/components/ui/search-select';
 
 
 
 /**
- * As três listas do padrão de codificação, em cascata: Modo → Sistema →
- * Subsistema → Posição (só quando o subsistema admite). Sem digitação livre.
+ * As três listas do padrão de codificação, em cascata (itens 14 e 15 do
+ * cliente): primeiro a falha — Sistema → Subsistema —, depois o Modo de falha,
+ * com busca por texto e só com os modos aplicáveis ao sistema; a Posição
+ * aparece quando o subsistema admite. Sem digitação livre.
  * A opção genérica do sistema (-000 / 174-001) vem sempre primeiro.
  *
  * Mostra o código composto e as flags resolvidas pelas regras do PCM — a
@@ -42,28 +45,23 @@ export function FailureCodePicker({
   const positions = subsystem ? POSITION_OPTIONS[subsystem.positionType] : [];
   const complete = Boolean(value.failureModeCode && value.subsystemCode);
   const flags = complete ? resolveFailureFlags(rules.data ?? [], value, catalogFlags ?? null) : null;
+  const modeOptions = useMemo(
+    () =>
+      failureModesFor(systemCode).map((m) => ({ id: m.code, label: m.name, hint: m.code, keywords: m.description })),
+    [systemCode],
+  );
 
   const setSystem = (code: string) => {
-    // Ao trocar o sistema, cai no genérico dele — nunca deixa o subsistema órfão.
+    // Ao trocar o sistema, cai no genérico dele — nunca deixa o subsistema órfão —
+    // e o modo só fica se ainda for aplicável à nova falha.
     const generic = subsystemsOf(code).find((s) => s.isGeneric) ?? subsystemsOf(code)[0];
-    onChange({ ...value, subsystemCode: generic?.code ?? '', position: '' });
+    const keepsMode = failureModesFor(code).some((m) => m.code === value.failureModeCode);
+    onChange({ ...value, subsystemCode: generic?.code ?? '', position: '', failureModeCode: keepsMode ? value.failureModeCode : '' });
   };
 
   return (
     <div className="fcode">
       <div className="fcode__grid">
-        <label className="tp-field">
-          <span className="tp-label" id={`${idPrefix}-mode-label`}>
-            Modo de falha {required && <span className="tp-label__required">obrigatório</span>}
-          </span>
-          <select className="tp-select" aria-labelledby={`${idPrefix}-mode-label`} value={value.failureModeCode} onChange={(e) => onChange({ ...value, failureModeCode: e.target.value })}>
-            <option value="">O que aconteceu…</option>
-            {FAILURE_MODES.map((m) => (
-              <option key={m.code} value={m.code}>{m.code} — {m.name}</option>
-            ))}
-          </select>
-        </label>
-
         <label className="tp-field">
           <span className="tp-label">Sistema {required && <span className="tp-label__required">obrigatório</span>}</span>
           <select className="tp-select" value={systemCode} onChange={(e) => setSystem(e.target.value)}>
@@ -82,6 +80,23 @@ export function FailureCodePicker({
             ))}
           </select>
         </label>
+
+        <div className="tp-field fcode__mode">
+          <label className="tp-label" htmlFor={`${idPrefix}-mode`}>
+            Modo de falha {required && <span className="tp-label__required">obrigatório</span>}
+          </label>
+          <SearchSelect
+            id={`${idPrefix}-mode`}
+            options={modeOptions}
+            value={value.failureModeCode}
+            onChange={(code) => onChange({ ...value, failureModeCode: code })}
+            placeholder={systemCode ? 'Buscar o que aconteceu…' : 'Escolha primeiro o sistema'}
+            disabled={!systemCode}
+            max={modeOptions.length || 12}
+            emptyText="Nenhum modo aplicável com esse texto"
+          />
+          {systemCode && <span className="tp-help">{modeOptions.length} modos aplicáveis a {systemByCodeName(systemCode)}</span>}
+        </div>
 
         {positions.length > 0 && (
           <label className="tp-field">
@@ -107,6 +122,10 @@ export function FailureCodePicker({
       )}
     </div>
   );
+}
+
+function systemByCodeName(code: string): string {
+  return VMRS_SYSTEMS.find((s) => s.code === code)?.name.toLowerCase() ?? 'este sistema';
 }
 
 export function FlagBadges({ flags }: { flags: ResolvedFlags }) {

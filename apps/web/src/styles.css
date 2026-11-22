@@ -5613,3 +5613,22 @@ a.bus-card:hover { transform: translateY(-1px); }
 .bus-stage .bus-card__text { grid-template-rows: 18px 18px 18px 22px 20px 18px; }
 .bus-card__tech, .bus-card__line { font-size: var(--tp-text-xs); line-height: 18px; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bus-card__line { color: var(--color-text-secondary); }
+
+/* Item 12: RE de quem registrou, embaixo da data na tabela de eventos. */
+.ev-re { display: block; font-size: var(--tp-text-2xs); color: var(--color-text-muted); }
+
+/* Item 14: o modo de falha (busca) ocupa a linha toda, depois da falha. */
+.fcode__mode { grid-column: 1 / -1; }
+
+/* Item 16: tempo estimado do reparo no cartão do atendimento na rua. */
+.field-estimate { min-width: 0; max-width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: var(--tp-space-2); min-height: 44px; padding: 6px 6px 6px var(--tp-space-3); border-radius: 8px; background: var(--color-surface-sunken); color: var(--color-text); font-size: var(--tp-text-sm); }
+.field-estimate > svg { flex: none; color: var(--color-brand); }
+.field-estimate__text { flex: 1; min-width: 0; line-height: 1.3; }
+.field-estimate__sub { display: block; font-size: var(--tp-text-xs); color: var(--color-text-secondary); }
+.field-estimate.is-suggested > svg { color: var(--color-text-secondary); }
+.field-estimate.is-late { background: var(--color-danger-soft); }
+.field-estimate.is-late > svg, .field-estimate.is-late b, .field-estimate.is-late .field-estimate__sub { color: var(--color-danger); }
+.field-estimate__presets { display: flex; flex-wrap: wrap; gap: var(--tp-space-2); }
+.field-estimate__presets .is-active { border-color: var(--color-brand); color: var(--color-brand); }
+/* Item 13: o campo de data e hora com a mesma altura dos outros campos (a regra global de input vence classes). */
+input.tp-input[type="datetime-local"] { height: 36px; padding-top: 0; padding-bottom: 0; }

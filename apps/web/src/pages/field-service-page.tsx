@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, LifeBuoy, MapPin, Plus, Radio, Route, Trash2 } from 'lucide-react';
+import { Check, LifeBuoy, MapPin, Plus, Radio, Route, Timer, Trash2 } from 'lucide-react';
 import {
+  DEFAULT_FIELD_REPAIR_MINUTES,
   FAST_TRACK_ENABLED,
   EventStatus,
   FIELD_OUTCOME_LABELS,
@@ -171,6 +172,7 @@ function FieldCard({
   const [error, setError] = useState<string | null>(null);
   const [outcomeOpen, setOutcomeOpen] = useState(false);
   const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [estimateOpen, setEstimateOpen] = useState(false);
   const field = event.fieldService;
   const stage = stageOf(event);
   const next = NEXT_STEP[stage];
@@ -247,6 +249,8 @@ function FieldCard({
         })}
       </ol>
 
+      {field && <RepairEstimate field={field} now={now} onEdit={() => setEstimateOpen(true)} />}
+
       <div className="field-card__clock">
         <span className={`field-card__elapsed${elapsed > 60 ? ' is-late' : ''}`}>
           {stage === 'finished' ? 'Reparo concluído' : `Na rua há ${formatMinutes(elapsed)}`}
@@ -288,6 +292,17 @@ function FieldCard({
           onClose={() => setDispatchOpen(false)}
           onDone={() => {
             setDispatchOpen(false);
+            onChanged();
+          }}
+        />
+      )}
+      {estimateOpen && field && (
+        <EstimateDrawer
+          event={event}
+          field={field}
+          onClose={() => setEstimateOpen(false)}
+          onDone={() => {
+            setEstimateOpen(false);
             onChanged();
           }}
         />
@@ -473,6 +488,118 @@ function OutcomeDrawer({
 }
 
 /** RF-04 — despacho: qual viatura de apoio foi com a equipe. */
+type FieldInfo = NonNullable<FailureEventSummary['fieldService']>;
+
+const SUGGESTION_SOURCE: Record<FieldInfo['suggestionSource'], string> = {
+  catalog: 'tempo de reparo do catálogo para esta falha',
+  history: 'mediana real dos atendimentos na rua deste subsistema',
+  default: `sem histórico de rua para esta falha: o limite do PAM (${DEFAULT_FIELD_REPAIR_MINUTES} min)`,
+};
+
+/**
+ * Item 16 — tempo estimado do reparo na rua. Antes da confirmação, mostra a
+ * sugestão do sistema; depois, a estimativa do técnico e a previsão de término,
+ * contada do início do reparo (ou da hora em que a estimativa foi dada).
+ */
+function RepairEstimate({ field, now, onEdit }: { field: FieldInfo; now: number; onEdit: () => void }) {
+  const done = Boolean(field.finishedAt || field.outcome);
+  const minutes = field.estimatedRepairMinutes;
+  const base = field.startedAt ?? field.estimateSetAt;
+  const end = minutes && base ? new Date(new Date(base).getTime() + minutes * 60_000) : null;
+  const late = Boolean(end && !done && now > end.getTime());
+  return (
+    <div className={`field-estimate${minutes ? '' : ' is-suggested'}${late ? ' is-late' : ''}`}>
+      <Timer size={14} aria-hidden />
+      <span className="field-estimate__text">
+        {minutes ? (
+          <>
+            Reparo estimado <b>{formatMinutes(minutes)}</b>
+            {end && (
+              <span className="field-estimate__sub">
+                {late ? 'previsto para' : 'término às'} {timeOf(end.toISOString())}
+                {late ? ` · ${formatMinutes(minutesSince(end.toISOString(), now))} além` : ''}
+              </span>
+            )}
+          </>
+        ) : (
+          <>
+            Sugestão do sistema <b>{formatMinutes(field.suggestedRepairMinutes)}</b>
+            <span className="field-estimate__sub" title={SUGGESTION_SOURCE[field.suggestionSource]}>{field.suggestionSource === 'catalog' ? 'catálogo' : field.suggestionSource === 'history' ? 'histórico' : 'padrão'}</span>
+          </>
+        )}
+      </span>
+      {!done && (
+        <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={onEdit}>
+          {minutes ? 'Ajustar' : 'Confirmar'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+const ESTIMATE_PRESETS = [15, 30, 45, 60, 90, 120];
+
+function EstimateDrawer({ event, field, onClose, onDone }: { event: FailureEventSummary; field: FieldInfo; onClose: () => void; onDone: () => void }) {
+  const [minutes, setMinutes] = useState(String(field.estimatedRepairMinutes ?? field.suggestedRepairMinutes));
+  const [error, setError] = useState<string | null>(null);
+  const value = Number(minutes);
+  const invalid = !Number.isInteger(value) || value < 5 || value > 720;
+  const mutation = useMutation({
+    meta: { success: 'Tempo estimado do reparo registrado' },
+    mutationFn: () => api.post(`/events/${event.id}/field/estimate`, { minutes: value }),
+    onSuccess: onDone,
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao registrar a estimativa'),
+  });
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      eyebrow={`Atendimento na rua · carro ${event.vehicleCode}`}
+      title="Tempo estimado do reparo"
+      description="O sistema sugere; o técnico confirma ou ajusta. A previsão de término conta do início do reparo."
+      footer={
+        <>
+          <button type="button" className="tp-btn tp-btn--ghost" onClick={onClose}>Cancelar</button>
+          <button type="button" className="tp-btn tp-btn--primary" disabled={invalid || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'Registrando…' : 'Registrar estimativa'}
+          </button>
+        </>
+      }
+    >
+      <div className="tp-stack">
+        <div className="tp-alert tp-alert--info">
+          <span>
+            Sugestão do sistema: <b>{formatMinutes(field.suggestedRepairMinutes)}</b> — {SUGGESTION_SOURCE[field.suggestionSource]}.
+          </span>
+        </div>
+        <label className="tp-field">
+          <span className="tp-label">Minutos <span className="tp-label__required">obrigatório</span></span>
+          <input
+            className="tp-input"
+            type="number"
+            inputMode="numeric"
+            min={5}
+            max={720}
+            step={5}
+            value={minutes}
+            onChange={(e) => setMinutes(e.target.value)}
+            autoFocus
+          />
+          {invalid ? <span className="tp-error">Entre 5 minutos e 12 horas, em minutos inteiros.</span> : <span className="tp-help">{formatMinutes(value)}</span>}
+        </label>
+        <div className="field-estimate__presets" role="group" aria-label="Atalhos de tempo">
+          {ESTIMATE_PRESETS.map((m) => (
+            <button key={m} type="button" className={`tp-btn tp-btn--ghost tp-btn--sm${value === m ? ' is-active' : ''}`} onClick={() => setMinutes(String(m))}>
+              {formatMinutes(m)}
+            </button>
+          ))}
+        </div>
+        {error && <p className="tp-error">{error}</p>}
+      </div>
+    </Drawer>
+  );
+}
+
 function DispatchDrawer({ event, onClose, onDone }: { event: FailureEventSummary; onClose: () => void; onDone: () => void }) {
   const [code, setCode] = useState(event.fieldService?.supportVehicleCode ?? '');
   const [error, setError] = useState<string | null>(null);

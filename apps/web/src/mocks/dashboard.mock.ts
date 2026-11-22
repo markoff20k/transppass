@@ -242,6 +242,7 @@ export function recentEvents(): FailureEventSummary[] {
     origin: EventOrigin.CCO,
     status: i.status,
     reportedAt: new Date(Date.now() - i.minsAgo * 60_000).toISOString(),
+    reporterRegistration: null,
     lineCode: i.line,
     locationDescription: null,
     isUnscheduledReturn: i.status !== EventStatus.DEFERRED,

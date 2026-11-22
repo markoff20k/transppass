@@ -202,6 +202,36 @@ export const FAILURE_MODE_CODES = FAILURE_MODES.map((m) => m.code) as [string, .
 export const VMRS_SUBSYSTEM_CODES = VMRS_SUBSYSTEMS.map((s) => s.code) as [string, ...string[]];
 export const POSITION_CODES = AXLE_SIDES.map((p) => p.code) as [string, ...string[]];
 
+/**
+ * Itens 14 e 15 do cliente: a escolha é em cascata — primeiro a falha (sistema e
+ * subsistema), depois o modo de falha aplicável a ela. A tabela cobre todas as
+ * combinações já vistas nos eventos reais (ERP-JB e CCO) e acrescenta os modos
+ * que a engenharia de confiabilidade espera para cada sistema. "Inoperante"
+ * vale para todos, como saída genérica.
+ */
+export const SYSTEM_FAILURE_MODES: Readonly<Record<string, readonly string[]>> = {
+  '011': ['IN', 'DM', 'SP', 'PF', 'SA', 'VZ', 'FU', 'BA', 'VB', 'FE', 'FI', 'LA', 'NB', 'QB', 'SO', 'TR'],
+  '013': ['IN', 'VZ', 'FI', 'PF', 'NB', 'FU', 'DM', 'SP', 'QB'],
+  '014': ['IN', 'FE', 'LA', 'NB', 'VZ', 'FI', 'PF'],
+  '019': ['IN', 'NE', 'BA', 'VZ', 'LA', 'FE', 'TR', 'VB', 'PF'],
+  '021': ['IN', 'SF', 'TR', 'VZ', 'BA', 'PL', 'NC', 'QB', 'SO', 'FU', 'LA', 'VB'],
+  '022': ['IN', 'AR', 'BA', 'VZ', 'FU', 'QB', 'SO', 'TD', 'VB'],
+  '023': ['IN', 'DU', 'PL', 'VZ', 'BA', 'QB', 'TD', 'VB', 'SO', 'FU'],
+  '025': ['IN', 'FU', 'BX', 'SO', 'TD', 'VB', 'QB', 'FA', 'PL'],
+  '030': ['IN', 'AP', 'NC', 'SP', 'QC', 'FI', 'CO', 'LA', 'SO', 'QB', 'FA'],
+  '031': ['IN', 'NR', 'VZ', 'BA', 'QC', 'FI', 'LA', 'TR'],
+  '032': ['IN', 'AP', 'FI', 'QB', 'LA', 'FA'],
+  '034': ['IN', 'FE', 'FI', 'LA', 'AP', 'QC', 'DM'],
+  '174': ['IN', 'AF', 'NT', 'QB', 'TD', 'SO', 'TR', 'BA', 'FA', 'VZ', 'SR', 'FI', 'AP'],
+};
+
+/** Modos aplicáveis ao sistema, na ordem do padrão. Sem sistema, nenhum (a cascata começa pela falha). */
+export function failureModesFor(systemCode: string | null | undefined): readonly FailureModeDef[] {
+  if (!systemCode) return [];
+  const allowed = SYSTEM_FAILURE_MODES[systemCode];
+  return allowed ? FAILURE_MODES.filter((m) => allowed.includes(m.code)) : FAILURE_MODES;
+}
+
 export const failureModeByCode = (code: string | null | undefined) => FAILURE_MODES.find((m) => m.code === code) ?? null;
 export const subsystemByCode = (code: string | null | undefined) => VMRS_SUBSYSTEMS.find((s) => s.code === code) ?? null;
 export const systemByCode = (code: string | null | undefined) => VMRS_SYSTEMS.find((s) => s.code === code) ?? null;

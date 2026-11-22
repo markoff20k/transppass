@@ -6,6 +6,8 @@ export interface SearchOption {
   label: string;
   /** Linha secundária: código, placa, matrícula. Também entra na busca. */
   hint?: string;
+  /** Texto extra que só entra na busca (ex.: a descrição do modo de falha). */
+  keywords?: string;
 }
 
 interface Props {
@@ -40,7 +42,7 @@ export function SearchSelect({ id, options, value, onChange, placeholder = 'Busc
   const results = useMemo(() => {
     const q = fold(query.trim());
     const terms = q.split(/\s+/).filter(Boolean);
-    const pool = terms.length ? options.filter((o) => { const hay = fold(`${o.label} ${o.hint ?? ''}`); return terms.every((t) => hay.includes(t)); }) : options;
+    const pool = terms.length ? options.filter((o) => { const hay = fold(`${o.label} ${o.hint ?? ''} ${o.keywords ?? ''}`); return terms.every((t) => hay.includes(t)); }) : options;
     return pool.slice(0, max);
   }, [options, query, max]);
 
