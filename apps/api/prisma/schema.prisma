@@ -266,6 +266,30 @@ model VehicleLineDay {
   @@map("vehicle_line_days")
 }
 
+/// Consumo por carro e dia, da planilha de abastecimento/recarga da Transppass
+/// (Data, Pref_No, Litros/kwh, tecnologia): litros no diesel, kWh no elétrico.
+/// Abastecimentos do mesmo dia chegam somados. Cruzado com o km diário
+/// (OdometerReading.deltaKm) vira km/l e kWh/km.
+model ConsumptionReading {
+  id        String            @id @default(uuid()) @db.Uuid
+  vehicleId String            @db.Uuid
+  date      DateTime          @db.Date
+  energy    VehicleTechnology
+  /// Litros (DIESEL) ou kWh (EBUS) do dia.
+  amount    Decimal           @db.Decimal(10, 2)
+  /// Tecnologia como vem na planilha ("Padron AC", "eArticulado AC"): é o grupo de carros comparáveis.
+  tech      String?           @db.VarChar(40)
+  /// Arquivo de origem (nome da planilha, ou "sintético" nos dados de desenvolvimento).
+  source    String?           @db.VarChar(80)
+  createdAt DateTime          @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, date])
+  @@index([energy, date])
+  @@map("consumption_readings")
+}
+
 model Garage {
   id       String  @id @default(uuid()) @db.Uuid
   code     String  @unique @db.VarChar(16)
@@ -361,6 +385,7 @@ model Vehicle {
   components            VehicleComponent[]
   maintenanceRecords    MaintenanceRecord[]
   lineDays              VehicleLineDay[]
+  consumption           ConsumptionReading[]
 
   @@index([status])
   @@index([technology])

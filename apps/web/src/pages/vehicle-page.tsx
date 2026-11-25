@@ -145,7 +145,10 @@ export function VehiclePage() {
             <div><dt>Fonte de km</dt><dd>{KM_SOURCE_LABELS[v.kmSource]}{v.odometerOffset ? ` · offset ${formatNumber(v.odometerOffset)} km` : ''}</dd></div>
             <div><dt>Km projetado hoje</dt><dd>{o.projectedKm === null ? '—' : `${formatNumber(o.projectedKm)} km`}</dd></div>
           </dl>
-          <Link to={`/cadastros/frota?search=${v.code}`} className="vpage__more">Editar cadastro</Link>
+          <div className="vpage__links">
+            <Link to={`/consumo/carro/${v.id}`} className="vpage__more">{v.technology === 'EBUS' ? 'Consumo de energia' : 'Consumo de diesel'}</Link>
+            <Link to={`/cadastros/frota?search=${v.code}`} className="vpage__more">Editar cadastro</Link>
+          </div>
         </section>
       </div>
 
@@ -160,7 +163,7 @@ export function VehiclePage() {
                   <tr key={r.id}>
                     <td className="tp-muted">{formatDateTime(r.openedAt)}</td>
                     <td className="tp-mono">{r.externalOs}</td>
-                    <td><span className={`tp-badge ${r.isPreventive ? 'tp-badge--success' : ['A', 'S', 'T'].includes(r.kind) ? 'tp-badge--warning' : 'tp-badge--status'}`}>{r.kindLabel ?? r.kind}</span>{r.isPreventive && r.kind !== 'PV' && <span className="mat-sub">com item preventivo</span>}</td>
+                    <td><span className={`tp-badge tp-badge--status${r.isPreventive ? ' tp-badge--success' : ['A', 'S', 'T'].includes(r.kind) ? ' tp-badge--warning' : ''}`}>{r.kindLabel ?? r.kind}</span>{r.isPreventive && r.kind !== 'PV' && <span className="mat-sub">com item preventivo</span>}</td>
                     <td style={{ whiteSpace: 'normal', minWidth: 160 }}><span className="mat-desc">{r.allegedText ?? '—'}</span>{r.allegedDetail && <span className="mat-sub">{r.allegedDetail}</span>}</td>
                     <td style={{ whiteSpace: 'normal', minWidth: 160 }}><span className="mat-desc">{r.foundText ?? '—'}</span>{r.foundCode && <span className="mat-sub tp-mono">{r.foundCode}</span>}</td>
                     <td style={{ whiteSpace: 'normal', minWidth: 180 }} className="tp-muted">{r.actions ?? r.fieldActions ?? '—'}{r.items.length > 0 && <span className="mat-sub">{r.items.map((i) => i.componentLabel).join(' · ')}</span>}</td>

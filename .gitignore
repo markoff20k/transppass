@@ -10,6 +10,7 @@ coverage/
 .turbo/
 apps/api/generated/
 *.tsbuildinfo
+__pycache__/
 apps/api/prisma/data/frota.json
 apps/api/prisma/data/km-real.json
 apps/api/prisma/data/cco.json
@@ -19,6 +20,7 @@ apps/api/prisma/data/linhas-dia.json
 apps/api/prisma/data/codigos-transppass.json
 apps/api/prisma/data/eventos.json
 apps/api/prisma/data/usuarios.json
+apps/api/prisma/data/consumo.json
 docs/roteiro-validacao/shots/
 # dump do banco só viaja cifrado (deploy/banco-transppass.sql.gz.enc)
 deploy/*.sql

@@ -7,6 +7,7 @@ import {
   createTaskSchema,
   finishTaskSchema,
   inspectionSchema,
+  maintenanceHistoryQuerySchema,
   openWorkOrderSchema,
   updateEstimateSchema,
   UserRole,
@@ -17,6 +18,9 @@ import {
   type CreateTaskInput,
   type FinishTaskInput,
   type InspectionInput,
+  type MaintenanceHistoryQuery,
+  type MaintenanceHistoryRow,
+  type MaintenanceHistorySummary,
   type OpenWorkOrderInput,
   type Paginated,
   type UpdateEstimateInput,
@@ -29,6 +33,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { WorkOrdersService } from './work-orders.service';
+import { MaintenanceHistoryService } from './maintenance-history.service';
 
 /** Quem põe a mão no carro: mecânico, manutenção e o administrador. */
 const SHOP_FLOOR = [UserRole.ADMIN, UserRole.MANUTENCAO, UserRole.MECANICO] as const;
@@ -38,13 +43,35 @@ const SHOP_FLOOR = [UserRole.ADMIN, UserRole.MANUTENCAO, UserRole.MECANICO] as c
 @Controller('work-orders')
 @UseGuards(RolesGuard)
 export class WorkOrdersController {
-  constructor(private readonly workOrders: WorkOrdersService) {}
+  constructor(
+    private readonly workOrders: WorkOrdersService,
+    private readonly history: MaintenanceHistoryService,
+  ) {}
 
   @Get()
   list(
     @Query(new ZodValidationPipe(workOrderQuerySchema)) query: WorkOrderQuery,
   ): Promise<Paginated<WorkOrderSummary>> {
     return this.workOrders.list(query);
+  }
+
+  // --- Histórico do ERP-JB ----------------------------------------------------
+  // Fichas importadas das planilhas do cliente (`MaintenanceRecord`), só leitura:
+  // não são a OS viva (`WorkOrder`) e não entram nos KPIs da garagem.
+  // Precisam vir ANTES de ':id', que usa ParseUUIDPipe e devolveria 400 para "history".
+
+  @Get('history')
+  listHistory(
+    @Query(new ZodValidationPipe(maintenanceHistoryQuerySchema)) query: MaintenanceHistoryQuery,
+  ): Promise<Paginated<MaintenanceHistoryRow>> {
+    return this.history.list(query);
+  }
+
+  @Get('history/summary')
+  historySummary(
+    @Query(new ZodValidationPipe(maintenanceHistoryQuerySchema)) query: MaintenanceHistoryQuery,
+  ): Promise<MaintenanceHistorySummary> {
+    return this.history.summary(query);
   }
 
   @Get(':id')

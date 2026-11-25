@@ -95,6 +95,14 @@
  * A seção 8 do PRD exige operação com uma mão e com luva: 48px de altura
  * mínima, texto de 16px e largura cheia no celular.
  */
+/* Botão feito de link (<a>, <Link>): sem o sublinhado e a cor de hover dos links do texto corrido. */
+a.tp-btn { text-decoration: none; }
+a.tp-btn:hover { color: var(--color-action-text); }
+a.tp-btn--primary:hover { color: var(--color-brand-contrast); }
+a.tp-btn--secondary:hover,
+a.tp-btn--ghost:hover { color: var(--color-text); }
+a.tp-btn--danger:hover { color: var(--color-on-danger); }
+
 .tp-btn--touch {
   min-height: var(--tp-touch-min);
   padding: var(--tp-space-3) var(--tp-space-5);
@@ -396,15 +404,19 @@
    Etiqueta
    ========================================================================= */
 
+/* Um formato só para todo selo do sistema: cantos de 8 px (não pílula), 28 px
+   de altura, texto centrado e seminegrito. As variantes mudam só a cor. */
 .tp-badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--tp-space-1);
-  padding: 3px var(--tp-space-3);
+  padding: 4px var(--tp-space-3);
+  min-height: 28px;
   font-size: var(--tp-text-xs);
-  font-weight: var(--tp-weight-medium);
+  font-weight: var(--tp-weight-semibold);
   line-height: 1.5;
-  border-radius: var(--tp-radius-full);
+  border-radius: var(--tp-radius-md);
   background: var(--color-neutral-soft);
   border: var(--tp-border-thin) solid var(--color-neutral-border);
   color: var(--color-neutral-text);
@@ -449,7 +461,7 @@
   /* Estado é um selo sólido, cantos de 8 px, altura fixa: o olho acha a
      coluna de situação sem ler. O neutro (aberta, solicitado) é cinza. */
   padding: 4px var(--tp-space-3);
-  min-height: 24px;
+  min-height: 28px;
   border-radius: var(--tp-radius-md);
   font-weight: var(--tp-weight-semibold);
   letter-spacing: 0.01em;

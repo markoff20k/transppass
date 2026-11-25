@@ -15,6 +15,8 @@ import {
   type QueueEntryRow,
   type R1Metrics,
   type KanbanRow,
+  type MaintenanceHistoryRow,
+  type MaintenanceHistorySummary,
   type ToolRow,
   type WorkOrderDetail,
   type WorkOrderSummary,
@@ -134,6 +136,130 @@ const workOrderList: WorkOrderSummary[] = ['wo-1', 'wo-2'].map((id) => {
   };
 });
 
+/** Fichas do ERP-JB (histórico importado): registros fechados, sem relógio nem portões. */
+const historyVehicles = [
+  { id: vehicles[0]!.id, code: '10001', plate: 'ABC1D23' },
+  { id: vehicles[1]!.id, code: '10002', plate: 'ABC1D24' },
+  { id: vehicles[2]!.id, code: '10003', plate: 'ABC1D25' },
+  { id: '00000000-0000-4000-8000-000000009004', code: '10004', plate: 'ABC1D26' },
+  { id: '00000000-0000-4000-8000-000000009005', code: '10005', plate: 'ABC1D27' },
+];
+const historyKindLabels: Record<string, string> = { A: 'Recolhida Anormal', S: 'Socorro', T: 'Troca', G: 'Garagem', PV: 'Preventiva por km', R: 'Recolhida Normal', OF: 'Oficina (sem ficha)', V: 'Valetamento' };
+const historyRecord = (
+  n: number,
+  vehicle: (typeof historyVehicles)[number],
+  hoursAgo: number,
+  kind: string,
+  fields: Partial<MaintenanceHistoryRow>,
+): MaintenanceHistoryRow => {
+  const materials = fields.materials ?? [];
+  return {
+    id: `mh-${n}`,
+    externalOs: String(880_100 + n),
+    ficha: null,
+    vehicleId: vehicle.id,
+    vehicleCode: vehicle.code,
+    vehiclePlate: vehicle.plate,
+    openedAt: ago(hoursAgo),
+    kind,
+    kindLabel: historyKindLabels[kind] ?? kind,
+    isPreventive: false,
+    isBreakdown: ['A', 'S', 'T'].includes(kind),
+    allegedCode: null,
+    allegedText: null,
+    allegedDetail: null,
+    foundCode: null,
+    foundText: null,
+    actions: null,
+    fieldActions: null,
+    driverName: null,
+    line: null,
+    lot: 'E8',
+    mechanicReg: null,
+    cost: null,
+    items: [],
+    ...fields,
+    materials,
+    partsCost: materials.reduce((sum, m) => sum + m.totalCost, 0),
+  };
+};
+
+const historyRows: MaintenanceHistoryRow[] = [
+  historyRecord(1, historyVehicles[1]!, 6, 'A', {
+    ficha: '41237', allegedCode: 'FR01', allegedText: 'Freio baixo', allegedDetail: 'Pedal afundando na descida da Av. Brasil', foundCode: '021-004', foundText: 'Vazamento na cuíca dianteira direita', actions: 'Substituída cuíca dianteira direita; teste de estanqueidade OK', driverName: 'J. Pereira', line: '3011-10', mechanicReg: '4471',
+    items: [{ componentCode: '021-004', componentLabel: 'Cuíca de freio dianteira', kmAtService: 241_870, kmLimit: null, note: 'Vazamento pela haste' }],
+    materials: [{ materialCode: 'CUI-FR-DT', description: 'Cuíca de freio dianteira 24"', quantity: 1, unitCost: 486.9, totalCost: 486.9 }, { materialCode: 'ABR-FR-01', description: 'Abraçadeira de mangueira de ar', quantity: 2, unitCost: 4.75, totalCost: 9.5 }],
+  }),
+  historyRecord(2, historyVehicles[2]!, 30, 'S', {
+    ficha: '41240', allegedCode: 'NP01', allegedText: 'Não pega', allegedDetail: 'Parou no ponto final, painel apagado', foundCode: '030-001', foundText: 'Alternador sem carga', fieldActions: 'Socorro trocou a correia e fez ponte; carro rebocado para a garagem', driverName: 'M. Souza', line: '2290-10', mechanicReg: '4418',
+    items: [{ componentCode: '030-001', componentLabel: 'Alternador', kmAtService: 312_045, kmLimit: null, note: null }],
+    materials: [{ materialCode: 'CORR-ALT', description: 'Correia do alternador', quantity: 1, unitCost: 92.4, totalCost: 92.4 }],
+  }),
+  historyRecord(3, historyVehicles[0]!, 52, 'T', {
+    ficha: '41251', allegedCode: 'PT02', allegedText: 'Porta não fecha', allegedDetail: 'Porta traseira travando aberta', foundCode: '174-010', foundText: 'Cilindro pneumático da porta traseira com folga', actions: 'Carro trocado em linha; cilindro substituído na garagem', driverName: 'A. Lima', line: '3011-10', mechanicReg: '4471',
+    items: [{ componentCode: '174-010', componentLabel: 'Cilindro da porta traseira', kmAtService: 184_320, kmLimit: null, note: null }],
+    materials: [{ materialCode: 'CIL-PT-TR', description: 'Cilindro pneumático de porta', quantity: 1, unitCost: 318, totalCost: 318 }],
+  }),
+  historyRecord(4, historyVehicles[3]!, 75, 'G', {
+    ficha: '41262', allegedCode: 'AC03', allegedText: 'Ar-condicionado fraco', foundCode: '171-002', foundText: 'Filtro do evaporador saturado', actions: 'Filtro limpo e gás completado', mechanicReg: '4502',
+  }),
+  historyRecord(5, historyVehicles[1]!, 24 * 9, 'PV', {
+    isPreventive: true, allegedText: 'Preventiva por km', foundText: 'Revisão de 240.000 km', actions: 'Troca de óleo e filtros; regulagem de freios', mechanicReg: '4418',
+    items: [
+      { componentCode: '011-001', componentLabel: 'Óleo do motor', kmAtService: 240_010, kmLimit: 260_000, note: null },
+      { componentCode: '011-002', componentLabel: 'Filtro de óleo', kmAtService: 240_010, kmLimit: 260_000, note: null },
+      { componentCode: '021-000', componentLabel: 'Regulagem de freios', kmAtService: 240_010, kmLimit: 250_000, note: 'Lonas em 40%' },
+    ],
+    materials: [{ materialCode: 'OLEO-15W40', description: 'Óleo motor 15W40', quantity: 28, unitCost: 21.9, totalCost: 613.2 }, { materialCode: 'FIL-OL-01', description: 'Filtro de óleo', quantity: 1, unitCost: 68.5, totalCost: 68.5 }],
+  }),
+  historyRecord(6, historyVehicles[4]!, 24 * 12, 'R', {
+    ficha: '41280', allegedCode: 'LM01', allegedText: 'Lâmpada de freio queimada', foundText: 'Lâmpada traseira direita queimada', actions: 'Lâmpada substituída ao recolher', driverName: 'C. Ramos', line: '2290-10', mechanicReg: '4502',
+    materials: [{ materialCode: 'LAMP-21W', description: 'Lâmpada 24V 21W', quantity: 1, unitCost: 6.3, totalCost: 6.3 }],
+  }),
+  historyRecord(7, historyVehicles[2]!, 24 * 15, 'OF', {
+    foundText: 'Ajuste de folga do volante', actions: 'Caixa de direção regulada na oficina', mechanicReg: '4471',
+  }),
+  historyRecord(8, historyVehicles[3]!, 24 * 20, 'V', {
+    ficha: '41301', allegedText: 'Inspeção na valeta', foundText: 'Bucha da barra estabilizadora gasta', actions: 'Buchas substituídas', mechanicReg: '4418',
+    items: [{ componentCode: '033-004', componentLabel: 'Bucha da barra estabilizadora', kmAtService: 61_200, kmLimit: null, note: null }],
+    materials: [{ materialCode: 'BUCH-EST', description: 'Bucha da barra estabilizadora', quantity: 2, unitCost: 38.9, totalCost: 77.8 }],
+  }),
+];
+
+const historyText = (r: MaintenanceHistoryRow) => [r.externalOs, r.ficha, r.vehicleCode, r.vehiclePlate, r.allegedText, r.allegedDetail, r.foundText, r.actions, r.fieldActions].filter(Boolean).join(' ').toLowerCase();
+
+const filterHistory = (url: URL): MaintenanceHistoryRow[] => {
+  const search = (url.searchParams.get('search') ?? '').trim().toLowerCase();
+  const kind = url.searchParams.get('kind') ?? '';
+  const from = url.searchParams.get('from') ?? '';
+  const to = url.searchParams.get('to') ?? '';
+  const onlyBreakdowns = url.searchParams.get('onlyBreakdowns') === 'true';
+  const onlyPreventive = url.searchParams.get('onlyPreventive') === 'true';
+  return historyRows
+    .filter((r) => !search || historyText(r).includes(search))
+    .filter((r) => !kind || r.kind === kind)
+    .filter((r) => !from || r.openedAt.slice(0, 10) >= from)
+    .filter((r) => !to || r.openedAt.slice(0, 10) <= to)
+    .filter((r) => !onlyBreakdowns || r.isBreakdown)
+    .filter((r) => !onlyPreventive || r.isPreventive);
+};
+
+const historySummaryOf = (rows: MaintenanceHistoryRow[]): MaintenanceHistorySummary => {
+  const byKind = new Map<string, number>();
+  for (const r of rows) byKind.set(r.kind, (byKind.get(r.kind) ?? 0) + 1);
+  const dates = rows.map((r) => r.openedAt).sort();
+  return {
+    total: rows.length,
+    breakdowns: rows.filter((r) => r.isBreakdown).length,
+    preventive: rows.filter((r) => r.isPreventive).length,
+    partsCost: rows.reduce((sum, r) => sum + r.partsCost, 0),
+    firstAt: dates[0] ?? null,
+    lastAt: dates[dates.length - 1] ?? null,
+    kinds: [...byKind.entries()].map(([kind, count]) => ({ kind, label: historyKindLabels[kind] ?? kind, count })).sort((a, b) => b.count - a.count || a.kind.localeCompare(b.kind)),
+  };
+};
+const historySummary: MaintenanceHistorySummary = historySummaryOf(historyRows);
+
 const materialRequests: MaterialRequestRow[] = [
   { id: 'mr-1', status: MaterialRequestStatus.WAITING_PART, materialId: 'm-1', materialCode: 'CUI-FR-DT', materialDescription: 'Cuíca de freio dianteira 24"', isSerialized: true, quantity: 1, serialNumber: null, workOrderId: 'wo-2', workOrderCode: 'OS-2026-000040', workOrderTaskId: 'wo-2-t1', taskDescription: 'Substituir cuíca de freio dianteira', vehicleCode: '10003', requestedAt: ago(30), requestedByName: null, separatedAt: null, deliveredAt: null, receivedByName: null, partWaiting: { reasonDescription: 'Aguardando compra', expectedAt: ago(20), isOverdue: true, escalatedAt: ago(2) } },
   { id: 'mr-2', status: MaterialRequestStatus.REQUESTED, materialId: 'm-2', materialCode: 'FIL-AR-01', materialDescription: 'Filtro de ar motor', isSerialized: false, quantity: 2, serialNumber: null, workOrderId: 'wo-1', workOrderCode: 'OS-2026-000041', workOrderTaskId: 'wo-1-t1', taskDescription: 'Substituir válvula APU', vehicleCode: '10002', requestedAt: ago(1.2), requestedByName: null, separatedAt: null, deliveredAt: null, receivedByName: null, partWaiting: null },
@@ -230,6 +356,16 @@ export const r1Handlers = [
   http.post('*/api/queue/reorder', () => HttpResponse.json(queue, { status: 201 })),
 
   http.get('*/api/work-orders', ({ request }) => HttpResponse.json(pageOf(workOrderList, new URL(request.url)))),
+  // Histórico do ERP-JB antes de ':id', senão o parâmetro engole "history".
+  http.get('*/api/work-orders/history', ({ request }) => {
+    const url = new URL(request.url);
+    const rows = filterHistory(url).sort((a, b) => b.openedAt.localeCompare(a.openedAt));
+    return HttpResponse.json(pageOf(rows, url));
+  }),
+  http.get('*/api/work-orders/history/summary', ({ request }) => {
+    const url = new URL(request.url);
+    return HttpResponse.json([...url.searchParams.keys()].length === 0 ? historySummary : historySummaryOf(filterHistory(url)));
+  }),
   http.get('*/api/work-orders/:id', ({ params }) => HttpResponse.json(workOrder(String(params.id)))),
   http.post('*/api/work-orders/*', () => HttpResponse.json(workOrder('wo-1'), { status: 201 })),
   http.patch('*/api/work-orders/*', () => HttpResponse.json(workOrder('wo-1'))),

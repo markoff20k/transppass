@@ -20,6 +20,7 @@ import { avgDailyKm, baseMockUser, catalogItems, newId, reasonCodes, users, vehi
 import { dashboardHandlers } from './dashboard.mock';
 import { r1Handlers } from './r1.mock';
 import { r2Handlers } from './r2.mock';
+import { consumptionHandlers } from './consumption.mock';
 
 /**
  * Handlers do modo mock.
@@ -63,6 +64,7 @@ export const handlers = [
   ...dashboardHandlers,
   ...r1Handlers,
   ...r2Handlers,
+  ...consumptionHandlers,
   // --- Autenticação --------------------------------------------------------
 
   http.post('*/api/auth/login', async ({ request }) => {
@@ -175,6 +177,20 @@ export const handlers = [
   }),
 
   http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })),
+
+  // --- Simulador de demonstração: desligado no mock -------------------------
+  // Sem este handler a chamada vaza pelo proxy do Vite para a API real; se ela
+  // estiver de pé, responde 401 ao token de mentira e derruba a sessão do mock.
+  http.get('*/api/demo', async ({ request }) => {
+    const auth = requireAuth(request, '/api/demo');
+    if ('error' in auth) return auth.error;
+    return HttpResponse.json({ enabled: false, source: 'env', allHours: false, speed: 1, lastPulseAt: null, lastSteps: [], phase: null, phaseError: null });
+  }),
+  http.patch('*/api/demo', async ({ request }) => {
+    const auth = requireAuth(request, '/api/demo');
+    if ('error' in auth) return auth.error;
+    return apiError(400, 'BAD_REQUEST', 'O simulador não existe no modo mock', '/api/demo');
+  }),
 
   // --- Frota ---------------------------------------------------------------
 

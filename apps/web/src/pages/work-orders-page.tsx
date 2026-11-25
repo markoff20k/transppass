@@ -18,7 +18,7 @@ import { BusRender } from '@/components/bus/bus-render';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { pagerOf, usePagerState } from '@/lib/pager';
-
+import { MaintenanceHistorySection } from './work-orders-history';
 
 /** Filtro virtual: os três portões antes de liberar o carro (RN-04). */
 const RELEASING = 'RELEASING';
@@ -270,6 +270,8 @@ export function WorkOrdersPage() {
           </div>
         )}
       </section>
+
+      <MaintenanceHistorySection />
     </>
   );
 }

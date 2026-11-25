@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Cog,
   FlaskConical,
+  Fuel,
   Gauge,
   HardHat,
   LayoutDashboard,
@@ -34,7 +35,7 @@ const {
 
 export type NavKey =
   | 'dashboard' | 'fleet' | 'events' | 'triage' | 'queue' | 'field' | 'scheduling' | 'operations'
-  | 'workOrders' | 'stock' | 'metrics' | 'km' | 'vehicles' | 'catalog' | 'users' | 'plans' | 'materials'
+  | 'workOrders' | 'stock' | 'metrics' | 'consumption' | 'km' | 'vehicles' | 'catalog' | 'users' | 'plans' | 'materials'
   | 'designKit' | 'technicians' | 'daily' | 'dailyCheck' | 'partsLab' | 'suppliers' | 'audits' | 'components';
 
 export interface NavItem {
@@ -84,6 +85,7 @@ export const NAV_GROUPS: NavGroup[] = [
     key: 'management',
     items: [
       { to: '/indicadores', key: 'metrics', icon: BarChart3, roles: [ADMIN, PCM, GESTAO] },
+      { to: '/consumo', key: 'consumption', icon: Fuel, roles: [ADMIN, PCM, GESTAO, MANUTENCAO] },
       { to: '/km', key: 'km', icon: Gauge, roles: [ADMIN, PCM, CCO, MANUTENCAO] },
       { to: '/auditorias', key: 'audits', icon: ShieldCheck, roles: [ADMIN, PCM, GESTAO, MANUTENCAO, ESTOQUE] },
     ],

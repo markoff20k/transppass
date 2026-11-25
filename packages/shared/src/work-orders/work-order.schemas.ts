@@ -341,3 +341,73 @@ export interface WorkOrderSummary {
   taskCount: number;
   tasksDone: number;
 }
+
+// --- Histórico de manutenção: as fichas e OS do ERP-JB ---------------------
+//
+// Importadas das planilhas da Transppass (3-VBM0503, 4-VBM0805 e 8-VBM0404).
+// São registros fechados, sem relógio nem portões: o que a OS viva do sistema
+// substitui daqui para a frente. Vivem em `MaintenanceRecord`, nunca viram
+// `WorkOrder`, e por isso não entram nos KPIs da garagem.
+
+/** Tipos de ficha que contam como quebra no MKBF (carta do cliente, item 3.1.5). */
+export const MAINTENANCE_BREAKDOWN_KINDS: readonly string[] = ['A', 'S', 'T'];
+
+export const maintenanceHistoryQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  perPage: z.coerce.number().int().min(1).max(100).default(20),
+  /** Data local (AAAA-MM-DD) da abertura, inclusive nas duas pontas. */
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida').optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida').optional(),
+  /** Tipo da ficha (A, S, T, G, R, PV, OF…). */
+  kind: z.string().trim().max(2).optional(),
+  /** Só as quebras do MKBF: fichas A, S e T. */
+  onlyBreakdowns: z.coerce.boolean().default(false),
+  /** Só intervenções com item preventivo (KM LIM > 0). */
+  onlyPreventive: z.coerce.boolean().default(false),
+  vehicleId: z.string().uuid().optional(),
+  /** Número da OS, ficha, prefixo, placa ou trecho do alegado/constatado. */
+  search: z.string().trim().max(60).optional(),
+});
+export type MaintenanceHistoryQuery = z.infer<typeof maintenanceHistoryQuerySchema>;
+
+export interface MaintenanceHistoryRow {
+  id: string;
+  externalOs: string;
+  ficha: string | null;
+  vehicleId: string;
+  vehicleCode: string;
+  vehiclePlate: string;
+  openedAt: string;
+  kind: string;
+  kindLabel: string | null;
+  isPreventive: boolean;
+  /** Quebra do MKBF: ficha A, S ou T. */
+  isBreakdown: boolean;
+  allegedCode: string | null;
+  allegedText: string | null;
+  allegedDetail: string | null;
+  foundCode: string | null;
+  foundText: string | null;
+  actions: string | null;
+  fieldActions: string | null;
+  driverName: string | null;
+  line: string | null;
+  lot: string | null;
+  mechanicReg: string | null;
+  cost: number | null;
+  partsCost: number;
+  items: { componentCode: string | null; componentLabel: string; kmAtService: number | null; kmLimit: number | null; note: string | null }[];
+  materials: { materialCode: string | null; description: string; quantity: number; unitCost: number; totalCost: number }[];
+}
+
+/** Totais do período filtrado (mesmos filtros da lista, sem paginação). */
+export interface MaintenanceHistorySummary {
+  total: number;
+  breakdowns: number;
+  preventive: number;
+  partsCost: number;
+  firstAt: string | null;
+  lastAt: string | null;
+  /** Tipos presentes no período, para o filtro, com a contagem de cada um. */
+  kinds: { kind: string; label: string; count: number }[];
+}

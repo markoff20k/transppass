@@ -655,9 +655,38 @@ export async function importRealMovement(prisma: PrismaClient): Promise<void> {
     console.log(`  ${rowsLd.length} carro-linha-dia com km em linha e ocioso`);
   }
 
+  await importConsumption(prisma);
+
   // Os snapshots mensais da frota foram calculados sobre o movimento antigo; apagados, a série é refeita na hora com a base nova.
   const snapshots = await prisma.metricSnapshot.deleteMany({ where: { scope: 'FLEET' } });
   if (snapshots.count) console.log(`  ${snapshots.count} snapshot(s) mensal(is) da frota descartado(s) para recálculo`);
+}
+
+/**
+ * Consumo por carro e dia (planilha de abastecimento/recarga: Data, Pref_No,
+ * Litros/kwh, tecnologia), gerado por tools/dados-reais/gen_consumo.py.
+ * Substitui a carga anterior inteira: a planilha é a fonte, não o banco.
+ * Com `source: "sintético"` são dados de desenvolvimento — o log avisa.
+ */
+export async function importConsumption(prisma: PrismaClient): Promise<void> {
+  type ConsumoJson = { source: string; generatedAt: string; rows: { code: string; date: string; energy: 'DIESEL' | 'EBUS'; amount: number; tech: string | null }[] };
+  const consumo = readJsonIfPresent<ConsumoJson | null>('consumo.json', null);
+  if (!consumo || consumo.rows.length === 0) { console.log('  consumo: arquivo consumo.json ausente'); return; }
+  const vehicles = await prisma.vehicle.findMany({ where: { isImported: true }, select: { id: true, code: true, technology: true } });
+  const byCode = new Map(vehicles.map((v) => [v.code, v]));
+  await prisma.consumptionReading.deleteMany();
+  const source = consumo.source.slice(0, 80);
+  const rows = consumo.rows
+    .filter((r) => byCode.has(r.code) && r.amount > 0)
+    .map((r) => ({ vehicleId: byCode.get(r.code)!.id, date: new Date(`${r.date}T00:00:00Z`), energy: r.energy === 'EBUS' ? VehicleTechnology.EBUS : VehicleTechnology.DIESEL, amount: Math.round(r.amount * 100) / 100, tech: r.tech?.slice(0, 40) ?? null, source }));
+  for (let i = 0; i < rows.length; i += 5000) await prisma.consumptionReading.createMany({ data: rows.slice(i, i + 5000), skipDuplicates: true });
+  const diesel = rows.filter((r) => r.energy === VehicleTechnology.DIESEL);
+  const ebus = rows.filter((r) => r.energy === VehicleTechnology.EBUS);
+  const dates = rows.map((r) => r.date.toISOString().slice(0, 10)).sort();
+  const liters = diesel.reduce((s, r) => s + r.amount, 0);
+  const kwh = ebus.reduce((s, r) => s + r.amount, 0);
+  const tag = consumo.source === 'sintético' ? ' — DADOS SINTÉTICOS de desenvolvimento, não são do cliente' : ` (${consumo.source})`;
+  console.log(`  ${rows.length} carro-dias de consumo${tag}: ${diesel.length} diesel (${Math.round(liters).toLocaleString('pt-BR')} L) e ${ebus.length} elétricos (${Math.round(kwh).toLocaleString('pt-BR')} kWh), de ${dates[0]} a ${dates[dates.length - 1]}`);
 }
 
 if (require.main === module) {

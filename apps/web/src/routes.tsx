@@ -15,6 +15,8 @@ import { WorkOrdersPage } from '@/pages/work-orders-page';
 import { WorkOrderPage } from '@/pages/work-order-page';
 import { StockPage } from '@/pages/stock-page';
 import { MetricsPage } from '@/pages/metrics-page';
+import { ConsumptionPage } from '@/pages/consumption-page';
+import { ConsumptionVehiclePage } from '@/pages/consumption-vehicle-page';
 import { SchedulingPage } from '@/pages/scheduling-page';
 import { OperationsPage } from '@/pages/operations-page';
 import { DesignKitPage } from '@/pages/design-kit-page';
@@ -72,6 +74,8 @@ export const router = createBrowserRouter([
           { path: '/os/:id', element: <WorkOrderPage /> },
           { path: '/estoque', element: <StockPage /> },
           { path: '/indicadores', element: <MetricsPage /> },
+          { path: '/consumo', element: <ConsumptionPage /> },
+          { path: '/consumo/carro/:id', element: <ConsumptionVehiclePage /> },
           { path: '/design', element: <DesignKitPage /> },
           { path: '/perfil', element: <ProfilePage /> },
           // R2 — Preventiva e Plantao
