@@ -51,13 +51,15 @@ export const addUsage = (a: IaUsage, b: IaUsage): IaUsage => ({
   cacheWrite: a.cacheWrite + b.cacheWrite,
 });
 
-/** O erro do provedor em uma frase para a tela (o detalhe técnico vai para o log). */
+/**
+ * O erro do provedor em uma frase para a tela, sem citar fornecedor nem modelo:
+ * para o usuário a IA é só a ia.Transppass (o detalhe técnico vai para o log).
+ */
 export function describeProviderError(err: unknown): string {
-  if (err instanceof Anthropic.AuthenticationError) return 'a chave da Anthropic foi recusada (ANTHROPIC_API_KEY inválida ou sem permissão)';
-  if (err instanceof Anthropic.PermissionDeniedError) return 'a conta da Anthropic não tem permissão para este modelo';
-  if (err instanceof Anthropic.RateLimitError) return 'o limite de uso da Anthropic foi atingido; tente de novo em instantes';
-  if (err instanceof Anthropic.BadRequestError) return `a Anthropic recusou a requisição (${err.message.slice(0, 160)})`;
-  if (err instanceof Anthropic.APIConnectionError) return 'não foi possível falar com a Anthropic (rede ou tempo esgotado)';
-  if (err instanceof Anthropic.APIError) return `a Anthropic respondeu com erro ${err.status ?? ''}`.trim();
-  return err instanceof Error ? err.message : String(err);
+  if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) return 'o acesso da ia.Transppass está mal configurado; avise o administrador do sistema';
+  if (err instanceof Anthropic.RateLimitError) return 'a ia.Transppass está com muitas perguntas agora; tente de novo em instantes';
+  if (err instanceof Anthropic.BadRequestError) return 'a ia.Transppass não conseguiu processar esta pergunta';
+  if (err instanceof Anthropic.APIConnectionError) return 'a ia.Transppass está fora do ar no momento (rede ou tempo esgotado)';
+  if (err instanceof Anthropic.APIError) return `a ia.Transppass respondeu com erro ${err.status ?? ''}`.trim();
+  return 'a ia.Transppass teve um erro inesperado; tente de novo';
 }

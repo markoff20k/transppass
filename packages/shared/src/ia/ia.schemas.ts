@@ -33,7 +33,6 @@ export interface IaStatus {
   /** Há um provedor configurado (chave da Anthropic ou simulado). */
   enabled: boolean;
   provider: IaProviderKind;
-  model: string;
   name: string;
 }
 
@@ -103,7 +102,6 @@ export interface IaReading {
   /** Um parágrafo de abertura: o mês em duas ou três frases. */
   summary: string;
   insights: BoardInsight[];
-  model: string;
   generatedAt: string;
   usage: IaUsage | null;
 }

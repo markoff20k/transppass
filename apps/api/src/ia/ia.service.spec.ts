@@ -130,7 +130,7 @@ describe('IaService.send', () => {
     const events: IaStreamEvent[] = [];
     await svc.send('u1', 'c1', { text: 'x' }, (e) => events.push(e));
     const done = events[events.length - 1] as Extract<IaStreamEvent, { type: 'done' }>;
-    expect(done.message.error).toContain('401');
+    expect(done.message.error).toContain('ia.Transppass');
     expect(done.message.text).toContain('Não consegui responder');
   });
 

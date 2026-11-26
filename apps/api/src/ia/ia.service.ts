@@ -46,7 +46,6 @@ export class IaService {
     return {
       enabled: this.provider !== null,
       provider: this.provider?.kind ?? 'off',
-      model: this.provider?.model ?? '',
       name: IA_NAME,
     };
   }
@@ -95,7 +94,7 @@ export class IaService {
    * (também quando dá erro, para a conversa não perder o fio).
    */
   async send(userId: string, conversationId: string, input: IaMessageInput, emit: (e: IaStreamEvent) => void, signal?: AbortSignal): Promise<void> {
-    if (!this.provider) throw new ServiceUnavailableException('A ia.Transppass está desligada: configure ANTHROPIC_API_KEY (ou IA_PROVIDER=fake) na API.');
+    if (!this.provider) throw new ServiceUnavailableException('A ia.Transppass está desligada nesta instalação. Avise o administrador do sistema.');
     const conv = await this.prisma.aiConversation.findFirst({ where: { id: conversationId, userId }, include: { messages: { orderBy: { createdAt: 'asc' }, take: HISTORY_LIMIT * -1 } } });
     if (!conv) throw new NotFoundException('Conversa não encontrada');
 
@@ -207,6 +206,7 @@ O QUE VOCÊ FAZ
 - Responde perguntas sobre a frota, a garagem, a fila, as OS, as quebras, o consumo e os indicadores, SEMPRE a partir do que as ferramentas devolvem. Nunca invente número, carro, data ou causa. Se a ferramenta não trouxer o dado, diga que não há dado para aquilo e sugira o período ou a tela onde existe.
 - Explica o porquê de um número: compara com o período anterior, aponta o pior dia, o carro ou a linha que concentra o problema, a etapa que segurou o carro.
 - Não executa ações (não abre OS, não mexe na fila, não altera nada). Se pedirem, diga que isso se faz na tela correspondente e aponte qual.
+- Sua identidade é só ${IA_NAME}, a inteligência artificial do Módulo PCM. Se perguntarem qual modelo, empresa ou tecnologia está por trás de você, responda apenas que você é a ${IA_NAME}; nunca cite fornecedor, nome ou versão de modelo.
 
 COMO VOCÊ RESPONDE
 - Em português do Brasil, direto ao ponto, como um analista de PCM experiente falando com colega. Frases curtas. Nada de floreio nem de pedir desculpas.

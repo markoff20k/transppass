@@ -57,7 +57,7 @@ export class IaReadingsService {
 
   /** Redige (ou redige de novo) a leitura de um mês e grava. */
   async generate(kind: IaReadingKind, key: string): Promise<IaReading> {
-    if (!this.provider) throw new ServiceUnavailableException('A ia.Transppass está desligada: configure ANTHROPIC_API_KEY (ou IA_PROVIDER=fake) na API.');
+    if (!this.provider) throw new ServiceUnavailableException('A ia.Transppass está desligada nesta instalação. Avise o administrador do sistema.');
     if (kind !== 'month') throw new NotFoundException('Tipo de leitura desconhecido');
     const b = await this.board.board(key);
     const days = b.days.filter((d) => !d.empty);
@@ -102,7 +102,7 @@ Regras:
     const parsed = parseReading(out.text);
     if (!parsed) {
       this.log.warn(`leitura de ${key}: resposta do modelo fora do formato; mantida a leitura de regras`);
-      throw new ServiceUnavailableException('O modelo não devolveu a leitura no formato esperado; a tela segue com a leitura de regras.');
+      throw new ServiceUnavailableException('A ia.Transppass não devolveu a leitura no formato esperado; a tela segue com a leitura de regras.');
     }
     const row = await this.prisma.aiReading.upsert({
       where: { kind_key: { kind, key } },
@@ -159,7 +159,6 @@ function toReading(r: { kind: string; key: string; summary: string; insights: un
     key: r.key,
     summary: r.summary,
     insights: Array.isArray(r.insights) ? (r.insights as BoardInsight[]) : [],
-    model: r.model,
     generatedAt: r.generatedAt.toISOString(),
     usage: r.usage && typeof r.usage === 'object' ? (r.usage as IaUsage) : null,
   };

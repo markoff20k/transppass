@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, BellOff, Bot, ChevronRight, FastForward, FlaskConical, GripVertical, Loader2, Menu, Minus, Moon, Plus, Sun, UserRound } from 'lucide-react';
+import { Bell, BellOff, ChevronRight, FastForward, FlaskConical, GripVertical, Loader2, Menu, Minus, Moon, Plus, Sun, UserRound } from 'lucide-react';
 import { MAX_SHORTCUTS, type DemoPulseResult, type DemoStatus, type PublicUser } from '@app/shared';
 import { Theme } from '@app/design-kit';
 import { useAuth } from '@/features/auth/use-auth';
 import { useIa } from '@/features/ia/ia.context';
+import { IaBot } from '@/features/ia/ia-mark';
 import { useTheme } from '@/features/theme/use-theme';
 import { useI18n } from '@/i18n/i18n.context';
 import { Locale, LOCALE_LABELS } from '@/i18n/dictionaries';
@@ -537,7 +538,7 @@ function IaButton() {
       title={t.ia.open}
       aria-label={t.ia.open}
     >
-      <Bot />
+      <IaBot size={28} />
     </button>
   );
 }

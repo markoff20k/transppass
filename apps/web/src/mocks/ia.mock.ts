@@ -6,7 +6,7 @@ import type { IaConversation, IaConversationDetail, IaMessage, IaStatus, IaStrea
  * conversas de exemplo e uma resposta em SSE que consulta uma ferramenta e
  * escreve um parágrafo, para o painel ser visto sem API.
  */
-const status: IaStatus = { enabled: true, provider: 'fake', model: 'simulado', name: 'ia.Transppass' };
+const status: IaStatus = { enabled: true, provider: 'fake', name: 'ia.Transppass' };
 
 const now = () => new Date().toISOString();
 const conversations = new Map<string, IaConversationDetail>([
@@ -96,6 +96,6 @@ export const iaHandlers = [
   http.get('*/api/ia/readings/:kind/:key', async () => HttpResponse.json({ statusCode: 404, code: 'NOT_FOUND', message: 'Sem leitura', timestamp: now(), path: '' }, { status: 404 })),
   http.post('*/api/ia/readings/:kind/:key', async ({ params }) => {
     await delay(600);
-    return HttpResponse.json({ kind: params.kind, key: params.key, summary: 'Leitura simulada.', insights: [], model: 'simulado', generatedAt: now(), usage: null });
+    return HttpResponse.json({ kind: params.kind, key: params.key, summary: 'Leitura simulada.', insights: [], generatedAt: now(), usage: null });
   }),
 ];

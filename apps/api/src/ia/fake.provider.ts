@@ -23,14 +23,14 @@ export class FakeProvider implements IaProvider {
         const block: Anthropic.ToolUseBlock = { type: 'tool_use', id: `toolu_fake_${Date.now()}_${this.seq}`, name: pick.name, input: pick.input, caller: { type: 'direct' } };
         return { content: [block], stopReason: 'tool_use', usage: { input: 1200, output: 40, cacheRead: 900, cacheWrite: 0 } };
       }
-      const text = `Resposta simulada (sem chave da Anthropic). Entendi a pergunta "${clip(question, 80)}", mas nenhuma das ferramentas do agente se aplica a ela. Pergunte sobre MKBF, quebras, fila, OS, consumo, frota, preventivas ou o quadro do mês.`;
+      const text = `Resposta de teste. Entendi a pergunta "${clip(question, 80)}", mas nenhuma das ferramentas do agente se aplica a ela. Pergunte sobre MKBF, quebras, fila, OS, consumo, frota, preventivas ou o quadro do mês.`;
       await stream(text, req.onText, req.signal);
       return { content: [{ type: 'text', text, citations: null }], stopReason: 'end_turn', usage: { input: 1200, output: 60, cacheRead: 900, cacheWrite: 0 } };
     }
     const summary = results
       .map((r) => `• ${r.name}: ${describe(r.content)}`)
       .join('\n');
-    const text = `Resposta simulada (sem chave da Anthropic), redigida a partir do que as ferramentas devolveram:\n\n${summary}\n\nCom a chave configurada, a ia.Transppass lê esses mesmos números e escreve a leitura em linguagem natural, citando período e fonte.`;
+    const text = `Resposta de teste, montada a partir do que as consultas devolveram:\n\n${summary}`;
     await stream(text, req.onText, req.signal);
     return { content: [{ type: 'text', text, citations: null }], stopReason: 'end_turn', usage: { input: 2600, output: 180, cacheRead: 900, cacheWrite: 0 } };
   }
@@ -48,7 +48,7 @@ export class FakeProvider implements IaProvider {
       insights = [];
     }
     const out = {
-      summary: `Leitura simulada de ${month || 'mês'}: sem chave da Anthropic, a ia.Transppass repete aqui o que as regras do sistema apuraram; com a chave, este parágrafo e os itens abaixo são redigidos pelo modelo a partir dos mesmos números.`,
+      summary: `Leitura de teste de ${month || 'mês'}: a ia.Transppass repete aqui o que as regras do sistema apuraram; fora do modo de teste, este parágrafo e os itens abaixo são redigidos a partir dos mesmos números.`,
       insights: insights.slice(0, 8),
     };
     return { text: JSON.stringify(out), usage: { input: 3000, output: 400, cacheRead: 0, cacheWrite: 0 } };
