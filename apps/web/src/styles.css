@@ -3656,7 +3656,15 @@ a.bus-card:hover { transform: translateY(-1px); }
 .login__intro p { margin: 0; }
 
 /* A marca como moeda: grafite escuro, o ponto laranja da marca e um halo da cor. */
+/*
+ * O símbolo do login: a moeda grafite com um anel em volta, onde um cometa
+ * laranja corre a borda (o mesmo gesto do loader da marca) e deixa um rastro
+ * que brilha. Entrando (is-busy), o cometa acelera. Em movimento reduzido,
+ * fica o anel parado com o brilho no topo.
+ */
 .login__coin {
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3667,8 +3675,43 @@ a.bus-card:hover { transform: translateY(-1px); }
   background: linear-gradient(160deg, var(--tp-graphite-800), var(--tp-graphite-950));
   color: #fff;
   box-shadow:
-    0 0 0 6px color-mix(in srgb, var(--tp-orange-500) 12%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--tp-orange-500) 7%, transparent),
     0 8px 20px rgb(0 0 0 / 0.18);
+}
+/* o trilho e o cometa: um anel de 2,5 px recortado de um gradiente cônico que gira */
+.login__coin::before,
+.login__coin::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  z-index: -1;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    color-mix(in srgb, var(--tp-orange-500) 0%, transparent) 150deg,
+    color-mix(in srgb, var(--tp-orange-500) 55%, transparent) 290deg,
+    var(--tp-orange-500) 345deg,
+    #ffd9a8 358deg,
+    transparent 360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+  animation: login-comet 3.2s linear infinite;
+}
+/* o brilho: o mesmo cometa, desfocado, por fora */
+.login__coin::after {
+  inset: -9px;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 5px));
+  filter: blur(5px);
+  opacity: 0.75;
+}
+.login__coin.is-busy::before,
+.login__coin.is-busy::after { animation-duration: 0.9s; }
+@keyframes login-comet { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .login__coin::before, .login__coin::after { animation: none; }
 }
 
 .login__coin svg { height: auto; }

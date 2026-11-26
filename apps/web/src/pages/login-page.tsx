@@ -51,7 +51,7 @@ export function LoginPage() {
       <section className="login__form-col">
         <form className="login__card" onSubmit={onSubmit} noValidate>
           <div className="login__intro">
-            <span className="login__coin" aria-hidden>
+            <span className={`login__coin${isSubmitting ? ' is-busy' : ''}`} aria-hidden>
               <TransppassMark size={30} />
             </span>
             <h1 className="login__title">Acessar o Módulo PCM</h1>
