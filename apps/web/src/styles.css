@@ -5576,22 +5576,23 @@ a.bus-card:hover { transform: translateY(-1px); }
 /* --- Boas-vindas --------------------------------------------------------- */
 .ia-welcome { display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 100%; padding: 12px 2px 8px; animation: ia-rise 420ms var(--tp-ease) both; }
 /* A abertura: o Tipê na frente, a rua com os ônibus da frota passando atrás. */
-.ia-scene { position: relative; height: 200px; margin: 0 -18px 6px; overflow: hidden; isolation: isolate; -webkit-mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent); }
-.ia-scene__sun { position: absolute; left: 50%; top: 18px; width: 170px; height: 170px; margin-left: -85px; border-radius: 50%; z-index: -1; background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--ia-c2) 30%, transparent), color-mix(in srgb, var(--ia-c2) 8%, transparent) 55%, transparent 70%); animation: ia-sun 6s ease-in-out infinite; }
+.ia-scene { position: relative; height: 224px; margin: 0 -18px 6px; overflow: hidden; isolation: isolate; -webkit-mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(to right, transparent, #000 14%, #000 86%, transparent); }
+.ia-scene__sun { position: absolute; left: 50%; top: 8px; width: 170px; height: 170px; margin-left: -85px; border-radius: 50%; z-index: -1; background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--ia-c2) 30%, transparent), color-mix(in srgb, var(--ia-c2) 8%, transparent) 55%, transparent 70%); animation: ia-sun 6s ease-in-out infinite; }
 @keyframes ia-sun { 50% { transform: scale(1.08); opacity: 0.85; } }
-.ia-scene__road { position: absolute; inset: auto 0 52px; height: 60px; }
-.ia-scene__road::after { content: ''; position: absolute; inset: auto 0 0; height: 1px; background: linear-gradient(to right, transparent, var(--ia-line) 20%, var(--ia-line) 80%, transparent); }
-.ia-scene__lane { position: absolute; inset: auto 0 -40px; height: 2px; background: repeating-linear-gradient(to right, color-mix(in srgb, var(--color-text) 16%, transparent) 0 18px, transparent 18px 36px); animation: ia-lane 1.6s linear infinite; }
+/* Dois planos que não se cruzam: o Tipê na calçada, em cima; os ônibus na rua, embaixo. */
+.ia-scene__road { position: absolute; inset: auto 0 12px; height: 58px; }
+.ia-scene__road::after { content: ''; position: absolute; inset: -8px 0 auto; height: 1px; background: linear-gradient(to right, transparent, var(--ia-line) 20%, var(--ia-line) 80%, transparent); }
+.ia-scene__lane { position: absolute; inset: auto 0 -6px; height: 2px; background: repeating-linear-gradient(to right, color-mix(in srgb, var(--color-text) 16%, transparent) 0 18px, transparent 18px 36px); animation: ia-lane 1.6s linear infinite; }
 @keyframes ia-lane { to { background-position: -36px 0; } }
-.ia-scene__bus { position: absolute; bottom: 0; left: 0; display: block; opacity: 0.5; filter: saturate(0.85); animation: ia-drive 13s linear infinite; will-change: transform; }
+.ia-scene__bus { position: absolute; bottom: 0; left: 0; display: block; opacity: 0.95; animation: ia-drive 13s linear infinite; will-change: transform; }
 .ia-scene__bus svg { display: block; }
 .ia-scene__bus--a { animation-delay: -1s; }
 .ia-scene__bus--b { animation-delay: -5.5s; }
 .ia-scene__bus--c { animation-delay: -10s; }
 @keyframes ia-drive { from { transform: translateX(-190px); } to { transform: translateX(calc(var(--ia-w) + 40px)); } }
-.ia-scene__bot { position: absolute; left: 50%; bottom: 16px; margin-left: -54px; z-index: 1; animation: ia-hover 3.4s ease-in-out infinite; }
+.ia-scene__bot { position: absolute; left: 50%; bottom: 86px; margin-left: -54px; z-index: 1; animation: ia-hover 3.4s ease-in-out infinite; }
 .ia-scene__bot svg { filter: drop-shadow(0 10px 14px rgba(15, 23, 42, 0.28)); }
-.ia-scene__shadow { position: absolute; left: 50%; bottom: 8px; width: 84px; height: 12px; margin-left: -42px; border-radius: 50%; background: radial-gradient(closest-side, rgba(15, 23, 42, 0.28), transparent); animation: ia-shadow 3.4s ease-in-out infinite; }
+.ia-scene__shadow { position: absolute; left: 50%; bottom: 78px; width: 84px; height: 12px; margin-left: -42px; border-radius: 50%; background: radial-gradient(closest-side, rgba(15, 23, 42, 0.28), transparent); animation: ia-shadow 3.4s ease-in-out infinite; }
 @keyframes ia-hover { 50% { transform: translateY(-6px); } }
 @keyframes ia-shadow { 50% { transform: scaleX(0.82); opacity: 0.7; } }
 .ia-welcome__hello { margin: 0; font-family: var(--tp-font-display); font-size: 2.125rem; font-weight: 700; line-height: 1.02; letter-spacing: 0; text-wrap: balance; color: var(--color-text); }
