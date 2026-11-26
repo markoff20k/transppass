@@ -5983,6 +5983,8 @@ input.tp-input[type="datetime-local"] { height: 36px; padding-top: 0; padding-bo
 .ind-card.widget--good { --kpi-color: var(--color-success); }
 .ind-card.widget--danger { --kpi-color: var(--color-danger); }
 .ind-card.is-refreshing .ind-card__value { opacity: 0.7; transition: opacity 160ms ease; }
+/* Período trocado e resposta ainda não chegou: número, variação e nota antigos ficam apagados até o novo entrar. */
+.ind-card.is-stale .ind-card__headline, .ind-card.is-stale .ind-card__note { opacity: 0.4; filter: saturate(0.4); transition: opacity 160ms ease; }
 .ind-card .widget__head { margin-bottom: 0; }
 .ind-card__range { flex: none; max-width: 40%; font-size: var(--tp-text-2xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ind-card__headline { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-height: 32px; margin-top: 2px; }

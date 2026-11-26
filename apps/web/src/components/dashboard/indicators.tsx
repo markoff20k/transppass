@@ -187,12 +187,14 @@ function IndicatorCard({
   const deltaTone = delta === null ? 'neutral' : Math.abs(delta) < 0.05 ? 'neutral' : delta > 0 === (w?.higherIsBetter ?? true) ? 'good' : 'danger';
   const target = pref.kind === 'mkbf' ? MKBF_TARGET : pref.kind === 'availability' ? AVAILABILITY_TARGET : null;
   const targetTone = target !== null && w?.value !== null && w?.value !== undefined ? (w.value >= target ? 'good' : 'danger') : 'neutral';
-  // A série vale para o período que a API mostrou de fato (recuado ou não).
-  const usedFrom = w?.used.from ?? from;
-  const usedTo = w?.used.to ?? to;
+  // O corpo segue o período PEDIDO assim que a pessoa troca (para o véu aparecer na hora em todo
+  // cartão); só depois de a resposta chegar, se a API recuou, ele passa para o período mostrado de fato.
+  const settled = w && !query.isPlaceholderData;
+  const usedFrom = settled && w.fellBack ? w.used.from : from;
+  const usedTo = settled && w.fellBack ? w.used.to : to;
 
   return (
-    <article className={`ind-card${large ? ' ind-card--large' : ''} widget--${deltaTone}${query.isFetching ? ' is-refreshing' : ''}`} aria-label={meta.label}>
+    <article className={`ind-card${large ? ' ind-card--large' : ''} widget--${deltaTone}${query.isFetching ? ' is-refreshing' : ''}${query.isPlaceholderData ? ' is-stale' : ''}`} aria-label={meta.label}>
       <div className="widget__head">
         <span className="widget__title">
           <span className="tp-kpi__label" title={meta.hint}>{meta.label}</span>
@@ -232,10 +234,21 @@ function IndicatorCard({
       </span>
 
       <div className="ind-card__chart">
-        <Body pref={pref} w={w} from={usedFrom} to={usedTo} vehicleId={vehicleId} />
+        {/* Todo gráfico tem loader: no primeiro carregamento (ChartLoading) e na troca de período ou
+            escopo (o véu sobre o dado anterior). Os corpos com consulta própria já põem o seu véu. */}
+        <RefreshVeil active={query.isPlaceholderData && !hasOwnVeil(pref.kind, vehicleId)} delay={0}>
+          <Body pref={pref} w={w} from={usedFrom} to={usedTo} vehicleId={vehicleId} />
+        </RefreshVeil>
       </div>
     </article>
   );
+}
+
+/** Corpos que buscam o próprio dado e já mostram o véu na troca (a série do widget não é o que eles desenham). */
+function hasOwnVeil(kind: WidgetKind, vehicleId: string | null): boolean {
+  if (kind === 'topFailures') return true;
+  if ((kind === 'mkbf' || kind === 'availability' || kind === 'downtime') && !vehicleId) return true;
+  return false;
 }
 
 /** O corpo de cada tipo: os grandes e os de corpo próprio têm o seu; o resto é a série genérica. */
