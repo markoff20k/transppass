@@ -289,7 +289,10 @@ export function buildDashboard(): DashboardData {
       })),
       period: { kmTraveled: 412_300, unscheduledReturns: 106, mkbf: 3_890 },
       last30: { kmTraveled: 412_300, unscheduledReturns: 106, mkbf: 3_890 },
+      month: { month: '2026-11', from: monthStart(0).toISOString(), to: '2026-11-18', kmTraveled: 1_366_513, unscheduledReturns: 338, mkbf: 4_043 },
+      previousMonth: { month: '2026-10', kmTraveled: 2_544_291, unscheduledReturns: 626, mkbf: 4_064 },
     },
+    dataThrough: { km: '2026-11-18', failures: '2026-11-18' },
     queue: { waiting: 2, inService: 1, oldestWaitingHours: 3.1 },
     workOrders: { open: 4, overdue: 1, releasedInPeriod: 23, releasedToday: 2, averageDowntimeMinutes: 386 },
     materials: { pending: 3, overdueParts: 1 },
@@ -641,6 +644,7 @@ export const dashboardHandlers = [
       vehicleCode: url.searchParams.get('vehicleId') ? '10001' : null,
       used: { from: url.searchParams.get('from'), to: url.searchParams.get('to') },
       fellBack: false,
+      series: kind === 'topFailures' ? null : mockSeries(url.searchParams.get('from') ?? '', url.searchParams.get('to') ?? '', s.value, s.unit),
     });
   }),
   http.get('*/api/dashboard/notices', async () => {
@@ -687,4 +691,18 @@ export function mockDowntime(): { downtimeByCause: { cause: DowntimeCause; minut
   ];
   const total = downtime.reduce((a, b) => a + b.minutes, 0);
   return { downtimeByCause: downtime.map((d) => ({ ...d, share: d.minutes / total })), totalDowntimeMinutes: total };
+}
+
+/** Série de mentira para o gráfico do widget: o eixo pelo tamanho do período, valores em torno do número do cartão. */
+function mockSeries(from: string, to: string, value: number, unit: string) {
+  const days = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+  const bucket = days === 1 ? 'hour' : days <= 92 ? 'day' : 'month';
+  const n = bucket === 'hour' ? 24 : bucket === 'day' ? days : Math.max(2, Math.round(days / 30));
+  const points = Array.from({ length: n }, (_, i) => {
+    const key = bucket === 'hour' ? String(i).padStart(2, '0') : bucket === 'day' ? new Date(Date.parse(`${from}T12:00:00Z`) + i * 86_400_000).toISOString().slice(0, 10) : `2026-${String(i + 1).padStart(2, '0')}`;
+    const wave = 1 + Math.sin(i / 2.3) * 0.18 + ((i * 7) % 5) * 0.02;
+    const v = unit === 'count' ? Math.max(0, Math.round((value / Math.max(1, n / 6)) * wave)) : Math.round(value * wave * 100) / 100;
+    return { key, value: bucket === 'hour' && i > new Date().getHours() ? null : v };
+  });
+  return { bucket, points };
 }

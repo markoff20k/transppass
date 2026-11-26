@@ -11,6 +11,7 @@ import {
   type IaConversationDetail,
   type IaMessageInput,
   type IaReading,
+  type IaReadingParams,
   type IaStatus,
   type IaStreamEvent,
 } from '@app/shared';
@@ -97,10 +98,17 @@ export class IaController {
     }
   }
 
-  // --- Fase 2: leituras do mês ---------------------------------------------------
+  // --- Fase 2: leituras do mês e a frase do dia ------------------------------------
+
+  /** A frase que abre o Dashboard: redigida de hora em hora a partir da foto da garagem. Vem antes da rota genérica. */
+  @Get('readings/day/today')
+  @ApiOperation({ summary: 'A leitura do dia da ia.Transppass para o Dashboard (vale por uma hora)' })
+  today(): Promise<IaReading> {
+    return this.readings.today();
+  }
 
   @Get('readings/:kind/:key')
-  reading(@Param(new ZodValidationPipe(iaReadingParamsSchema)) p: { kind: 'month'; key: string }): Promise<IaReading> {
+  reading(@Param(new ZodValidationPipe(iaReadingParamsSchema)) p: IaReadingParams): Promise<IaReading> {
     return this.readings.get(p.kind, p.key);
   }
 
@@ -108,7 +116,7 @@ export class IaController {
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.PCM, UserRole.GESTAO)
   @ApiOperation({ summary: 'Redige agora a leitura do mês pelo modelo' })
-  generate(@Param(new ZodValidationPipe(iaReadingParamsSchema)) p: { kind: 'month'; key: string }): Promise<IaReading> {
+  generate(@Param(new ZodValidationPipe(iaReadingParamsSchema)) p: IaReadingParams): Promise<IaReading> {
     return this.readings.generate(p.kind, p.key);
   }
 
@@ -116,7 +124,7 @@ export class IaController {
   @HttpCode(204)
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.PCM, UserRole.GESTAO)
-  dropReading(@Param(new ZodValidationPipe(iaReadingParamsSchema)) p: { kind: 'month'; key: string }): Promise<void> {
+  dropReading(@Param(new ZodValidationPipe(iaReadingParamsSchema)) p: IaReadingParams): Promise<void> {
     return this.readings.remove(p.kind, p.key);
   }
 }

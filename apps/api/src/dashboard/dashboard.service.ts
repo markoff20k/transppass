@@ -90,6 +90,11 @@ export class DashboardService {
     last30From.setHours(0, 0, 0, 0);
     const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
+    // A seção "Agora" fecha o MKBF por mês, como o cliente: o mês corrente até agora e o anterior inteiro.
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
     // Só o que o centro de comando mostra: disponibilidade por hora, tempo parado, quebras por dia e
     // últimos eventos têm rotas próprias (cada card busca o seu período) e saíram daqui — a página
@@ -106,6 +111,9 @@ export class DashboardService {
       materials,
       alerts,
       backs,
+      monthMkbf,
+      prevMonthMkbf,
+      dataThrough,
     ] = await Promise.all([
       this.vehicles(now),
       this.mkbfSeries(now, months),
@@ -117,7 +125,10 @@ export class DashboardService {
       this.workOrders(now, from, periodEnd),
       this.materials(now),
       this.alerts(),
-      this.backs(now, last30From, 30),
+      this.backs(now, monthStart, Math.round((now.getTime() - monthStart.getTime()) / DAY_MS) + 1),
+      this.metrics.mkbf(monthStart, now),
+      this.metrics.mkbf(prevMonthStart, prevMonthEnd),
+      this.dataThrough(),
     ]);
 
     const byStatus = Object.fromEntries(Object.values(VehicleStatus).map((s) => [s, 0])) as Record<
@@ -152,13 +163,41 @@ export class DashboardService {
           unscheduledReturns: last30Mkbf.unscheduledReturns,
           mkbf: last30Mkbf.mkbf,
         },
+        month: {
+          month: monthKey(monthStart),
+          from: monthStart.toISOString(),
+          // Até onde a remessa chegou: o número é "do mês até 17/11", não "até hoje".
+          to: dataThrough.km && dataThrough.km >= isoDay(monthStart) ? dataThrough.km : isoDay(now),
+          kmTraveled: monthMkbf.kmTraveled,
+          unscheduledReturns: monthMkbf.unscheduledReturns,
+          mkbf: monthMkbf.mkbf,
+        },
+        previousMonth: {
+          month: monthKey(prevMonthStart),
+          kmTraveled: prevMonthMkbf.kmTraveled,
+          unscheduledReturns: prevMonthMkbf.unscheduledReturns,
+          mkbf: prevMonthMkbf.mkbf,
+        },
       },
+      dataThrough,
       queue,
       workOrders: { ...workOrders, releasedToday },
       materials,
       alerts,
       backs,
       vehicles,
+    };
+  }
+
+  /** Até quando a remessa do ERP-JB chegou: o último dia com km e com ficha de quebra. */
+  private async dataThrough(): Promise<DashboardData['dataThrough']> {
+    const [km, failures] = await Promise.all([
+      this.prisma.odometerReading.aggregate({ where: { status: { not: OdometerStatus.REJECTED }, deltaKm: { gt: 0 }, vehicle: { application: 'FROTA' } }, _max: { readAt: true } }),
+      this.prisma.failureEvent.aggregate({ where: { isUnscheduledReturn: true }, _max: { reportedAt: true } }),
+    ]);
+    return {
+      km: km._max.readAt ? isoDay(km._max.readAt) : null,
+      failures: failures._max.reportedAt ? isoDay(failures._max.reportedAt) : null,
     };
   }
 
@@ -654,20 +693,22 @@ export class DashboardService {
     };
   }
 
-  async availabilityDays(q: AvailabilityDaysQuery): Promise<AvailabilityDays> {
+  async availabilityDays(q: AvailabilityDaysQuery, vehicleId?: string): Promise<AvailabilityDays> {
     const now = new Date();
     const today = isoDay(now);
     const to = q.to > today ? today : q.to;
     const from = q.from > to ? to : q.from;
     const windowStart = startOfDay(from);
+    // Um carro só (widget com escopo): a "frota" é ele, e a taxa do dia é a fração das horas em que estava pronto.
+    const byVehicle = vehicleId ? { vehicleId } : {};
     const [fleetSize, workOrders, returns] = await Promise.all([
-      this.prisma.vehicle.count({ where: { isActive: true } }),
+      vehicleId ? Promise.resolve(1) : this.prisma.vehicle.count({ where: { isActive: true } }),
       this.prisma.workOrder.findMany({
-        where: { openedAt: { lte: now }, OR: [{ releasedAt: null }, { releasedAt: { gte: windowStart } }], status: { not: WorkOrderStatus.CANCELLED } },
+        where: { openedAt: { lte: now }, OR: [{ releasedAt: null }, { releasedAt: { gte: windowStart } }], status: { not: WorkOrderStatus.CANCELLED }, ...byVehicle },
         select: { vehicleId: true, openedAt: true, releasedAt: true },
       }),
       this.prisma.failureEvent.findMany({
-        where: { isUnscheduledReturn: true, reportedAt: { lte: now }, OR: [{ closedAt: null }, { closedAt: { gte: windowStart } }], status: { not: EventStatus.CANCELLED } },
+        where: { isUnscheduledReturn: true, reportedAt: { lte: now }, OR: [{ closedAt: null }, { closedAt: { gte: windowStart } }], status: { not: EventStatus.CANCELLED }, ...byVehicle },
         select: { vehicleId: true, reportedAt: true, closedAt: true },
       }),
     ]);

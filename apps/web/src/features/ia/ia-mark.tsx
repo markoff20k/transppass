@@ -101,3 +101,8 @@ export function IaScene() {
     </div>
   );
 }
+
+/** O nome da ia.Transppass como aparece na tela: sempre inteiro e sempre em laranja, para dar ênfase. */
+export function IaName({ className }: { className?: string }) {
+  return <b className={`ia-name${className ? ` ${className}` : ''}`}>ia.Transppass</b>;
+}

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, Bot, Repeat2, Undo2 } from 'lucide-react';
 import { useI18n } from '@/i18n/i18n.context';
+import { IaName } from '@/features/ia/ia-mark';
 
 /**
  * Cartão de KPI que vira: na frente o número, no verso o porquê — a leitura
@@ -129,7 +130,7 @@ export function KpiAi({ children }: { children: ReactNode }) {
     <p className="kpi-ai">
       <Bot size={12} aria-hidden />
       <span>
-        <b>ia.Transppass</b> {children}
+        <IaName /> {children}
       </span>
     </p>
   );

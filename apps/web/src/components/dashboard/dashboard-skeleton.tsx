@@ -2,12 +2,12 @@ import { useI18n } from '@/i18n/i18n.context';
 import { BrandLoader } from '@/components/brand/brand-loader';
 
 /**
- * Esqueleto do centro de comando do Dashboard enquanto a consulta principal
- * não chega: os quatro cartões com o mesmo vidro, os mesmos títulos e a
- * mesma geometria dos reais (anel, trilho de seis etapas, três números, grade
- * de carros, widgets), com o brilho de carregamento no lugar dos dados. Nada
- * muda de lugar quando o dado entra. Os cards de baixo não dependem dele e
- * carregam sozinhos ao mesmo tempo.
+ * Esqueleto da seção "Agora" do Dashboard enquanto a consulta principal não
+ * chega: os cartões com o mesmo vidro, os mesmos títulos e a mesma geometria
+ * dos reais (anel, trilho de seis etapas, três números, últimos eventos,
+ * grade de carros), com o brilho de carregamento no lugar dos dados. Nada
+ * muda de lugar quando o dado entra. A seção de indicadores não depende dele
+ * e carrega sozinha ao mesmo tempo.
  */
 export function DashboardSkeleton() {
   const { t } = useI18n();
@@ -71,11 +71,29 @@ export function DashboardSkeleton() {
           </div>
         </div>
         <div className="dash-kpis__grid">
-          {[t.dash.mkbf, t.dash.inQueue, t.dash.openWo].map((label) => (
+          {[t.dash.mkbfMonth, t.dash.inQueue, t.dash.openWo].map((label) => (
             <div key={label} className="dash-kpi dash-skel__kpi">
               <span className="tp-kpi__label">{label}</span>
               <i className="skel skel--bar" style={{ width: '55%', height: 28, marginTop: 6 }} />
               <i className="skel skel--bar" style={{ width: '80%', height: 11 }} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Últimos eventos */}
+      <section className="tp-card dash-glass dash-recent dash-skel__card">
+        <div className="dash-skel__head">
+          <div>
+            <h3>{t.dash.recentEvents}</h3>
+            <span className="chart__hint">{t.dash.recentHint}</span>
+          </div>
+        </div>
+        <div className="recent-now">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="recent-now__item dash-skel__kpi">
+              <i className="skel skel--bar" style={{ width: '45%', height: 12 }} />
+              <i className="skel skel--bar" style={{ width: '90%', height: 10 }} />
             </div>
           ))}
         </div>
@@ -103,29 +121,6 @@ export function DashboardSkeleton() {
                 <i className="skel skel--bar" style={{ width: 56, height: 10 }} />
               </span>
               <i className="skel skel--bar" style={{ width: 70, height: 10 }} />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Indicadores (widgets) */}
-      <section className="dash-widgets dash-glass dash-skel__card">
-        <div className="dash-skel__head">
-          <div>
-            <h3>{t.dash.widgets.title}</h3>
-            <span className="chart__hint">{t.dash.widgets.hint}</span>
-          </div>
-        </div>
-        <div className="dash-widgets__grid">
-          {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className="dash-kpi dash-skel__kpi dash-skel__widget">
-              <i className="skel skel--bar" style={{ width: '60%', height: 11 }} />
-              <span className="dash-skel__chips" style={{ marginTop: 2 }}>
-                <i className="skel skel--chip" style={{ width: 88 }} />
-                <i className="skel skel--chip" style={{ width: 64 }} />
-              </span>
-              <i className="skel skel--bar" style={{ width: '50%', height: 26, marginTop: 4 }} />
-              <i className="skel skel--bar" style={{ width: '75%', height: 10 }} />
             </div>
           ))}
         </div>

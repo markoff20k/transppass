@@ -93,6 +93,10 @@ export const iaHandlers = [
     ];
     return new HttpResponse(sse(events), { headers: { 'Content-Type': 'text/event-stream' } });
   }),
+  http.get('*/api/ia/readings/day/today', async () => {
+    await delay(400);
+    return HttpResponse.json({ kind: 'day', key: now().slice(0, 10), summary: '13 carros parados: 4 esperando peça e 7 na fila, o mais antigo há 9,5 h; 3 OS estouradas. O MKBF de novembro está em 4.043 km, 0,5% abaixo de outubro, com dados até 18/11.', insights: [], generatedAt: now(), usage: null });
+  }),
   http.get('*/api/ia/readings/:kind/:key', async () => HttpResponse.json({ statusCode: 404, code: 'NOT_FOUND', message: 'Sem leitura', timestamp: now(), path: '' }, { status: 404 })),
   http.post('*/api/ia/readings/:kind/:key', async ({ params }) => {
     await delay(600);

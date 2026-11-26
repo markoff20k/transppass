@@ -1,25 +1,20 @@
 import { useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownRight, ArrowUpRight, Minus, RefreshCw, Repeat2, Search, Undo2 } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Database, Minus, RefreshCw, Repeat2, Search, Undo2 } from 'lucide-react';
 import {
-  type DowntimeCause,
-  DASHBOARD_PERIODS,
-  DEFAULT_DASHBOARD_PERIOD,
   EVENT_STATUS_LABELS,
   VEHICLE_STATUS_LABELS,
   type VehicleStatus,
   type DashboardData,
   type DashboardVehicle,
-  type DashboardDowntime,
-  type DashboardEventsSeries,
   type DashboardRecentEvents,
   VEHICLE_TECHNOLOGY_LABELS,
   VEHICLE_CLASS_LABELS,
 } from '@app/shared';
 import { VEHICLE_STATE_FAMILY } from '@app/design-kit';
 import { ApiError, api } from '@/lib/api-client';
-import { formatDateTime, formatMinutes, formatNumber } from '@/lib/format';
+import { formatDateTime, formatNumber } from '@/lib/format';
 import { useI18n } from '@/i18n/i18n.context';
 import { usePageHeader } from '@/components/shell/page-header.context';
 import { BusRender } from '@/components/bus/bus-render';
@@ -31,20 +26,15 @@ import { useFlip } from '@/components/fleet/use-flip';
 import { NoticeBoard, TickerSwitch } from '@/components/dashboard/notice-board';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { SortableCards } from '@/components/ui/sortable-cards';
-import { WidgetsCard } from '@/components/dashboard/widgets';
-import { AvailabilityCard, ChartLoading, MkbfCard, useFallbackToast } from '@/components/dashboard/chart-cards';
-import { ChartPeriodBar } from '@/components/charts/chart-period';
-import { resolveChartPeriod, useChartPeriod } from '@/components/charts/use-chart-period';
+import { IndicatorsSection } from '@/components/dashboard/indicators';
+import { DayReading } from '@/components/dashboard/day-reading';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
-import { TopFailuresCard } from '@/components/dashboard/top-failures';
-import { DowntimeCarsDrawer, formatHours } from '@/components/dashboard/downtime-cars';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
-import { CustomRangeItem } from '@/components/charts/chart-period';
 import { LiveBadge } from '@/components/ui/live-badge';
 import { KpiAi } from '@/components/ui/flip-kpi';
-import { rangeLabel, shiftDays, todayIso } from '@/lib/period';
-import { useUiPref, useUiState } from '@/features/auth/use-ui-pref';
-import { DowntimeDonut, EventsPerDayChart, RingGauge, Sparkline } from '@/components/charts/charts';
+import { monthName, rangeLabel, todayIso } from '@/lib/period';
+import { useUiState } from '@/features/auth/use-ui-pref';
+import { RingGauge, Sparkline } from '@/components/charts/charts';
 
 /**
  * Dashboard — a tela que abre depois do login.
@@ -75,27 +65,20 @@ const STAGES: { key: StageKey; statuses: VehicleStatus[]; family: Family; to: st
   },
 ];
 
+/** "17/11" de um dia ISO. */
+const fmtDayIso = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
 export function DashboardPage() {
   const { t } = useI18n();
-  const [period] = useDashboardPeriod();
-  const { days, back } = period;
-  const periodLabel = periodName(period, t);
 
   usePageHeader({
     eyebrow: t.dash.eyebrow,
     title: t.dash.title,
-    description:
-      period.days === 1 || isCustom(period)
-        ? t.dash.subtitleDay.replace('{p}', periodLabel)
-        : t.dash.subtitle.replace('{n}', String(days)),
-    actions: (
-      <>
-        <TickerSwitch />
-        <PeriodControl />
-      </>
-    ),
+    description: t.dash.subtitle,
+    actions: <TickerSwitch />,
   });
 
+  // A foto da garagem: o "agora" não tem período. (days=30 só alimenta campos da API que a tela não usa mais.)
   const {
     data: fresh,
     isError,
@@ -103,23 +86,17 @@ export function DashboardPage() {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['dashboard', days, back, period.from ?? null, period.to ?? null],
-    queryFn: () =>
-      api.get<DashboardData>(
-        isCustom(period)
-          ? `/dashboard?from=${period.from}&to=${period.to}&months=12`
-          : `/dashboard?days=${days}&back=${back}&months=12`,
-      ),
+    queryKey: ['dashboard', 'now'],
+    queryFn: () => api.get<DashboardData>('/dashboard?days=30&months=12'),
     refetchInterval: 60_000,
     placeholderData: keepPreviousData,
   });
-  // Último dado bom (de qualquer período, no cache): se a consulta do período
-  // novo falhar, o painel anterior continua na tela com o aviso, em vez de sumir.
+  // Último dado bom no cache: se a atualização falhar, o painel anterior continua na tela com o aviso.
   const queryClient = useQueryClient();
   const data =
     fresh ??
     queryClient
-      .getQueriesData<DashboardData>({ queryKey: ['dashboard'] })
+      .getQueriesData<DashboardData>({ queryKey: ['dashboard', 'now'] })
       .map(([, d]) => d)
       .find((d): d is DashboardData => Boolean(d));
 
@@ -164,200 +141,203 @@ export function DashboardPage() {
       : availabilityPct >= AVAILABILITY_TARGET - 10
         ? 'warn'
         : 'danger';
+  // MKBF do mês contra o mês anterior fechado, em %.
+  const monthPct =
+    data && data.mkbf.previousMonth.mkbf && data.mkbf.month.mkbf
+      ? Math.round(((data.mkbf.month.mkbf - data.mkbf.previousMonth.mkbf) / data.mkbf.previousMonth.mkbf) * 1000) / 10
+      : null;
+  const monthLabel = (m: string) => monthName(Number(m.slice(5, 7)) - 1);
 
   return (
     <div className="dash">
       {staleNotice}
-      {/* ---- Avisos e alertas: o que pede atenção, antes de qualquer número ---- */}
-      <NoticeBoard />
-      {/* ---- Centro de comando: fluxo, os três números e a frota; a pessoa arrasta para reordenar.
-           Enquanto a consulta principal não chega, o esqueleto com a mesma geometria; os cards de
-           baixo têm consultas próprias e carregam ao mesmo tempo. ---- */}
-      {!data ? (
-        (errorBlock ?? <DashboardSkeleton />)
-      ) : (
-      <SortableCards
-        prefKey="dash.order"
-        items={[
-          {
-            key: 'flow',
-            render: (grip) => (
-              <CollapsibleCard
-                id="dash.flow"
-                grip={grip}
-                className="dash-hero dash-glass"
-                label={t.dash.title}
-                head={
-                  <>
-                    <div>
-                      <h3>
-                        {t.dash.flowTitle} <LiveBadge />
-                      </h3>
-                      <span className="chart__hint">{t.dash.flowHint}</span>
-                    </div>
-                    <ul className="dash-flow-legend" aria-label={t.dash.legendLabel}>
-                      <li className="dash-flow-legend__item dash-flow-legend__item--waiting">
-                        {t.dash.flowLegend.waiting}
-                      </li>
-                      <li className="dash-flow-legend__item dash-flow-legend__item--working">
-                        {t.dash.flowLegend.working}
-                      </li>
-                      <li className="dash-flow-legend__item dash-flow-legend__item--stopped">
-                        {t.dash.flowLegend.stopped}
-                      </li>
-                      <li className="dash-flow-legend__item dash-flow-legend__item--empty">
-                        {t.dash.flowLegend.empty}
-                      </li>
-                    </ul>
-                  </>
-                }
-              >
-                <div className="dash-hero__grid">
-                  <div className="dash-gauge">
-                    <div className="dash-gauge__ring">
-                      <RingGauge
-                        value={availabilityPct}
-                        target={AVAILABILITY_TARGET}
-                        tone={availabilityTone}
-                        label={t.dash.availability}
-                      />
-                      <div className="dash-gauge__center">
-                        <strong className="dash-gauge__value">
-                          {availabilityPct.toLocaleString('pt-BR')}
-                          <small>%</small>
-                        </strong>
-                        <span className="dash-gauge__label">{t.dash.availability}</span>
+
+      {/* ---- Seção 1 — Agora: a garagem neste instante. Sem período: é a foto de agora, e os
+           números do dia são do dia mais recente com dados (a API recua e a tela diz). ---- */}
+      <section className="dash-section dash-section--now" aria-labelledby="dash-now">
+        <header className="dash-section__head">
+          <div>
+            <h2 id="dash-now">
+              {t.dash.sections.now} <LiveBadge />
+            </h2>
+            <span className="dash-section__hint">{t.dash.sections.nowHint}</span>
+          </div>
+          {data && <DataThrough data={data} />}
+        </header>
+        <DayReading />
+        <NoticeBoard />
+        {!data ? (
+          (errorBlock ?? <DashboardSkeleton />)
+        ) : (
+        <SortableCards
+          prefKey="dash.order.now"
+          items={[
+            {
+              key: 'flow',
+              render: (grip) => (
+                <CollapsibleCard
+                  id="dash.flow"
+                  grip={grip}
+                  className="dash-hero dash-glass"
+                  label={t.dash.title}
+                  head={
+                    <>
+                      <div>
+                        <h3>
+                          {t.dash.flowTitle} <LiveBadge />
+                        </h3>
+                        <span className="chart__hint">{t.dash.flowHint}</span>
+                      </div>
+                      <ul className="dash-flow-legend" aria-label={t.dash.legendLabel}>
+                        <li className="dash-flow-legend__item dash-flow-legend__item--waiting">
+                          {t.dash.flowLegend.waiting}
+                        </li>
+                        <li className="dash-flow-legend__item dash-flow-legend__item--working">
+                          {t.dash.flowLegend.working}
+                        </li>
+                        <li className="dash-flow-legend__item dash-flow-legend__item--stopped">
+                          {t.dash.flowLegend.stopped}
+                        </li>
+                        <li className="dash-flow-legend__item dash-flow-legend__item--empty">
+                          {t.dash.flowLegend.empty}
+                        </li>
+                      </ul>
+                    </>
+                  }
+                >
+                  <div className="dash-hero__grid">
+                    <div className="dash-gauge">
+                      <div className="dash-gauge__ring">
+                        <RingGauge
+                          value={availabilityPct}
+                          target={AVAILABILITY_TARGET}
+                          tone={availabilityTone}
+                          label={t.dash.availability}
+                        />
+                        <div className="dash-gauge__center">
+                          <strong className="dash-gauge__value">
+                            {availabilityPct.toLocaleString('pt-BR')}
+                            <small>%</small>
+                          </strong>
+                          <span className="dash-gauge__label">{t.dash.availability}</span>
+                        </div>
+                      </div>
+                      <div className="dash-gauge__foot">
+                        <span className="dash-gauge__ready">
+                          <b>{data.fleet.available}</b> {t.dash.of} <b>{data.fleet.total}</b>{' '}
+                          {t.dash.readyBuses}
+                        </span>
+                        <span className="dash-gauge__meta">
+                          <Delta
+                            value={data.fleet.availabilityDelta}
+                            suffix=" pp"
+                            label={t.dash.vs7d}
+                          />
+                          <span className="dash-gauge__target">
+                            {t.dash.target} {AVAILABILITY_TARGET}%
+                          </span>
+                        </span>
                       </div>
                     </div>
-                    <div className="dash-gauge__foot">
-                      <span className="dash-gauge__ready">
-                        <b>{data.fleet.available}</b> {t.dash.of} <b>{data.fleet.total}</b>{' '}
-                        {t.dash.readyBuses}
-                      </span>
-                      <span className="dash-gauge__meta">
-                        <Delta
-                          value={data.fleet.availabilityDelta}
-                          suffix=" pp"
-                          label={t.dash.vs7d}
-                        />
-                        <span className="dash-gauge__target">
-                          {t.dash.target} {AVAILABILITY_TARGET}%
-                        </span>
-                      </span>
+                    <div className="dash-flow-wrap">
+                      <GarageFlow byStatus={data.fleet.byStatus} />
+                      <StatusSummary byStatus={data.fleet.byStatus} total={data.fleet.total} />
                     </div>
                   </div>
-                  <div className="dash-flow-wrap">
-                    <GarageFlow byStatus={data.fleet.byStatus} />
-                    <StatusSummary byStatus={data.fleet.byStatus} total={data.fleet.total} />
+                </CollapsibleCard>
+              ),
+            },
+            {
+              key: 'kpis',
+              render: (grip) => (
+                <CollapsibleCard
+                  id="dash.kpis"
+                  grip={grip}
+                  className="dash-kpis dash-glass"
+                  label={t.dash.kpisTitle}
+                  head={
+                    <div>
+                      <h3>
+                        {t.dash.kpisTitle} <LiveBadge />
+                      </h3>
+                      <span className="chart__hint">{t.dash.kpisHint}</span>
+                    </div>
+                  }
+                >
+                  <div className="dash-kpis__grid">
+                    <Kpi
+                      label={t.dash.mkbfMonth}
+                      hint={t.dash.mkbfMonthHint
+                        .replace('{m}', monthLabel(data.mkbf.month.month))
+                        .replace('{d}', fmtDayIso(data.mkbf.month.to))}
+                      value={
+                        data.mkbf.month.mkbf === null
+                          ? '—'
+                          : `${formatNumber(data.mkbf.month.mkbf)} km`
+                      }
+                      tone="brand"
+                      spark={data.mkbf.series.map((p) => p.mkbf)}
+                      sparkColor="var(--chart-1)"
+                      delta={monthPct}
+                      deltaSuffix="%"
+                      deltaLabel={t.dash.vsPrevMonth.replace('{m}', monthLabel(data.mkbf.previousMonth.month))}
+                      note={
+                        data.mkbf.month.mkbf === null
+                          ? t.dash.noReturns
+                          : `${formatNumber(data.mkbf.month.kmTraveled)} km ÷ ${formatNumber(data.mkbf.month.unscheduledReturns)} ${t.dash.breakdowns}`
+                      }
+                      back={<MkbfBack data={data} />}
+                      backTo="/indicadores"
+                      backLabel={t.dash.back.openIndicators}
+                    />
+                    <Kpi
+                      label={t.dash.inQueue}
+                      hint={t.dash.inQueueHint}
+                      value={String(data.queue.waiting)}
+                      tone={data.queue.waiting > 3 ? 'warn' : 'neutral'}
+                      note={
+                        data.queue.oldestWaitingHours !== null
+                          ? `+ ${data.queue.inService} ${t.dash.inService} · ${t.dash.oldest} ${data.queue.oldestWaitingHours}${t.dash.hours}`
+                          : `+ ${data.queue.inService} ${t.dash.inService}`
+                      }
+                      back={<QueueBack data={data} />}
+                      backTo="/fila"
+                      backLabel={t.dash.back.openQueue}
+                    />
+                    <Kpi
+                      label={t.dash.openWo}
+                      hint={t.dash.openWoHint}
+                      value={String(data.workOrders.open)}
+                      tone={data.workOrders.overdue > 0 ? 'danger' : 'neutral'}
+                      note={[
+                        data.workOrders.overdue > 0
+                          ? `${data.workOrders.overdue} ${t.dash.overdue}`
+                          : null,
+                        `${data.workOrders.releasedToday} ${t.dash.releasedToday}`,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                      back={<WorkOrdersBack data={data} />}
+                      backTo={
+                        data.backs.workOrders.mostOverdue
+                          ? `/os/${data.backs.workOrders.mostOverdue.id}`
+                          : '/os'
+                      }
+                      backLabel={t.dash.back.openWo}
+                    />
                   </div>
-                </div>
-              </CollapsibleCard>
-            ),
-          },
-          {
-            key: 'kpis',
-            render: (grip) => (
-              <CollapsibleCard
-                id="dash.kpis"
-                grip={grip}
-                className="dash-kpis dash-glass"
-                label={t.dash.kpisTitle}
-                head={
-                  <div>
-                    <h3>
-                      {t.dash.kpisTitle} <LiveBadge />
-                    </h3>
-                    <span className="chart__hint">{t.dash.kpisHint}</span>
-                  </div>
-                }
-              >
-                <div className="dash-kpis__grid">
-                  <Kpi
-                    label={t.dash.mkbf}
-                    hint={`${t.dash.mkbfHint} · ${t.dash.last30}`}
-                    value={
-                      data.mkbf.last30.mkbf === null
-                        ? '—'
-                        : `${formatNumber(data.mkbf.last30.mkbf)} km`
-                    }
-                    tone="brand"
-                    spark={data.mkbf.series.map((p) => p.mkbf)}
-                    sparkColor="var(--chart-1)"
-                    note={
-                      data.mkbf.last30.mkbf === null
-                        ? t.dash.noReturns
-                        : `${formatNumber(data.mkbf.last30.kmTraveled)} km ÷ ${formatNumber(data.mkbf.last30.unscheduledReturns)} ${t.dash.breakdowns}`
-                    }
-                    back={<MkbfBack data={data} />}
-                    backTo="/indicadores"
-                    backLabel={t.dash.back.openIndicators}
-                  />
-                  <Kpi
-                    label={t.dash.inQueue}
-                    hint={t.dash.inQueueHint}
-                    value={String(data.queue.waiting)}
-                    tone={data.queue.waiting > 3 ? 'warn' : 'neutral'}
-                    note={
-                      data.queue.oldestWaitingHours !== null
-                        ? `+ ${data.queue.inService} ${t.dash.inService} · ${t.dash.oldest} ${data.queue.oldestWaitingHours}${t.dash.hours}`
-                        : `+ ${data.queue.inService} ${t.dash.inService}`
-                    }
-                    back={<QueueBack data={data} />}
-                    backTo="/fila"
-                    backLabel={t.dash.back.openQueue}
-                  />
-                  <Kpi
-                    label={t.dash.openWo}
-                    hint={t.dash.openWoHint}
-                    value={String(data.workOrders.open)}
-                    tone={data.workOrders.overdue > 0 ? 'danger' : 'neutral'}
-                    note={[
-                      data.workOrders.overdue > 0
-                        ? `${data.workOrders.overdue} ${t.dash.overdue}`
-                        : null,
-                      `${data.workOrders.releasedToday} ${t.dash.releasedToday}`,
-                      data.workOrders.averageDowntimeMinutes !== null
-                        ? `${t.dash.avg} ${formatMinutes(data.workOrders.averageDowntimeMinutes)} ${t.dash.perWo}`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                    back={<WorkOrdersBack data={data} />}
-                    backTo={
-                      data.backs.workOrders.mostOverdue
-                        ? `/os/${data.backs.workOrders.mostOverdue.id}`
-                        : '/os'
-                    }
-                    backLabel={t.dash.back.openWo}
-                  />
-                </div>
-              </CollapsibleCard>
-            ),
-          },
-          { key: 'fleet', render: (grip) => <FleetNow vehicles={data.vehicles} grip={grip} /> },
-          {
-            key: 'widgets',
-            render: (grip) => <WidgetsCard grip={grip} vehicles={data.vehicles} />,
-          },
-        ]}
-      />
-      )}
-
-      {/* ---- Tendências ---- */}
-      <section className="dash-row dash-row--charts">
-        <MkbfCard />
-        <AvailabilityCard />
+                </CollapsibleCard>
+              ),
+            },
+            { key: 'recent', render: (grip) => <RecentNow grip={grip} /> },
+            { key: 'fleet', render: (grip) => <FleetNow vehicles={data.vehicles} grip={grip} /> },
+          ]}
+        />
+        )}
       </section>
 
-      <section className="dash-row dash-row--top">
-        <TopFailuresCard />
-      </section>
-
-      <section className="dash-row dash-row--bottom">
-        <DowntimeCard />
-        <EventsCard />
-        <RecentEventsCard />
-      </section>
+      {/* ---- Seção 2 — Indicadores por período: cada cartão com o seu. ---- */}
+      <IndicatorsSection vehicles={data?.vehicles ?? []} />
 
       {data && (
         <p className="tp-muted dash-updated">
@@ -368,166 +348,93 @@ export function DashboardPage() {
   );
 }
 
-// ---------------------------------------------------------------------------
+/** Até quando a remessa do ERP-JB chegou: o dia de referência dos números "do dia" desta seção. */
+function DataThrough({ data }: { data: DashboardData }) {
+  const { t } = useI18n();
+  const day = data.dataThrough.km ?? data.dataThrough.failures;
+  if (!day) return null;
+  const behind = day < todayIso();
+  return (
+    <span className={`dash-through${behind ? ' is-behind' : ''}`} title={t.dash.sections.dataThroughHint}>
+      <Database size={12} aria-hidden /> {t.dash.sections.dataThrough.replace('{d}', fmtDayIso(day))}
+    </span>
+  );
+}
 
 /**
- * Os três cards de baixo, cada um com o próprio período (salvo na conta), como
- * os gráficos de MKBF e disponibilidade: o véu na troca de filtro e o loader
- * da marca no primeiro carregamento.
+ * Últimos eventos, na seção "Agora": as seis fichas mais recentes de hoje — ou
+ * do dia mais recente com evento, quando hoje ainda não tem nenhum (a API
+ * recua e a tela diz qual dia está mostrando).
  */
-const BOTTOM_PRESETS = ['today', 'yesterday', 'last30', 'months12', 'custom'] as const;
-
-function DowntimeCard() {
+function RecentNow({ grip }: { grip?: ReactNode }) {
   const { t } = useI18n();
-  const [period, setPeriod] = useChartPeriod('dash.period.downtime', 'last30');
-  const { from, to } = resolveChartPeriod(period);
+  const today = todayIso();
   const query = useQuery({
-    queryKey: ['dashboard', 'downtime', from, to],
-    queryFn: () => api.get<DashboardDowntime>(`/dashboard/downtime?from=${from}&to=${to}`),
+    queryKey: ['dashboard', 'recent-events', today, today],
+    queryFn: () => api.get<DashboardRecentEvents>(`/dashboard/recent-events?from=${today}&to=${today}`),
     placeholderData: keepPreviousData,
     refetchInterval: 60_000,
   });
   const d = query.data;
-  // Item 4: detalhamento por carro, aberto pelo botão ou por uma causa da legenda.
-  const [drill, setDrill] = useState<{ cause: DowntimeCause | null } | null>(null);
-  const perCar = d
-    ? Object.fromEntries(d.perCause.map((p) => [p.cause, { vehicles: p.vehicles, avgMinutes: p.avgMinutesPerVehicle }]))
-    : undefined;
+  const rows = d?.events ?? [];
   return (
-    <div className="tp-card dash-glass">
-      <div className="chart__title chart__title--tools">
-        <div>
-          <h3>{t.dash.downtime}</h3>
-          <span className="chart__hint">{t.dash.downtimeHint} · {rangeLabel(from, to)}</span>
-        </div>
-        <ChartPeriodBar value={period} onChange={setPeriod} presets={BOTTOM_PRESETS} />
-      </div>
+    <CollapsibleCard
+      id="dash.recent"
+      grip={grip}
+      className="tp-card dash-glass dash-recent"
+      headClassName="tp-card__head dash-recent__head"
+      label={t.dash.recentEvents}
+      head={
+        <>
+          <div>
+            <h3>
+              {t.dash.recentEvents} <LiveBadge />
+            </h3>
+            <span className="chart__hint">
+              {d?.fellBack ? t.dash.recentFellBack.replace('{d}', rangeLabel(d.used.from, d.used.to)) : t.dash.recentHint}
+            </span>
+          </div>
+          <Link to="/eventos" className="tp-btn tp-btn--ghost tp-btn--sm">
+            {t.dash.seeAll}
+          </Link>
+        </>
+      }
+    >
       {d ? (
         <RefreshVeil active={query.isPlaceholderData} delay={0}>
-          <DowntimeDonut
-            data={d.downtimeByCause}
-            totalMinutes={d.totalDowntimeMinutes}
-            perCar={perCar}
-            onPick={(cause) => setDrill({ cause })}
-            center={
-              d.avgMinutesPerVehicle !== null ? (
-                <>
-                  <span className="donut__big">{formatHours(d.avgMinutesPerVehicle)}</span>
-                  <span className="donut__small">{t.dash.downtimePerCar}</span>
-                </>
-              ) : undefined
-            }
-          />
-          {d.vehicleCount > 0 && (
-            <div className="downtime__foot">
-              <span className="tp-muted">
-                {formatHours(d.totalDowntimeMinutes)} {t.dash.downtimeTotalOf} {formatNumber(d.vehicleCount)} {t.dash.downtimeCars}
-              </span>
-              <button type="button" className="tp-btn tp-btn--ghost tp-btn--sm" onClick={() => setDrill({ cause: null })}>
-                {t.dash.downtimeSeeCars}
-              </button>
-            </div>
+          {rows.length === 0 ? (
+            <p className="tp-muted dash-recent__empty">{t.dash.noEvents}</p>
+          ) : (
+            <ul className="recent-now">
+              {rows.map((e) => (
+                <li key={e.id} className="recent-now__item">
+                  <span className="recent-now__top">
+                    <Link to={`/frota/${e.vehicleId}`} className="recent-now__car">{e.vehicleCode}</Link>
+                    <span className={`tp-badge tp-badge--status ${badgeFor(e.status)}`}>{EVENT_STATUS_LABELS[e.status]}</span>
+                  </span>
+                  <span className="recent-now__desc" title={e.catalog?.description ?? e.reportedDescription ?? e.code}>
+                    {e.catalog?.description ?? e.reportedDescription ?? e.code}
+                  </span>
+                  <span className="recent-now__when tp-muted">
+                    {e.lineCode ? `${t.dash.line} ${e.lineCode} · ` : ''}
+                    {formatDateTime(e.reportedAt)}
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </RefreshVeil>
       ) : (
-        <ChartLoading />
-      )}
-      {drill && d && (
-        <DowntimeCarsDrawer
-          data={d}
-          cause={drill.cause}
-          onCause={(cause) => setDrill({ cause })}
-          onClose={() => setDrill(null)}
-          rangeText={rangeLabel(from, to)}
-        />
-      )}
-    </div>
-  );
-}
-
-function EventsCard() {
-  const { t } = useI18n();
-  const [period, setPeriod] = useChartPeriod('dash.period.events', 'last30');
-  const { from, to } = resolveChartPeriod(period);
-  const query = useQuery({
-    queryKey: ['dashboard', 'events-series', from, to],
-    queryFn: () => api.get<DashboardEventsSeries>(`/dashboard/events-series?from=${from}&to=${to}`),
-    placeholderData: keepPreviousData,
-    refetchInterval: 60_000,
-  });
-  const d = query.data;
-  useFallbackToast(d?.fellBack ? `events:${d.requested.to}>${d.used.to}` : null, d?.requested.to ?? null, d?.used.to ?? null);
-  // O título segue o eixo pedido (não o do dado anterior que está sob o véu).
-  const bucket = from === to ? 'hour' : daysInRange(from, to) > 120 ? 'week' : 'day';
-  return (
-    <div className="tp-card dash-glass">
-      <div className="chart__title chart__title--tools">
-        <div>
-          <h3>{bucket === 'hour' ? t.dash.eventsPerHour : bucket === 'week' ? t.dash.eventsPerWeek : t.dash.eventsPerDay}</h3>
-          <span className="chart__hint">{t.dash.eventsHint.replace('{r}', rangeLabel(d?.used.from ?? from, d?.used.to ?? to))}</span>
+        <div className="recent-now" aria-busy="true">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="recent-now__item">
+              <i className="skel skel--bar" style={{ width: '45%', height: 12 }} />
+              <i className="skel skel--bar" style={{ width: '90%', height: 10 }} />
+            </div>
+          ))}
         </div>
-        <ChartPeriodBar value={period} onChange={setPeriod} presets={BOTTOM_PRESETS} />
-      </div>
-      {d ? (
-        <RefreshVeil active={query.isPlaceholderData} delay={0}>
-          <EventsPerDayChart data={d.points} bucket={d.bucket} />
-        </RefreshVeil>
-      ) : (
-        <ChartLoading />
       )}
-    </div>
-  );
-}
-
-function RecentEventsCard() {
-  const { t } = useI18n();
-  const [period, setPeriod] = useChartPeriod('dash.period.recent', 'last30');
-  const { from, to } = resolveChartPeriod(period);
-  const query = useQuery({
-    queryKey: ['dashboard', 'recent-events', from, to],
-    queryFn: () => api.get<DashboardRecentEvents>(`/dashboard/recent-events?from=${from}&to=${to}`),
-    placeholderData: keepPreviousData,
-    refetchInterval: 60_000,
-  });
-  const d = query.data;
-  const rows = d?.events;
-  useFallbackToast(d?.fellBack ? `recent:${d.requested.to}>${d.used.to}` : null, d?.requested.to ?? null, d?.used.to ?? null);
-  return (
-    <div className="tp-card dash-glass">
-      <div className="tp-card__head">
-        <div className="chart__title">
-          <h3>{t.dash.recentEvents}</h3>
-          <span className="chart__hint">{rangeLabel(d?.used.from ?? from, d?.used.to ?? to)}</span>
-        </div>
-        <Link to="/eventos" className="tp-btn tp-btn--ghost tp-btn--sm">
-          {t.dash.seeAll}
-        </Link>
-      </div>
-      <ChartPeriodBar value={period} onChange={setPeriod} presets={BOTTOM_PRESETS} />
-      {rows ? (
-        <RefreshVeil active={query.isPlaceholderData} delay={0}>
-          <ul className="recent-list">
-            {rows.map((e) => (
-              <li key={e.id}>
-                <div className="recent-list__main">
-                  <b>{e.vehicleCode}</b>
-                  <span>{e.catalog?.description ?? e.reportedDescription ?? e.code}</span>
-                </div>
-                <div className="recent-list__meta">
-                  <span className={`tp-badge tp-badge--status ${badgeFor(e.status)}`}>
-                    {EVENT_STATUS_LABELS[e.status]}
-                  </span>
-                  <span className="tp-muted">{formatDateTime(e.reportedAt)}</span>
-                </div>
-              </li>
-            ))}
-            {rows.length === 0 && <li className="tp-muted">{t.dash.noEvents}</li>}
-          </ul>
-        </RefreshVeil>
-      ) : (
-        <ChartLoading />
-      )}
-    </div>
+    </CollapsibleCard>
   );
 }
 
@@ -696,9 +603,10 @@ function BackRow({
 function MkbfBack({ data }: { data: DashboardData }) {
   const { t } = useI18n();
   const b = data.backs.mkbf;
-  const cur = data.mkbf.last30;
-  const pct =
-    b.previous.mkbf && cur.mkbf ? ((cur.mkbf - b.previous.mkbf) / b.previous.mkbf) * 100 : null;
+  const cur = data.mkbf.month;
+  const prev = data.mkbf.previousMonth;
+  const monthLabel = (m: string) => monthName(Number(m.slice(5, 7)) - 1);
+  const pct = prev.mkbf && cur.mkbf ? ((cur.mkbf - prev.mkbf) / prev.mkbf) * 100 : null;
   const pctText =
     pct === null ? '' : `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1).replace('.', ',')}%`;
   const top = b.topSystems[0];
@@ -707,8 +615,11 @@ function MkbfBack({ data }: { data: DashboardData }) {
       <KpiAi>
         {cur.mkbf === null
           ? t.dash.back.aiNoReturns
-          : t.dash.back.aiMkbf.replace('{v}', formatNumber(cur.mkbf)) +
-            (pctText ? t.dash.back.aiVs.replace('{p}', pctText) : '') +
+          : t.dash.back.aiMkbfMonth
+              .replace('{v}', formatNumber(cur.mkbf))
+              .replace('{m}', monthLabel(cur.month))
+              .replace('{d}', fmtDayIso(cur.to)) +
+            (pctText ? t.dash.back.aiVsMonth.replace('{p}', pctText).replace('{pm}', monthLabel(prev.month)) : '') +
             (top ? t.dash.back.aiTop.replace('{s}', top.name) : '') +
             (b.worstVehicle
               ? t.dash.back.aiWorst
@@ -719,8 +630,8 @@ function MkbfBack({ data }: { data: DashboardData }) {
       </KpiAi>
       <ul className="kpi-back__list">
         <BackRow
-          label={t.dash.back.previous}
-          value={b.previous.mkbf === null ? '—' : `${formatNumber(b.previous.mkbf)} km${pctText ? ` · ${pctText}` : ''}`}
+          label={t.dash.back.previousMonth.replace('{m}', monthLabel(prev.month))}
+          value={prev.mkbf === null ? '—' : `${formatNumber(prev.mkbf)} km${pctText ? ` · ${pctText}` : ''}`}
           tone={pct === null ? undefined : pct >= 0 ? 'neutral' : 'danger'}
         />
         {top ? (
@@ -1128,149 +1039,4 @@ function describeError(error: unknown, t: ReturnType<typeof useI18n>['t']): stri
   if (error.body.statusCode === 429) return t.dash.errorRate;
   if (error.body.statusCode >= 500) return t.dash.errorServer;
   return error.message ? `(${error.message})` : '';
-}
-
-// ---------------------------------------------------------------------------
-// Período do histórico: na URL (?dias=90) para ser compartilhável, e lembrado
-// no navegador para a pessoa não escolher de novo a cada visita.
-
-function isPeriod(n: number): n is (typeof DASHBOARD_PERIODS)[number] {
-  return (DASHBOARD_PERIODS as readonly number[]).includes(n);
-}
-
-/**
- * Período do Dashboard: um dia só (hoje, D-1, D-2) ou os últimos N dias.
- * A URL (compartilhável) vence quando traz um; senão vale o salvo na conta.
- */
-export interface DashPeriod {
-  days: number;
-  /** 0 = até agora; 1 = ontem; 2 = anteontem (só com days = 1). */
-  back: 0 | 1 | 2;
-  /** Intervalo livre (dias civis); quando presente, vence days/back. */
-  from?: string;
-  to?: string;
-}
-const DAY_PRESETS: { key: string; period: DashPeriod }[] = [
-  { key: 'hoje', period: { days: 1, back: 0 } },
-  { key: 'd1', period: { days: 1, back: 1 } },
-  { key: 'd2', period: { days: 1, back: 2 } },
-];
-const samePeriod = (a: DashPeriod, b: DashPeriod) =>
-  a.days === b.days && a.back === b.back && !a.from && !b.from;
-const isCustom = (p: DashPeriod) => Boolean(p.from && p.to);
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
-
-function parsePeriod(
-  dias: string | null,
-  antes: string | null,
-  de: string | null = null,
-  ate: string | null = null,
-): DashPeriod | null {
-  if (de && ate && ISO_DAY.test(de) && ISO_DAY.test(ate) && de <= ate) {
-    return { days: daysInRange(de, ate), back: 0, from: de, to: ate };
-  }
-  const d = Number(dias);
-  const b = Number(antes ?? 0);
-  if (!dias) return null;
-  if (d === 1 && (b === 0 || b === 1 || b === 2)) return { days: 1, back: b as 0 | 1 | 2 };
-  if (isPeriod(d)) return { days: d, back: 0 };
-  return null;
-}
-
-function useDashboardPeriod(): [DashPeriod, (p: DashPeriod) => void] {
-  const [params, setParams] = useSearchParams();
-  const [saved, setSaved] = useUiPref<DashPeriod>('dash.period', {
-    days: DEFAULT_DASHBOARD_PERIOD,
-    back: 0,
-  });
-  const period =
-    parsePeriod(params.get('dias'), params.get('antes'), params.get('de'), params.get('ate')) ??
-    (isCustom(saved) || saved.days === 1 || isPeriod(saved.days)
-      ? saved
-      : { days: DEFAULT_DASHBOARD_PERIOD, back: 0 });
-  const set = (p: DashPeriod) => {
-    setSaved(p);
-    const next = new URLSearchParams(params);
-    for (const k of ['dias', 'antes', 'de', 'ate']) next.delete(k);
-    if (isCustom(p)) {
-      next.set('de', p.from as string);
-      next.set('ate', p.to as string);
-    } else {
-      next.set('dias', String(p.days));
-      if (p.back) next.set('antes', String(p.back));
-    }
-    setParams(next, { replace: true });
-  };
-  return [period, set];
-}
-
-/** "hoje", "ontem", "anteontem" ou "7 dias": o nome do período para dicas e rodapés. */
-function periodName(p: DashPeriod, t: ReturnType<typeof useI18n>['t']): string {
-  if (isCustom(p)) return rangeLabel(p.from as string, p.to as string);
-  if (p.days === 1)
-    return p.back === 0
-      ? t.dash.dayPresets.todayName
-      : p.back === 1
-        ? t.dash.dayPresets.d1Name
-        : t.dash.dayPresets.d2Name;
-  return t.dash.periodDays.replace('{n}', String(p.days));
-}
-
-function PeriodControl() {
-  const { t } = useI18n();
-  const [period, setPeriod] = useDashboardPeriod();
-  return (
-    <div className="tp-segmented dash-period" role="radiogroup" aria-label={t.dash.period}>
-      {DAY_PRESETS.map(({ key, period: p }) => (
-        <button
-          key={key}
-          type="button"
-          role="radio"
-          aria-checked={samePeriod(p, period)}
-          className={`tp-segmented__item${samePeriod(p, period) ? ' is-active' : ''}`}
-          title={periodName(p, t)}
-          onClick={() => setPeriod(p)}
-        >
-          {t.dash.dayPresets[key as 'hoje' | 'd1' | 'd2']}
-        </button>
-      ))}
-      <i className="dash-period__sep" aria-hidden />
-      {DASHBOARD_PERIODS.map((d) => {
-        const p: DashPeriod = { days: d, back: 0 };
-        return (
-          <button
-            key={d}
-            type="button"
-            role="radio"
-            aria-checked={samePeriod(p, period)}
-            className={`tp-segmented__item${samePeriod(p, period) ? ' is-active' : ''}`}
-            onClick={() => setPeriod(p)}
-          >
-            {t.dash.periodDays.replace('{n}', String(d))}
-          </button>
-        );
-      })}
-      <CustomRangeItem
-        active={isCustom(period)}
-        label={
-          isCustom(period)
-            ? rangeLabel(period.from as string, period.to as string)
-            : t.dash.periodCustom
-        }
-        from={
-          isCustom(period)
-            ? (period.from as string)
-            : shiftDays(todayIso(), -(period.days - 1 + period.back))
-        }
-        to={isCustom(period) ? (period.to as string) : shiftDays(todayIso(), -period.back)}
-        onApply={(from, to) => setPeriod({ days: daysInRange(from, to), back: 0, from, to })}
-      />
-    </div>
-  );
-}
-
-function daysInRange(from: string, to: string): number {
-  return (
-    Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1
-  );
 }

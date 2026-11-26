@@ -86,13 +86,19 @@ export type IaStreamEvent =
 
 // --- Fase 2: leituras redigidas pelo modelo -----------------------------------
 
-export const IA_READING_KINDS = ['month'] as const;
+/** month = a leitura do mês em Indicadores; day = a frase do dia no topo do Dashboard. */
+export const IA_READING_KINDS = ['month', 'day'] as const;
 export type IaReadingKind = (typeof IA_READING_KINDS)[number];
 
-export const iaReadingParamsSchema = z.object({
-  kind: z.enum(IA_READING_KINDS),
-  key: z.string().regex(/^\d{4}-\d{2}$/, 'Mês no formato AAAA-MM'),
-});
+export const iaReadingParamsSchema = z
+  .object({
+    kind: z.enum(IA_READING_KINDS),
+    key: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/, 'Mês AAAA-MM ou dia AAAA-MM-DD'),
+  })
+  .refine((p) => (p.kind === 'month' ? p.key.length === 7 : p.key.length === 10), 'Chave não combina com o tipo');
+
+/** Quanto tempo a frase do dia vale antes de ser redigida de novo. */
+export const IA_DAY_READING_TTL_MINUTES = 60;
 export type IaReadingParams = z.infer<typeof iaReadingParamsSchema>;
 
 /** A leitura do mês redigida pela ia.Transppass a partir dos números do quadro. */

@@ -25,7 +25,7 @@ describe('IaReadingsService.generate', () => {
   it('grava a leitura que o modelo devolve, com os dados do quadro no prompt', async () => {
     const upsert = jest.fn(async ({ create }: { create: Record<string, unknown> }) => ({ kind: 'month', key: '2026-11', summary: create.summary, insights: create.insights, model: 'm', usage: null, generatedAt: new Date() }));
     const provider = { kind: 'anthropic' as const, model: 'm', turn: jest.fn(), complete: jest.fn(async (req: { prompt: string }) => { expect(req.prompt).toContain('<dados>'); expect(req.prompt).toContain('"month":"2026-11"'); return { text: JSON.stringify(valid), usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } }; }) };
-    const svc = new IaReadingsService({ aiReading: { upsert } } as never, board as never, config as never, provider);
+    const svc = new IaReadingsService({ aiReading: { upsert } } as never, board as never, config as never, provider, {} as never);
     const r = await svc.generate('month', '2026-11');
     expect(r.summary).toBe(valid.summary);
     expect(upsert).toHaveBeenCalledTimes(1);
@@ -34,13 +34,13 @@ describe('IaReadingsService.generate', () => {
   it('resposta fora do formato não grava nada e avisa', async () => {
     const upsert = jest.fn();
     const provider = { kind: 'anthropic' as const, model: 'm', turn: jest.fn(), complete: jest.fn(async () => ({ text: 'desculpe, não consigo', usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } })) };
-    const svc = new IaReadingsService({ aiReading: { upsert } } as never, board as never, config as never, provider);
+    const svc = new IaReadingsService({ aiReading: { upsert } } as never, board as never, config as never, provider, {} as never);
     await expect(svc.generate('month', '2026-11')).rejects.toThrow('formato');
     expect(upsert).not.toHaveBeenCalled();
   });
 
   it('sem provedor, recusa', async () => {
-    const svc = new IaReadingsService({} as never, board as never, config as never, null);
+    const svc = new IaReadingsService({} as never, board as never, config as never, null, {} as never);
     await expect(svc.generate('month', '2026-11')).rejects.toThrow('desligada');
   });
 });

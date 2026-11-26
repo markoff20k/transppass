@@ -7,28 +7,24 @@ import { formatNumber } from '@/lib/format';
 import { rangeLabel } from '@/lib/period';
 import { useI18n } from '@/i18n/i18n.context';
 import { useUiState } from '@/features/auth/use-ui-pref';
-import { ChartPeriodBar } from '@/components/charts/chart-period';
-import { resolveChartPeriod, useChartPeriod } from '@/components/charts/use-chart-period';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { ChartLoading, useFallbackToast } from './chart-cards';
 
-const PRESETS = ['today', 'yesterday', 'last30', 'months12', 'custom'] as const;
 const pct = (v: number) => `${(v * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 
 /**
- * Top 10 falhas: as falhas que mais derrubaram carro no período (retornos não
- * programados), num ranking de barras — a maior em destaque, as outras
- * discretas —, com a fatia do total, os carros distintos e a variação contra
- * o período anterior de mesmo tamanho. Pelo defeito apontado pelo CCO ou pelo
- * código composto; período e visão salvos na conta. Clicar numa falha abre
- * Eventos já filtrado por ela e pelo período.
+ * Corpo do cartão "Maiores falhas": as falhas que mais derrubaram carro no
+ * período (retornos não programados), num ranking de barras — a maior em
+ * destaque, as outras discretas —, com a fatia do total, os carros distintos
+ * e a variação contra o período anterior de mesmo tamanho. Pelo defeito
+ * apontado pelo CCO ou pelo código composto; a visão fica salva na conta.
+ * Clicar numa falha abre Eventos já filtrado por ela e pelo período. O
+ * período vem do cartão, como em todo indicador.
  */
-export function TopFailuresCard() {
+export function TopFailuresBody({ from, to }: { from: string; to: string }) {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [period, setPeriod] = useChartPeriod('dash.period.topFailures', 'last30');
   const [by, setBy] = useUiState<TopFailuresBy>('dash.topFailures.by', 'cco');
-  const { from, to } = resolveChartPeriod(period);
   const query = useQuery({
     queryKey: ['dashboard', 'top-failures', from, to, by],
     queryFn: () => api.get<TopFailures>(`/dashboard/top-failures?from=${from}&to=${to}&by=${by}`),
@@ -48,31 +44,23 @@ export function TopFailuresCard() {
   };
 
   return (
-    <div className="tp-card dash-glass topf">
-      <div className="chart__title chart__title--tools">
-        <div>
-          <h3>{t.dash.top.title}</h3>
-          <span className="chart__hint">
-            {t.dash.top.hint.replace('{r}', rangeLabel(d?.used.from ?? from, d?.used.to ?? to))}
-          </span>
-        </div>
-        <div className="topf__tools">
-          <span className="tp-segmented topf__by" role="radiogroup" aria-label={t.dash.top.byLabel}>
-            {(['cco', 'code'] as const).map((k) => (
-              <button
-                key={k}
-                type="button"
-                role="radio"
-                aria-checked={by === k}
-                className={`tp-segmented__item${by === k ? ' is-active' : ''}`}
-                onClick={() => setBy(k)}
-              >
-                {k === 'cco' ? t.dash.top.byCco : t.dash.top.byCode}
-              </button>
-            ))}
-          </span>
-          <ChartPeriodBar value={period} onChange={setPeriod} presets={PRESETS} />
-        </div>
+    <div className="topf topf--body">
+      <div className="topf__tools">
+        <span className="tp-segmented topf__by" role="radiogroup" aria-label={t.dash.top.byLabel}>
+          {(['cco', 'code'] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={by === k}
+              className={`tp-segmented__item${by === k ? ' is-active' : ''}`}
+              onClick={() => setBy(k)}
+            >
+              {k === 'cco' ? t.dash.top.byCco : t.dash.top.byCode}
+            </button>
+          ))}
+        </span>
+        <span className="chart__hint">{t.dash.top.hint.replace('{r}', rangeLabel(d?.used.from ?? from, d?.used.to ?? to))}</span>
       </div>
 
       {d ? (

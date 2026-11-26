@@ -1,48 +1,13 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  Bus,
-  CalendarDays,
-  Check,
-  ChevronDown,
-  Minus,
-  Plus,
-  Search,
-  X,
-} from 'lucide-react';
-import {
-  WIDGET_KINDS,
-  type DashboardVehicle,
-  type DashboardWidget,
-  type DashboardWidgetPref,
-  type WidgetKind,
-  type WidgetPeriod,
-  type WidgetPeriodPreset,
-} from '@app/shared';
-import { api } from '@/lib/api-client';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Bus, CalendarDays, Check, ChevronDown, Search } from 'lucide-react';
+import type { DashboardVehicle, DashboardWidget, WidgetPeriod, WidgetPeriodPreset } from '@app/shared';
 import { formatMinutes, formatNumber } from '@/lib/format';
 import { isoOf, makePeriod, rangeLabel, shiftDays, todayIso } from '@/lib/period';
 import { useI18n } from '@/i18n/i18n.context';
-import { useUiState } from '@/features/auth/use-ui-pref';
-import { InfoTip } from '@/components/ui/info-tip';
-import { toast } from '@/lib/toast';
-import { CollapsibleCard } from '@/components/ui/collapsible-card';
 
-const fmtDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+export const fmtDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
-/** Painel inicial de quem ainda não montou o seu. */
-const DEFAULT_WIDGETS: DashboardWidgetPref[] = [
-  { id: 'w-mkbf', kind: 'mkbf', period: { preset: 'last30' } },
-  { id: 'w-breakdowns', kind: 'breakdowns', period: { preset: 'yesterday' } },
-  { id: 'w-availability', kind: 'availability', period: { preset: 'today' } },
-  { id: 'w-lostTrips', kind: 'lostTrips', period: { preset: 'yesterday' } },
-  { id: 'w-downtime', kind: 'downtime', period: { preset: 'last30' } },
-  { id: 'w-rescues', kind: 'rescues', period: { preset: 'today' } },
-];
-
-const PRESETS: WidgetPeriodPreset[] = [
+export const PRESETS: WidgetPeriodPreset[] = [
   'today',
   'yesterday',
   'd2',
@@ -53,7 +18,7 @@ const PRESETS: WidgetPeriodPreset[] = [
 ];
 
 /** Datas (AAAA-MM-DD) de um período de widget, sempre em relação a hoje. */
-function resolveWidgetPeriod(p: WidgetPeriod): { from: string; to: string } {
+export function resolveWidgetPeriod(p: WidgetPeriod): { from: string; to: string } {
   const today = todayIso();
   const [y, m] = today.split('-').map(Number) as [number, number];
   const m0 = m - 1;
@@ -80,221 +45,8 @@ function resolveWidgetPeriod(p: WidgetPeriod): { from: string; to: string } {
   }
 }
 
-/** Seção "Indicadores": cada cartão é um widget com o próprio período; a lista fica salva na conta. */
-export function WidgetsCard({
-  grip,
-  vehicles,
-}: {
-  grip?: ReactNode;
-  vehicles: DashboardVehicle[];
-}) {
-  const { t } = useI18n();
-  const [widgets, setWidgets] = useUiState<DashboardWidgetPref[]>('dash.widgets', DEFAULT_WIDGETS);
-  const update = (id: string, patch: Partial<DashboardWidgetPref>) =>
-    setWidgets((list) => list.map((w) => (w.id === id ? { ...w, ...patch } : w)));
-  const remove = (id: string) => setWidgets((list) => list.filter((w) => w.id !== id));
-  const add = (kind: WidgetKind) =>
-    setWidgets((list) => [
-      ...list,
-      { id: `${kind}-${Date.now().toString(36)}`, kind, period: { preset: 'yesterday' } },
-    ]);
-
-  return (
-    <CollapsibleCard
-      id="dash.widgets"
-      grip={grip}
-      className="dash-widgets dash-glass"
-      label={t.dash.widgets.title}
-      head={
-        <>
-          <div>
-            <h3>{t.dash.widgets.title}</h3>
-            <span className="chart__hint">{t.dash.widgets.hint}</span>
-          </div>
-          <AddWidget onAdd={add} />
-        </>
-      }
-    >
-      {widgets.length === 0 ? (
-        <p className="dash-widgets__empty">{t.dash.widgets.empty}</p>
-      ) : (
-        <div className="dash-widgets__grid">
-          {widgets.map((w, index) => (
-            <Widget
-              key={w.id}
-              index={index}
-              pref={w}
-              vehicles={vehicles}
-              onPeriod={(period) => update(w.id, { period })}
-              onVehicle={(vehicleId) => update(w.id, { vehicleId })}
-              onRemove={() => remove(w.id)}
-            />
-          ))}
-        </div>
-      )}
-    </CollapsibleCard>
-  );
-}
-
-/** "Adicionar indicador": uma lista com todos os indicadores; escolher já põe o cartão no fim. */
-function AddWidget({ onAdd }: { onAdd: (kind: WidgetKind) => void }) {
-  const { t } = useI18n();
-  return (
-    <label className="dash-widgets__add">
-      <Plus size={14} aria-hidden />
-      <span>{t.dash.widgets.add}</span>
-      <select
-        className="dash-widgets__add-select"
-        aria-label={t.dash.widgets.add}
-        value=""
-        onChange={(e) => {
-          if (e.target.value) onAdd(e.target.value as WidgetKind);
-        }}
-      >
-        <option value="">{t.dash.widgets.add}</option>
-        {WIDGET_KINDS.map((k) => (
-          <option key={k} value={k}>
-            {t.dash.widgets.kinds[k].label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function Widget({
-  index,
-  pref,
-  vehicles,
-  onPeriod,
-  onVehicle,
-  onRemove,
-}: {
-  index: number;
-  pref: DashboardWidgetPref;
-  vehicles: DashboardVehicle[];
-  onPeriod: (p: WidgetPeriod) => void;
-  onVehicle: (id: string | null) => void;
-  onRemove: () => void;
-}) {
-  const { t } = useI18n();
-  const meta = t.dash.widgets.kinds[pref.kind];
-  const { from, to } = resolveWidgetPeriod(pref.period);
-  const query = useQuery({
-    queryKey: ['dashboard', 'widget', pref.kind, from, to, pref.vehicleId ?? null],
-    queryFn: () =>
-      api.get<DashboardWidget>(
-        `/dashboard/widget?kind=${pref.kind}&from=${from}&to=${to}${pref.vehicleId ? `&vehicleId=${pref.vehicleId}` : ''}`,
-      ),
-    refetchInterval: 60_000,
-    placeholderData: keepPreviousData,
-  });
-  const w = query.data;
-  // Período sem dado: a API recuou para o dia mais recente com dado; avisa uma vez por recuo.
-  const toasted = useRef<string | null>(null);
-  useEffect(() => {
-    if (!w?.fellBack) return;
-    const key = `${w.kind}:${w.to}>${w.used.to}`;
-    if (toasted.current === key) return;
-    toasted.current = key;
-    toast.warning(
-      t.dash.widgets.noDataFor.replace('{d}', fmtDay(w.to)).replace('{k}', meta.label),
-      {
-        description: t.dash.widgets.showing.replace('{d}', fmtDay(w.used.to)),
-      },
-    );
-  }, [w, t, meta.label]);
-  const value = w ? formatValue(w.value, w.unit) : null;
-  const delta =
-    w && w.value !== null && w.previous !== null && w.previous !== 0
-      ? ((w.value - w.previous) / Math.abs(w.previous)) * 100
-      : null;
-  const deltaTone =
-    delta === null
-      ? 'neutral'
-      : Math.abs(delta) < 0.05
-        ? 'neutral'
-        : delta > 0 === (w?.higherIsBetter ?? true)
-          ? 'good'
-          : 'danger';
-
-  return (
-    <article
-      className={`dash-kpi widget widget--${deltaTone}${query.isFetching ? ' is-refreshing' : ''}`}
-      aria-label={meta.label}
-    >
-      <div className="widget__head">
-        <span className="widget__title">
-          <span className="tp-kpi__label" title={meta.hint}>
-            {meta.label}
-          </span>
-          {/* Item 2: objetivo e fórmula do indicador, no mesmo (i) das etapas do Fluxo da garagem. */}
-          <InfoTip label={`${t.dash.widgets.about.title}: ${meta.label}`} align={index % 4 === 0 ? 'start' : index % 4 === 3 ? 'end' : 'center'} className="widget__info">
-            <span className="tp-tip__title">
-              <i className="tp-tip__dot" aria-hidden />
-              {meta.label}
-            </span>
-            <span className="tp-tip__body">
-              <b>{t.dash.widgets.about.goal}:</b> {t.dash.widgets.about[pref.kind].goal}
-            </span>
-            <span className="tp-tip__body">
-              <b>{t.dash.widgets.about.formula}:</b> {t.dash.widgets.about[pref.kind].formula}
-            </span>
-          </InfoTip>
-        </span>
-        <button
-          type="button"
-          className="tp-btn tp-btn--ghost tp-btn--sm widget__remove"
-          onClick={onRemove}
-          aria-label={t.dash.widgets.remove}
-          title={t.dash.widgets.remove}
-        >
-          <X size={14} aria-hidden />
-        </button>
-      </div>
-      <div className="widget__filters">
-        <WidgetScopePicker
-          value={pref.vehicleId ?? null}
-          vehicles={vehicles}
-          onChange={onVehicle}
-        />
-        <WidgetPeriodPicker value={pref.period} onChange={onPeriod} />
-      </div>
-      <div className="widget__body">
-        {query.isPending && !w ? (
-          <span className="skeleton widget__sk" />
-        ) : (
-          <strong className="dash-kpi__value">{value ?? '—'}</strong>
-        )}
-      </div>
-      <span className={`dash-kpi__delta dash-kpi__delta--${deltaTone}`}>
-        {delta === null ? (
-          <Minus size={14} aria-hidden />
-        ) : delta > 0 ? (
-          <ArrowUpRight size={14} aria-hidden />
-        ) : delta < 0 ? (
-          <ArrowDownRight size={14} aria-hidden />
-        ) : (
-          <Minus size={14} aria-hidden />
-        )}
-        {delta === null
-          ? ''
-          : `${delta > 0 ? '+' : ''}${delta.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% `}
-        <em>{delta === null ? t.dash.widgets.noPrevious : t.dash.widgets.vsPrevious}</em>
-      </span>
-      <span className="tp-kpi__note">
-        {w?.fellBack && (
-          <b className="widget__fallback">
-            {t.dash.widgets.dataOf.replace('{d}', fmtDay(w.used.to))} ·{' '}
-          </b>
-        )}
-        {w && w.value === null ? t.dash.widgets.noData : (w?.detail ?? meta.hint)}
-      </span>
-    </article>
-  );
-}
-
-function formatValue(value: number | null, unit: DashboardWidget['unit']): string | null {
+/** O número do widget na unidade dele: "3.890 km", "92,4%", "6h26", "2,31 km/l". */
+export function formatValue(value: number | null, unit: DashboardWidget['unit']): string | null {
   if (value === null) return null;
   switch (unit) {
     case 'km':
@@ -316,14 +68,21 @@ function formatValue(value: number | null, unit: DashboardWidget['unit']): strin
  * Seletor de período do widget: a mesma linguagem do seletor das telas de
  * consumo, em tamanho de cartão. A pílula mostra o nome do período; o painel
  * traz os atalhos (Hoje, Ontem, Anteontem, 7 dias, 30 dias, este mês, mês
- * passado) e um intervalo livre. Fecha com Esc ou clique fora.
+ * passado) e um intervalo livre. Fecha com Esc ou clique fora. Com `label`,
+ * a pílula mostra esse texto em vez do período (o "aplicar a todos" da seção).
  */
-function WidgetPeriodPicker({
+export function WidgetPeriodPicker({
   value,
   onChange,
+  label,
+  title,
+  className,
 }: {
   value: WidgetPeriod;
   onChange: (p: WidgetPeriod) => void;
+  label?: string;
+  title?: string;
+  className?: string;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -331,7 +90,7 @@ function WidgetPeriodPicker({
   const trigger = useRef<HTMLButtonElement>(null);
   const panelId = useId();
   const { from, to } = resolveWidgetPeriod(value);
-  const label =
+  const periodLabel =
     value.preset === 'custom' ? rangeLabel(from, to) : t.dash.widgets.period[value.preset];
 
   useEffect(() => {
@@ -360,7 +119,7 @@ function WidgetPeriodPicker({
   };
 
   return (
-    <span ref={root} className={`wperiod${open ? ' is-open' : ''}`}>
+    <span ref={root} className={`wperiod${open ? ' is-open' : ''}${className ? ` ${className}` : ''}`}>
       <button
         ref={trigger}
         type="button"
@@ -368,11 +127,11 @@ function WidgetPeriodPicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        title={`${label} · ${rangeLabel(from, to)}`}
+        title={title ?? `${periodLabel} · ${rangeLabel(from, to)}`}
         onClick={() => setOpen((o) => !o)}
       >
         <CalendarDays size={13} aria-hidden className="wperiod__icon" />
-        <span className="wperiod__label">{label}</span>
+        <span className="wperiod__label">{label ?? periodLabel}</span>
         <ChevronDown size={12} aria-hidden className="wperiod__chevron" />
       </button>
       {open && <WidgetPeriodPanel id={panelId} value={value} onChoose={choose} />}
@@ -428,9 +187,7 @@ function WidgetPeriodPanel({
               onClick={() => onChoose({ preset })}
             >
               <span>{t.dash.widgets.period[preset]}</span>
-              <span className="period__preset-range">
-                {r.from === r.to ? rangeLabel(r.from, r.to) : rangeLabel(r.from, r.to)}
-              </span>
+              <span className="period__preset-range">{rangeLabel(r.from, r.to)}</span>
               {active && <Check size={14} aria-hidden className="period__check" />}
             </button>
           );
@@ -479,7 +236,7 @@ function WidgetPeriodPanel({
  * ou o prefixo; o painel tem "Toda a frota" e uma busca por prefixo ou placa
  * sobre a frota que o Dashboard já carregou.
  */
-function WidgetScopePicker({
+export function WidgetScopePicker({
   value,
   vehicles,
   onChange,

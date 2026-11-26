@@ -26,6 +26,9 @@ import {
   type MetricKey,
   type DayCount,
   type MkbfSeriesPoint,
+  type WidgetBucket,
+  type WidgetSeries,
+  type WidgetUnit,
 } from '@app/shared';
 import { formatMinutes, formatNumber } from '@/lib/format';
 import { useChartZoom } from './use-chart-zoom';
@@ -1073,6 +1076,107 @@ export function MetricHistoryChart({
             activeDot={{ r: 4, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 }}
           />
         </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// --- A série genérica dos widgets -----------------------------------------------
+
+const AUX_LABELS: Record<string, string> = {
+  km: 'km rodados',
+  failures: 'quebras',
+  planned: 'programadas',
+  lost: 'perdidas',
+  workOrders: 'OS',
+  total: 'socorros',
+  triages: 'triagens',
+  inspections: 'inspeções',
+};
+
+function seriesLabel(bucket: WidgetBucket, key: string): string {
+  if (bucket === 'hour') return `${key}h`;
+  if (bucket === 'month') return `${MONTHS_PT[Number(key.slice(5, 7)) - 1]}/${key.slice(2, 4)}`;
+  return `${key.slice(8, 10)}/${key.slice(5, 7)}`;
+}
+
+/**
+ * O gráfico de qualquer widget: contagens viram barras (o último ponto aceso),
+ * taxas e médias viram linha; a meta, quando há, é a linha tracejada. Pontos
+ * sem dado ficam em branco (a linha interrompe), nunca em zero. Uma cor só,
+ * por indicador, para a seção ler como um sistema.
+ */
+export function WidgetSeriesChart({
+  series,
+  unit,
+  label,
+  format,
+  target = null,
+  color = 'var(--chart-1)',
+}: {
+  series: WidgetSeries;
+  unit: WidgetUnit;
+  label: string;
+  format: (v: number) => string;
+  target?: number | null;
+  color?: string;
+}) {
+  const rows = series.points.map((p) => ({ key: p.key, label: seriesLabel(series.bucket, p.key), value: p.value, aux: p.aux }));
+  const isBar = unit === 'count';
+  const lastIdx = rows.reduce((acc, r, i) => (r.value !== null ? i : acc), -1);
+  const last = lastIdx >= 0 ? rows[lastIdx] : undefined;
+  const total = rows.reduce((s, r) => s + (r.value ?? 0), 0);
+  const tick = Math.max(0, Math.ceil(rows.length / 8) - 1);
+  const compact = (v: number) => (unit === 'km' && Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : unit === 'pct' ? `${v}%` : String(v));
+  const legend: { kind: 'bar' | 'line'; color: string; label: string }[] = [{ kind: isBar ? 'bar' : 'line', color, label }];
+  if (target !== null) legend.push({ kind: 'line', color: 'var(--color-text-muted)', label: `meta ${format(target)}` });
+  return (
+    <div className="chart chart--fill chart--widget">
+      <Legend
+        items={legend}
+        note={
+          last ? (
+            <>
+              {series.bucket === 'hour' ? 'última hora' : series.bucket === 'month' ? 'último mês' : 'último dia'} <b>{format(last.value as number)}</b>
+              {isBar && rows.length > 1 ? ` · período ${formatNumber(total)}` : ''}
+            </>
+          ) : undefined
+        }
+      />
+      <ResponsiveContainer>
+        <ComposedChart data={rows} margin={{ top: 14, right: 12, left: 0, bottom: 0 }} barCategoryGap="35%">
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey="label" axisLine={false} tickLine={false} interval={tick} />
+          <YAxis axisLine={false} tickLine={false} width={unit === 'km' ? 40 : 34} allowDecimals={!isBar} tickFormatter={(v: number) => compact(v)} domain={isBar ? [0, 'auto'] : ['auto', 'auto']} />
+          <Tooltip
+            cursor={isBar ? { fill: 'var(--color-surface-hover)' } : { stroke: 'var(--color-border-strong)' }}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const p = payload[0]!.payload as (typeof rows)[number];
+              const extra = Object.entries(p.aux ?? {}).map(([k, v]) => ({ label: AUX_LABELS[k] ?? k, value: formatNumber(v), color: 'var(--color-text-muted)' }));
+              return <Tip title={series.bucket === 'month' ? p.label : series.bucket === 'hour' ? `${p.label}` : p.label} rows={[{ label, value: p.value === null ? '—' : format(p.value), color }, ...extra]} />;
+            }}
+          />
+          {target !== null && <ReferenceLine y={target} stroke="var(--color-text-muted)" strokeDasharray="4 4" ifOverflow="extendDomain" />}
+          {isBar ? (
+            <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+              {rows.map((r, i) => (
+                <Cell key={r.key} fill={color} fillOpacity={i === lastIdx ? 1 : 0.5} />
+              ))}
+            </Bar>
+          ) : (
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke={color}
+              strokeWidth={2.2}
+              dot={rows.length <= 31 ? { r: 2.5, fill: color, strokeWidth: 0 } : false}
+              activeDot={{ r: 4, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 }}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

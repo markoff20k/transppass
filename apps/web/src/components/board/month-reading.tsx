@@ -8,6 +8,7 @@ import { useAuth } from '@/features/auth/use-auth';
 import { useIa } from '@/features/ia/ia.context';
 import { useI18n } from '@/i18n/i18n.context';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
+import { IaName } from '@/features/ia/ia-mark';
 
 /**
  * Leitura do mês: o que um analista diria olhando o quadro. Por padrão vem
@@ -51,11 +52,11 @@ export function MonthReading({
     <CollapsibleCard
       id="indicadores.reading"
       className="tp-card reading"
-      label="IA da Transppass - Insights"
+      label="ia.Transppass · Insights"
       head={
         <>
           <div>
-            <h3><Bot size={16} aria-hidden /> IA da Transppass - Insights</h3>
+            <h3><Bot size={16} aria-hidden /> <IaName /> · Insights</h3>
             <span className="chart__hint">a leitura do mês: o que fugiu do padrão e por quê, informado pelos agentes de Inteligência Artificial da Transppass (ia.Transppass); clique numa data para abrir o dia</span>
           </div>
           <span className="reading__head-tools">

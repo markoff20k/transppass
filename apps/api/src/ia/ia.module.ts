@@ -7,6 +7,7 @@ import { WorkOrdersModule } from '../work-orders/work-orders.module';
 import { EventsModule } from '../events/events.module';
 import { VehiclesModule } from '../vehicles/vehicles.module';
 import { SchedulingModule } from '../scheduling/scheduling.module';
+import { DashboardModule } from '../dashboard/dashboard.module';
 import { IaController } from './ia.controller';
 import { IaService } from './ia.service';
 import { IaToolsService } from './ia-tools.service';
@@ -22,7 +23,7 @@ import { FakeProvider } from './fake.provider';
  * sem nenhum dos dois o agente fica desligado e a API diz isso no status.
  */
 @Module({
-  imports: [MetricsModule, ConsumptionModule, QueueModule, WorkOrdersModule, EventsModule, VehiclesModule, SchedulingModule],
+  imports: [MetricsModule, ConsumptionModule, QueueModule, WorkOrdersModule, EventsModule, VehiclesModule, SchedulingModule, DashboardModule],
   controllers: [IaController],
   providers: [
     IaToolsService,

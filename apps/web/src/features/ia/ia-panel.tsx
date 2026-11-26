@@ -8,7 +8,7 @@ import { formatDateTime } from '@/lib/format';
 import { useIa } from './ia.context';
 import { useIaChat } from './use-ia-chat';
 import { screenOf } from './ia-suggestions';
-import { IaBot, IaScene } from './ia-mark';
+import { IaBot, IaName, IaScene } from './ia-mark';
 
 /**
  * O painel da ia.Transppass: encosta à direita, abaixo do cabeçalho, e a
@@ -78,7 +78,7 @@ export function IaPanel() {
       <header className="ia-panel__head">
         <IaBot size={40} live={chat.sending} />
         <div className="ia-panel__title">
-          <b className="ia-name"><span>ia.</span>Transppass</b>
+          <IaName />
           <span className="ia-panel__sub">
             {t.ia.role}
             <span className={`ia-panel__status${enabled ? ' is-on' : ''}${status?.provider === 'fake' ? ' is-test' : ''}`}>{statusLabel}</span>
@@ -212,7 +212,7 @@ function AssistantHead({ live = false, at }: { live?: boolean; at?: string }) {
   return (
     <div className="ia-msg__head">
       <IaBot size={26} live={live} />
-      <b className="ia-name"><span>ia.</span>Transppass</b>
+      <IaName />
       {at && <time>{formatDateTime(at)}</time>}
     </div>
   );

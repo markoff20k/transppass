@@ -97,7 +97,14 @@ export interface DashboardData {
     period: { kmTraveled: number; unscheduledReturns: number; mkbf: number | null };
     /** MKBF dos últimos 30 dias até agora: o número do cartão "Indicadores de agora", que não segue o período. */
     last30: { kmTraveled: number; unscheduledReturns: number; mkbf: number | null };
+    /** MKBF do mês corrente até o último dia com dado: o número da seção "Agora" (o cliente fecha o MKBF por mês). */
+    month: { month: string; from: string; to: string; kmTraveled: number; unscheduledReturns: number; mkbf: number | null };
+    /** O mês anterior fechado, para a comparação ao lado. */
+    previousMonth: { month: string; kmTraveled: number; unscheduledReturns: number; mkbf: number | null };
   };
+
+  /** Até quando a remessa do ERP-JB chegou (ISO yyyy-mm-dd): o "dia mais recente com dados" da seção "Agora". */
+  dataThrough: { km: string | null; failures: string | null };
 
   queue: {
     waiting: number;
@@ -232,8 +239,12 @@ export const WIDGET_KINDS = [
   'rework',
   'consumptionDiesel',
   'consumptionEbus',
+  'topFailures',
 ] as const;
 export type WidgetKind = (typeof WIDGET_KINDS)[number];
+
+/** Os dois indicadores-chave do PCM: cartões grandes, sempre na primeira linha da seção. */
+export const WIDGET_LARGE_KINDS: readonly WidgetKind[] = ['mkbf', 'availability'];
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 export const widgetQuerySchema = z.object({
@@ -247,6 +258,24 @@ export const widgetQuerySchema = z.object({
 export type WidgetQuery = z.infer<typeof widgetQuerySchema>;
 
 export type WidgetUnit = 'km' | 'count' | 'pct' | 'minutes' | 'kml' | 'kmkwh';
+
+/** Eixo do gráfico do widget: por hora (um dia), por dia (até ~3 meses) ou por mês. */
+export type WidgetBucket = 'hour' | 'day' | 'month';
+
+export interface WidgetSeriesPoint {
+  /** Hora ("00".."23"), dia (AAAA-MM-DD) ou mês (AAAA-MM). */
+  key: string;
+  /** O indicador no ponto, na mesma unidade do widget; nulo sem dado (ex.: MKBF sem quebra). */
+  value: number | null;
+  /** A conta por trás do ponto, quando ajuda no tooltip (km e quebras do MKBF, OS da média…). */
+  aux?: Record<string, number>;
+}
+
+/** O gráfico do widget: todo indicador tem um, exceto o ranking de falhas. */
+export interface WidgetSeries {
+  bucket: WidgetBucket;
+  points: WidgetSeriesPoint[];
+}
 
 export interface DashboardWidget {
   kind: WidgetKind;
@@ -265,6 +294,8 @@ export interface DashboardWidget {
   /** O período mostrado de fato: igual ao pedido, ou recuado até o dia mais recente com dado. */
   used: { from: string; to: string };
   fellBack: boolean;
+  /** O gráfico do período (nulo no ranking de falhas, que tem corpo próprio). */
+  series: WidgetSeries | null;
 }
 
 export const WIDGET_PERIOD_PRESETS = ['today', 'yesterday', 'd2', 'last7', 'last30', 'thisMonth', 'lastMonth', 'custom'] as const;
