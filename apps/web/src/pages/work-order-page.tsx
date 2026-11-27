@@ -68,6 +68,9 @@ function nextStepFor(
   }
   if (d.status === WorkOrderStatus.CANCELLED) return { tone: 'warning', title: 'OS cancelada', text: 'Esta OS foi cancelada e não prende mais o carro.' };
 
+  if (d.status === WorkOrderStatus.OPEN) {
+    return { tone: 'brand', title: 'Inicie o atendimento', text: 'Tira o carro da fila: o relógio passa de espera para execução e o carro fica "em serviço". As sub-OS entram em seguida, durante o serviço.', action: { label: 'Iniciar atendimento', run: () => ctx.post(`${d.id}/start`) } };
+  }
   const tasks = d.tasks.filter((t) => t.status !== TaskStatus.CANCELLED);
   if (tasks.length === 0) {
     return { tone: 'brand', title: 'Acrescente o serviço a executar', text: 'A OS ainda não tem sub-OS. Cada especialidade (mecânica, elétrica, funilaria…) recebe a sua, com checklist.', action: { label: 'Adicionar sub-OS', run: () => ctx.open({ kind: 'add-task' }) } };
@@ -149,7 +152,7 @@ export function WorkOrderPage() {
   };
 
   const action = useMutation({
-    meta: { success: (_d: unknown, v: unknown) => String(v).endsWith('/release') ? 'Carro liberado para a linha' : String(v).endsWith('/cleaning/start') ? 'Limpeza iniciada' : String(v).endsWith('/cleaning/finish') ? 'Limpeza concluída' : 'OS atualizada' },
+    meta: { success: (_d: unknown, v: unknown) => String(v).endsWith('/release') ? 'Carro liberado para a linha' : String(v).endsWith('/start') ? 'Atendimento iniciado' : String(v).endsWith('/cleaning/start') ? 'Limpeza iniciada' : String(v).endsWith('/cleaning/finish') ? 'Limpeza concluída' : 'OS atualizada' },
     mutationFn: (path: string) => api.post<WorkOrderDetail>(`/work-orders/${path}`),
     onSuccess: () => {
       setError(null);

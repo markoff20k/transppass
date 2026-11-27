@@ -167,6 +167,38 @@ export class WorkOrdersService {
     return this.findOne(id);
   }
 
+  // --- Início do atendimento -------------------------------------------------
+
+  /**
+   * Tira o carro da fila e põe o relógio em execução. É a OS que entra em
+   * atendimento, não a sub-OS: as sub-OS (por especialidade) vêm em seguida,
+   * durante o serviço.
+   */
+  async start(id: string, actorId: string): Promise<WorkOrderDetail> {
+    const workOrder = await this.requireOpen(id);
+    if (workOrder.status !== WorkOrderStatus.OPEN) {
+      throw new BadRequestException('A OS já está em atendimento');
+    }
+    await this.prisma.$transaction((tx) => this.startExecution(tx, workOrder.id, workOrder.vehicleId));
+    await this.audit.write({
+      actorId,
+      action: 'workOrder.start',
+      entity: 'WorkOrder',
+      entityId: id,
+      after: { status: WorkOrderStatus.IN_PROGRESS },
+    });
+    return this.findOne(id);
+  }
+
+  /** OS em execução, relógio em "execução", carro "em serviço", fila em atendimento. */
+  private async startExecution(tx: Prisma.TransactionClient, workOrderId: string, vehicleId: string): Promise<void> {
+    await tx.workOrder.update({ where: { id: workOrderId }, data: { status: WorkOrderStatus.IN_PROGRESS } });
+    await this.downtime.switchCause(tx, workOrderId, DowntimeCause.EXECUTION);
+    await tx.vehicle.update({ where: { id: vehicleId }, data: { status: VehicleStatus.IN_MAINTENANCE } });
+    const entry = await tx.queueEntry.findFirst({ where: { workOrderId } });
+    if (entry) await this.queue.startService(tx, entry.id);
+  }
+
   // --- Sub-OS (RF-18) -------------------------------------------------------
 
   async addTask(
@@ -201,21 +233,10 @@ export class WorkOrdersService {
         },
       });
 
-      // A primeira sub-OS marca o começo da execução de verdade: o carro sai
-      // da espera em fila e o relógio passa a contar como execução.
+      // Sub-OS acrescentada a uma OS ainda em espera: o atendimento começa aqui
+      // mesmo, para quem não passou por "Iniciar atendimento" não ficar travado.
       if (count === 0 && workOrder.status === WorkOrderStatus.OPEN) {
-        await tx.workOrder.update({
-          where: { id: workOrderId },
-          data: { status: WorkOrderStatus.IN_PROGRESS },
-        });
-        await this.downtime.switchCause(tx, workOrderId, DowntimeCause.EXECUTION);
-        await tx.vehicle.update({
-          where: { id: workOrder.vehicleId },
-          data: { status: VehicleStatus.IN_MAINTENANCE },
-        });
-
-        const entry = await tx.queueEntry.findFirst({ where: { workOrderId } });
-        if (entry) await this.queue.startService(tx, entry.id);
+        await this.startExecution(tx, workOrderId, workOrder.vehicleId);
       }
     });
 

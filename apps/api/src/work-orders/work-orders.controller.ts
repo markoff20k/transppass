@@ -98,6 +98,16 @@ export class WorkOrdersController {
     return this.workOrders.updateEstimate(id, body, actorId);
   }
 
+  /** Início do atendimento: tira o carro da fila; as sub-OS vêm durante o serviço. */
+  @Post(':id/start')
+  @Roles(...SHOP_FLOOR, UserRole.PCM)
+  start(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('sub') actorId: string,
+  ): Promise<WorkOrderDetail> {
+    return this.workOrders.start(id, actorId);
+  }
+
   // --- Sub-OS (RF-18) -------------------------------------------------------
 
   @Post(':id/tasks')

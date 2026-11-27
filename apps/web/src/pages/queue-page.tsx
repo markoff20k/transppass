@@ -190,6 +190,18 @@ function QueueDrawer({
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao mover'),
   });
 
+  // Iniciar atendimento tira o carro da fila: é a OS que entra em execução; as sub-OS vêm depois.
+  const start = useMutation({
+    meta: { success: 'Atendimento iniciado — o carro saiu da fila' },
+    mutationFn: () => api.post<unknown>(`/work-orders/${entry?.workOrderId}/start`),
+    onSuccess: () => {
+      setError(null);
+      onChanged();
+      onClose();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Falha ao iniciar o atendimento'),
+  });
+
   const close = () => {
     setMoving(false);
     setError(null);
@@ -234,13 +246,18 @@ function QueueDrawer({
             {canMove && (
               <button
                 type="button"
-                className="tp-btn tp-btn--primary"
+                className="tp-btn tp-btn--secondary"
                 onClick={() => {
                   setToPosition(entry.position);
                   setMoving(true);
                 }}
               >
                 Mover na fila
+              </button>
+            )}
+            {canMove && entry.workOrderId && (
+              <button type="button" className="tp-btn tp-btn--primary" disabled={start.isPending} onClick={() => start.mutate()}>
+                {start.isPending ? 'Iniciando…' : 'Iniciar atendimento'}
               </button>
             )}
           </>
