@@ -52,7 +52,10 @@ async function request(path: string, init: RequestInit): Promise<Response> {
 
 /** Resposta de erro que não veio da API (o proxy ou o balanceador respondeu no lugar dela). */
 function isServerDown(res: Response, payload: unknown): boolean {
-  return [502, 503, 504].includes(res.status) || (res.status >= 500 && !isApiErrorBody(payload));
+  // 502/504 são sempre do proxy. Um 503 com o corpo de erro da API é a própria API explicando o que
+  // não deu (ex.: a ia.Transppass não conseguiu redigir): a mensagem dela vale mais que o genérico.
+  if (res.status === 502 || res.status === 504) return true;
+  return res.status >= 500 && !isApiErrorBody(payload);
 }
 
 type SessionListener = () => void;

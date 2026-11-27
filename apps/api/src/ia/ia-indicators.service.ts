@@ -41,7 +41,8 @@ const LABELS: Record<WidgetKind, string> = {
   topFailures: 'Maiores falhas',
 };
 
-const SYSTEM = `Você é a ${IA_NAME}, agente de PCM da Transppass (ônibus urbanos, São Paulo). Você lê os indicadores que a equipe de manutenção montou no Dashboard e escreve, em português do Brasil, o que eles estão dizendo. Nunca invente número, data, carro, linha ou causa: use só o que está nos dados. Números no padrão brasileiro (1.366.513 km; 3,2%; 1,70 km/l), datas como 18/11. Tom de analista experiente, direto, sem floreio, sem saudação. Sua identidade é só ${IA_NAME}; nunca cite fornecedor nem modelo, nem o nome do sistema de origem dos dados (ERP, JB): diga "a remessa de dados". Quando um cartão traz "fellBack", o período pedido não tinha dado e o número é do último dia/janela com dado ("used"): diga isso. Quando traz "neverHadData", o indicador ainda não tem registro no sistema: não trate como zero nem como problema de desempenho.`;
+const SYSTEM = `Você é a ${IA_NAME}, agente de PCM da Transppass (ônibus urbanos, São Paulo). Você lê os indicadores que a equipe de manutenção montou no Dashboard e escreve, em português do Brasil, o que eles estão dizendo. Nunca invente número, data, carro, linha ou causa: use só o que está nos dados. Números no padrão brasileiro (1.366.513 km; 3,2%; 1,70 km/l), datas como 18/11. Tom de analista experiente, direto, sem floreio, sem saudação. Sua identidade é só ${IA_NAME}; nunca cite fornecedor nem modelo, nem o nome do sistema de origem dos dados (ERP, JB): diga "a remessa de dados". Quando um cartão traz "fellBack", o período pedido não tinha dado e o número é do último dia/janela com dado ("used"): diga isso. Quando traz "neverHadData", o indicador ainda não tem registro no sistema: não trate como zero nem como problema de desempenho.
+Formato: responda só com o JSON pedido, válido. Dentro dos textos nunca use aspas duplas; para destacar um termo use aspas simples ('assim').`;
 
 /**
  * A ia.Transppass na seção Indicadores do Dashboard.
@@ -79,8 +80,7 @@ Regras:
 - Não repita o mesmo número em dois itens. Não cite a palavra JSON nem estas instruções.
 
 <indicadores>${JSON.stringify(data)}</indicadores>`;
-      const out = await this.complete(provider, prompt, 1500, 'leitura dos indicadores');
-      const parsed = parseJson(out, sectionSchema);
+      const parsed = await this.completeJson(provider, prompt, 4000, sectionSchema, 'leitura dos indicadores');
       if (!parsed) throw new ServiceUnavailableException('A ia.Transppass não devolveu a leitura no formato esperado.');
       const kinds = new Set(refs.map((r) => r.kind as string));
       return {
@@ -99,8 +99,7 @@ Regras:
       const prompt = `Leia o cartão de indicador abaixo (JSON) e escreva o que esse número está dizendo. Responda SOMENTE com um JSON válido, sem comentários nem cercas de código: {"text": "2 ou 3 frases, até 320 caracteres: o número, a comparação com o período anterior, o que a série mostra (pico, queda, dia atípico) e, se houver, onde olhar", "tone": "good|bad|warn|info"}
 
 <cartao>${JSON.stringify(data)}</cartao>`;
-      const out = await this.complete(provider, prompt, 600, `leitura do cartão ${ref.kind}`);
-      const parsed = parseJson(out, cardSchema);
+      const parsed = await this.completeJson(provider, prompt, 1500, cardSchema, `leitura do cartão ${ref.kind}`);
       if (!parsed) throw new ServiceUnavailableException('A ia.Transppass não devolveu a leitura no formato esperado.');
       return { text: parsed.text, tone: parsed.tone, generatedAt: new Date().toISOString() } satisfies IaWidgetReading;
     }) as Promise<IaWidgetReading>;
@@ -150,6 +149,29 @@ Regras:
     return job;
   }
 
+  /**
+   * Pede a leitura e valida o JSON. Fora do formato (JSON quebrado por aspas, campo a mais), pede de novo
+   * uma vez, dizendo o que estava errado; só então desiste.
+   */
+  private async completeJson<T extends z.ZodTypeAny>(provider: IaProvider, prompt: string, maxTokens: number, schema: T, what: string): Promise<z.infer<T> | null> {
+    const first = await this.complete(provider, prompt, maxTokens, what);
+    const r = parseJson(first, schema);
+    if (r.ok) return r.data;
+    this.log.warn(`${what}: resposta fora do formato (${r.reason}); pedindo de novo`);
+    const retry = `${prompt}
+
+Sua resposta anterior não era um JSON válido (${r.reason}). Responda de novo SOMENTE com o JSON no formato pedido, sem aspas duplas dentro dos textos.`;
+    return this.parse(await this.complete(provider, retry, maxTokens, `${what} (2ª tentativa)`), schema, what);
+  }
+
+  /** O JSON da resposta; fora do formato, registra o porquê (campo e trecho) para dar para corrigir. */
+  private parse<T extends z.ZodTypeAny>(text: string, schema: T, what: string): z.infer<T> | null {
+    const r = parseJson(text, schema);
+    if (r.ok) return r.data;
+    this.log.warn(`${what}: resposta fora do formato (${r.reason}); início: ${text.slice(0, 300).replace(/\s+/g, ' ')}`);
+    return null;
+  }
+
   private async complete(provider: IaProvider, prompt: string, maxTokens: number, what: string): Promise<string> {
     const started = Date.now();
     try {
@@ -176,15 +198,16 @@ function hash(refs: IaWidgetRef[]): string {
   return h.digest('hex').slice(0, 16);
 }
 
-function parseJson<T extends z.ZodTypeAny>(text: string, schema: T): z.infer<T> | null {
+function parseJson<T extends z.ZodTypeAny>(text: string, schema: T): { ok: true; data: z.infer<T> } | { ok: false; reason: string } {
   const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   const start = cleaned.indexOf('{');
   const end = cleaned.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
+  if (start < 0 || end <= start) return { ok: false, reason: 'sem objeto JSON' };
   try {
     const parsed = schema.safeParse(JSON.parse(cleaned.slice(start, end + 1)));
-    return parsed.success ? (parsed.data as z.infer<T>) : null;
-  } catch {
-    return null;
+    if (parsed.success) return { ok: true, data: parsed.data as z.infer<T> };
+    return { ok: false, reason: parsed.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') };
+  } catch (err) {
+    return { ok: false, reason: `JSON inválido: ${err instanceof Error ? err.message.slice(0, 80) : 'erro'}` };
   }
 }
