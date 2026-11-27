@@ -58,12 +58,13 @@ export class MaintenanceHistoryService {
   }
 
   async list(q: MaintenanceHistoryQuery): Promise<Paginated<MaintenanceHistoryRow>> {
+    // (a ordem vem da consulta; ver orderOf)
     const where = this.whereOf(q);
     const [rows, total] = await Promise.all([
       this.prisma.maintenanceRecord.findMany({
         where,
         include: { vehicle: { select: { code: true, plate: true } }, items: true, materials: true },
-        orderBy: [{ openedAt: 'desc' }, { externalOs: 'desc' }],
+        orderBy: orderOf(q.sort, q.dir),
         skip: (q.page - 1) * q.perPage,
         take: q.perPage,
       }),
@@ -161,4 +162,21 @@ function localDay(ymd: string, time: string): Date {
   const valid = !Number.isNaN(date.getTime()) && date.getFullYear() === y && date.getMonth() + 1 === m && date.getDate() === d;
   if (!valid) throw new BadRequestException(`Data inválida: ${ymd}`);
   return date;
+}
+
+/** Ordem pedida pela tela, com a abertura como desempate para a lista não embaralhar entre páginas. */
+function orderOf(sort: MaintenanceHistoryQuery['sort'], dir: MaintenanceHistoryQuery['dir']): Prisma.MaintenanceRecordOrderByWithRelationInput[] {
+  switch (sort) {
+    case 'externalOs':
+      return [{ externalOs: dir }];
+    case 'vehicleCode':
+      return [{ vehicle: { code: dir } }, { openedAt: 'desc' }];
+    case 'kind':
+      return [{ kind: dir }, { openedAt: 'desc' }];
+    case 'mechanicReg':
+      return [{ mechanicReg: { sort: dir, nulls: 'last' } }, { openedAt: 'desc' }];
+    case 'openedAt':
+    default:
+      return [{ openedAt: dir }, { externalOs: dir }];
+  }
 }

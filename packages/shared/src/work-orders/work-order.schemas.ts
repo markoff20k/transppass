@@ -352,8 +352,14 @@ export interface WorkOrderSummary {
 /** Tipos de ficha que contam como quebra no MKBF (carta do cliente, item 3.1.5). */
 export const MAINTENANCE_BREAKDOWN_KINDS: readonly string[] = ['A', 'S', 'T'];
 
+/** Colunas pelas quais o histórico pode ser ordenado; o servidor ordena antes de paginar. */
+export const MAINTENANCE_HISTORY_SORT_KEYS = ['openedAt', 'externalOs', 'vehicleCode', 'kind', 'mechanicReg'] as const;
+export type MaintenanceHistorySort = (typeof MAINTENANCE_HISTORY_SORT_KEYS)[number];
+
 export const maintenanceHistoryQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
+  sort: z.enum(MAINTENANCE_HISTORY_SORT_KEYS).default('openedAt'),
+  dir: z.enum(['asc', 'desc']).default('desc'),
   perPage: z.coerce.number().int().min(1).max(100).default(20),
   /** Data local (AAAA-MM-DD) da abertura, inclusive nas duas pontas. */
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida').optional(),

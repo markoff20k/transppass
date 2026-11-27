@@ -5,7 +5,9 @@ import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 import type { MaintenanceHistoryRow, MaintenanceHistorySummary, Paginated } from '@app/shared';
 import { ApiError, api } from '@/lib/api-client';
 import { formatDate, formatDateTime, formatNumber } from '@/lib/format';
+import type { MaintenanceHistorySort } from '@app/shared';
 import { useUiState } from '@/features/auth/use-ui-pref';
+import { SortTh, useSortState } from '@/components/ui/sort-th';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { pagerOf, usePagerState } from '@/lib/pager';
@@ -62,6 +64,9 @@ export function MaintenanceHistorySection() {
     false,
   );
   const [openId, setOpenId] = useState<string | null>(null);
+  // Ordenação pelo cabeçalho, salva na conta; o servidor ordena antes de paginar.
+  const [sort, toggleSort] = useSortState<MaintenanceHistorySort>('os.history.sort', { key: 'openedAt', dir: 'desc' }, { openedAt: 'desc' });
+  const sortQs = `sort=${sort.key}&dir=${sort.dir}`;
 
   const term = useDeferredValue(search.trim().slice(0, SEARCH_MAX));
   const hasFilters = Boolean(term || from || to || kind || onlyBreakdowns || onlyPreventive);
@@ -81,7 +86,7 @@ export function MaintenanceHistorySection() {
     .filter(Boolean)
     .join('&');
 
-  const paging = usePagerState('work-orders-history', filterQs);
+  const paging = usePagerState('work-orders-history', `${filterQs}|${sortQs}`);
   const listQuery = useQuery({
     queryKey: [
       'work-orders',
@@ -95,10 +100,12 @@ export function MaintenanceHistorySection() {
       kind,
       onlyBreakdowns,
       onlyPreventive,
+      sort.key,
+      sort.dir,
     ],
     queryFn: () =>
       api.get<Paginated<MaintenanceHistoryRow>>(
-        `/work-orders/history?page=${paging.page}&perPage=${paging.pageSize}${filterQs ? `&${filterQs}` : ''}`,
+        `/work-orders/history?page=${paging.page}&perPage=${paging.pageSize}&${sortQs}${filterQs ? `&${filterQs}` : ''}`,
       ),
     placeholderData: keepPreviousData,
     enabled: !periodInvalid,
@@ -275,15 +282,15 @@ export function MaintenanceHistorySection() {
           <table className="tp-table tp-table--compact">
             <thead>
               <tr>
-                <th>Quando</th>
-                <th>OS</th>
-                <th>Carro</th>
-                <th>Tipo</th>
+                <SortTh col="openedAt" sort={sort} onSort={toggleSort}>Quando</SortTh>
+                <SortTh col="externalOs" sort={sort} onSort={toggleSort}>OS</SortTh>
+                <SortTh col="vehicleCode" sort={sort} onSort={toggleSort}>Carro</SortTh>
+                <SortTh col="kind" sort={sort} onSort={toggleSort}>Tipo</SortTh>
                 <th>Alegado</th>
                 <th>Constatado</th>
                 <th>Providência</th>
                 <th className="is-num">Peças</th>
-                <th>Mecânico</th>
+                <SortTh col="mechanicReg" sort={sort} onSort={toggleSort}>Mecânico</SortTh>
               </tr>
             </thead>
             <tbody>
