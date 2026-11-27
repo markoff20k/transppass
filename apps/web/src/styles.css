@@ -2193,7 +2193,7 @@ small.muted {
 
 /* O painel de período dos cartões vai para o <body> (portal): não é cortado pela borda do
    cartão, cabe na janela e, no celular, vira a mesma folha inferior do seletor de consumo. */
-.wperiod__pop { position: absolute; z-index: var(--tp-z-dropdown); }
+.wperiod__pop { position: fixed; z-index: var(--tp-z-dropdown); }
 .wperiod__pop .period__panel { position: static; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; animation: none; }
 .wperiod__pop .period__preset { padding: 4px 30px 4px 10px; }
 @media (max-width: 760px) {
@@ -5371,7 +5371,10 @@ a.bus-card:hover { transform: translateY(-1px); }
 .period__preset-range { font-size: var(--tp-text-2xs); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .period__check { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--color-brand); }
 
-.period__cal { display: grid; gap: 10px; padding: 12px 14px 14px; align-content: start; }
+/* Coluna do calendário em pilha; o intervalo livre fica no pé, para a coluna preencher a altura
+   dos atalhos quando eles são mais numerosos (cartões do Dashboard) e nunca sobrar bloco vazio. */
+.period__cal { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; }
+.period__cal .period__custom { margin-top: auto; }
 .period__year { display: flex; align-items: center; justify-content: center; gap: 4px; }
 .period__year .period__step { width: 30px; height: 30px; }
 .period__year-label { min-width: 5.5em; padding: 4px 10px; border: 0; border-radius: var(--tp-radius-sm); background: transparent; color: var(--color-text); font: inherit; font-family: var(--tp-font-display); font-size: var(--tp-text-lg); font-weight: 700; letter-spacing: 0.02em; cursor: pointer; }

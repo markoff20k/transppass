@@ -156,10 +156,10 @@ export function WidgetPeriodPicker({
     };
   }, [open]);
 
-  // Posição do painel: no documento (não na janela), ancorado ao gatilho, para rolar junto com a
-  // página. Alinhado à esquerda do gatilho e dentro da largura da tela; abre embaixo quando cabe,
-  // em cima quando só cabe em cima, senão desce o quanto der, mesmo cobrindo o gatilho. No
-  // celular o CSS o leva ao rodapé como folha.
+  // Posição do painel: fixa na tela e recalculada a cada rolagem, para o painel acompanhar a
+  // janela e nunca ser cortado. Alinhado à esquerda do gatilho e dentro da largura da tela;
+  // abre embaixo quando cabe, em cima quando só cabe em cima; quando o gatilho sobe além do
+  // topo, o painel encosta a 16 px do alto e fica inteiro à vista. No celular, folha no rodapé.
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
@@ -176,11 +176,15 @@ export function WidgetPeriodPicker({
       const height = pop.current?.offsetHeight ?? 460;
       const wanted = vh - r.bottom - 8 >= height ? r.bottom + 6 : r.top - 8 >= height ? r.top - 6 - height : vh - height - 16;
       const top = Math.max(16, Math.min(wanted, vh - height - 16));
-      setPos({ top: top + window.scrollY, left: left + window.scrollX });
+      setPos({ top, left });
     };
     place();
     window.addEventListener('resize', place);
-    return () => window.removeEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
   }, [open]);
 
   const close = () => {
