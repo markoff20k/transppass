@@ -72,6 +72,9 @@ export function IndicatorsSection({ vehicles }: { vehicles: DashboardVehicle[] }
   const large = widgets.filter((w) => isLarge(w.kind));
   const regular = widgets.filter((w) => !isLarge(w.kind));
   const [allPeriod, setAllPeriod] = useState<WidgetPeriod>({ preset: 'last30' });
+  // O seletor global marca o período que todos os cartões compartilham; se divergem, o último aplicado.
+  const samePref = (a: WidgetPeriod, b: WidgetPeriod) => a.preset === b.preset && (a.preset !== 'custom' || (a.from === b.from && a.to === b.to));
+  const shownAll = widgets.length > 0 && widgets.every((w) => samePref(w.period, widgets[0]!.period)) ? widgets[0]!.period : allPeriod;
 
   return (
     <section className="dash-section dash-section--indicators" aria-labelledby="dash-indicators">
@@ -83,7 +86,7 @@ export function IndicatorsSection({ vehicles }: { vehicles: DashboardVehicle[] }
         <div className="dash-section__tools">
           {widgets.length > 1 && (
             <WidgetPeriodPicker
-              value={allPeriod}
+              value={shownAll}
               label={t.dash.widgets.applyAll}
               title={t.dash.widgets.applyAllHint}
               className="ind-apply"

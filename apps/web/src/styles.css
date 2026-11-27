@@ -2181,6 +2181,16 @@ small.muted {
 .wperiod__custom .period__date .tp-input { min-width: 0; width: 100%; height: 32px; padding: 0 8px; font-size: var(--tp-text-xs); }
 .wperiod__custom .tp-btn { grid-column: 1 / -1; justify-self: end; }
 
+/* O painel de período dos cartões vai para o <body> (portal): não é cortado pela borda do
+   cartão, cabe na janela e, no celular, vira a mesma folha inferior do seletor de consumo. */
+.wperiod__pop { position: fixed; z-index: var(--tp-z-dropdown); }
+.wperiod__pop .period__panel { position: static; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; animation: none; }
+.wperiod__pop .period__preset { padding: 4px 30px 4px 10px; }
+@media (max-width: 760px) {
+  .wperiod__pop { inset: auto 0 0 0; z-index: calc(var(--tp-z-overlay) + 1); }
+  .wperiod__pop .period__panel { width: auto; max-height: 92vh; overflow: auto; border-radius: var(--tp-radius-lg) var(--tp-radius-lg) 0 0; animation: period-up 140ms ease-out; }
+}
+
 /* Escopo (carro ou frota): a mesma pílula; com carro escolhido fica em destaque. */
 .wperiod__trigger.is-vehicle { border-color: var(--color-brand-soft-border); background: var(--color-brand-soft); color: var(--color-brand-text); }
 .wperiod .period__panel.wscope__panel { width: 240px; grid-template-rows: auto auto; }

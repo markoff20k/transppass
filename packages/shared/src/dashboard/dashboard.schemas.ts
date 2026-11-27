@@ -298,7 +298,7 @@ export interface DashboardWidget {
   series: WidgetSeries | null;
 }
 
-export const WIDGET_PERIOD_PRESETS = ['today', 'yesterday', 'd2', 'last7', 'last30', 'thisMonth', 'lastMonth', 'custom'] as const;
+export const WIDGET_PERIOD_PRESETS = ['today', 'yesterday', 'd2', 'last7', 'last30', 'last90', 'thisMonth', 'lastMonth', 'thisQuarter', 'thisYear', 'custom'] as const;
 export type WidgetPeriodPreset = (typeof WIDGET_PERIOD_PRESETS)[number];
 
 export interface WidgetPeriod {

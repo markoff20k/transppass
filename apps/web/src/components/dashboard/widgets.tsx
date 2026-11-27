@@ -1,8 +1,11 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Bus, CalendarDays, Check, ChevronDown, Search } from 'lucide-react';
+import { consumptionSpanDays } from '@app/shared';
 import type { DashboardVehicle, DashboardWidget, WidgetPeriod, WidgetPeriodPreset } from '@app/shared';
 import { formatMinutes, formatNumber } from '@/lib/format';
-import { isoOf, makePeriod, rangeLabel, shiftDays, todayIso } from '@/lib/period';
+import { isoOf, makePeriod, periodLabel, rangeLabel, shiftDays, todayIso } from '@/lib/period';
+import { PeriodPanel, type PeriodPanelPreset } from '@/components/ui/period-panel';
 import { useI18n } from '@/i18n/i18n.context';
 
 export const fmtDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -13,9 +16,16 @@ export const PRESETS: WidgetPeriodPreset[] = [
   'd2',
   'last7',
   'last30',
+  'last90',
   'thisMonth',
   'lastMonth',
+  'thisQuarter',
+  'thisYear',
 ];
+
+/** Intervalo livre mais longo que um cartão aceita: um ano, que já vai por mês no gráfico. */
+const WIDGET_MAX_DAYS = 366;
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Datas (AAAA-MM-DD) de um período de widget, sempre em relação a hoje. */
 export function resolveWidgetPeriod(p: WidgetPeriod): { from: string; to: string } {
@@ -33,10 +43,16 @@ export function resolveWidgetPeriod(p: WidgetPeriod): { from: string; to: string
       return { from: shiftDays(today, -6), to: today };
     case 'last30':
       return { from: shiftDays(today, -29), to: today };
+    case 'last90':
+      return { from: shiftDays(today, -89), to: today };
     case 'thisMonth':
       return { from: isoOf(y, m0, 1), to: today };
     case 'lastMonth':
       return { from: isoOf(y, m0 - 1, 1), to: isoOf(y, m0, 0) };
+    case 'thisQuarter':
+      return { from: isoOf(y, Math.floor(m0 / 3) * 3, 1), to: today };
+    case 'thisYear':
+      return { from: isoOf(y, 0, 1), to: today };
     case 'custom': {
       const to = p.to && p.to <= today ? p.to : today;
       const from = p.from && p.from <= to ? p.from : to;
@@ -65,11 +81,15 @@ export function formatValue(value: number | null, unit: DashboardWidget['unit'])
 }
 
 /**
- * Seletor de período do widget: a mesma linguagem do seletor das telas de
- * consumo, em tamanho de cartão. A pílula mostra o nome do período; o painel
- * traz os atalhos (Hoje, Ontem, Anteontem, 7 dias, 30 dias, este mês, mês
- * passado) e um intervalo livre. Fecha com Esc ou clique fora. Com `label`,
- * a pílula mostra esse texto em vez do período (o "aplicar a todos" da seção).
+ * Seletor de período do widget: o gatilho é pequeno, do tamanho do cartão, e
+ * o painel é o mesmo `PeriodPanel` das telas de consumo (atalhos, meses,
+ * trimestres, ano, intervalo livre, rodapé com a comparação). O painel vai
+ * para o <body> por portal: não é cortado pela borda do cartão, escolhe se
+ * abre para baixo ou para cima conforme o espaço, e no celular vira folha
+ * inferior. Escolhas que coincidem com um atalho ficam gravadas como atalho
+ * (o cartão segue "andando" com o calendário); mês, trimestre e ano fechados
+ * ficam como intervalo com datas. Com `label`, o gatilho mostra esse texto em
+ * vez do período (o "aplicar a todos" da seção).
  */
 export function WidgetPeriodPicker({
   value,
@@ -88,15 +108,39 @@ export function WidgetPeriodPicker({
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLSpanElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top?: number; left?: number } | null>(null);
   const panelId = useId();
   const { from, to } = resolveWidgetPeriod(value);
-  const periodLabel =
-    value.preset === 'custom' ? rangeLabel(from, to) : t.dash.widgets.period[value.preset];
+  const shownLabel =
+    value.preset === 'custom' ? periodLabel(makePeriod(from, to)) : t.dash.widgets.period[value.preset];
+  const presets: PeriodPanelPreset[] = PRESETS.map((preset) => {
+    const r = resolveWidgetPeriod({ preset });
+    return { id: preset, label: t.dash.widgets.period[preset], from: r.from, to: r.to };
+  });
+  // Duas datas que batem com um atalho viram o atalho; o resto é intervalo livre.
+  const toWidgetPeriod = (f: string, tt: string): WidgetPeriod => {
+    const hit = presets.find((pr) => pr.from === f && pr.to === tt);
+    return hit ? { preset: hit.id as WidgetPeriodPreset } : { preset: 'custom', from: f, to: tt };
+  };
+  const validate = (f: string, tt: string): string | null => {
+    if (!ISO_DAY.test(f) || !ISO_DAY.test(tt)) return t.period.errors.both;
+    if (tt > todayIso()) return t.period.errors.future;
+    if (f > tt) return t.period.errors.order;
+    if (consumptionSpanDays(f, tt) > WIDGET_MAX_DAYS) return t.dash.widgets.period.tooLong;
+    return null;
+  };
+  // A mesma janela que a API compara: os N dias imediatamente anteriores.
+  const compare = (f: string, tt: string) => {
+    const n = consumptionSpanDays(f, tt);
+    return { name: t.dash.widgets.period.previous, range: rangeLabel(shiftDays(f, -n), shiftDays(f, -1)) };
+  };
 
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (root.current && !root.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (root.current && !root.current.contains(target) && !pop.current?.contains(target)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -112,10 +156,43 @@ export function WidgetPeriodPicker({
     };
   }, [open]);
 
-  const choose = (p: WidgetPeriod) => {
-    onChange(p);
+  // Posição do painel: alinhado à esquerda do gatilho, dentro da janela; abre
+  // para cima quando não cabe embaixo. No celular o CSS o leva ao rodapé.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const r = trigger.current?.getBoundingClientRect();
+      if (!r) return;
+      if (window.matchMedia('(max-width: 760px)').matches) {
+        setPos({});
+        return;
+      }
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const width = Math.min(640, vw - 32);
+      const left = Math.max(16, Math.min(r.left, vw - width - 16));
+      const height = pop.current?.offsetHeight ?? 460;
+      // Embaixo quando cabe; em cima quando só cabe em cima; senão desce o quanto der, mesmo
+      // cobrindo o gatilho, e nunca sai da janela.
+      const top = vh - r.bottom - 8 >= height ? r.bottom + 6 : r.top - 8 >= height ? r.top - 6 - height : Math.max(16, vh - height - 16);
+      setPos({ top, left });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [open]);
+
+  const close = () => {
     setOpen(false);
     trigger.current?.focus();
+  };
+  const choose = (p: WidgetPeriod) => {
+    onChange(p);
+    close();
   };
 
   return (
@@ -127,107 +204,34 @@ export function WidgetPeriodPicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        title={title ?? `${periodLabel} · ${rangeLabel(from, to)}`}
+        title={title ?? `${shownLabel} · ${rangeLabel(from, to)}`}
         onClick={() => setOpen((o) => !o)}
       >
         <CalendarDays size={13} aria-hidden className="wperiod__icon" />
-        <span className="wperiod__label">{label ?? periodLabel}</span>
+        <span className="wperiod__label">{label ?? shownLabel}</span>
         <ChevronDown size={12} aria-hidden className="wperiod__chevron" />
       </button>
-      {open && <WidgetPeriodPanel id={panelId} value={value} onChoose={choose} />}
+      {open &&
+        createPortal(
+          <>
+            <div className="period__backdrop" onClick={close} aria-hidden />
+            <div ref={pop} className="wperiod__pop" style={pos ?? undefined}>
+              <PeriodPanel
+                id={panelId}
+                from={from}
+                to={to}
+                presets={presets}
+                onChoose={(f, tt) => choose(toWidgetPeriod(f, tt))}
+                onClose={close}
+                validate={validate}
+                compare={compare}
+                className="wperiod__panel"
+              />
+            </div>
+          </>,
+          document.body,
+        )}
     </span>
-  );
-}
-
-function WidgetPeriodPanel({
-  id,
-  value,
-  onChoose,
-}: {
-  id: string;
-  value: WidgetPeriod;
-  onChoose: (p: WidgetPeriod) => void;
-}) {
-  const { t } = useI18n();
-  const today = todayIso();
-  const current = resolveWidgetPeriod(value);
-  const [from, setFrom] = useState(current.from);
-  const [to, setTo] = useState(current.to);
-  const first = useRef<HTMLButtonElement>(null);
-  useEffect(() => first.current?.focus(), []);
-  const valid = from <= to && to <= today;
-  const draft = valid ? makePeriod(from, to) : null;
-  const changed =
-    draft !== null &&
-    (draft.from !== current.from || draft.to !== current.to || value.preset !== 'custom');
-
-  return (
-    <div
-      id={id}
-      role="dialog"
-      aria-modal="false"
-      aria-label={t.dash.widgets.period.choose}
-      className="period__panel wperiod__panel"
-    >
-      <div
-        className="period__presets wperiod__presets"
-        role="group"
-        aria-label={t.dash.widgets.period.shortcuts}
-      >
-        {PRESETS.map((preset, i) => {
-          const r = resolveWidgetPeriod({ preset });
-          const active = value.preset === preset;
-          return (
-            <button
-              key={preset}
-              ref={i === 0 ? first : undefined}
-              type="button"
-              className={`period__preset${active ? ' is-active' : ''}`}
-              aria-pressed={active}
-              onClick={() => onChoose({ preset })}
-            >
-              <span>{t.dash.widgets.period[preset]}</span>
-              <span className="period__preset-range">{rangeLabel(r.from, r.to)}</span>
-              {active && <Check size={14} aria-hidden className="period__check" />}
-            </button>
-          );
-        })}
-      </div>
-      <form
-        className="period__custom wperiod__custom"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (draft) onChoose({ preset: 'custom', from: draft.from, to: draft.to });
-        }}
-      >
-        <span className="period__custom-title">{t.dash.widgets.period.customTitle}</span>
-        <label className="period__date">
-          <span>{t.dash.widgets.period.from}</span>
-          <input
-            type="date"
-            className="tp-input"
-            value={from}
-            max={today}
-            onChange={(e) => setFrom(e.target.value)}
-            aria-label={t.dash.widgets.period.from}
-          />
-        </label>
-        <label className="period__date">
-          <span>{t.dash.widgets.period.to}</span>
-          <input
-            type="date"
-            className="tp-input"
-            value={to}
-            max={today}
-            onChange={(e) => setTo(e.target.value)}
-            aria-label={t.dash.widgets.period.to}
-          />
-        </label>
-        <button type="submit" className="tp-btn tp-btn--primary tp-btn--sm" disabled={!changed}>
-          {t.dash.widgets.period.apply}
-        </button>
-      </form>
-    </div>
   );
 }
 
