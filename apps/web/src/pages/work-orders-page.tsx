@@ -22,6 +22,7 @@ import { pagerOf, usePagerState } from '@/lib/pager';
 import { SortTh, useSortState } from '@/components/ui/sort-th';
 import type { WorkOrderSort } from '@app/shared';
 import { MaintenanceHistorySection } from './work-orders-history';
+import { PageReading } from '@/features/ia/page-reading';
 
 /** Filtro virtual: os três portões antes de liberar o carro (RN-04). */
 const RELEASING = 'RELEASING';
@@ -211,6 +212,8 @@ export function WorkOrdersPage() {
           <span className="tp-kpi__note">indisponibilidade das OS abertas</span>
         </div>
       </div>
+
+      <PageReading page="work-orders" subject="as ordens de serviço" />
 
       <section className="tp-card">
         <div className="tp-card__head">

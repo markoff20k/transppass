@@ -22,6 +22,7 @@ import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
 import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+import { PageReading } from '@/features/ia/page-reading';
 
 type RequestSort = 'vehicle' | 'workOrder' | 'material' | 'quantity' | 'status' | 'expectedAt' | 'requestedAt';
 type KanbanSort = 'code' | 'description' | 'location' | 'stockQty' | 'reorderPoint' | 'reorderQty' | 'supplier' | 'pendingRequests';
@@ -147,6 +148,8 @@ export function StockPage() {
   return (
     <>
       {notice && <div className="tp-alert tp-alert--info">{notice}</div>}
+
+      <PageReading page="stock" subject="o estoque" />
 
       <section className="tp-card">
         <div className="tp-card__head">

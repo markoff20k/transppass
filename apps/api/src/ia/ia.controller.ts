@@ -5,6 +5,11 @@ import { UserRole } from '@prisma/client';
 import {
   iaConversationCreateSchema,
   iaIndicatorsInputSchema,
+  iaPageReadingInputSchema,
+  iaPageReadingParamsSchema,
+  type IaPageReading,
+  type IaPageReadingInput,
+  type IaPageReadingName,
   iaWidgetReadingInputSchema,
   type IaIndicatorsInput,
   type IaIndicatorsReading,
@@ -120,6 +125,16 @@ export class IaController {
   @ApiOperation({ summary: 'A leitura da ia.Transppass sobre um cartão de indicador (vale por uma hora)' })
   cardReading(@Body(new ZodValidationPipe(iaWidgetReadingInputSchema)) body: IaWidgetReadingInput): Promise<IaWidgetReading> {
     return this.indicators.card(body);
+  }
+
+  @Post('pages/:page/reading')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'A leitura da ia.Transppass sobre uma página (Ordens de serviço, Estoque); vale por uma hora' })
+  pageReading(
+    @Param(new ZodValidationPipe(iaPageReadingParamsSchema)) p: { page: IaPageReadingName },
+    @Body(new ZodValidationPipe(iaPageReadingInputSchema)) body: IaPageReadingInput,
+  ): Promise<IaPageReading> {
+    return this.indicators.page(p.page, body.force);
   }
 
   // --- Fase 2: leituras do mês e a frase do dia ------------------------------------

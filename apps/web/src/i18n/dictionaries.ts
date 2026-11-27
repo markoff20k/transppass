@@ -57,6 +57,14 @@ const ptBR = {
   },
   ia: {
     title: 'ia.Transppass',
+    pageReading: {
+      reads: 'lê {s}',
+      reading: 'lendo os números…',
+      at: 'redigida às {t}',
+      through: 'dados até {d}',
+      redo: 'Redigir de novo',
+      failed: 'Não foi possível redigir a leitura agora.',
+    },
     open: 'Falar com a ia.Transppass',
     close: 'Fechar',
     newChat: 'Nova conversa',
@@ -694,6 +702,14 @@ const en: Dictionary = {
   },
   ia: {
     title: 'ia.Transppass',
+    pageReading: {
+      reads: 'reads {s}',
+      reading: 'reading the numbers…',
+      at: 'written at {t}',
+      through: 'data through {d}',
+      redo: 'Write again',
+      failed: 'Could not write the reading right now.',
+    },
     open: 'Talk to ia.Transppass',
     close: 'Close',
     newChat: 'New conversation',

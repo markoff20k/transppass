@@ -47,6 +47,12 @@ export class FakeProvider implements IaProvider {
       if (never.length) items.push({ kind: never[0]!.kind, tone: 'info', title: `${never.length} indicador(es) ainda sem registro`, text: 'Começam a contar quando o sistema for usado no dia a dia (OS liberada, triagem, inspeção).' });
       return { text: JSON.stringify({ summary: `Leitura de teste: ${withData.length} cartões com dado; os números abaixo vêm dos próprios cartões.`, items }), usage };
     }
+    const pageData = req.prompt.match(/<pagina>([\s\S]*?)<\/pagina>/);
+    if (pageData) {
+      const d = JSON.parse(pageData[1] as string) as { dataThrough: string | null };
+      const items = [{ tone: 'info', title: 'Leitura de teste', text: `Os números desta página vão até ${d.dataThrough ?? 'hoje'}; fora do modo de teste, estes pontos são redigidos a partir deles.` }];
+      return { text: JSON.stringify({ summary: 'Leitura de teste da página: a ia.Transppass resume aqui os mesmos dados que a tela mostra.', items }), usage };
+    }
     const card = req.prompt.match(/<cartao>([\s\S]*?)<\/cartao>/);
     if (card) {
       const c = JSON.parse(card[1] as string) as FakeCard;

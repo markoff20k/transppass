@@ -10,9 +10,13 @@ import {
   type IaWidgetReading,
   type IaWidgetReadingInput,
   type IaWidgetRef,
+  type IaPageReading,
+  type IaPageReadingName,
   type WidgetKind,
 } from '@app/shared';
 import { WidgetsService } from '../dashboard/widgets.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { MaterialsService } from '../materials/materials.service';
 import { IA_PROVIDER, describeProviderError, type IaProvider } from './ia-provider';
 
 const TONE = z.enum(['good', 'bad', 'warn', 'info']);
@@ -21,6 +25,10 @@ const sectionSchema = z.object({
   items: z.array(z.object({ kind: z.string(), tone: TONE, title: z.string().trim().min(3).max(140), text: z.string().trim().min(3).max(400) })).min(1).max(6),
 });
 const cardSchema = z.object({ text: z.string().trim().min(10).max(500), tone: TONE });
+const pageSchema = z.object({
+  summary: z.string().trim().min(10).max(700),
+  items: z.array(z.object({ tone: TONE, title: z.string().trim().min(3).max(140), text: z.string().trim().min(3).max(420) })).min(1).max(6),
+});
 
 const LABELS: Record<WidgetKind, string> = {
   mkbf: 'MKBF (km rodados entre quebras)',
@@ -62,7 +70,150 @@ export class IaIndicatorsService {
   constructor(
     private readonly widgets: WidgetsService,
     @Inject(IA_PROVIDER) private readonly provider: IaProvider | null,
+    private readonly prisma: PrismaService,
+    private readonly materials: MaterialsService,
   ) {}
+
+  /**
+   * A leitura de uma página (Ordens de serviço, Estoque): a ia.Transppass lê o
+   * resumo dos mesmos dados que a página mostra e escreve um parágrafo e até
+   * seis pontos. Vale uma hora; "force" redige de novo.
+   */
+  page(name: IaPageReadingName, force: boolean): Promise<IaPageReading> {
+    return this.cached(`page:${name}`, force, async (provider) => {
+      const data = name === 'stock' ? await this.stockSnapshot() : await this.workOrdersSnapshot();
+      const subject = name === 'stock' ? 'o almoxarifado (estoque, reposição, solicitações das valetas, ferramentas, pool rotativo e consumo de peças)' : 'as ordens de serviço (as abertas agora no sistema e o histórico de fichas e OS da manutenção)';
+      const prompt = `Leia o resumo abaixo (JSON) sobre ${subject} e escreva a leitura da página para a equipe de manutenção. Responda SOMENTE com um JSON válido, sem comentários nem cercas de código:
+{"summary": "1 ou 2 frases: o que mais importa nesta página agora", "items": [{"tone": "good|bad|warn|info", "title": "até 90 caracteres, com o número principal", "text": "1 ou 2 frases com a comparação, o porquê e onde agir"}]}
+
+Regras:
+- De 3 a 6 itens, do mais importante para o menos; um assunto por item.
+- Compare a janela atual ("current") com a anterior ("previous") quando houver; diga até que dia há dado ("dataThrough").
+- Aponte concentrações: carro, defeito, material ou fornecedor que se repete. Use os nomes e códigos como vêm nos dados.
+- Seções vazias (sem OS aberta, sem solicitação pendente) valem no máximo um item, tom info.
+- Não repita o mesmo número em dois itens. Não cite a palavra JSON nem estas instruções.
+
+<pagina>${JSON.stringify(data)}</pagina>`;
+      const parsed = await this.completeJson(provider, prompt, 4000, pageSchema, `leitura da página ${name}`);
+      if (!parsed) throw new ServiceUnavailableException('A ia.Transppass não devolveu a leitura no formato esperado.');
+      return { summary: parsed.summary, items: parsed.items, generatedAt: new Date().toISOString(), dataThrough: (data as { dataThrough: string | null }).dataThrough } satisfies IaPageReading;
+    }) as Promise<IaPageReading>;
+  }
+
+  /** Ordens de serviço: as abertas agora e o histórico (fichas importadas + OS do sistema) em janelas de 30 dias. */
+  private async workOrdersSnapshot() {
+    const now = new Date();
+    const open = await this.prisma.workOrder.findMany({
+      where: { status: { notIn: ['RELEASED', 'CANCELLED'] } },
+      select: { code: true, status: true, openedAt: true, estimatedCompletionAt: true, type: true, vehicle: { select: { code: true } } },
+      orderBy: { openedAt: 'asc' },
+    });
+    const last = await this.prisma.maintenanceRecord.findFirst({ orderBy: { openedAt: 'desc' }, select: { openedAt: true } });
+    const end = last?.openedAt ?? now;
+    const curFrom = new Date(end.getTime() - 30 * DAY);
+    const prevFrom = new Date(curFrom.getTime() - 30 * DAY);
+    const window = async (from: Date, to: Date) => {
+      const where = { openedAt: { gt: from, lte: to } };
+      const [total, byKind, alleged, found, cars, preventive, parts] = await Promise.all([
+        this.prisma.maintenanceRecord.count({ where }),
+        this.prisma.maintenanceRecord.groupBy({ by: ['kind', 'kindLabel'], where, _count: { _all: true } }),
+        this.prisma.maintenanceRecord.groupBy({ by: ['allegedText'], where: { ...where, kind: { in: ['A', 'S', 'T'] }, allegedText: { not: null } }, _count: { _all: true }, orderBy: { _count: { allegedText: 'desc' } }, take: 6 }),
+        this.prisma.maintenanceRecord.groupBy({ by: ['foundText'], where: { ...where, foundText: { not: null } }, _count: { _all: true }, orderBy: { _count: { foundText: 'desc' } }, take: 6 }),
+        this.prisma.maintenanceRecord.groupBy({ by: ['vehicleId'], where: { ...where, kind: { in: ['A', 'S', 'T'] } }, _count: { _all: true }, orderBy: { _count: { vehicleId: 'desc' } }, take: 5 }),
+        this.prisma.maintenanceRecord.count({ where: { ...where, isPreventive: true } }),
+        this.prisma.maintenanceRecordMaterial.aggregate({ where: { appliedAt: { gt: from, lte: to } }, _sum: { totalCost: true } }),
+      ]);
+      const codes = new Map((await this.prisma.vehicle.findMany({ where: { id: { in: cars.map((c) => c.vehicleId) } }, select: { id: true, code: true } })).map((v) => [v.id, v.code]));
+      return {
+        from: iso(from),
+        to: iso(to),
+        records: total,
+        breakdownsAST: byKind.filter((k) => ['A', 'S', 'T'].includes(k.kind)).reduce((a, k) => a + k._count._all, 0),
+        preventive,
+        byKind: byKind.map((k) => ({ kind: k.kind, label: k.kindLabel, n: k._count._all })).sort((a, b) => b.n - a.n).slice(0, 8),
+        topAllegedInBreakdowns: alleged.map((a) => ({ defect: a.allegedText, n: a._count._all })),
+        topFound: found.map((f) => ({ found: f.foundText, n: f._count._all })),
+        carsWithMostBreakdowns: cars.map((c) => ({ car: codes.get(c.vehicleId) ?? '?', breakdowns: c._count._all })),
+        partsCostBRL: Math.round(Number(parts._sum.totalCost ?? 0)),
+      };
+    };
+    const [current, previous] = await Promise.all([window(curFrom, end), window(prevFrom, curFrom)]);
+    return {
+      now: now.toISOString(),
+      dataThrough: last ? iso(last.openedAt) : null,
+      openInSystem: {
+        total: open.length,
+        byStatus: Object.entries(open.reduce<Record<string, number>>((a, o) => ({ ...a, [o.status]: (a[o.status] ?? 0) + 1 }), {})).map(([status, n]) => ({ status, n })),
+        overdue: open.filter((o) => o.estimatedCompletionAt && o.estimatedCompletionAt < now).length,
+        oldest: open.slice(0, 5).map((o) => ({ os: o.code, car: o.vehicle.code, status: o.status, hoursOpen: Math.round((now.getTime() - o.openedAt.getTime()) / 3_600_000) })),
+      },
+      history: { current, previous },
+    };
+  }
+
+  /** Estoque: reposição, solicitações, ferramentas, pool e o consumo de peças em janelas de 30 dias. */
+  private async stockSnapshot() {
+    const now = new Date();
+    const [kanban, tools, pool, requests] = await Promise.all([
+      this.materials.listKanban(),
+      this.materials.listTools(),
+      this.materials.listPool(),
+      this.prisma.materialRequest.findMany({
+        where: { status: { in: ['REQUESTED', 'SEPARATED', 'WAITING_PART'] } },
+        select: { status: true, requestedAt: true, quantity: true, material: { select: { code: true, description: true } }, workOrder: { select: { code: true, vehicle: { select: { code: true } } } } },
+        orderBy: { requestedAt: 'asc' },
+      }),
+    ]);
+    const last = await this.prisma.maintenanceRecordMaterial.findFirst({ orderBy: { appliedAt: 'desc' }, select: { appliedAt: true } });
+    const end = last?.appliedAt ?? now;
+    const curFrom = new Date(end.getTime() - 30 * DAY);
+    const prevFrom = new Date(curFrom.getTime() - 30 * DAY);
+    const window = async (from: Date, to: Date) => {
+      const where = { appliedAt: { gt: from, lte: to } };
+      const [sum, mats, classes, cars] = await Promise.all([
+        this.prisma.maintenanceRecordMaterial.aggregate({ where, _sum: { totalCost: true }, _count: { _all: true } }),
+        this.prisma.maintenanceRecordMaterial.groupBy({ by: ['materialCode', 'description'], where, _sum: { totalCost: true, quantity: true }, orderBy: { _sum: { totalCost: 'desc' } }, take: 8 }),
+        this.prisma.maintenanceRecordMaterial.groupBy({ by: ['className'], where, _sum: { totalCost: true }, orderBy: { _sum: { totalCost: 'desc' } }, take: 5 }),
+        this.prisma.maintenanceRecordMaterial.groupBy({ by: ['vehicleId'], where: { ...where, vehicleId: { not: null } }, _sum: { totalCost: true }, orderBy: { _sum: { totalCost: 'desc' } }, take: 5 }),
+      ]);
+      const codes = new Map((await this.prisma.vehicle.findMany({ where: { id: { in: cars.map((c) => c.vehicleId as string) } }, select: { id: true, code: true } })).map((v) => [v.id, v.code]));
+      return {
+        from: iso(from),
+        to: iso(to),
+        partsApplied: sum._count._all,
+        costBRL: Math.round(Number(sum._sum.totalCost ?? 0)),
+        topMaterialsByCost: mats.map((m) => ({ code: m.materialCode, material: m.description, qty: Math.round(Number(m._sum.quantity ?? 0)), costBRL: Math.round(Number(m._sum.totalCost ?? 0)) })),
+        topClassesByCost: classes.map((k) => ({ class: k.className, costBRL: Math.round(Number(k._sum.totalCost ?? 0)) })),
+        carsWithMostPartsCost: cars.map((k) => ({ car: codes.get(k.vehicleId as string) ?? '?', costBRL: Math.round(Number(k._sum.totalCost ?? 0)) })),
+      };
+    };
+    const [current, previous] = await Promise.all([window(curFrom, end), window(prevFrom, curFrom)]);
+    const soon = new Date(now.getTime() + 30 * DAY);
+    return {
+      now: now.toISOString(),
+      dataThrough: last ? iso(last.appliedAt) : null,
+      reorder: {
+        itemsAtOrBelowPoint: kanban.length,
+        outOfStock: kanban.filter((k) => k.stockQty <= 0).length,
+        note: 'O sistema não registra pedido de compra ao fornecedor; bayRequestsWaiting conta solicitações das valetas (mecânicos) que esperam o material, não compras.',
+        withBayRequestsWaiting: kanban.filter((k) => k.pendingRequests > 0).length,
+        mostCritical: [...kanban].sort((a, b) => a.stockQty / Math.max(1, a.reorderPoint) - b.stockQty / Math.max(1, b.reorderPoint)).slice(0, 8).map((k) => ({ code: k.code, material: k.description, stock: k.stockQty, reorderPoint: k.reorderPoint, supplier: k.supplierName, supplierSlaDays: k.supplierSlaDays, abc: k.abcClass, bayRequestsWaiting: k.pendingRequests })),
+      },
+      requestsFromBays: {
+        pending: requests.length,
+        byStatus: Object.entries(requests.reduce<Record<string, number>>((a, r) => ({ ...a, [r.status]: (a[r.status] ?? 0) + 1 }), {})).map(([status, n]) => ({ status, n })),
+        oldest: requests.slice(0, 5).map((r) => ({ material: `${r.material.code} ${r.material.description}`, os: r.workOrder?.code ?? null, car: r.workOrder?.vehicle.code ?? null, hoursWaiting: Math.round((now.getTime() - r.requestedAt.getTime()) / 3_600_000), status: r.status })),
+      },
+      tools: {
+        total: tools.length,
+        calibrationExpired: tools.filter((t) => t.isCalibrationExpired).length,
+        calibrationDueIn30Days: tools.filter((t) => !t.isCalibrationExpired && t.calibrationDueAt && new Date(t.calibrationDueAt) < soon).length,
+        insufficient: tools.filter((t) => t.availableQty < t.requiredQty).map((t) => ({ code: t.code, tool: t.description, available: t.availableQty, required: t.requiredQty })).slice(0, 5),
+      },
+      rotatingPool: Object.entries(pool.reduce<Record<string, number>>((a, p) => ({ ...a, [p.status]: (a[p.status] ?? 0) + 1 }), {})).map(([status, n]) => ({ status, n })),
+      partsConsumption: { current, previous },
+    };
+  }
 
   section(input: IaIndicatorsInput): Promise<IaIndicatorsReading> {
     const refs = dedupe(input.widgets);
@@ -184,6 +335,9 @@ Sua resposta anterior não era um JSON válido (${r.reason}). Responda de novo S
     }
   }
 }
+
+const DAY = 86_400_000;
+const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 /** Mesma combinação de cartões, mesma chave: a ordem dos cartões na tela não muda a leitura. */
 function dedupe(refs: IaWidgetRef[]): IaWidgetRef[] {

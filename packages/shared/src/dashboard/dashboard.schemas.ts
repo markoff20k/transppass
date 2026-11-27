@@ -533,3 +533,19 @@ export interface IaWidgetReading {
 
 /** Quanto tempo uma leitura dos indicadores vale antes de ser redigida de novo. */
 export const IA_INDICATORS_TTL_MINUTES = 60;
+
+/** Páginas que têm a leitura da ia.Transppass no topo. */
+export const IA_PAGE_READINGS = ['work-orders', 'stock'] as const;
+export type IaPageReadingName = (typeof IA_PAGE_READINGS)[number];
+export const iaPageReadingParamsSchema = z.object({ page: z.enum(IA_PAGE_READINGS) });
+export const iaPageReadingInputSchema = z.object({ force: z.boolean().default(false) });
+export type IaPageReadingInput = z.infer<typeof iaPageReadingInputSchema>;
+
+/** A leitura de uma página: um parágrafo curto e os pontos que importam. */
+export interface IaPageReading {
+  summary: string;
+  items: { tone: IaTone; title: string; text: string }[];
+  generatedAt: string;
+  /** Até que dia os dados lidos vão (a última data com registro). */
+  dataThrough: string | null;
+}
