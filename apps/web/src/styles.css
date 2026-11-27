@@ -2127,6 +2127,26 @@ small.muted {
 .dash-widgets__add:hover { background: var(--color-surface-hover); color: var(--color-text); }
 .dash-widgets__add-select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
 .dash-widgets__add:has(:focus-visible) { border-color: var(--color-brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 22%, transparent); }
+button.dash-widgets__add { font: inherit; font-size: var(--tp-text-xs); font-weight: var(--tp-weight-semibold); }
+button.dash-widgets__add:focus-visible { outline: none; border-color: var(--color-brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 22%, transparent); }
+
+/* Modal "Escolher indicadores": um checkbox por indicador, em dois grupos pelo tamanho do cartão. */
+.ind-pick { display: grid; gap: var(--tp-space-4); }
+.ind-pick__group-title { margin: 0 0 6px; font-size: var(--tp-text-2xs); font-weight: var(--tp-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); }
+.ind-pick__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.ind-pick__item { display: flex; align-items: flex-start; gap: 10px; min-height: 52px; padding: 8px 10px; border: var(--tp-border-thin) solid var(--color-border); border-radius: var(--tp-radius-md); background: var(--color-surface); cursor: pointer; transition: border-color var(--tp-duration-fast) var(--tp-ease), background var(--tp-duration-fast) var(--tp-ease); }
+.ind-pick__item:hover { border-color: var(--color-border-strong); background: var(--color-surface-hover); }
+.ind-pick__item.is-on { border-color: var(--color-brand); background: var(--color-brand-soft); }
+.ind-pick__item:has(:focus-visible) { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 22%, transparent); }
+.ind-pick__item input { flex: none; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--color-brand); }
+.ind-pick__text { display: grid; gap: 1px; min-width: 0; }
+.ind-pick__text b { font-size: var(--tp-text-sm); font-weight: var(--tp-weight-semibold); }
+.ind-pick__text small { font-size: var(--tp-text-2xs); color: var(--color-text-muted); }
+.ind-pick__count { margin: 0; font-size: var(--tp-text-xs); }
+.ind-pick__spacer { flex: 1; }
+.ind-pick__reset { gap: 6px; }
+.ind-pick__reset.is-armed { color: var(--color-danger-text); }
+@media (max-width: 760px) { .ind-pick__list { grid-template-columns: minmax(0, 1fr); } }
 
 .widget { gap: 6px; overflow: visible; position: relative; }
 .widget:has(.is-open) { z-index: 20; }

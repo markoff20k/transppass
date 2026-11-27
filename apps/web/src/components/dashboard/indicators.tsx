@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ArrowDownRight, ArrowUpRight, Minus, Plus, X } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Minus, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import {
   WIDGET_KINDS,
   WIDGET_LARGE_KINDS,
@@ -16,9 +16,10 @@ import { api } from '@/lib/api-client';
 import { formatNumber } from '@/lib/format';
 import { rangeLabel } from '@/lib/period';
 import { useI18n } from '@/i18n/i18n.context';
-import { useUiState } from '@/features/auth/use-ui-pref';
+import { useUiPref, useUiState } from '@/features/auth/use-ui-pref';
 import { toast } from '@/lib/toast';
 import { InfoTip } from '@/components/ui/info-tip';
+import { Modal } from '@/components/ui/modal';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { DowntimeDonut, EventsPerDayChart, WidgetSeriesChart } from '@/components/charts/charts';
 import { AVAILABILITY_TARGET, AvailabilityBody, ChartLoading, MKBF_TARGET, MkbfBody, NoSeries } from './chart-cards';
@@ -63,8 +64,33 @@ export function IndicatorsSection({ vehicles }: { vehicles: DashboardVehicle[] }
   const update = (id: string, patch: Partial<DashboardWidgetPref>) =>
     setWidgets((list) => list.map((w) => (w.id === id ? { ...w, ...patch } : w)));
   const remove = (id: string) => setWidgets((list) => list.filter((w) => w.id !== id));
-  const add = (kind: WidgetKind) =>
-    setWidgets((list) => [...list, { id: `${kind}-${Date.now().toString(36)}`, kind, period: { preset: isLarge(kind) ? 'thisMonth' : 'last30' } }]);
+  // Tipos marcados no modal de escolha: saem os desmarcados (todas as cópias, se houver repetido de
+  // antes), ficam os marcados na ordem em que estão, e os novos entram no fim do grupo deles.
+  const applyKinds = (kinds: WidgetKind[]) =>
+    setWidgets((list) => {
+      const keep = new Set(kinds);
+      const seen = new Set<WidgetKind>();
+      const kept = list.filter((w) => keep.has(w.kind) && !seen.has(w.kind) && seen.add(w.kind));
+      const added = kinds
+        .filter((k) => !seen.has(k))
+        .map((kind) => ({ id: `${kind}-${Date.now().toString(36)}`, kind, period: { preset: isLarge(kind) ? 'thisMonth' : 'last30' } as WidgetPeriod }));
+      return [...kept, ...added];
+    });
+  // "Restaurar padrão": indicadores, ordem das duas seções, períodos, escopos e cartões recolhidos.
+  const [, setNowOrder] = useUiState<string[]>('dash.order.now', []);
+  const [, setFlowCollapsed] = useUiPref<boolean>('collapsed.dash.flow', false);
+  const [, setKpisCollapsed] = useUiPref<boolean>('collapsed.dash.kpis', false);
+  const [, setRecentCollapsed] = useUiPref<boolean>('collapsed.dash.recent', false);
+  const [, setFleetCollapsed] = useUiPref<boolean>('collapsed.dash.fleet', false);
+  const resetAll = () => {
+    setWidgets(DEFAULT_INDICATORS);
+    setNowOrder([]);
+    setFlowCollapsed(false);
+    setKpisCollapsed(false);
+    setRecentCollapsed(false);
+    setFleetCollapsed(false);
+    toast.success(t.dash.widgets.pick.resetDone);
+  };
   const applyAll = (period: WidgetPeriod) => {
     setWidgets((list) => list.map((w) => ({ ...w, period })));
     toast.success(t.dash.widgets.appliedAll);
@@ -89,6 +115,7 @@ export function IndicatorsSection({ vehicles }: { vehicles: DashboardVehicle[] }
     ),
   });
   const [allPeriod, setAllPeriod] = useState<WidgetPeriod>({ preset: 'last30' });
+  const [pickerOpen, setPickerOpen] = useState(false);
   // O seletor global marca o período que todos os cartões compartilham; se divergem, o último aplicado.
   const samePref = (a: WidgetPeriod, b: WidgetPeriod) => a.preset === b.preset && (a.preset !== 'custom' || (a.from === b.from && a.to === b.to));
   const shownAll = widgets.length > 0 && widgets.every((w) => samePref(w.period, widgets[0]!.period)) ? widgets[0]!.period : allPeriod;
@@ -113,10 +140,14 @@ export function IndicatorsSection({ vehicles }: { vehicles: DashboardVehicle[] }
               }}
             />
           )}
-          <AddWidget onAdd={add} />
+          <button type="button" className="dash-widgets__add" onClick={() => setPickerOpen(true)}>
+            <SlidersHorizontal size={14} aria-hidden />
+            <span>{t.dash.widgets.pick.title}</span>
+          </button>
         </div>
       </header>
 
+      {pickerOpen && <IndicatorPicker current={widgets.map((w) => w.kind)} onClose={() => setPickerOpen(false)} onApply={applyKinds} onReset={resetAll} />}
       {widgets.length === 0 && <p className="dash-widgets__empty">{t.dash.widgets.empty}</p>}
       {large.length > 0 && (
         <div className="ind-grid ind-grid--large" data-count={large.length}>
@@ -132,29 +163,90 @@ export function IndicatorsSection({ vehicles }: { vehicles: DashboardVehicle[] }
   );
 }
 
-/** "Adicionar indicador": uma lista com todos os indicadores; escolher já põe o cartão no fim do grupo dele. */
-function AddWidget({ onAdd }: { onAdd: (kind: WidgetKind) => void }) {
+/**
+ * Modal "Escolher indicadores": a lista completa, um checkbox por indicador (marcado = está no
+ * painel), em dois grupos conforme o tamanho do cartão. Repetir um indicador é impossível por
+ * construção. "Aplicar" grava; "Cancelar" descarta. "Restaurar padrão" pede um segundo clique e
+ * devolve o painel inteiro ao padrão do sistema.
+ */
+function IndicatorPicker({ current, onClose, onApply, onReset }: { current: WidgetKind[]; onClose: () => void; onApply: (kinds: WidgetKind[]) => void; onReset: () => void }) {
   const { t } = useI18n();
+  const [draft, setDraft] = useState<Set<WidgetKind>>(() => new Set(current));
+  const [armed, setArmed] = useState(false);
+  const toggle = (k: WidgetKind) =>
+    setDraft((d) => {
+      const next = new Set(d);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+  const dirty = draft.size !== new Set(current).size || current.some((k) => !draft.has(k));
+  const groups = [
+    { key: 'large', label: t.dash.widgets.pick.large, kinds: WIDGET_KINDS.filter((k) => isLarge(k)) },
+    { key: 'regular', label: t.dash.widgets.pick.regular, kinds: WIDGET_KINDS.filter((k) => !isLarge(k)) },
+  ];
   return (
-    <label className="dash-widgets__add">
-      <Plus size={14} aria-hidden />
-      <span>{t.dash.widgets.add}</span>
-      <select
-        className="dash-widgets__add-select"
-        aria-label={t.dash.widgets.add}
-        value=""
-        onChange={(e) => {
-          if (e.target.value) onAdd(e.target.value as WidgetKind);
-        }}
-      >
-        <option value="">{t.dash.widgets.add}</option>
-        {WIDGET_KINDS.map((k) => (
-          <option key={k} value={k}>
-            {t.dash.widgets.kinds[k].label}
-          </option>
+    <Modal
+      open
+      onClose={onClose}
+      title={t.dash.widgets.pick.title}
+      description={t.dash.widgets.pick.hint}
+      width={640}
+      footer={
+        <>
+          <button
+            type="button"
+            className={`tp-btn tp-btn--ghost ind-pick__reset${armed ? ' is-armed' : ''}`}
+            title={t.dash.widgets.pick.resetHint}
+            onClick={() => {
+              if (!armed) {
+                setArmed(true);
+                return;
+              }
+              onReset();
+              onClose();
+            }}
+          >
+            <RotateCcw size={14} aria-hidden /> {armed ? t.dash.widgets.pick.resetConfirm : t.dash.widgets.pick.reset}
+          </button>
+          <span className="ind-pick__spacer" />
+          <button type="button" className="tp-btn tp-btn--secondary" onClick={onClose}>{t.dash.widgets.pick.cancel}</button>
+          <button
+            type="button"
+            className="tp-btn tp-btn--primary"
+            disabled={!dirty}
+            onClick={() => {
+              onApply(WIDGET_KINDS.filter((k) => draft.has(k)));
+              onClose();
+            }}
+          >
+            {t.dash.widgets.pick.apply}
+          </button>
+        </>
+      }
+    >
+      <div className="ind-pick">
+        {groups.map((g) => (
+          <section key={g.key} className="ind-pick__group">
+            <h3 className="ind-pick__group-title">{g.label}</h3>
+            <ul className="ind-pick__list">
+              {g.kinds.map((k) => (
+                <li key={k}>
+                  <label className={`ind-pick__item${draft.has(k) ? ' is-on' : ''}`}>
+                    <input type="checkbox" checked={draft.has(k)} onChange={() => toggle(k)} />
+                    <span className="ind-pick__text">
+                      <b>{t.dash.widgets.kinds[k].label}</b>
+                      <small>{t.dash.widgets.kinds[k].hint}</small>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
-      </select>
-    </label>
+        <p className="ind-pick__count tp-muted">{t.dash.widgets.pick.count.replace('{n}', String(draft.size)).replace('{t}', String(WIDGET_KINDS.length))}</p>
+      </div>
+    </Modal>
   );
 }
 
