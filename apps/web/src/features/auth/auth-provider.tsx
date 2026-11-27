@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api
       .get<PublicUser>('/auth/me')
       .then(setUser)
-      // Só o "não" da API derruba a sessão; servidor fora do ar mantém os tokens para a próxima tentativa.
+      // Só o "não" da API derruba a sessão; servidor indisponível mantém os tokens para a próxima tentativa.
       .catch((err) => {
         if (!(err instanceof ApiError && (err.body.code === SERVER_UNREACHABLE || err.body.code === SERVER_DOWN))) tokenStorage.clear();
       })

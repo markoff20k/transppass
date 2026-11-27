@@ -23,7 +23,7 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
 
 let refreshInFlight: Promise<boolean> | null = null;
 
-/** Servidor inalcançável (rede caiu, API desligada) ou fora do ar (502/503/504, ou 5xx sem corpo da API). */
+/** Servidor inalcançável (rede caiu, API desligada) ou indisponível (502/503/504, ou 5xx sem corpo da API). */
 export const SERVER_UNREACHABLE = 'SERVER_UNREACHABLE';
 export const SERVER_DOWN = 'SERVER_DOWN';
 
@@ -33,8 +33,8 @@ function serverError(path: string, statusCode: number): ApiError {
     code: statusCode === 0 ? SERVER_UNREACHABLE : SERVER_DOWN,
     message:
       statusCode === 0
-        ? 'Sem conexão com o servidor. Ele pode estar fora do ar ou a internet caiu; tente de novo em instantes.'
-        : 'O servidor está fora do ar no momento. Tente de novo em instantes.',
+        ? 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente em instantes.'
+        : 'O servidor está temporariamente indisponível. Tente novamente em instantes.',
     timestamp: new Date().toISOString(),
     path,
   });
@@ -103,7 +103,7 @@ async function refreshTokens(): Promise<boolean> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
       });
-      // Servidor fora do ar não é sessão vencida: mantém os tokens e avisa; só o "não" da API desloga.
+      // Servidor indisponível não é sessão vencida: mantém os tokens e avisa; só o "não" da API desloga.
       if (res.status >= 500) throw serverError('/auth/refresh', res.status);
       if (!res.ok) {
         tokenStorage.clear();
