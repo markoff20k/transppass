@@ -204,8 +204,14 @@ export const cleaningDamageSchema = z.object({
   photoUrl: z.string().trim().max(500).optional(),
 });
 
+/** Colunas pelas quais a lista de OS pode ser ordenada; o servidor ordena antes de paginar. */
+export const WORK_ORDER_SORT_KEYS = ['code', 'vehicleCode', 'type', 'status', 'openedAt', 'estimatedCompletionAt'] as const;
+export type WorkOrderSort = (typeof WORK_ORDER_SORT_KEYS)[number];
+
 export const workOrderQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
+  sort: z.enum(WORK_ORDER_SORT_KEYS).optional(),
+  dir: z.enum(['asc', 'desc']).optional(),
   perPage: z.coerce.number().int().min(1).max(100).default(20),
   status: z.nativeEnum(WorkOrderStatus).optional(),
   type: z.nativeEnum(WorkOrderType).optional(),

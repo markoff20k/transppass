@@ -18,6 +18,7 @@ import { InfoTip } from '@/components/ui/info-tip';
 import { Pager } from '@/components/ui/pager';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
 import { PeriodControl } from '@/components/ui/period-control';
 import {
   comparisonOf,
@@ -62,6 +63,8 @@ import {
  * de um dia isolado oscila; a média de 7 dias (ou a semana, em períodos
  * longos) é a leitura confiável.
  */
+type DaySort = 'date' | 'km' | 'amount' | 'ratio' | 'rolling7';
+
 const vehicleQuery = (id: string, from: string, to: string) => ({
   queryKey: ['consumption', 'vehicle', id, from, to] as const,
   queryFn: () =>
@@ -128,7 +131,24 @@ export function ConsumptionVehiclePage() {
     ),
   });
 
-  const daysPager = usePager('consumo-dias', data?.daily.length ?? 0, `${id}|${from}|${to}`);
+  const [daySort, toggleDaySort] = useSortState<DaySort>(
+    'consumo-dias.sort',
+    { key: 'date', dir: 'desc' },
+    { date: 'desc', km: 'desc', amount: 'desc', ratio: 'desc', rolling7: 'desc' },
+  );
+  // Km e consumo zerados aparecem como "—": vão para o fim, como vazio.
+  const dayRows = useSortedRows(data?.daily ?? [], daySort, {
+    date: (d) => d.date,
+    km: (d) => (d.km > 0 ? d.km : null),
+    amount: (d) => (d.amount > 0 ? d.amount : null),
+    ratio: (d) => d.ratio,
+    rolling7: (d) => d.rolling7,
+  });
+  const daysPager = usePager(
+    'consumo-dias',
+    data?.daily.length ?? 0,
+    `${id}|${from}|${to}|${daySort.key}:${daySort.dir}`,
+  );
   const weekly = period.days > WEEKLY_FROM_DAYS;
   const trend = useMemo(
     () => (data ? (weekly ? bucketWeekly(data.energy, data.daily) : data.daily) : []),
@@ -154,7 +174,6 @@ export function ConsumptionVehiclePage() {
   const delta = improvement(energy, cur.ratio, data.previous.ratio);
   const tone = flagTone(data.flag);
   const empty = cur.days === 0;
-  const dayRows = [...data.daily].reverse();
 
   return (
     <RefreshVeil active={isPlaceholderData} label={`Calculando o consumo ${periodPhrase(period)}`}>
@@ -362,11 +381,21 @@ export function ConsumptionVehiclePage() {
               <table className="tp-table tp-table--compact">
                 <thead>
                   <tr>
-                    <th>Dia</th>
-                    <th className="is-num">Km</th>
-                    <th className="is-num">{u.amount}</th>
-                    <th className="is-num">{u.ratio}</th>
-                    <th className="is-num">Média 7 dias</th>
+                    <SortTh col="date" sort={daySort} onSort={toggleDaySort}>
+                      Dia
+                    </SortTh>
+                    <SortTh col="km" sort={daySort} onSort={toggleDaySort} className="is-num">
+                      Km
+                    </SortTh>
+                    <SortTh col="amount" sort={daySort} onSort={toggleDaySort} className="is-num">
+                      {u.amount}
+                    </SortTh>
+                    <SortTh col="ratio" sort={daySort} onSort={toggleDaySort} className="is-num">
+                      {u.ratio}
+                    </SortTh>
+                    <SortTh col="rolling7" sort={daySort} onSort={toggleDaySort} className="is-num">
+                      Média 7 dias
+                    </SortTh>
                     <th>Observação</th>
                   </tr>
                 </thead>

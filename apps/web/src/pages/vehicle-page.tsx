@@ -22,6 +22,14 @@ import { BrandLoader } from '@/components/brand/brand-loader';
 import { InfoTip } from '@/components/ui/info-tip';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type RecordSortKey = 'openedAt' | 'externalOs' | 'kind' | 'partsCost' | 'mechanicReg';
+type LineSortKey = 'line' | 'days' | 'kmInLine' | 'kmIdle' | 'trips';
+type EventSortKey = 'reportedAt' | 'failureCode' | 'status';
+type WoSortKey = 'code' | 'type' | 'openedAt' | 'releasedAt' | 'status';
+
+const woTypeLabel = (type: string) => (type === 'PREVENTIVE' ? 'preventiva' : type === 'CORRECTIVE' ? 'corretiva' : type.toLowerCase());
 
 /**
  * A página do carro: o veículo como produto. Render grande com a ficha ao
@@ -40,10 +48,41 @@ export function VehiclePage() {
     actions: <Link to="/frota" className="tp-btn tp-btn--secondary tp-btn--sm"><ArrowLeft size={14} /> Painel da frota</Link>,
   });
 
-  const recordsPager = usePager('carro-fichas', o?.records.length ?? 0);
-  const linesPager = usePager('carro-linhas', o?.lines30.length ?? 0);
-  const eventsPager = usePager('carro-eventos', o?.recentEvents.length ?? 0);
-  const woPager = usePager('carro-os', o?.recentWorkOrders.length ?? 0);
+  // Ordenação pelo cabeçalho, salva na conta; ordena a lista inteira antes de paginar.
+  const [recordSort, toggleRecordSort] = useSortState<RecordSortKey>('carro.fichas.sort', { key: 'openedAt', dir: 'desc' }, { openedAt: 'desc', partsCost: 'desc' });
+  const [lineSort, toggleLineSort] = useSortState<LineSortKey>('carro.linhas.sort', { key: 'line', dir: 'desc' }, { days: 'desc', kmInLine: 'desc', kmIdle: 'desc', trips: 'desc' });
+  const [eventSort, toggleEventSort] = useSortState<EventSortKey>('carro.eventos.sort', { key: 'reportedAt', dir: 'desc' }, { reportedAt: 'desc' });
+  const [woSort, toggleWoSort] = useSortState<WoSortKey>('carro.os.sort', { key: 'openedAt', dir: 'desc' }, { openedAt: 'desc', releasedAt: 'desc' });
+  const records = useSortedRows(o?.records ?? [], recordSort, {
+    openedAt: (r) => r.openedAt,
+    externalOs: (r) => r.externalOs,
+    kind: (r) => r.kindLabel ?? r.kind,
+    partsCost: (r) => (r.materials.length ? r.partsCost : null),
+    mechanicReg: (r) => r.mechanicReg,
+  });
+  const lines = useSortedRows(o?.lines30 ?? [], lineSort, {
+    line: (l) => l.line,
+    days: (l) => l.days,
+    kmInLine: (l) => l.kmInLine,
+    kmIdle: (l) => l.kmIdle,
+    trips: (l) => l.trips,
+  });
+  const events = useSortedRows(o?.recentEvents ?? [], eventSort, {
+    reportedAt: (e) => e.reportedAt,
+    failureCode: (e) => e.failureCode,
+    status: (e) => EVENT_STATUS_LABELS[e.status as EventStatus] ?? e.status,
+  });
+  const workOrders = useSortedRows(o?.recentWorkOrders ?? [], woSort, {
+    code: (w) => w.code,
+    type: (w) => woTypeLabel(w.type),
+    openedAt: (w) => w.openedAt,
+    releasedAt: (w) => w.releasedAt,
+    status: (w) => WORK_ORDER_STATUS_LABELS[w.status as WorkOrderStatus] ?? w.status,
+  });
+  const recordsPager = usePager('carro-fichas', o?.records.length ?? 0, `${recordSort.key}:${recordSort.dir}`);
+  const linesPager = usePager('carro-linhas', o?.lines30.length ?? 0, `${lineSort.key}:${lineSort.dir}`);
+  const eventsPager = usePager('carro-eventos', o?.recentEvents.length ?? 0, `${eventSort.key}:${eventSort.dir}`);
+  const woPager = usePager('carro-os', o?.recentWorkOrders.length ?? 0, `${woSort.key}:${woSort.dir}`);
   if (q.isPending) return <BrandLoader size={48} label="Carregando o carro" />;
   if (!o || !v) return <div className="tp-table__empty">Carro não encontrado.</div>;
   const fam = familyOf(v.status);
@@ -157,9 +196,9 @@ export function VehiclePage() {
           <div className="tp-card__head"><div><h3>Fichas de manutenção</h3><span className="chart__hint">as OS do sistema da Transppass: o que o motorista alegou, o que a oficina constatou e o que foi feito · A, S e T são as quebras que contam no MKBF</span></div><span className="tp-muted">{o.recordsLast30} em 30 dias</span></div>
           <div className="tp-table-wrap">
             <table className="tp-table tp-table--compact">
-              <thead><tr><th>Quando</th><th>OS</th><th>Tipo</th><th>Alegado</th><th>Constatado</th><th>Providência</th><th>Peças</th><th>Mecânico</th></tr></thead>
+              <thead><tr><SortTh col="openedAt" sort={recordSort} onSort={toggleRecordSort}>Quando</SortTh><SortTh col="externalOs" sort={recordSort} onSort={toggleRecordSort}>OS</SortTh><SortTh col="kind" sort={recordSort} onSort={toggleRecordSort}>Tipo</SortTh><th>Alegado</th><th>Constatado</th><th>Providência</th><SortTh col="partsCost" sort={recordSort} onSort={toggleRecordSort}>Peças</SortTh><SortTh col="mechanicReg" sort={recordSort} onSort={toggleRecordSort}>Mecânico</SortTh></tr></thead>
               <tbody>
-                {recordsPager.slice(o.records).map((r) => (
+                {recordsPager.slice(records).map((r) => (
                   <tr key={r.id}>
                     <td className="tp-muted">{formatDateTime(r.openedAt)}</td>
                     <td className="tp-mono">{r.externalOs}</td>
@@ -183,9 +222,9 @@ export function VehiclePage() {
           <div className="tp-card__head"><div><h3>Linhas em que rodou · 30 dias</h3><span className="chart__hint">km em linha, km ocioso e viagens por linha (dado da Operação)</span></div></div>
           <div className="tp-table-wrap">
             <table className="tp-table tp-table--compact">
-              <thead><tr><th>Linha</th><th className="is-num">Dias</th><th className="is-num">Km em linha</th><th className="is-num">Km ocioso</th><th className="is-num">Viagens</th></tr></thead>
+              <thead><tr><SortTh col="line" sort={lineSort} onSort={toggleLineSort}>Linha</SortTh><SortTh col="days" sort={lineSort} onSort={toggleLineSort} className="is-num">Dias</SortTh><SortTh col="kmInLine" sort={lineSort} onSort={toggleLineSort} className="is-num">Km em linha</SortTh><SortTh col="kmIdle" sort={lineSort} onSort={toggleLineSort} className="is-num">Km ocioso</SortTh><SortTh col="trips" sort={lineSort} onSort={toggleLineSort} className="is-num">Viagens</SortTh></tr></thead>
               <tbody>
-                {linesPager.slice(o.lines30).map((l) => (
+                {linesPager.slice(lines).map((l) => (
                   <tr key={l.line}><td className="is-strong">{l.line}</td><td className="is-num">{l.days}</td><td className="is-num">{formatNumber(l.kmInLine)}</td><td className="is-num tp-muted">{formatNumber(l.kmIdle)}</td><td className="is-num">{formatNumber(l.trips)}</td></tr>
                 ))}
               </tbody>
@@ -201,9 +240,9 @@ export function VehiclePage() {
           {o.recentEvents.length === 0 ? <div className="tp-table__empty">Nenhuma ocorrência registrada.</div> : (
             <div className="tp-table-wrap">
               <table className="tp-table tp-table--compact">
-                <thead><tr><th>Quando</th><th>Ocorrência</th><th>Código</th><th>Situação</th></tr></thead>
+                <thead><tr><SortTh col="reportedAt" sort={eventSort} onSort={toggleEventSort}>Quando</SortTh><th>Ocorrência</th><SortTh col="failureCode" sort={eventSort} onSort={toggleEventSort}>Código</SortTh><SortTh col="status" sort={eventSort} onSort={toggleEventSort}>Situação</SortTh></tr></thead>
                 <tbody>
-                  {eventsPager.slice(o.recentEvents).map((e) => (
+                  {eventsPager.slice(events).map((e) => (
                     <tr key={e.id}>
                       <td className="tp-muted">{formatDateTime(e.reportedAt)}</td>
                       <td style={{ whiteSpace: 'normal', minWidth: 200 }}><span className="mat-desc">{e.description}</span>{e.isUnscheduledReturn && <span className="mat-sub">retorno não programado</span>}</td>
@@ -222,12 +261,12 @@ export function VehiclePage() {
           {o.recentWorkOrders.length === 0 ? <div className="tp-table__empty">Nenhuma OS registrada.</div> : (
             <div className="tp-table-wrap">
               <table className="tp-table tp-table--compact">
-                <thead><tr><th>OS</th><th>Tipo</th><th>Abertura</th><th>Liberação</th><th>Situação</th></tr></thead>
+                <thead><tr><SortTh col="code" sort={woSort} onSort={toggleWoSort}>OS</SortTh><SortTh col="type" sort={woSort} onSort={toggleWoSort}>Tipo</SortTh><SortTh col="openedAt" sort={woSort} onSort={toggleWoSort}>Abertura</SortTh><SortTh col="releasedAt" sort={woSort} onSort={toggleWoSort}>Liberação</SortTh><SortTh col="status" sort={woSort} onSort={toggleWoSort}>Situação</SortTh></tr></thead>
                 <tbody>
-                  {woPager.slice(o.recentWorkOrders).map((w) => (
+                  {woPager.slice(workOrders).map((w) => (
                     <tr key={w.id}>
                       <td><Link to={`/os/${w.id}`} className="is-strong">{w.code}</Link></td>
-                      <td className="tp-muted">{w.type === 'PREVENTIVE' ? 'preventiva' : w.type === 'CORRECTIVE' ? 'corretiva' : w.type.toLowerCase()}</td>
+                      <td className="tp-muted">{woTypeLabel(w.type)}</td>
                       <td className="tp-muted">{formatDateTime(w.openedAt)}</td>
                       <td className="tp-muted">{w.releasedAt ? formatDateTime(w.releasedAt) : '—'}</td>
                       <td><span className={`tp-badge tp-badge--status ${workOrderStatusTone(w.status)}`}>{WORK_ORDER_STATUS_LABELS[w.status as WorkOrderStatus] ?? w.status}</span></td>

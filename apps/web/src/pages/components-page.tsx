@@ -24,6 +24,9 @@ import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
 import { useUiState } from '@/features/auth/use-ui-pref';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type SortKey = 'vehicle' | 'component' | 'life' | 'remaining' | 'installed' | 'previous';
 
 const STATUS_LABEL = { OVER: 'acima da vida', NEAR: 'perto do fim', OK: 'dentro da vida' } as const;
 
@@ -38,6 +41,12 @@ export function ComponentsPage() {
   const [search, setSearch] = useUiState<string>('componentes.search', '');
   const [onlyAttention, setOnlyAttention] = useUiState<boolean>('componentes.onlyAttention', true);
   const [panel, setPanel] = useState<{ vehicleId?: string; kind?: ComponentKind } | null>(null);
+  const [sort, toggleSort] = useSortState<SortKey>('componentes.sort', { key: 'installed', dir: 'desc' }, {
+    life: 'desc',
+    remaining: 'desc',
+    installed: 'desc',
+    previous: 'desc',
+  });
   usePageHeader({
     eyebrow: 'Execução',
     title: 'Vida de componentes',
@@ -78,7 +87,16 @@ export function ComponentsPage() {
     void queryClient.invalidateQueries({ queryKey: ['metrics'] });
   };
 
-  const pager = usePager('componentes', rows.length, `${kind}|${onlyAttention}|${search}`);
+  const sorted = useSortedRows(rows, sort, {
+    vehicle: (c) => c.vehicleCode,
+    component: (c) => c.kindLabel,
+    life: (c) => c.lifePct,
+    remaining: (c) => c.remainingKm,
+    installed: (c) => c.installedAt,
+    previous: (c) => c.previousLifeKm,
+  });
+
+  const pager = usePager('componentes', rows.length, `${kind}|${onlyAttention}|${search}|${sort.key}:${sort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -170,7 +188,7 @@ export function ComponentsPage() {
           <div>
             <h3>Componentes</h3>
             <span className="chart__hint">
-              os que mais rodaram primeiro; clique em "Trocar" quando o componente sair
+              os instalados mais recentemente primeiro; clique no título da coluna para reordenar; clique em "Trocar" quando o componente sair
             </span>
           </div>
           <span className="tp-muted">{rows.length}</span>
@@ -222,17 +240,17 @@ export function ComponentsPage() {
             <table className="tp-table tp-table--compact cmp-table">
               <thead>
                 <tr>
-                  <th>Carro</th>
-                  <th>Componente</th>
-                  <th>Vida usada</th>
-                  <th className="is-num">Restante</th>
-                  <th>Instalado</th>
-                  <th>Anterior durou</th>
+                  <SortTh col="vehicle" sort={sort} onSort={toggleSort}>Carro</SortTh>
+                  <SortTh col="component" sort={sort} onSort={toggleSort}>Componente</SortTh>
+                  <SortTh col="life" sort={sort} onSort={toggleSort}>Vida usada</SortTh>
+                  <SortTh col="remaining" sort={sort} onSort={toggleSort} className="is-num">Restante</SortTh>
+                  <SortTh col="installed" sort={sort} onSort={toggleSort}>Instalado</SortTh>
+                  <SortTh col="previous" sort={sort} onSort={toggleSort}>Anterior durou</SortTh>
                   <th className="is-action" aria-label="Ações" />
                 </tr>
               </thead>
               <tbody>
-                {pager.slice(rows).map((c) => (
+                {pager.slice(sorted).map((c) => (
                   <tr key={c.id} className={c.status === 'OVER' ? 'is-danger' : undefined}>
                     <td className="is-strong tp-mono">{c.vehicleCode}</td>
                     <td>

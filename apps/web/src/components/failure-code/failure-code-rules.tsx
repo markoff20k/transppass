@@ -18,6 +18,9 @@ import { Drawer } from '@/components/ui/drawer';
 import { useFailureRules } from './failure-code.utils';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type RuleSort = 'appliesTo' | 'code';
 
 const POSITION_TYPE_LABELS = { NONE: 'nenhuma', AXLE: 'só eixo', SIDE: 'só lado', AXLE_SIDE: 'eixo × lado' } as const;
 
@@ -47,7 +50,12 @@ export function FailureCodeRules() {
     return '—';
   };
 
-  const pager = usePager('regras-criticidade', (rules.data ?? []).length);
+  const [sort, toggleSort] = useSortState<RuleSort>('regras-criticidade.sort', { key: 'code', dir: 'desc' });
+  const sortedRules = useSortedRows(rules.data ?? [], sort, {
+    appliesTo: (r) => describe(r),
+    code: (r) => [r.failureModeCode ?? '**', r.subsystemCode ?? '***-***'].join('-'),
+  });
+  const pager = usePager('regras-criticidade', (rules.data ?? []).length, `${sort.key}:${sort.dir}`);
   return (
     <section className="tp-card fcode-rules">
       <div className="tp-card__head">
@@ -66,9 +74,17 @@ export function FailureCodeRules() {
           <div className="tp-alert tp-alert--warning">Carga inicial é PROPOSTA — o padrão define a codificação, não a criticidade. Validar com Manutenção + PCM (questão aberta do PRD, seção 12).</div>
           <div className="tp-table-wrap">
             <table className="tp-table tp-table--compact">
-              <thead><tr><th>Aplica-se a</th><th>Código</th><th>Flags</th><th>Observação</th><th /></tr></thead>
+              <thead>
+                <tr>
+                  <SortTh col="appliesTo" sort={sort} onSort={toggleSort}>Aplica-se a</SortTh>
+                  <SortTh col="code" sort={sort} onSort={toggleSort}>Código</SortTh>
+                  <th>Flags</th>
+                  <th>Observação</th>
+                  <th />
+                </tr>
+              </thead>
               <tbody>
-                {pager.slice(rules.data ?? []).map((r) => (
+                {pager.slice(sortedRules).map((r) => (
                   <tr key={r.id} className={r.isActive ? undefined : 'is-inactive'}>
                     <td>{describe(r)}</td>
                     <td><code className="fcode__inline">{[r.failureModeCode ?? '**', r.subsystemCode ?? '***-***'].join('-')}</code></td>

@@ -27,6 +27,9 @@ import { SearchSelect } from '@/components/ui/search-select';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
 import { useUiState } from '@/features/auth/use-ui-pref';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type SortKey = 'code' | 'plate' | 'class' | 'lot' | 'model' | 'technology' | 'kmSource' | 'offset' | 'currentKm' | 'status';
 
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; vehicle: Vehicle };
 
@@ -37,6 +40,7 @@ export function VehiclesPage() {
   const [search, setSearch] = useUiState<string>('cad-frota.search', '');
   const [cls, setCls] = useUiState<string>('cad-frota.cls', '');
   const [lot, setLot] = useUiState<string>('cad-frota.lot', '');
+  const [sort, toggleSort] = useSortState<SortKey>('cad-frota.sort', { key: 'code', dir: 'desc' }, { offset: 'desc', currentKm: 'desc' });
 
   usePageHeader({
     eyebrow: 'Cadastros',
@@ -70,7 +74,20 @@ export function VehiclesPage() {
   const ebus = active.filter((v) => v.technology === VehicleTechnology.EBUS).length;
   const telemetry = active.filter((v) => v.kmSource === KmSource.TELEMETRY).length;
 
-  const pager = usePager('veiculos', rows.length, `${search}|${cls}|${lot}`);
+  const sorted = useSortedRows(rows, sort, {
+    code: (v) => v.code,
+    plate: (v) => v.plate,
+    class: (v) => (v.vehicleClass ? VEHICLE_CLASS_LABELS[v.vehicleClass] : null),
+    lot: (v) => v.lot,
+    model: (v) => v.model,
+    technology: (v) => VEHICLE_TECHNOLOGY_LABELS[v.technology],
+    kmSource: (v) => KM_SOURCE_LABELS[v.kmSource],
+    offset: (v) => v.odometerOffset,
+    currentKm: (v) => v.currentKm,
+    status: (v) => VEHICLE_STATUS_LABELS[v.status],
+  });
+
+  const pager = usePager('veiculos', rows.length, `${search}|${cls}|${lot}|${sort.key}:${sort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -165,21 +182,21 @@ export function VehiclesPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Prefixo</th>
-                  <th>Placa</th>
-                  <th>Classe</th>
-                  <th>Lote</th>
-                  <th>Modelo</th>
-                  <th>Tecnologia</th>
-                  <th>Fonte de km</th>
-                  <th className="is-num">Offset</th>
-                  <th className="is-num">Km atual</th>
-                  <th>Estado</th>
+                  <SortTh col="code" sort={sort} onSort={toggleSort}>Prefixo</SortTh>
+                  <SortTh col="plate" sort={sort} onSort={toggleSort}>Placa</SortTh>
+                  <SortTh col="class" sort={sort} onSort={toggleSort}>Classe</SortTh>
+                  <SortTh col="lot" sort={sort} onSort={toggleSort}>Lote</SortTh>
+                  <SortTh col="model" sort={sort} onSort={toggleSort}>Modelo</SortTh>
+                  <SortTh col="technology" sort={sort} onSort={toggleSort}>Tecnologia</SortTh>
+                  <SortTh col="kmSource" sort={sort} onSort={toggleSort}>Fonte de km</SortTh>
+                  <SortTh col="offset" sort={sort} onSort={toggleSort} className="is-num">Offset</SortTh>
+                  <SortTh col="currentKm" sort={sort} onSort={toggleSort} className="is-num">Km atual</SortTh>
+                  <SortTh col="status" sort={sort} onSort={toggleSort}>Estado</SortTh>
                   <th className="is-action" aria-label="Ações" />
                 </tr>
               </thead>
               <tbody>
-                {pager.slice(rows).map((v) => {
+                {pager.slice(sorted).map((v) => {
                   const family = VEHICLE_STATE_FAMILY[v.status] ?? 'waiting';
                   return (
                     <tr

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   MATERIAL_REQUEST_STATUS_LABELS,
@@ -21,6 +21,12 @@ import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type RequestSort = 'vehicle' | 'workOrder' | 'material' | 'quantity' | 'status' | 'expectedAt' | 'requestedAt';
+type KanbanSort = 'code' | 'description' | 'location' | 'stockQty' | 'reorderPoint' | 'reorderQty' | 'supplier' | 'pendingRequests';
+type PoolSort = 'serial' | 'component' | 'status' | 'vehicle';
+type ToolSort = 'code' | 'description' | 'availableQty' | 'calibrationDueAt' | 'loanedTo';
 
 /**
  * E5 — a tela do Estoque.
@@ -92,12 +98,52 @@ export function StockPage() {
     void queryClient.invalidateQueries({ queryKey: ['work-order'] });
   };
 
-  const rows = requests.data ?? [];
+  const rows = useMemo(() => requests.data ?? [], [requests.data]);
+  const kanbanRows = useMemo(() => kanban.data ?? [], [kanban.data]);
+  const poolRows = useMemo(() => pool.data ?? [], [pool.data]);
+  const toolRows = useMemo(() => tools.data ?? [], [tools.data]);
 
-  const pager = usePager('estoque-pedidos', rows.length);
-  const kanbanPager = usePager('estoque-kanban', (kanban.data ?? []).length);
-  const poolPager = usePager('estoque-pool', (pool.data ?? []).length);
-  const toolsPager = usePager('estoque-ferramentas', (tools.data ?? []).length);
+  const [sort, toggleSort] = useSortState<RequestSort>('estoque.solicitacoes.sort', { key: 'requestedAt', dir: 'desc' }, { quantity: 'desc', expectedAt: 'desc', requestedAt: 'desc' });
+  const sortedRows = useSortedRows(rows, sort, {
+    vehicle: (r) => r.vehicleCode,
+    workOrder: (r) => r.workOrderCode,
+    material: (r) => r.materialCode,
+    quantity: (r) => r.quantity,
+    status: (r) => MATERIAL_REQUEST_STATUS_LABELS[r.status],
+    expectedAt: (r) => r.partWaiting?.expectedAt,
+    requestedAt: (r) => r.requestedAt,
+  });
+  const [kanbanSort, toggleKanbanSort] = useSortState<KanbanSort>('estoque.saldos.sort', { key: 'code', dir: 'desc' }, { stockQty: 'desc', reorderPoint: 'desc', reorderQty: 'desc', pendingRequests: 'desc' });
+  const sortedKanban = useSortedRows(kanbanRows, kanbanSort, {
+    code: (k) => k.code,
+    description: (k) => k.description,
+    location: (k) => k.location,
+    stockQty: (k) => k.stockQty,
+    reorderPoint: (k) => k.reorderPoint,
+    reorderQty: (k) => k.reorderQty,
+    supplier: (k) => k.supplierName,
+    pendingRequests: (k) => k.pendingRequests,
+  });
+  const [poolSort, togglePoolSort] = useSortState<PoolSort>('estoque.series.sort', { key: 'serial', dir: 'desc' });
+  const sortedPool = useSortedRows(poolRows, poolSort, {
+    serial: (c) => c.serialNumber,
+    component: (c) => c.materialDescription,
+    status: (c) => POOL_STATUS_LABELS[c.status],
+    vehicle: (c) => c.currentVehicleCode,
+  });
+  const [toolSort, toggleToolSort] = useSortState<ToolSort>('estoque.ferramentas.sort', { key: 'code', dir: 'desc' }, { availableQty: 'desc', calibrationDueAt: 'desc' });
+  const sortedTools = useSortedRows(toolRows, toolSort, {
+    code: (t) => t.code,
+    description: (t) => t.description,
+    availableQty: (t) => t.availableQty,
+    calibrationDueAt: (t) => t.calibrationDueAt,
+    loanedTo: (t) => t.loanedToName ?? 'disponível',
+  });
+
+  const pager = usePager('estoque-pedidos', rows.length, `${sort.key}:${sort.dir}`);
+  const kanbanPager = usePager('estoque-kanban', kanbanRows.length, `${kanbanSort.key}:${kanbanSort.dir}`);
+  const poolPager = usePager('estoque-pool', poolRows.length, `${poolSort.key}:${poolSort.dir}`);
+  const toolsPager = usePager('estoque-ferramentas', toolRows.length, `${toolSort.key}:${toolSort.dir}`);
   return (
     <>
       {notice && <div className="tp-alert tp-alert--info">{notice}</div>}
@@ -117,17 +163,17 @@ export function StockPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Carro</th>
-                  <th>OS</th>
-                  <th>Material</th>
-                  <th className="is-num">Qtd</th>
-                  <th>Estado</th>
-                  <th>Pendência</th>
-                  <th>Solicitado</th>
+                  <SortTh col="vehicle" sort={sort} onSort={toggleSort}>Carro</SortTh>
+                  <SortTh col="workOrder" sort={sort} onSort={toggleSort}>OS</SortTh>
+                  <SortTh col="material" sort={sort} onSort={toggleSort}>Material</SortTh>
+                  <SortTh col="quantity" sort={sort} onSort={toggleSort} className="is-num">Qtd</SortTh>
+                  <SortTh col="status" sort={sort} onSort={toggleSort}>Estado</SortTh>
+                  <SortTh col="expectedAt" sort={sort} onSort={toggleSort}>Pendência</SortTh>
+                  <SortTh col="requestedAt" sort={sort} onSort={toggleSort}>Solicitado</SortTh>
                 </tr>
               </thead>
               <tbody>
-                {pager.slice(rows).map((row) => (
+                {pager.slice(sortedRows).map((row) => (
                   <tr
                     key={row.id}
                     className={`is-clickable${row.partWaiting?.isOverdue ? ' is-danger' : ''}${selected?.id === row.id ? ' is-selected' : ''}`}
@@ -182,10 +228,19 @@ export function StockPage() {
           <div className="tp-table-wrap">
             <table className="tp-table tp-table--compact">
               <thead>
-                <tr><th>Código</th><th>Material</th><th>Local</th><th className="is-num">Saldo</th><th className="is-num">Ponto</th><th className="is-num">Repor</th><th>Fornecedor</th><th className="is-num">Pedidos abertos</th></tr>
+                <tr>
+                  <SortTh col="code" sort={kanbanSort} onSort={toggleKanbanSort}>Código</SortTh>
+                  <SortTh col="description" sort={kanbanSort} onSort={toggleKanbanSort}>Material</SortTh>
+                  <SortTh col="location" sort={kanbanSort} onSort={toggleKanbanSort}>Local</SortTh>
+                  <SortTh col="stockQty" sort={kanbanSort} onSort={toggleKanbanSort} className="is-num">Saldo</SortTh>
+                  <SortTh col="reorderPoint" sort={kanbanSort} onSort={toggleKanbanSort} className="is-num">Ponto</SortTh>
+                  <SortTh col="reorderQty" sort={kanbanSort} onSort={toggleKanbanSort} className="is-num">Repor</SortTh>
+                  <SortTh col="supplier" sort={kanbanSort} onSort={toggleKanbanSort}>Fornecedor</SortTh>
+                  <SortTh col="pendingRequests" sort={kanbanSort} onSort={toggleKanbanSort} className="is-num">Pedidos abertos</SortTh>
+                </tr>
               </thead>
               <tbody>
-                {kanbanPager.slice((kanban.data ?? [])).map((k) => (
+                {kanbanPager.slice(sortedKanban).map((k) => (
                   <tr key={k.id} className={k.stockQty <= 0 ? 'is-danger' : undefined}>
                     <td className="is-strong tp-mono">{k.code}</td>
                     <td style={{ whiteSpace: 'normal', minWidth: 220 }}>
@@ -221,15 +276,15 @@ export function StockPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Série</th>
-                  <th>Componente</th>
-                  <th>Estado</th>
-                  <th>Carro</th>
+                  <SortTh col="serial" sort={poolSort} onSort={togglePoolSort}>Série</SortTh>
+                  <SortTh col="component" sort={poolSort} onSort={togglePoolSort}>Componente</SortTh>
+                  <SortTh col="status" sort={poolSort} onSort={togglePoolSort}>Estado</SortTh>
+                  <SortTh col="vehicle" sort={poolSort} onSort={togglePoolSort}>Carro</SortTh>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {poolPager.slice((pool.data ?? [])).map((c) => (
+                {poolPager.slice(sortedPool).map((c) => (
                   <tr key={c.id} className="is-clickable" tabIndex={0} onClick={() => setComponent(c)} onKeyDown={(e) => e.key === 'Enter' && setComponent(c)}>
                     <td className="is-strong">{c.serialNumber}</td>
                     <td>{c.materialDescription}</td>
@@ -264,16 +319,16 @@ export function StockPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Código</th>
-                  <th>Ferramenta</th>
-                  <th className="is-num" title="Disponível / necessária (FR.168)">Qtd</th>
-                  <th>Calibração</th>
-                  <th>Com quem</th>
+                  <SortTh col="code" sort={toolSort} onSort={toggleToolSort}>Código</SortTh>
+                  <SortTh col="description" sort={toolSort} onSort={toggleToolSort}>Ferramenta</SortTh>
+                  <SortTh col="availableQty" sort={toolSort} onSort={toggleToolSort} className="is-num"><span title="Disponível / necessária (FR.168)">Qtd</span></SortTh>
+                  <SortTh col="calibrationDueAt" sort={toolSort} onSort={toggleToolSort}>Calibração</SortTh>
+                  <SortTh col="loanedTo" sort={toolSort} onSort={toggleToolSort}>Com quem</SortTh>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {toolsPager.slice((tools.data ?? [])).map((t) => (
+                {toolsPager.slice(sortedTools).map((t) => (
                   <tr key={t.id} className={t.isCalibrationExpired ? 'is-danger' : undefined}>
                     <td className="is-strong">{t.code}</td>
                     <td>{t.description}</td>

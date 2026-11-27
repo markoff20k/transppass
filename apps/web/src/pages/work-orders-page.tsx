@@ -19,6 +19,8 @@ import { BusRender } from '@/components/bus/bus-render';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { pagerOf, usePagerState } from '@/lib/pager';
+import { SortTh, useSortState } from '@/components/ui/sort-th';
+import type { WorkOrderSort } from '@app/shared';
 import { MaintenanceHistorySection } from './work-orders-history';
 
 /** Filtro virtual: os três portões antes de liberar o carro (RN-04). */
@@ -131,12 +133,14 @@ export function WorkOrdersPage() {
     refetchInterval: 30_000,
   });
   const term = useDeferredValue(search.trim());
-  const paging = usePagerState('work-orders', `${status}|${term}|${onlyOverdue}`);
+  // Ordenação pelo cabeçalho da tabela, salva na conta; o servidor ordena antes de paginar.
+  const [sort, toggleSort] = useSortState<WorkOrderSort>('os.sort', { key: 'openedAt', dir: 'desc' }, { openedAt: 'desc', estimatedCompletionAt: 'asc' });
+  const paging = usePagerState('work-orders', `${status}|${term}|${onlyOverdue}|${sort.key}:${sort.dir}`);
   const listQuery = useQuery({
-    queryKey: ['work-orders', 'list', paging.page, paging.pageSize, status, term, onlyOverdue],
+    queryKey: ['work-orders', 'list', paging.page, paging.pageSize, status, term, onlyOverdue, sort.key, sort.dir],
     queryFn: () =>
       api.get<Paginated<WorkOrderSummary>>(
-        `/work-orders?page=${paging.page}&perPage=${paging.pageSize}${status === RELEASING ? '&releasing=true' : status ? `&status=${status}` : ''}${term ? `&search=${encodeURIComponent(term)}` : ''}${onlyOverdue ? '&onlyOverdue=true' : ''}`,
+        `/work-orders?page=${paging.page}&perPage=${paging.pageSize}&sort=${sort.key}&dir=${sort.dir}${status === RELEASING ? '&releasing=true' : status ? `&status=${status}` : ''}${term ? `&search=${encodeURIComponent(term)}` : ''}${onlyOverdue ? '&onlyOverdue=true' : ''}`,
       ),
     placeholderData: keepPreviousData,
     refetchInterval: 30_000,
@@ -303,13 +307,13 @@ export function WorkOrdersPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>OS</th>
-                  <th>Carro</th>
+                  <SortTh col="code" sort={sort} onSort={toggleSort}>OS</SortTh>
+                  <SortTh col="vehicleCode" sort={sort} onSort={toggleSort}>Carro</SortTh>
                   <th>Motivo</th>
-                  <th>Tipo</th>
-                  <th>Estado</th>
-                  <th className="is-num">Relógio</th>
-                  <th>Previsão</th>
+                  <SortTh col="type" sort={sort} onSort={toggleSort}>Tipo</SortTh>
+                  <SortTh col="status" sort={sort} onSort={toggleSort}>Estado</SortTh>
+                  <SortTh col="openedAt" sort={sort} onSort={toggleSort} className="is-num">Relógio</SortTh>
+                  <SortTh col="estimatedCompletionAt" sort={sort} onSort={toggleSort}>Previsão</SortTh>
                   <th>Sub-OS</th>
                 </tr>
               </thead>

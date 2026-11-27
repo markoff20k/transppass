@@ -677,8 +677,8 @@ export class EventsService {
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.failureEvent.findMany({
         where,
-        // Na fila de triagem o mais antigo vem primeiro: o SLA corre contra ele.
-        orderBy: { reportedAt: query.pendingTriage ? 'asc' : 'desc' },
+        // Na fila de triagem o mais antigo vem primeiro: o SLA corre contra ele. Com `sort`, a coluna pedida.
+        orderBy: eventOrderOf(query.sort, query.dir, query.pendingTriage ?? false),
         skip: (query.page - 1) * query.perPage,
         take: query.perPage,
         include: {
@@ -860,4 +860,25 @@ export function realEventLabel(text: string): string {
     .filter(Boolean)
     .join(' ')
     .slice(0, 90);
+}
+
+/** Ordem da lista de eventos; o registro é o desempate para a lista não embaralhar entre páginas. */
+function eventOrderOf(sort: EventQuery['sort'], d: EventQuery['dir'], pendingTriage: boolean): Prisma.FailureEventOrderByWithRelationInput[] {
+  const dir = d ?? 'desc';
+  switch (sort) {
+    case 'code':
+      return [{ code: dir }];
+    case 'vehicleCode':
+      return [{ vehicle: { code: dir } }, { reportedAt: 'desc' }];
+    case 'failureCode':
+      return [{ failureCode: { sort: dir, nulls: 'last' } }, { reportedAt: 'desc' }];
+    case 'origin':
+      return [{ origin: dir }, { reportedAt: 'desc' }];
+    case 'status':
+      return [{ status: dir }, { reportedAt: 'desc' }];
+    case 'reportedAt':
+      return [{ reportedAt: dir }, { code: dir }];
+    default:
+      return [{ reportedAt: pendingTriage ? 'asc' : 'desc' }];
+  }
 }

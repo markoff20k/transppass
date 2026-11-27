@@ -31,6 +31,10 @@ import { SearchSelect } from '@/components/ui/search-select';
 import { formatNumber } from '@/lib/format';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type CatalogSort = 'code' | 'description' | 'composite' | 'repair' | 'fieldRate';
+type CodesSort = 'code' | 'description' | 'group';
 
 type Panel =
   | { kind: 'closed' }
@@ -92,7 +96,20 @@ export function CatalogPage() {
   const kitOf = (itemId: string) =>
     (kits.data ?? []).find((k) => k.catalogItemId === itemId) ?? null;
 
-  const pager = usePager('catalogo', (items.data?.data ?? []).length, search);
+  const [sort, toggleSort] = useSortState<CatalogSort>(
+    'cad-catalogo.sort',
+    { key: 'code', dir: 'desc' },
+    { repair: 'desc', fieldRate: 'desc' },
+  );
+  const sortedItems = useSortedRows(items.data?.data ?? [], sort, {
+    code: (i) => i.code,
+    description: (i) => i.description,
+    composite: (i) =>
+      i.failureModeCode && i.subsystemCode ? `${i.failureModeCode}-${i.subsystemCode}` : (i.system ?? null),
+    repair: (i) => i.estimatedRepairMinutes ?? null,
+    fieldRate: (i) => i.fieldResolutionRate,
+  });
+  const pager = usePager('catalogo', (items.data?.data ?? []).length, `${search}|${sort.key}:${sort.dir}`);
   return (
     <>
       <CatalogVersions items={items.data?.data ?? []} onPublished={invalidate} />
@@ -121,17 +138,17 @@ export function CatalogPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Código</th>
-                  <th>Descrição</th>
-                  <th>Código composto</th>
+                  <SortTh col="code" sort={sort} onSort={toggleSort}>Código</SortTh>
+                  <SortTh col="description" sort={sort} onSort={toggleSort}>Descrição</SortTh>
+                  <SortTh col="composite" sort={sort} onSort={toggleSort}>Código composto</SortTh>
                   <th>Flags</th>
-                  <th className="is-num">Reparo (min)</th>
-                  <th className="is-num">Taxa de campo</th>
+                  <SortTh col="repair" sort={sort} onSort={toggleSort} className="is-num">Reparo (min)</SortTh>
+                  <SortTh col="fieldRate" sort={sort} onSort={toggleSort} className="is-num">Taxa de campo</SortTh>
                   <th>Kit corretivo</th>
                 </tr>
               </thead>
               <tbody>
-                {pager.slice(items.data?.data ?? []).map((item) => (
+                {pager.slice(sortedItems).map((item) => (
                   <tr key={item.id} className={item.isActive ? undefined : 'is-inactive'}>
                     <td className="is-strong">{item.code}</td>
                     <td>{item.description}</td>
@@ -704,7 +721,13 @@ function TransppassCodes() {
         c.description.toLowerCase().includes(q.toLowerCase()) ||
         (c.group ?? '').toLowerCase().includes(q.toLowerCase())),
   );
-  const codesPager = usePager('codigos-transppass', rows.length, `${kind}|${q}`);
+  const [codesSort, toggleCodesSort] = useSortState<CodesSort>('cad-catalogo.codesSort', { key: 'code', dir: 'desc' });
+  const sortedRows = useSortedRows(rows, codesSort, {
+    code: (c) => c.code,
+    description: (c) => c.description,
+    group: (c) => c.group ?? null,
+  });
+  const codesPager = usePager('codigos-transppass', rows.length, `${kind}|${q}|${codesSort.key}:${codesSort.dir}`);
   if (!codes.data || codes.data.length === 0) return null;
   const fichas = codes.data.filter((c) => c.kind === 'FICHA');
   return (
@@ -752,13 +775,13 @@ function TransppassCodes() {
         <table className="tp-table tp-table--compact">
           <thead>
             <tr>
-              <th>Código</th>
-              <th>Descrição</th>
-              <th>Grupo</th>
+              <SortTh col="code" sort={codesSort} onSort={toggleCodesSort}>Código</SortTh>
+              <SortTh col="description" sort={codesSort} onSort={toggleCodesSort}>Descrição</SortTh>
+              <SortTh col="group" sort={codesSort} onSort={toggleCodesSort}>Grupo</SortTh>
             </tr>
           </thead>
           <tbody>
-            {codesPager.slice(rows).map((c) => (
+            {codesPager.slice(sortedRows).map((c) => (
               <tr key={`${c.kind}-${c.code}`}>
                 <td className="tp-mono is-strong">{c.code}</td>
                 <td>{c.description}</td>

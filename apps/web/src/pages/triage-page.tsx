@@ -22,6 +22,7 @@ import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/compo
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
 
 /**
  * RF-03 — fila de triagem com os três destinos e SLA medido.
@@ -30,6 +31,8 @@ import { usePager } from '@/lib/pager';
  * decisão (RF-02): o PCM decide vendo causa provável, tempo estimado e taxa
  * de resolução em campo, em vez de decidir de memória.
  */
+type TriageSort = 'code' | 'vehicle' | 'failure' | 'origin' | 'reportedAt' | 'waiting';
+
 export function TriagePage() {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<FailureEventSummary | null>(null);
@@ -37,7 +40,7 @@ export function TriagePage() {
   usePageHeader({
     eyebrow: 'Operação',
     title: 'Triagem',
-    description: 'Três destinos, SLA medido do registro à decisão. O mais antigo vem primeiro.',
+    description: 'Três destinos, SLA medido do registro à decisão. A coluna Esperando mostra há quanto tempo cada um aguarda.',
   });
 
   const events = useQuery({
@@ -49,7 +52,16 @@ export function TriagePage() {
   const rows = events.data?.data ?? [];
   const oldest = rows[0]?.waitingSeconds ?? 0;
 
-  const pager = usePager('triagem', rows.length);
+  const [sort, toggleSort] = useSortState<TriageSort>('triagem.sort', { key: 'reportedAt', dir: 'desc' }, { reportedAt: 'desc', waiting: 'desc' });
+  const sorted = useSortedRows(rows, sort, {
+    code: (r) => r.code,
+    vehicle: (r) => r.vehicleCode,
+    failure: (r) => r.catalog?.description ?? r.reportedDescription ?? null,
+    origin: (r) => EVENT_ORIGIN_LABELS[r.origin],
+    reportedAt: (r) => r.reportedAt,
+    waiting: (r) => r.waitingSeconds,
+  });
+  const pager = usePager('triagem', rows.length, `${sort.key}:${sort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -90,16 +102,16 @@ export function TriagePage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Evento</th>
-                  <th>Carro</th>
-                  <th>Falha</th>
-                  <th>Origem</th>
-                  <th>Registrado</th>
-                  <th className="is-num">Esperando</th>
+                  <SortTh col="code" sort={sort} onSort={toggleSort}>Evento</SortTh>
+                  <SortTh col="vehicle" sort={sort} onSort={toggleSort}>Carro</SortTh>
+                  <SortTh col="failure" sort={sort} onSort={toggleSort}>Falha</SortTh>
+                  <SortTh col="origin" sort={sort} onSort={toggleSort}>Origem</SortTh>
+                  <SortTh col="reportedAt" sort={sort} onSort={toggleSort}>Registrado</SortTh>
+                  <SortTh col="waiting" sort={sort} onSort={toggleSort} className="is-num">Esperando</SortTh>
                 </tr>
               </thead>
               <tbody>
-                {pager.slice(rows).map((event) => (
+                {pager.slice(sorted).map((event) => (
                   <tr
                     key={event.id}
                     className={`is-clickable${event.catalog?.isSafety ? ' is-danger' : ''}${selected?.id === event.id ? ' is-selected' : ''}`}

@@ -28,6 +28,9 @@ import { InfoTip } from '@/components/ui/info-tip';
 import { Pager } from '@/components/ui/pager';
 import { pagerOf, usePagerState } from '@/lib/pager';
 import { useUiState } from '@/features/auth/use-ui-pref';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type SortKey = 'code' | 'plate' | 'class' | 'technology' | 'status' | 'currentKm' | 'avgDailyKm' | 'projectedKm' | 'reading' | 'kmSource';
 
 interface PanelResponse {
   summary: FleetPanelSummary;
@@ -76,6 +79,12 @@ export function FleetPanelPage() {
   const [savedClass, setSavedClass] = useUiState<string>('frota.cls', '');
   const [savedLot, setSavedLot] = useUiState<string>('frota.lot', '');
   const [savedOnlyStale, setSavedOnlyStale] = useUiState<boolean>('frota.onlyStale', false);
+  const [sort, toggleSort] = useSortState<SortKey>('frota.sort', { key: 'code', dir: 'desc' }, {
+    currentKm: 'desc',
+    avgDailyKm: 'desc',
+    projectedKm: 'desc',
+    reading: 'desc',
+  });
 
   const fromUrl = (key: string, saved: string) =>
     params.has(key) ? (params.get(key) ?? '') : saved;
@@ -152,10 +161,32 @@ export function FleetPanelPage() {
     refetchInterval: 30_000,
   });
 
+  const allRows = data?.rows;
+  const visible = useMemo(
+    () =>
+      (allRows ?? [])
+        .filter((r) => (family ? familyOf(r.status) === family : true))
+        .filter((r) => (onlyStale ? r.isKmDegraded : true)),
+    [allRows, family, onlyStale],
+  );
+  // A tabela ordena pelo cabeçalho; a grade segue na ordem do prefixo.
+  const sortedVisible = useSortedRows(visible, sort, {
+    code: (r) => r.code,
+    plate: (r) => r.plate,
+    class: (r) => (r.vehicleClass ? VEHICLE_CLASS_LABELS[r.vehicleClass] : null),
+    technology: (r) => VEHICLE_TECHNOLOGY_LABELS[r.technology],
+    status: (r) => VEHICLE_STATUS_LABELS[r.status],
+    currentKm: (r) => r.currentKm,
+    avgDailyKm: (r) => r.avgDailyKm,
+    projectedKm: (r) => r.projectedKm,
+    reading: (r) => r.lastReadingAt,
+    kmSource: (r) => KM_SOURCE_LABELS[r.kmSource],
+  });
+
   const resetKey = `${technology}|${status}|${search}|${vehicleClass}|${lot}|${onlyStale}|${family}`;
   // Centenas de carros ilustrados pesam no navegador: a grade também é paginada.
   const gridPaging = usePagerState('frota-grade', resetKey);
-  const tablePaging = usePagerState('frota-tabela', resetKey);
+  const tablePaging = usePagerState('frota-tabela', `${resetKey}|${sort.key}:${sort.dir}`);
 
   if (isPending) return <BrandLoader size={44} label="Carregando painel" />;
   if (isError && !data) return <div className="tp-alert tp-alert--danger">{(error as Error).message}</div>;
@@ -167,9 +198,6 @@ export function FleetPanelPage() {
   const ebus = rows.length - diesel;
   const manualStale = rows.filter((r) => r.isKmDegraded && r.kmSource === KmSource.MANUAL).length;
 
-  const visible = rows
-    .filter((r) => (family ? familyOf(r.status) === family : true))
-    .filter((r) => (onlyStale ? r.isKmDegraded : true));
   const focus = hovered ?? family;
   const stale = summary.degradedKmCount;
   const staleTone =
@@ -367,22 +395,22 @@ export function FleetPanelPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Prefixo</th>
-                  <th>Placa</th>
-                  <th>Classe</th>
-                  <th>Tecnologia</th>
-                  <th>Estado</th>
-                  <th className="is-num">Km atual</th>
-                  <th className="is-num">Média/dia</th>
-                  <th className="is-num">
-                    Km projetado hoje <ProjectionTip align="center" />
-                  </th>
-                  <th>Odômetro</th>
-                  <th>Fonte de km</th>
+                  <SortTh col="code" sort={sort} onSort={toggleSort}>Prefixo</SortTh>
+                  <SortTh col="plate" sort={sort} onSort={toggleSort}>Placa</SortTh>
+                  <SortTh col="class" sort={sort} onSort={toggleSort}>Classe</SortTh>
+                  <SortTh col="technology" sort={sort} onSort={toggleSort}>Tecnologia</SortTh>
+                  <SortTh col="status" sort={sort} onSort={toggleSort}>Estado</SortTh>
+                  <SortTh col="currentKm" sort={sort} onSort={toggleSort} className="is-num">Km atual</SortTh>
+                  <SortTh col="avgDailyKm" sort={sort} onSort={toggleSort} className="is-num">Média/dia</SortTh>
+                  <SortTh col="projectedKm" sort={sort} onSort={toggleSort} className="is-num" after={<ProjectionTip align="center" />}>
+                    Km projetado hoje
+                  </SortTh>
+                  <SortTh col="reading" sort={sort} onSort={toggleSort}>Odômetro</SortTh>
+                  <SortTh col="kmSource" sort={sort} onSort={toggleSort}>Fonte de km</SortTh>
                 </tr>
               </thead>
               <tbody>
-                {pager.slice(visible).map((row) => {
+                {pager.slice(sortedVisible).map((row) => {
                   const fam = familyOf(row.status);
                   const reading = readingOf(row);
                   return (

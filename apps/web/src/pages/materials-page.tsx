@@ -17,7 +17,9 @@ import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
 
+type MaterialSort = 'code' | 'description' | 'group' | 'location' | 'stockQty' | 'avgCost' | 'kitCount' | 'state';
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; material: MaterialRow };
 
 /**
@@ -81,7 +83,22 @@ export function MaterialsPage() {
   const brl = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-  const pager = usePager('materiais', rows.length);
+  const [sort, toggleSort] = useSortState<MaterialSort>(
+    'cad-materiais.sort',
+    { key: 'code', dir: 'desc' },
+    { stockQty: 'desc', avgCost: 'desc', kitCount: 'desc' },
+  );
+  const sorted = useSortedRows(rows, sort, {
+    code: (m) => m.code,
+    description: (m) => m.description,
+    group: (m) => materialGroupLabel(m.classCode),
+    location: (m) => m.location,
+    stockQty: (m) => m.stockQty,
+    avgCost: (m) => m.avgCost,
+    kitCount: (m) => m.kitCount,
+    state: (m) => (m.isActive ? 'Ativo' : 'Desativado'),
+  });
+  const pager = usePager('materiais', rows.length, `${sort.key}:${sort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -168,19 +185,19 @@ export function MaterialsPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Código</th>
-                  <th>Descrição</th>
-                  <th>Grupo</th>
-                  <th>Local</th>
-                  <th className="is-num">Saldo</th>
-                  <th className="is-num">Custo médio</th>
-                  <th className="is-num">Em kits</th>
-                  <th>Situação</th>
+                  <SortTh col="code" sort={sort} onSort={toggleSort}>Código</SortTh>
+                  <SortTh col="description" sort={sort} onSort={toggleSort}>Descrição</SortTh>
+                  <SortTh col="group" sort={sort} onSort={toggleSort}>Grupo</SortTh>
+                  <SortTh col="location" sort={sort} onSort={toggleSort}>Local</SortTh>
+                  <SortTh col="stockQty" sort={sort} onSort={toggleSort} className="is-num">Saldo</SortTh>
+                  <SortTh col="avgCost" sort={sort} onSort={toggleSort} className="is-num">Custo médio</SortTh>
+                  <SortTh col="kitCount" sort={sort} onSort={toggleSort} className="is-num">Em kits</SortTh>
+                  <SortTh col="state" sort={sort} onSort={toggleSort}>Situação</SortTh>
                   <th className="is-action" aria-label="Ações" />
                 </tr>
               </thead>
               <tbody>
-                {pager.slice(rows).map((m) => (
+                {pager.slice(sorted).map((m) => (
                   <tr
                     key={m.id}
                     className={`is-clickable${m.isActive ? '' : ' is-inactive'}`}

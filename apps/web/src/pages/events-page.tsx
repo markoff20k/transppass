@@ -30,6 +30,8 @@ import { BrandLoader } from '@/components/brand/brand-loader';
 import { useAuth } from '@/features/auth/use-auth';
 import { Pager } from '@/components/ui/pager';
 import { pagerOf, usePagerState } from '@/lib/pager';
+import { SortTh, useSortState } from '@/components/ui/sort-th';
+import type { EventSort } from '@app/shared';
 import { useUiState } from '@/features/auth/use-ui-pref';
 
 /**
@@ -119,12 +121,15 @@ export function EventsPage() {
   });
 
   // A tabela vem paginada da API (são milhares de eventos); os números do topo contam a base inteira.
-  const paging = usePagerState('events', filterKey);
+  // Ordenação pelo cabeçalho, salva na conta; o servidor ordena antes de paginar.
+  const [sort, toggleSort] = useSortState<EventSort>('eventos.sort', { key: 'reportedAt', dir: 'desc' }, { reportedAt: 'desc' });
+  const sortQs = `sort=${sort.key}&dir=${sort.dir}`;
+  const paging = usePagerState('events', `${filterKey}|${sortQs}`);
   const events = useQuery({
-    queryKey: ['events', 'list', paging.page, paging.pageSize, filterKey],
+    queryKey: ['events', 'list', paging.page, paging.pageSize, filterKey, sort.key, sort.dir],
     queryFn: () =>
       api.get<Paginated<FailureEventSummary>>(
-        `/events?page=${paging.page}&perPage=${paging.pageSize}${filterQs ? `&${filterQs}` : ''}`,
+        `/events?page=${paging.page}&perPage=${paging.pageSize}&${sortQs}${filterQs ? `&${filterQs}` : ''}`,
       ),
     placeholderData: keepPreviousData,
     refetchInterval: 30_000,
@@ -198,13 +203,13 @@ export function EventsPage() {
             <table className="tp-table tp-table--filters">
               <thead>
                 <tr>
-                  <th>Evento</th>
-                  <th>Carro</th>
-                  <th>Código</th>
+                  <SortTh col="code" sort={sort} onSort={toggleSort}>Evento</SortTh>
+                  <SortTh col="vehicleCode" sort={sort} onSort={toggleSort}>Carro</SortTh>
+                  <SortTh col="failureCode" sort={sort} onSort={toggleSort}>Código</SortTh>
                   <th>Falha</th>
-                  <th>Origem</th>
-                  <th>Estado</th>
-                  <th>Registrado</th>
+                  <SortTh col="origin" sort={sort} onSort={toggleSort}>Origem</SortTh>
+                  <SortTh col="status" sort={sort} onSort={toggleSort}>Estado</SortTh>
+                  <SortTh col="reportedAt" sort={sort} onSort={toggleSort}>Registrado</SortTh>
                   <th>OS</th>
                 </tr>
                 {/* Filtros por coluna: um controle embaixo de cada título, salvos na conta. */}

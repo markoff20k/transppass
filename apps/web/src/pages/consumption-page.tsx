@@ -29,6 +29,7 @@ import { BrandLoader } from '@/components/brand/brand-loader';
 import { InfoTip } from '@/components/ui/info-tip';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState } from '@/components/ui/sort-th';
 import { PeriodControl } from '@/components/ui/period-control';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
@@ -244,10 +245,11 @@ export function ConsumptionPage() {
   const [flag, setFlag] = useUiState<FlagFilter>('consumo.flag', 'ALL');
   // Qual aviso da faixa de qualidade está aberto com a lista de carros e dias.
   const [qualityOpen, setQualityOpen] = useState<'kmNoFuel' | 'fuelNoKm' | null>(null);
-  const [sort, setSort] = useUiState<{ key: SortKey; dir: 'asc' | 'desc' }>('consumo.sort', {
-    key: 'deviation',
-    dir: 'desc',
-  });
+  const [sort, toggleSort] = useSortState<SortKey>(
+    'consumo.sort',
+    { key: 'deviation', dir: 'desc' },
+    { deviation: 'desc', ratio: 'desc', km: 'desc', amount: 'desc' },
+  );
   const term = useDeferredValue(search.trim().toLowerCase());
 
   const rows = useMemo(() => {
@@ -361,14 +363,6 @@ export function ConsumptionPage() {
   // O seletor de horizonte só aparece quando há registro antes do início da série.
   const hasHistory = Boolean(data.firstMonth && data.monthly[0] && data.firstMonth < data.monthly[0].month);
   const horizonLabel = horizonTitle(months, data.monthly, data.firstMonth);
-
-  const toggleSort = (key: SortKey) =>
-    setSort((s) =>
-      s.key === key
-        ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
-        : { key, dir: key === 'code' ? 'asc' : 'desc' },
-    );
-  const sortMark = (key: SortKey) => (sort.key === key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : '');
 
   return (
     <RefreshVeil active={isPlaceholderData} label={`Calculando o consumo ${phrase}`}>
@@ -859,56 +853,24 @@ export function ConsumptionPage() {
                   <table className="tp-table tp-table--compact cons-table">
                     <thead>
                       <tr>
-                        <th>
-                          <button
-                            type="button"
-                            className="cons-sort"
-                            onClick={() => toggleSort('code')}
-                          >
-                            Carro{sortMark('code')}
-                          </button>
-                        </th>
+                        <SortTh col="code" sort={sort} onSort={toggleSort}>
+                          Carro
+                        </SortTh>
                         <th>Modelo</th>
                         <th>Grupo</th>
-                        <th className="is-num">
-                          <button
-                            type="button"
-                            className="cons-sort"
-                            onClick={() => toggleSort('km')}
-                          >
-                            Km{sortMark('km')}
-                          </button>
-                        </th>
-                        <th className="is-num">
-                          <button
-                            type="button"
-                            className="cons-sort"
-                            onClick={() => toggleSort('amount')}
-                          >
-                            {u.amount}
-                            {sortMark('amount')}
-                          </button>
-                        </th>
-                        <th className="is-num">
-                          <button
-                            type="button"
-                            className="cons-sort"
-                            onClick={() => toggleSort('ratio')}
-                          >
-                            {u.ratio}
-                            {sortMark('ratio')}
-                          </button>
-                        </th>
+                        <SortTh col="km" sort={sort} onSort={toggleSort} className="is-num">
+                          Km
+                        </SortTh>
+                        <SortTh col="amount" sort={sort} onSort={toggleSort} className="is-num">
+                          {u.amount}
+                        </SortTh>
+                        <SortTh col="ratio" sort={sort} onSort={toggleSort} className="is-num">
+                          {u.ratio}
+                        </SortTh>
                         <th className="is-num">Mediana do grupo</th>
-                        <th className="is-num">
-                          <button
-                            type="button"
-                            className="cons-sort"
-                            onClick={() => toggleSort('deviation')}
-                          >
-                            vs grupo{sortMark('deviation')}
-                          </button>
-                        </th>
+                        <SortTh col="deviation" sort={sort} onSort={toggleSort} className="is-num">
+                          vs grupo
+                        </SortTh>
                         <th className="is-num">Dias</th>
                         <th>Situação</th>
                       </tr>

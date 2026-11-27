@@ -26,6 +26,10 @@ import { SearchSelect } from '@/components/ui/search-select';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type DemandSort = 'line' | 'vehicle' | 'window' | 'status' | 'reserve' | 'titularReturn';
+type ReturnSort = 'vehicle' | 'workOrder' | 'status' | 'estimate' | 'minutes';
 
 type Panel = { kind: 'closed' } | { kind: 'create'; originVehicleId?: string } | { kind: 'demand'; id: string };
 
@@ -72,8 +76,25 @@ export function OperationsPage() {
   const onStreet = rows.filter((d) => d.assignment && !d.assignment.returnedAt);
   const missed = rows.filter((d) => d.status === ReplacementDemandStatus.MISSED).length;
 
-  const pager = usePager('operacao-demandas', rows.length);
-  const returnsPager = usePager('operacao-retornos', (returns.data ?? []).length);
+  const [sort, toggleSort] = useSortState<DemandSort>('operacao-demandas.sort', { key: 'window', dir: 'desc' }, { window: 'desc', titularReturn: 'desc' });
+  const sortedRows = useSortedRows(rows, sort, {
+    line: (d) => d.lineCode,
+    vehicle: (d) => d.originVehicleCode,
+    window: (d) => d.windowEndsAt,
+    status: (d) => DEMAND_STATUS_LABELS[d.status],
+    reserve: (d) => d.assignment?.vehicleCode ?? null,
+    titularReturn: (d) => d.titularReturn?.estimatedCompletionAt ?? null,
+  });
+  const [returnsSort, toggleReturnsSort] = useSortState<ReturnSort>('operacao-retornos.sort', { key: 'workOrder', dir: 'desc' }, { workOrder: 'desc', estimate: 'desc', minutes: 'desc' });
+  const sortedReturns = useSortedRows(returns.data ?? [], returnsSort, {
+    vehicle: (r) => r.vehicleCode,
+    workOrder: (r) => r.workOrderCode,
+    status: (r) => WORK_ORDER_STATUS_LABELS[r.status as WorkOrderStatus],
+    estimate: (r) => r.estimatedCompletionAt,
+    minutes: (r) => r.minutesToReturn,
+  });
+  const pager = usePager('operacao-demandas', rows.length, `${sort.key}:${sort.dir}`);
+  const returnsPager = usePager('operacao-retornos', (returns.data ?? []).length, `${returnsSort.key}:${returnsSort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -111,16 +132,16 @@ export function OperationsPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Linha</th>
-                  <th>Carro titular</th>
-                  <th>Janela</th>
-                  <th>Estado</th>
-                  <th>Reserva</th>
-                  <th>Retorno do titular</th>
+                  <SortTh col="line" sort={sort} onSort={toggleSort}>Linha</SortTh>
+                  <SortTh col="vehicle" sort={sort} onSort={toggleSort}>Carro titular</SortTh>
+                  <SortTh col="window" sort={sort} onSort={toggleSort}>Janela</SortTh>
+                  <SortTh col="status" sort={sort} onSort={toggleSort}>Estado</SortTh>
+                  <SortTh col="reserve" sort={sort} onSort={toggleSort}>Reserva</SortTh>
+                  <SortTh col="titularReturn" sort={sort} onSort={toggleSort}>Retorno do titular</SortTh>
                 </tr>
               </thead>
               <tbody>
-                {pager.slice(rows).map((d) => {
+                {pager.slice(sortedRows).map((d) => {
                   const left = Math.round((new Date(d.windowEndsAt).getTime() - Date.now()) / 1000);
                   const isOpen = d.status === ReplacementDemandStatus.OPEN;
                   return (
@@ -176,16 +197,16 @@ export function OperationsPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Carro</th>
-                  <th>OS</th>
-                  <th>Estado</th>
-                  <th>Previsão</th>
-                  <th className="is-num">Em</th>
+                  <SortTh col="vehicle" sort={returnsSort} onSort={toggleReturnsSort}>Carro</SortTh>
+                  <SortTh col="workOrder" sort={returnsSort} onSort={toggleReturnsSort}>OS</SortTh>
+                  <SortTh col="status" sort={returnsSort} onSort={toggleReturnsSort}>Estado</SortTh>
+                  <SortTh col="estimate" sort={returnsSort} onSort={toggleReturnsSort}>Previsão</SortTh>
+                  <SortTh col="minutes" sort={returnsSort} onSort={toggleReturnsSort} className="is-num">Em</SortTh>
                   <th>Cobertura</th>
                 </tr>
               </thead>
               <tbody>
-                {returnsPager.slice((returns.data ?? [])).map((r) => (
+                {returnsPager.slice(sortedReturns).map((r) => (
                   <tr key={r.workOrderId} className={r.isOverdue ? 'is-danger' : undefined}>
                     <td className="is-strong">{r.vehicleCode} <span className="tp-muted">{r.vehiclePlate}</span></td>
                     <td><Link to={`/os/${r.workOrderId}`}>{r.workOrderCode}</Link></td>

@@ -8,7 +8,9 @@ import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
 
+type SupplierSort = 'name' | 'claimSlaDays' | 'materials' | 'rejections90d' | 'claimsOpen';
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; supplier: SupplierRow };
 
 /**
@@ -36,7 +38,15 @@ export function SuppliersPage() {
   const claimsOpen = active.reduce((sum, s) => sum + s.claimsOpen, 0);
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['suppliers'] });
 
-  const pager = usePager('fornecedores', rows.length);
+  const [sort, toggleSort] = useSortState<SupplierSort>('fornecedores.sort', { key: 'name', dir: 'desc' }, { claimSlaDays: 'desc', materials: 'desc', rejections90d: 'desc', claimsOpen: 'desc' });
+  const sorted = useSortedRows(rows, sort, {
+    name: (s) => s.name,
+    claimSlaDays: (s) => s.claimSlaDays,
+    materials: (s) => s.materials,
+    rejections90d: (s) => s.rejections90d,
+    claimsOpen: (s) => s.claimsOpen,
+  });
+  const pager = usePager('fornecedores', rows.length, `${sort.key}:${sort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -64,9 +74,19 @@ export function SuppliersPage() {
         {isPending ? <BrandLoader size={40} label="Carregando" /> : (
           <div className="tp-table-wrap">
             <table className="tp-table">
-              <thead><tr><th>Fornecedor</th><th>Contato</th><th className="is-num">SLA garantia (dias)</th><th className="is-num">Materiais</th><th className="is-num">Reprovações 90 d</th><th className="is-num">Reclamações abertas</th><th className="is-action" aria-label="Ações" /></tr></thead>
+              <thead>
+                <tr>
+                  <SortTh col="name" sort={sort} onSort={toggleSort}>Fornecedor</SortTh>
+                  <th>Contato</th>
+                  <SortTh col="claimSlaDays" sort={sort} onSort={toggleSort} className="is-num">SLA garantia (dias)</SortTh>
+                  <SortTh col="materials" sort={sort} onSort={toggleSort} className="is-num">Materiais</SortTh>
+                  <SortTh col="rejections90d" sort={sort} onSort={toggleSort} className="is-num">Reprovações 90 d</SortTh>
+                  <SortTh col="claimsOpen" sort={sort} onSort={toggleSort} className="is-num">Reclamações abertas</SortTh>
+                  <th className="is-action" aria-label="Ações" />
+                </tr>
+              </thead>
               <tbody>
-                {pager.slice(rows).map((s) => (
+                {pager.slice(sorted).map((s) => (
                   <tr key={s.id} className={`is-clickable${s.isActive ? '' : ' is-inactive'}`} tabIndex={0} onClick={() => setMode({ kind: 'edit', supplier: s })} onKeyDown={(e) => e.key === 'Enter' && setMode({ kind: 'edit', supplier: s })}>
                     <td className="is-strong">{s.name}{s.cnpj && <span className="mat-sub">{s.cnpj}</span>}</td>
                     <td className="tp-muted">{s.contact ?? '—'}</td>

@@ -926,7 +926,7 @@ export class WorkOrdersService {
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.workOrder.findMany({
         where,
-        orderBy: { openedAt: 'desc' },
+        orderBy: workOrderOrderOf(query.sort, query.dir),
         skip: (query.page - 1) * query.perPage,
         take: query.perPage,
         include: {
@@ -1034,4 +1034,24 @@ function reasonOf(wo: {
   const e = wo.event;
   if (!e) return wo.type === 'PREVENTIVE' ? 'Preventiva' : null;
   return e.catalogItem?.description ?? describeFailureCode(e.failureModeCode, e.subsystemCode) ?? e.reportedDescription ?? null;
+}
+
+/** Ordem da lista de OS; a abertura é o desempate para a lista não embaralhar entre páginas. */
+function workOrderOrderOf(sort: WorkOrderQuery['sort'], d: WorkOrderQuery['dir']): Prisma.WorkOrderOrderByWithRelationInput[] {
+  const dir = d ?? 'desc';
+  switch (sort) {
+    case 'code':
+      return [{ code: dir }];
+    case 'vehicleCode':
+      return [{ vehicle: { code: dir } }, { openedAt: 'desc' }];
+    case 'type':
+      return [{ type: dir }, { openedAt: 'desc' }];
+    case 'status':
+      return [{ status: dir }, { openedAt: 'desc' }];
+    case 'estimatedCompletionAt':
+      return [{ estimatedCompletionAt: dir }, { openedAt: 'desc' }];
+    case 'openedAt':
+    default:
+      return [{ openedAt: dir }, { code: dir }];
+  }
 }

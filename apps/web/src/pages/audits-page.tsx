@@ -22,6 +22,9 @@ import { InfoTip } from '@/components/ui/info-tip';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type AuditSort = 'auditedAt' | 'kind' | 'area' | 'score' | 'auditor';
 
 const tone = (score: number | null) => (score === null ? '' : score >= 80 ? 'is-good' : score >= 60 ? 'is-warn' : 'is-bad');
 
@@ -49,7 +52,15 @@ export function AuditsPage() {
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['audits'] });
   const s = summary.data;
 
-  const pager = usePager('auditorias', (history.data ?? []).length);
+  const [sort, toggleSort] = useSortState<AuditSort>('auditorias.sort', { key: 'auditedAt', dir: 'desc' }, { auditedAt: 'desc', score: 'desc' });
+  const sortedHistory = useSortedRows(history.data ?? [], sort, {
+    auditedAt: (a) => a.auditedAt,
+    kind: (a) => (a.kind === 'FIVE_S' ? '5S' : 'Conformidade'),
+    area: (a) => a.area,
+    score: (a) => a.score,
+    auditor: (a) => a.auditorName ?? null,
+  });
+  const pager = usePager('auditorias', (history.data ?? []).length, `${sort.key}:${sort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -90,9 +101,19 @@ export function AuditsPage() {
         ) : (
           <div className="tp-table-wrap">
             <table className="tp-table tp-table--compact">
-              <thead><tr><th>Quando</th><th>Tipo</th><th>Área</th><th className="is-num">Nota</th><th>Pontos fracos</th><th>Plano de ação</th><th>Auditor</th></tr></thead>
+              <thead>
+                <tr>
+                  <SortTh col="auditedAt" sort={sort} onSort={toggleSort}>Quando</SortTh>
+                  <SortTh col="kind" sort={sort} onSort={toggleSort}>Tipo</SortTh>
+                  <SortTh col="area" sort={sort} onSort={toggleSort}>Área</SortTh>
+                  <SortTh col="score" sort={sort} onSort={toggleSort} className="is-num">Nota</SortTh>
+                  <th>Pontos fracos</th>
+                  <th>Plano de ação</th>
+                  <SortTh col="auditor" sort={sort} onSort={toggleSort}>Auditor</SortTh>
+                </tr>
+              </thead>
               <tbody>
-                {pager.slice((history.data ?? [])).map((a) => {
+                {pager.slice(sortedHistory).map((a) => {
                   const weak = a.items.filter((i) => i.score < i.max).sort((x, y) => x.score - y.score).slice(0, 3);
                   return (
                     <tr key={a.id}>

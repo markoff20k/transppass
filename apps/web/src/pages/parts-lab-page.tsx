@@ -24,6 +24,9 @@ import { InfoTip } from '@/components/ui/info-tip';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type InspectionSort = 'material' | 'supplier' | 'result' | 'reason' | 'warranty' | 'inspectedAt';
 
 /**
  * Kaizen — laboratório de inspeção técnica de peças (A3, contramedida 2).
@@ -55,7 +58,17 @@ export function PartsLabPage() {
   const rate = s && s.inspected90d ? s.rejected90d / s.inspected90d : null;
   const maxRej = Math.max(1, ...(s?.bySupplier.map((x) => x.rejected) ?? [1]));
 
-  const pager = usePager('laboratorio', (list.data ?? []).length);
+  const rows = useMemo(() => list.data ?? [], [list.data]);
+  const [sort, toggleSort] = useSortState<InspectionSort>('laboratorio.sort', { key: 'inspectedAt', dir: 'desc' }, { inspectedAt: 'desc' });
+  const sorted = useSortedRows(rows, sort, {
+    material: (r) => r.materialDescription,
+    supplier: (r) => r.supplierName,
+    result: (r) => (r.result === 'REJECTED' ? 'reprovada' : 'aprovada'),
+    reason: (r) => PART_REJECTION_REASONS[r.reason],
+    warranty: (r) => (r.result === 'REJECTED' && r.underWarranty ? WARRANTY_CLAIM_LABELS[r.claimStatus] : r.underWarranty ? 'em garantia' : 'fora da garantia'),
+    inspectedAt: (r) => r.inspectedAt,
+  });
+  const pager = usePager('laboratorio', rows.length, `${sort.key}:${sort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -89,9 +102,18 @@ export function PartsLabPage() {
           ) : (
             <div className="tp-table-wrap">
               <table className="tp-table tp-table--compact">
-                <thead><tr><th>Peça</th><th>Fornecedor</th><th>Resultado</th><th>Motivo</th><th>Garantia</th><th>Quando</th></tr></thead>
+                <thead>
+                  <tr>
+                    <SortTh col="material" sort={sort} onSort={toggleSort}>Peça</SortTh>
+                    <SortTh col="supplier" sort={sort} onSort={toggleSort}>Fornecedor</SortTh>
+                    <SortTh col="result" sort={sort} onSort={toggleSort}>Resultado</SortTh>
+                    <SortTh col="reason" sort={sort} onSort={toggleSort}>Motivo</SortTh>
+                    <SortTh col="warranty" sort={sort} onSort={toggleSort}>Garantia</SortTh>
+                    <SortTh col="inspectedAt" sort={sort} onSort={toggleSort}>Quando</SortTh>
+                  </tr>
+                </thead>
                 <tbody>
-                  {pager.slice((list.data ?? [])).map((r) => (
+                  {pager.slice(sorted).map((r) => (
                     <tr key={r.id} className={r.result === 'REJECTED' ? 'is-danger' : undefined}>
                       <td style={{ whiteSpace: 'normal', minWidth: 220 }}><span className="mat-desc is-strong">{r.materialDescription}</span><span className="mat-sub">{r.materialCode}{r.serialNumber ? ` · nº ${r.serialNumber}` : ''}{r.vehicleCode ? ` · carro ${r.vehicleCode}` : ''}{r.workOrderCode ? ` · ${r.workOrderCode}` : ''}{r.kmInService ? ` · ${formatNumber(r.kmInService)} km` : ''}</span></td>
                       <td className="tp-muted">{r.supplierName ?? '—'}</td>

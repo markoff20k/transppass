@@ -22,7 +22,9 @@ import { formatDate } from '@/lib/format';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
 import { useUiState } from '@/features/auth/use-ui-pref';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
 
+type TechnicianSort = 'registration' | 'name' | 'specialty' | 'level' | 'inspector' | 'trainings' | 'openTasks';
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; technician: TechnicianRow };
 
 /**
@@ -68,7 +70,21 @@ export function TechniciansPage() {
   const ebus = active.filter((t) => t.technologies.includes(VehicleTechnology.EBUS)).length;
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ['technicians'] });
 
-  const pager = usePager('tecnicos', rows.length);
+  const [sort, toggleSort] = useSortState<TechnicianSort>(
+    'cad-tecnicos.sort',
+    { key: 'registration', dir: 'desc' },
+    { level: 'desc', trainings: 'desc', openTasks: 'desc' },
+  );
+  const sorted = useSortedRows(rows, sort, {
+    registration: (t) => t.registration,
+    name: (t) => t.name,
+    specialty: (t) => t.specialtyName,
+    level: (t) => t.level,
+    inspector: (t) => (t.isInspector ? 'inspetor' : null),
+    trainings: (t) => t.trainings,
+    openTasks: (t) => t.openTasks,
+  });
+  const pager = usePager('tecnicos', rows.length, `${sort.key}:${sort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -151,19 +167,19 @@ export function TechniciansPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Matrícula</th>
-                  <th>Nome</th>
-                  <th>Especialidade</th>
+                  <SortTh col="registration" sort={sort} onSort={toggleSort}>Matrícula</SortTh>
+                  <SortTh col="name" sort={sort} onSort={toggleSort}>Nome</SortTh>
+                  <SortTh col="specialty" sort={sort} onSort={toggleSort}>Especialidade</SortTh>
                   <th>Tecnologias</th>
-                  <th>Nível</th>
-                  <th>Inspetor</th>
-                  <th>Treinamentos</th>
-                  <th className="is-num">Sub-OS abertas</th>
+                  <SortTh col="level" sort={sort} onSort={toggleSort}>Nível</SortTh>
+                  <SortTh col="inspector" sort={sort} onSort={toggleSort}>Inspetor</SortTh>
+                  <SortTh col="trainings" sort={sort} onSort={toggleSort}>Treinamentos</SortTh>
+                  <SortTh col="openTasks" sort={sort} onSort={toggleSort} className="is-num">Sub-OS abertas</SortTh>
                   <th className="is-action" aria-label="Ações" />
                 </tr>
               </thead>
               <tbody>
-                {pager.slice(rows).map((t) => (
+                {pager.slice(sorted).map((t) => (
                   <tr
                     key={t.id}
                     className={`is-clickable${t.isActive ? '' : ' is-inactive'}`}

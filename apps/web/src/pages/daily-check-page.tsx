@@ -22,6 +22,9 @@ import { FailureCodePicker } from '@/components/failure-code/failure-code-picker
 import { EMPTY_FAILURE_CODE, toCodeFields, type FailureCodeValue } from '@/components/failure-code/failure-code.utils';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type DailyCheckSort = 'vehicle' | 'checkedAt' | 'result' | 'who';
 
 /**
  * Manutenção diária (Fluxos PCM p.8): o checklist de conservação antes de o
@@ -52,7 +55,14 @@ export function DailyCheckPage() {
   const vehicleOptions = useMemo(() => (vehicles.data?.data ?? []).map((v) => ({ id: v.id, label: v.code, hint: `${v.plate} · ${VEHICLE_TECHNOLOGY_LABELS[v.technology]}` })), [vehicles.data]);
   const driverOptions = useMemo(() => (operators.data ?? []).filter((o) => o.function === 'MOTORISTA').map((o) => ({ id: o.id, label: o.name, hint: o.registration })), [operators.data]);
 
-  const pager = usePager('checklists', (today.data ?? []).length);
+  const [sort, toggleSort] = useSortState<DailyCheckSort>('checklists.sort', { key: 'checkedAt', dir: 'desc' }, { checkedAt: 'desc' });
+  const sortedToday = useSortedRows(today.data ?? [], sort, {
+    vehicle: (c) => c.vehicleCode,
+    checkedAt: (c) => c.checkedAt,
+    result: (c) => (c.result === 'OK' ? 'OK' : 'reprovado'),
+    who: (c) => c.operatorName ?? c.checkedByName ?? null,
+  });
+  const pager = usePager('checklists', (today.data ?? []).length, `${sort.key}:${sort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -103,10 +113,16 @@ export function DailyCheckPage() {
               <div className="tp-table-wrap">
                 <table className="tp-table tp-table--compact">
                   <thead>
-                    <tr><th>Carro</th><th>Hora</th><th>Resultado</th><th>Itens reprovados</th><th>Quem</th></tr>
+                    <tr>
+                      <SortTh col="vehicle" sort={sort} onSort={toggleSort}>Carro</SortTh>
+                      <SortTh col="checkedAt" sort={sort} onSort={toggleSort}>Hora</SortTh>
+                      <SortTh col="result" sort={sort} onSort={toggleSort}>Resultado</SortTh>
+                      <th>Itens reprovados</th>
+                      <SortTh col="who" sort={sort} onSort={toggleSort}>Quem</SortTh>
+                    </tr>
                   </thead>
                   <tbody>
-                    {pager.slice(today.data ?? []).map((c) => (
+                    {pager.slice(sortedToday).map((c) => (
                       <tr key={c.id} className={c.result === 'NOK' ? 'is-danger' : undefined}>
                         <td className="is-strong">{c.vehicleCode} <span className="tp-muted tp-mono">{c.vehiclePlate}</span></td>
                         <td className="tp-muted">{formatDateTime(c.checkedAt).slice(-5)}</td>

@@ -5314,8 +5314,6 @@ a.bus-card:hover { transform: translateY(-1px); }
 @media (prefers-reduced-motion: reduce) { .cons-swarm__dot circle, .cons-swarm__dot polygon, .cons { transition: none; } }
 
 /* Tabela de carros */
-.cons-sort { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-transform: inherit; letter-spacing: inherit; }
-.cons-sort:hover { color: var(--color-text); text-decoration: underline; }
 .cons-table tbody tr:focus-visible { outline: 2px solid var(--color-brand); outline-offset: -2px; }
 /* Selo de situação na tabela: largura única (a do rótulo mais longo, "Acima do grupo"), texto centrado, para a coluna ler como uma régua. */
 .cons-flag { justify-content: center; width: 8.75rem; }
@@ -6082,7 +6080,8 @@ a.ind-chip:hover { border-color: var(--color-border-strong); color: var(--color-
    "dá para ordenar", a seta simples na cor da marca diz "ordenado por aqui". */
 .tp-table th.is-sortable { padding-top: 0; padding-bottom: 0; }
 .tp-th-sort { display: inline-flex; align-items: center; gap: 4px; min-height: 0; padding: var(--tp-space-3) 0; border: 0; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; border-radius: var(--tp-radius-sm); }
-.tp-th-sort:hover { color: var(--color-text); }
+/* Vence o hover global de botão (fundo escuro): aqui só o texto escurece e a seta acende. */
+.tp-th-sort:hover, .tp-th-sort:hover:where(:not(:disabled)) { color: var(--color-text); background: transparent; }
 .tp-th-sort:focus-visible { outline: 2px solid var(--color-brand); outline-offset: -2px; }
 .tp-th-sort__icon { flex: none; opacity: 0.45; transition: opacity var(--tp-duration-fast) var(--tp-ease), color var(--tp-duration-fast) var(--tp-ease); }
 .tp-th-sort:hover .tp-th-sort__icon { opacity: 0.8; }

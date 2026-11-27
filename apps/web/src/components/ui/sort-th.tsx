@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import { useUiState } from '@/features/auth/use-ui-pref';
 
@@ -32,12 +32,15 @@ export function SortTh<K extends string>({
   onSort,
   className,
   children,
+  after,
 }: {
   col: K;
   sort: SortState<K>;
   onSort: (key: K) => void;
   className?: string;
   children: ReactNode;
+  /** Conteúdo interativo ao lado do rótulo (ex.: ícone de ajuda), fora do botão de ordenar. */
+  after?: ReactNode;
 }) {
   const active = sort.key === col;
   const Icon = active ? (sort.dir === 'asc' ? ChevronUp : ChevronDown) : ChevronsUpDown;
@@ -47,6 +50,37 @@ export function SortTh<K extends string>({
         <span>{children}</span>
         <Icon size={13} aria-hidden className="tp-th-sort__icon" />
       </button>
+      {after}
     </th>
   );
+}
+
+/** Valor de uma linha para ordenar: número, texto ou data ISO; nulo/vazio vai sempre para o fim. */
+export type SortValue = string | number | null | undefined;
+
+const collator = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
+
+/**
+ * Ordenação no cliente, para tabelas que já têm todas as linhas na tela (a
+ * paginação vem depois, sobre a lista ordenada). Textos com ordem natural
+ * ("carro 2" antes de "carro 10"); vazios sempre no fim, nas duas direções;
+ * empate mantém a ordem original.
+ */
+export function useSortedRows<T, K extends string>(rows: readonly T[], sort: SortState<K>, accessors: Record<K, (row: T) => SortValue>): T[] {
+  return useMemo(() => {
+    const get = accessors[sort.key];
+    if (!get) return [...rows];
+    const sign = sort.dir === 'asc' ? 1 : -1;
+    return rows
+      .map((row, i) => ({ row, i, v: get(row) }))
+      .sort((a, b) => {
+        const ea = a.v === null || a.v === undefined || a.v === '';
+        const eb = b.v === null || b.v === undefined || b.v === '';
+        if (ea || eb) return ea === eb ? a.i - b.i : ea ? 1 : -1;
+        const c = typeof a.v === 'number' && typeof b.v === 'number' ? a.v - b.v : collator.compare(String(a.v), String(b.v));
+        return c !== 0 ? c * sign : a.i - b.i;
+      })
+      .map((x) => x.row);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, sort.key, sort.dir]);
 }

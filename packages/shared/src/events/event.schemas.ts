@@ -142,8 +142,15 @@ export const createEventSchema = z.object({
 /** Item 13: até quanto tempo para trás a data do evento pode ser ajustada. */
 export const EVENT_BACKDATE_MAX_DAYS = 7;
 
+/** Colunas pelas quais a lista de eventos pode ser ordenada; o servidor ordena antes de paginar. */
+export const EVENT_SORT_KEYS = ['code', 'vehicleCode', 'failureCode', 'origin', 'status', 'reportedAt'] as const;
+export type EventSort = (typeof EVENT_SORT_KEYS)[number];
+
 export const eventQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
+  /** Sem `sort`, vale a ordem de sempre (mais recente primeiro; na triagem, o mais antigo). */
+  sort: z.enum(EVENT_SORT_KEYS).optional(),
+  dir: z.enum(['asc', 'desc']).optional(),
   perPage: z.coerce.number().int().min(1).max(100).default(20),
   status: z.nativeEnum(EventStatus).optional(),
   vehicleId: z.string().uuid().optional(),

@@ -25,6 +25,10 @@ import { Drawer } from '@/components/ui/drawer';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
+
+type TimelineSortKey = 'vehicle' | 'technology' | 'currentKm' | 'projectedKm' | 'window' | 'kmToWindow' | 'windowDate' | 'backlog' | 'schedule';
+type StopSortKey = 'vehicle' | 'package' | 'date' | 'kit' | 'team' | 'status';
 
 type Panel =
   | { kind: 'closed' }
@@ -41,6 +45,15 @@ type Panel =
 export function SchedulingPage() {
   const queryClient = useQueryClient();
   const [panel, setPanel] = useState<Panel>({ kind: 'closed' });
+  const [sort, toggleSort] = useSortState<TimelineSortKey>('preventiva.sort', { key: 'vehicle', dir: 'desc' }, {
+    currentKm: 'desc',
+    projectedKm: 'desc',
+    window: 'desc',
+    kmToWindow: 'desc',
+    windowDate: 'desc',
+    backlog: 'desc',
+  });
+  const [stopSort, toggleStopSort] = useSortState<StopSortKey>('preventiva.paradas.sort', { key: 'date', dir: 'desc' }, { date: 'desc' });
 
   usePageHeader({
     eyebrow: 'Operação',
@@ -69,8 +82,28 @@ export function SchedulingPage() {
   const scheduled = (schedules.data ?? []).length;
   const kitsLate = (kits.data ?? []).filter((k) => k.isLate || k.isDueToday).length;
 
-  const pager = usePager('preventiva', rows.length);
-  const schedulePager = usePager('preventiva-paradas', (schedules.data ?? []).length);
+  const sortedRows = useSortedRows(rows, sort, {
+    vehicle: (r) => r.vehicleCode,
+    technology: (r) => VEHICLE_TECHNOLOGY_LABELS[r.technology],
+    currentKm: (r) => r.currentKm,
+    projectedKm: (r) => r.projectedKm,
+    window: (r) => r.nextWindowKm,
+    kmToWindow: (r) => r.kmToWindow,
+    windowDate: (r) => r.projectedWindowDate,
+    backlog: (r) => r.backlogCount,
+    schedule: (r) => (r.scheduleStatus ? SCHEDULE_STATUS_LABELS[r.scheduleStatus] : 'Sem parada'),
+  });
+  const sortedSchedules = useSortedRows(schedules.data ?? [], stopSort, {
+    vehicle: (s) => s.vehicleCode,
+    package: (s) => s.packageName,
+    date: (s) => s.plannedDate ?? s.projectedDate,
+    kit: (s) => (s.kitReady ? 'ok' : 'pendente'),
+    team: (s) => (s.teamReserved ? 'ok' : 'pendente'),
+    status: (s) => SCHEDULE_STATUS_LABELS[s.status],
+  });
+
+  const pager = usePager('preventiva', rows.length, `${sort.key}:${sort.dir}`);
+  const schedulePager = usePager('preventiva-paradas', (schedules.data ?? []).length, `${stopSort.key}:${stopSort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -105,19 +138,19 @@ export function SchedulingPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Carro</th>
-                  <th>Tecnologia</th>
-                  <th className="is-num">Km atual</th>
-                  <th className="is-num">Projetado</th>
-                  <th>Próxima janela</th>
-                  <th className="is-num">Faltam</th>
-                  <th>Chega em</th>
-                  <th className="is-num">Backlog</th>
-                  <th>Parada</th>
+                  <SortTh col="vehicle" sort={sort} onSort={toggleSort}>Carro</SortTh>
+                  <SortTh col="technology" sort={sort} onSort={toggleSort}>Tecnologia</SortTh>
+                  <SortTh col="currentKm" sort={sort} onSort={toggleSort} className="is-num">Km atual</SortTh>
+                  <SortTh col="projectedKm" sort={sort} onSort={toggleSort} className="is-num">Projetado</SortTh>
+                  <SortTh col="window" sort={sort} onSort={toggleSort}>Próxima janela</SortTh>
+                  <SortTh col="kmToWindow" sort={sort} onSort={toggleSort} className="is-num">Faltam</SortTh>
+                  <SortTh col="windowDate" sort={sort} onSort={toggleSort}>Chega em</SortTh>
+                  <SortTh col="backlog" sort={sort} onSort={toggleSort} className="is-num">Backlog</SortTh>
+                  <SortTh col="schedule" sort={sort} onSort={toggleSort}>Parada</SortTh>
                 </tr>
               </thead>
               <tbody>
-                {pager.slice(rows).map((r) => (
+                {pager.slice(sortedRows).map((r) => (
                   <tr
                     key={r.vehicleId}
                     className={`is-clickable${r.alert === 'overdue' ? ' is-danger' : r.alert === 'due-soon' ? ' is-warning' : ''}`}
@@ -174,16 +207,16 @@ export function SchedulingPage() {
               <table className="tp-table">
                 <thead>
                   <tr>
-                    <th>Carro</th>
-                    <th>Pacote</th>
-                    <th>Data</th>
-                    <th>Kit</th>
-                    <th>Equipe</th>
-                    <th>Estado</th>
+                    <SortTh col="vehicle" sort={stopSort} onSort={toggleStopSort}>Carro</SortTh>
+                    <SortTh col="package" sort={stopSort} onSort={toggleStopSort}>Pacote</SortTh>
+                    <SortTh col="date" sort={stopSort} onSort={toggleStopSort}>Data</SortTh>
+                    <SortTh col="kit" sort={stopSort} onSort={toggleStopSort}>Kit</SortTh>
+                    <SortTh col="team" sort={stopSort} onSort={toggleStopSort}>Equipe</SortTh>
+                    <SortTh col="status" sort={stopSort} onSort={toggleStopSort}>Estado</SortTh>
                   </tr>
                 </thead>
                 <tbody>
-                  {schedulePager.slice((schedules.data ?? [])).map((s) => (
+                  {schedulePager.slice(sortedSchedules).map((s) => (
                     <tr key={s.id} className="is-clickable" onClick={() => setPanel({ kind: 'detail', id: s.id })} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setPanel({ kind: 'detail', id: s.id })}>
                       <td className="is-strong">{s.vehicleCode}</td>
                       <td>{s.packageName}</td>

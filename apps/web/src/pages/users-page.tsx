@@ -22,7 +22,9 @@ import { BrandLoader } from '@/components/brand/brand-loader';
 import { Pager } from '@/components/ui/pager';
 import { usePager } from '@/lib/pager';
 import { useUiState } from '@/features/auth/use-ui-pref';
+import { SortTh, useSortState, useSortedRows } from '@/components/ui/sort-th';
 
+type UserSort = 'name' | 'email' | 'registration' | 'role' | 'state' | 'createdAt';
 type Mode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; user: PublicUser };
 
 /**
@@ -68,7 +70,20 @@ export function UsersPage() {
   const admins = activeRows.filter((u) => u.role === 'ADMIN').length;
   const operational = activeRows.filter((u) => u.role !== 'ADMIN' && u.role !== 'GESTAO').length;
 
-  const pager = usePager('usuarios', rows.length, String(showInactive));
+  const [sort, toggleSort] = useSortState<UserSort>(
+    'cad-usuarios.sort',
+    { key: 'createdAt', dir: 'desc' },
+    { createdAt: 'desc' },
+  );
+  const sorted = useSortedRows(rows, sort, {
+    name: (u) => u.name,
+    email: (u) => u.email,
+    registration: (u) => u.registration,
+    role: (u) => USER_ROLE_LABELS[u.role],
+    state: (u) => (u.isActive ? 'Ativa' : 'Desativada'),
+    createdAt: (u) => u.createdAt,
+  });
+  const pager = usePager('usuarios', rows.length, `${showInactive}|${sort.key}:${sort.dir}`);
   return (
     <>
       <div className="tp-kpi-row">
@@ -125,17 +140,17 @@ export function UsersPage() {
             <table className="tp-table">
               <thead>
                 <tr>
-                  <th>Nome</th>
-                  <th>E-mail</th>
-                  <th>Matrícula</th>
-                  <th>Perfil</th>
-                  <th>Situação</th>
-                  <th>Desde</th>
+                  <SortTh col="name" sort={sort} onSort={toggleSort}>Nome</SortTh>
+                  <SortTh col="email" sort={sort} onSort={toggleSort}>E-mail</SortTh>
+                  <SortTh col="registration" sort={sort} onSort={toggleSort}>Matrícula</SortTh>
+                  <SortTh col="role" sort={sort} onSort={toggleSort}>Perfil</SortTh>
+                  <SortTh col="state" sort={sort} onSort={toggleSort}>Situação</SortTh>
+                  <SortTh col="createdAt" sort={sort} onSort={toggleSort}>Desde</SortTh>
                   <th className="is-action" aria-label="Ações" />
                 </tr>
               </thead>
               <tbody>
-                {pager.slice(rows).map((u) => (
+                {pager.slice(sorted).map((u) => (
                   <tr
                     key={u.id}
                     className={`is-clickable${u.isActive ? '' : ' is-inactive'}`}
