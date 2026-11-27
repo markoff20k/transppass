@@ -43,7 +43,7 @@ export function DayReading() {
         <IaName /> {r.summary}
         <time dateTime={r.generatedAt} title={t.dash.iaDay.atHint}> {t.dash.iaDay.at.replace('{t}', fmtTime(r.generatedAt))}</time>
       </span>
-      <button type="button" className="dash-ia__ask" onClick={() => setOpen(true)}>
+      <button type="button" className="tp-btn tp-btn--secondary tp-btn--sm" onClick={() => setOpen(true)}>
         {t.dash.iaDay.ask}
       </button>
     </p>

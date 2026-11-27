@@ -222,8 +222,8 @@ function IndicatorCard({
           {delta === null ? '' : `${delta > 0 ? '+' : ''}${delta.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% `}
           <em>{delta === null ? t.dash.widgets.noPrevious : t.dash.widgets.vsPrevious}</em>
         </span>
-        {target !== null && (
-          <span className={`ind-card__target is-${targetTone}`} title={t.dash.widgets.targetHint}>
+        {target !== null && w && w.value !== null && (
+          <span className={`tp-badge ${targetTone === 'good' ? 'tp-badge--success' : targetTone === 'danger' ? 'tp-badge--danger' : ''}`} title={t.dash.widgets.targetHint}>
             {t.dash.widgets.target.replace('{v}', formatValue(target, pref.kind === 'mkbf' ? 'km' : 'pct') ?? '')}
           </span>
         )}
