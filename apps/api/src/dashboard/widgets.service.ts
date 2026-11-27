@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { EventStatus, FieldOutcome, InspectionResult, OdometerStatus, VehicleTechnology, WorkOrderStatus } from '@prisma/client';
+import { EventStatus, FieldOutcome, InspectionResult, OdometerStatus, type Prisma, VehicleTechnology, WorkOrderStatus } from '@prisma/client';
 import type { DashboardWidget, WidgetBucket, WidgetKind, WidgetQuery, WidgetSeries, WidgetSeriesPoint } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { MetricsService } from '../metrics/metrics.service';
@@ -282,18 +282,26 @@ export class WidgetsService {
         return { value: n, detail: null };
       }
       case 'rescues': {
-        const [total, field] = await Promise.all([
+        // Atendimentos despachados pelo sistema + socorros do histórico importado (ficha de
+        // socorro ou chamado SOS do CCO), que não passam pelo fluxo de despacho.
+        const [dispatched, imported, field] = await Promise.all([
           this.prisma.fieldService.count({
             where: {
               dispatchedAt: { gte: from, lte: to },
               ...(v ? { event: { vehicleId: v } } : {}),
             },
           }),
+          this.prisma.failureEvent.count({ where: importedRescueWhere(from, to, v) }),
           this.metrics.fieldResolution(from, to, v),
         ]);
         return {
-          value: total,
-          detail: field.rate === null ? null : `${fmtPct(field.rate * 100)} resolvidos na rua`,
+          value: dispatched + imported,
+          detail:
+            field.rate !== null
+              ? `${fmtPct(field.rate * 100)} resolvidos na rua`
+              : imported > 0
+                ? 'fichas de socorro e chamados SOS'
+                : null,
         };
       }
       case 'fieldResolution': {
@@ -533,7 +541,10 @@ export class WidgetsService {
           where: { dispatchedAt: { gte: from, lte: to }, ...(v ? { event: { vehicleId: v } } : {}) },
           select: { dispatchedAt: true, outcome: true },
         });
-        if (kind === 'rescues') return pack(countBy(buckets, rows.map((r) => keyOf(r.dispatchedAt))));
+        if (kind === 'rescues') {
+          const imported = await this.prisma.failureEvent.findMany({ where: importedRescueWhere(from, to, v), select: { reportedAt: true } });
+          return pack(countBy(buckets, [...rows.map((r) => keyOf(r.dispatchedAt)), ...imported.map((r) => keyOf(r.reportedAt))]));
+        }
         const acc = new Map<string, { total: number; field: number }>();
         for (const r of rows) {
           if (!r.outcome) continue;
@@ -611,6 +622,17 @@ function pointOf(kind: 'mkbf' | 'km' | 'breakdowns', key: string, km: number, fa
   if (kind === 'km') return { key, value: Math.round(km), aux };
   if (kind === 'breakdowns') return { key, value: failures, aux };
   return { key, value: failures > 0 && km > 0 ? Math.round(km / failures) : null, aux };
+}
+
+/** Socorros do histórico importado: ficha de tipo S (socorro) ou chamado do grupo SOS no CCO. */
+function importedRescueWhere(from: Date, to: Date, vehicleId?: string): Prisma.FailureEventWhereInput {
+  return {
+    isImported: true,
+    status: { not: EventStatus.CANCELLED },
+    reportedAt: { gte: from, lte: to },
+    OR: [{ fichaKind: 'S' }, { ccoGroup: 'SOS' }],
+    ...(vehicleId ? { vehicleId } : {}),
+  };
 }
 
 function countBy(buckets: Bucket[], keys: string[]): WidgetSeriesPoint[] {

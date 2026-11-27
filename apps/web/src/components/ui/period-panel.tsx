@@ -55,7 +55,8 @@ export function PeriodPanel({
   const [draftFrom, setDraftFrom] = useState(from);
   const [draftTo, setDraftTo] = useState(to);
   const first = useRef<HTMLButtonElement>(null);
-  useEffect(() => first.current?.focus(), []);
+  // Foco no primeiro atalho sem rolar a página: o painel ainda pode estar sendo posicionado.
+  useEffect(() => first.current?.focus({ preventScroll: true }), []);
 
   const current = makePeriod(from, to);
   const error = validate(draftFrom, draftTo);

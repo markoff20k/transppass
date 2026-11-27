@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ArrowDownRight, ArrowUpRight, Minus, Plus, X } from 'lucide-react';
 import {
@@ -25,6 +25,7 @@ import { AVAILABILITY_TARGET, AvailabilityBody, ChartLoading, MKBF_TARGET, MkbfB
 import { TopFailuresBody } from './top-failures';
 import { DowntimeCarsDrawer, formatHours } from './downtime-cars';
 import { WidgetPeriodPicker, WidgetScopePicker, fmtDay, formatValue, resolveWidgetPeriod } from './widgets';
+import { SortableList } from '@/components/ui/sortable-cards';
 
 /** O painel de quem ainda não montou o seu: os dois grandes e os cinco que o cliente mais olha. */
 const DEFAULT_INDICATORS: DashboardWidgetPref[] = [
@@ -71,6 +72,22 @@ export function IndicatorsSection({ vehicles }: { vehicles: DashboardVehicle[] }
 
   const large = widgets.filter((w) => isLarge(w.kind));
   const regular = widgets.filter((w) => !isLarge(w.kind));
+  // Arrastar reordena só dentro do grupo (grandes entre grandes, normais entre normais): as
+  // posições do grupo na lista são preenchidas na nova ordem, o resto fica onde está.
+  const reorderWithin = (group: DashboardWidgetPref[], keys: string[]) =>
+    setWidgets((list) => {
+      const ids = new Set(group.map((g) => g.id));
+      const byId = new Map(list.map((w) => [w.id, w]));
+      const ordered = keys.map((k) => byId.get(k)).filter((w): w is DashboardWidgetPref => !!w);
+      let i = 0;
+      return list.map((w) => (ids.has(w.id) ? (ordered[i++] ?? w) : w));
+    });
+  const cardOf = (w: DashboardWidgetPref, i: number, isBig: boolean) => ({
+    key: w.id,
+    render: (grip: ReactNode) => (
+      <IndicatorCard index={i} pref={w} vehicles={vehicles} large={isBig} grip={grip} onPeriod={(period) => update(w.id, { period })} onVehicle={(vehicleId) => update(w.id, { vehicleId })} onRemove={() => remove(w.id)} />
+    ),
+  });
   const [allPeriod, setAllPeriod] = useState<WidgetPeriod>({ preset: 'last30' });
   // O seletor global marca o período que todos os cartões compartilham; se divergem, o último aplicado.
   const samePref = (a: WidgetPeriod, b: WidgetPeriod) => a.preset === b.preset && (a.preset !== 'custom' || (a.from === b.from && a.to === b.to));
@@ -103,16 +120,12 @@ export function IndicatorsSection({ vehicles }: { vehicles: DashboardVehicle[] }
       {widgets.length === 0 && <p className="dash-widgets__empty">{t.dash.widgets.empty}</p>}
       {large.length > 0 && (
         <div className="ind-grid ind-grid--large" data-count={large.length}>
-          {large.map((w, i) => (
-            <IndicatorCard key={w.id} index={i} pref={w} vehicles={vehicles} large onPeriod={(period) => update(w.id, { period })} onVehicle={(vehicleId) => update(w.id, { vehicleId })} onRemove={() => remove(w.id)} />
-          ))}
+          <SortableList grid order={large.map((w) => w.id)} onReorder={(keys) => reorderWithin(large, keys)} items={large.map((w, i) => cardOf(w, i, true))} />
         </div>
       )}
       {regular.length > 0 && (
         <div className="ind-grid">
-          {regular.map((w, i) => (
-            <IndicatorCard key={w.id} index={i} pref={w} vehicles={vehicles} onPeriod={(period) => update(w.id, { period })} onVehicle={(vehicleId) => update(w.id, { vehicleId })} onRemove={() => remove(w.id)} />
-          ))}
+          <SortableList grid order={regular.map((w) => w.id)} onReorder={(keys) => reorderWithin(regular, keys)} items={regular.map((w, i) => cardOf(w, i, false))} />
         </div>
       )}
     </section>
@@ -150,6 +163,7 @@ function IndicatorCard({
   pref,
   vehicles,
   large = false,
+  grip,
   onPeriod,
   onVehicle,
   onRemove,
@@ -158,6 +172,8 @@ function IndicatorCard({
   pref: DashboardWidgetPref;
   vehicles: DashboardVehicle[];
   large?: boolean;
+  /** Alça de arrastar, vinda da lista reordenável. */
+  grip?: ReactNode;
   onPeriod: (p: WidgetPeriod) => void;
   onVehicle: (id: string | null) => void;
   onRemove: () => void;
@@ -200,6 +216,7 @@ function IndicatorCard({
     <article className={`ind-card${large ? ' ind-card--large' : ''} widget--${deltaTone}${query.isFetching ? ' is-refreshing' : ''}${query.isPlaceholderData ? ' is-stale' : ''}`} aria-label={meta.label}>
       <div className="widget__head">
         <span className="widget__title">
+          {grip}
           <span className="tp-kpi__label" title={meta.hint}>{meta.label}</span>
           {/* Item 2: objetivo e fórmula do indicador, no mesmo (i) das etapas do Fluxo da garagem. */}
           <InfoTip label={`${t.dash.widgets.about.title}: ${meta.label}`} align={index % 3 === 0 ? 'start' : index % 3 === 2 ? 'end' : 'center'} className="widget__info">

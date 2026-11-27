@@ -17,7 +17,6 @@ export interface SortableItem {
  * normais. Uma linha laranja mostra onde o cartão vai cair.
  */
 export function SortableCards({ prefKey, items }: { prefKey: string; items: SortableItem[] }) {
-  const { t } = useI18n();
   const defaultOrder = items.map((i) => i.key);
   const [saved, setSaved] = useUiState<string[]>(prefKey, defaultOrder);
   // Chave desconhecida sai; cartão novo entra no fim.
@@ -25,6 +24,29 @@ export function SortableCards({ prefKey, items }: { prefKey: string; items: Sort
     ...saved.filter((k) => defaultOrder.includes(k)),
     ...defaultOrder.filter((k) => !saved.includes(k)),
   ];
+  return <SortableList order={order} onReorder={setSaved} items={items} />;
+}
+
+/**
+ * O mesmo arrastar, com a ordem controlada por quem usa (ex.: a lista de
+ * indicadores salva na conta). Em `grid`, os cartões estão numa grade: a
+ * posição de queda vale pela diagonal do cartão (metade de cima/esquerda =
+ * antes, de baixo/direita = depois) e a linha de queda fica entre colunas.
+ * Cada lista só aceita os próprios cartões: arrastar de uma para outra não
+ * faz nada, o que mantém cada grade com cartões do mesmo tamanho.
+ */
+export function SortableList({
+  order,
+  onReorder,
+  items,
+  grid = false,
+}: {
+  order: string[];
+  onReorder: (keys: string[]) => void;
+  items: SortableItem[];
+  grid?: boolean;
+}) {
+  const { t } = useI18n();
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<{ key: string; after: boolean } | null>(null);
   const fromGrip = useRef(false);
@@ -43,7 +65,9 @@ export function SortableCards({ prefKey, items }: { prefKey: string; items: Sort
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     const r = e.currentTarget.getBoundingClientRect();
-    const after = e.clientY > r.top + r.height / 2;
+    const after = grid
+      ? (e.clientX - r.left) / r.width + (e.clientY - r.top) / r.height > 1
+      : e.clientY > r.top + r.height / 2;
     if (!over || over.key !== key || over.after !== after) setOver({ key, after });
   };
   const onDrop = (key: string) => (e: DragEvent<HTMLDivElement>) => {
@@ -52,7 +76,7 @@ export function SortableCards({ prefKey, items }: { prefKey: string; items: Sort
     const without = order.filter((k) => k !== dragging);
     const idx = without.indexOf(key) + (over?.after ? 1 : 0);
     const next = [...without.slice(0, idx), dragging, ...without.slice(idx)];
-    setSaved(next);
+    onReorder(next);
     finish();
   };
   const finish = () => {
@@ -80,6 +104,7 @@ export function SortableCards({ prefKey, items }: { prefKey: string; items: Sort
         );
         const cls = [
           'sortable',
+          grid ? 'sortable--grid' : '',
           dragging === key ? 'is-dragging' : '',
           over?.key === key ? (over.after ? 'is-over-after' : 'is-over-before') : '',
         ]

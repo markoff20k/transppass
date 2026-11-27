@@ -156,8 +156,10 @@ export function WidgetPeriodPicker({
     };
   }, [open]);
 
-  // Posição do painel: alinhado à esquerda do gatilho, dentro da janela; abre
-  // para cima quando não cabe embaixo. No celular o CSS o leva ao rodapé.
+  // Posição do painel: no documento (não na janela), ancorado ao gatilho, para rolar junto com a
+  // página. Alinhado à esquerda do gatilho e dentro da largura da tela; abre embaixo quando cabe,
+  // em cima quando só cabe em cima, senão desce o quanto der, mesmo cobrindo o gatilho. No
+  // celular o CSS o leva ao rodapé como folha.
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
@@ -172,18 +174,13 @@ export function WidgetPeriodPicker({
       const width = Math.min(640, vw - 32);
       const left = Math.max(16, Math.min(r.left, vw - width - 16));
       const height = pop.current?.offsetHeight ?? 460;
-      // Embaixo quando cabe; em cima quando só cabe em cima; senão desce o quanto der, mesmo
-      // cobrindo o gatilho, e nunca sai da janela.
-      const top = vh - r.bottom - 8 >= height ? r.bottom + 6 : r.top - 8 >= height ? r.top - 6 - height : Math.max(16, vh - height - 16);
-      setPos({ top, left });
+      const wanted = vh - r.bottom - 8 >= height ? r.bottom + 6 : r.top - 8 >= height ? r.top - 6 - height : vh - height - 16;
+      const top = Math.max(16, Math.min(wanted, vh - height - 16));
+      setPos({ top: top + window.scrollY, left: left + window.scrollX });
     };
     place();
     window.addEventListener('resize', place);
-    window.addEventListener('scroll', place, true);
-    return () => {
-      window.removeEventListener('resize', place);
-      window.removeEventListener('scroll', place, true);
-    };
+    return () => window.removeEventListener('resize', place);
   }, [open]);
 
   const close = () => {
@@ -215,7 +212,7 @@ export function WidgetPeriodPicker({
         createPortal(
           <>
             <div className="period__backdrop" onClick={close} aria-hidden />
-            <div ref={pop} className="wperiod__pop" style={pos ?? undefined}>
+            <div ref={pop} className="wperiod__pop" style={pos ?? { visibility: 'hidden' }}>
               <PeriodPanel
                 id={panelId}
                 from={from}
