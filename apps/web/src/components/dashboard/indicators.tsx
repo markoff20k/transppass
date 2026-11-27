@@ -125,7 +125,6 @@ export function IndicatorsSection({ vehicles }: { vehicles: DashboardVehicle[] }
       <header className="dash-section__head">
         <div>
           <h2 id="dash-indicators">{t.dash.sections.indicators}</h2>
-          <span className="dash-section__hint">{t.dash.sections.indicatorsHint}</span>
         </div>
         <div className="dash-section__tools">
           {widgets.length > 1 && (
