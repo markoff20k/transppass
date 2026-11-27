@@ -142,6 +142,7 @@ export class WidgetsService {
       vehicleCode: vehicle?.code ?? null,
       used,
       fellBack,
+      neverHadData: current.value === null && !last,
       series,
     };
   }

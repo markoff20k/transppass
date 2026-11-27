@@ -329,11 +329,11 @@ function IndicatorCard({
 
       <div className="ind-card__headline">
         {query.isPending && !w ? <span className="skeleton widget__sk" /> : <strong className="ind-card__value">{value ?? '—'}</strong>}
-        <span className={`dash-kpi__delta dash-kpi__delta--${deltaTone}`}>
+        {!w?.neverHadData && <span className={`dash-kpi__delta dash-kpi__delta--${deltaTone}`}>
           {delta === null ? <Minus size={14} aria-hidden /> : delta > 0 ? <ArrowUpRight size={14} aria-hidden /> : delta < 0 ? <ArrowDownRight size={14} aria-hidden /> : <Minus size={14} aria-hidden />}
           {delta === null ? '' : `${delta > 0 ? '+' : ''}${delta.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% `}
           <em>{delta === null ? t.dash.widgets.noPrevious : t.dash.widgets.vsPrevious}</em>
-        </span>
+        </span>}
         {target !== null && w && w.value !== null && (
           <span className={`tp-badge ${targetTone === 'good' ? 'tp-badge--success' : targetTone === 'danger' ? 'tp-badge--danger' : ''}`} title={t.dash.widgets.targetHint}>
             {t.dash.widgets.target.replace('{v}', formatValue(target, pref.kind === 'mkbf' ? 'km' : 'pct') ?? '')}
@@ -342,7 +342,7 @@ function IndicatorCard({
       </div>
       <span className="tp-kpi__note ind-card__note">
         {w?.fellBack && <b className="widget__fallback">{t.dash.widgets.dataOf.replace('{d}', fmtDay(w.used.to))} · </b>}
-        {w && w.value === null ? t.dash.widgets.noData : (w?.detail ?? meta.hint)}
+        {w?.neverHadData ? t.dash.widgets.notStarted : w && w.value === null ? t.dash.widgets.noData : (w?.detail ?? meta.hint)}
       </span>
 
       <div className="ind-card__chart">
@@ -367,6 +367,8 @@ function hasOwnVeil(kind: WidgetKind, vehicleId: string | null): boolean {
 function Body({ pref, w, from, to, vehicleId }: { pref: DashboardWidgetPref; w: DashboardWidget | undefined; from: string; to: string; vehicleId: string | null }) {
   const { t } = useI18n();
   const meta = t.dash.widgets.kinds[pref.kind];
+  // Indicador que nunca teve dado: uma frase só, dizendo de onde o dado vai vir.
+  if (w?.neverHadData) return <NoSeries text={t.dash.widgets.startsWith[pref.kind as keyof typeof t.dash.widgets.startsWith] ?? t.dash.widgets.startsWith.default} />;
   switch (pref.kind) {
     case 'mkbf':
       return <MkbfBody from={from} to={to} vehicleId={vehicleId} series={w?.series ?? null} />;

@@ -30,9 +30,9 @@ export const ChartLoading = () => (
 );
 
 /** Indicador sem série para o período (um carro só num dia, consumo por hora…). */
-export function NoSeries() {
+export function NoSeries({ text }: { text?: string }) {
   const { t } = useI18n();
-  return <p className="ind-empty tp-muted">{t.dash.widgets.noChart}</p>;
+  return <p className="ind-empty tp-muted">{text ?? t.dash.widgets.noChart}</p>;
 }
 
 const fmtDay = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;

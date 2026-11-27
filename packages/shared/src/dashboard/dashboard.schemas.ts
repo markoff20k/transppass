@@ -294,6 +294,8 @@ export interface DashboardWidget {
   /** O período mostrado de fato: igual ao pedido, ou recuado até o dia mais recente com dado. */
   used: { from: string; to: string };
   fellBack: boolean;
+  /** O indicador nunca teve dado (ex.: depende de OS liberada pelo sistema e nenhuma foi liberada ainda). */
+  neverHadData?: boolean;
   /** O gráfico do período (nulo no ranking de falhas, que tem corpo próprio). */
   series: WidgetSeries | null;
 }
