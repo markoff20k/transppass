@@ -209,7 +209,7 @@ export function MaintenanceBack({ id, enabled, compact = false }: { id: string; 
   const woFam = wo ? WO_FAMILY[wo.status] ?? 'working' : 'running';
   const alerts = o.components.filter((c) => c.status !== 'OK').slice(0, 2);
   const lastWos = o.recentWorkOrders.filter((w) => !wo || w.id !== wo.id).slice(0, 2);
-  const availability = Math.round(o.last30.availability * 1000) / 10;
+  const availability = o.last30.availability === null ? null : Math.round(o.last30.availability * 1000) / 10;
 
   return (
     <>
@@ -262,10 +262,10 @@ export function MaintenanceBack({ id, enabled, compact = false }: { id: string; 
           <div className="fleet-card__progress">
             <div className="fleet-card__progress-head">
               <span>Disponibilidade 30 dias</span>
-              <b>{availability.toLocaleString('pt-BR')}%</b>
+              <b>{availability === null ? '—' : `${availability.toLocaleString('pt-BR')}%`}</b>
             </div>
-            <span className={`fleet-card__bar${availability < 75 ? ' is-over' : availability < 85 ? ' is-near' : ''}`}>
-              <i style={{ width: `${Math.min(100, Math.round(availability))}%` }} />
+            <span className={`fleet-card__bar${availability === null ? '' : availability < 75 ? ' is-over' : availability < 85 ? ' is-near' : ''}`}>
+              <i style={{ width: `${availability === null ? 0 : Math.min(100, Math.round(availability))}%` }} />
             </span>
           </div>
 

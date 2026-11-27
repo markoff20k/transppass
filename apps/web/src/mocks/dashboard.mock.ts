@@ -483,7 +483,14 @@ const WIDGET_SAMPLE: Record<
     value: 91.4,
     previous: 89.2,
     unit: 'pct',
-    detail: 'carros prontos ÷ frota, amostrado a cada 6 h',
+    detail: '9.720 h paradas em 113.000 h de janela (4h à 1h)',
+    higherIsBetter: true,
+  },
+  fleetReady: {
+    value: 95.7,
+    previous: 95.0,
+    unit: 'pct',
+    detail: 'média de 19,4 carros retidos na saída · frota de 448',
     higherIsBetter: true,
   },
   lostTrips: {
@@ -615,20 +622,40 @@ export const dashboardHandlers = [
     const to = url.searchParams.get('to') ?? '2026-11-22';
     const points = [];
     for (let d = new Date(`${from}T12:00:00`), i = 0; d <= new Date(`${to}T12:00:00`); d.setDate(d.getDate() + 1), i += 1) {
-      points.push({ date: d.toISOString().slice(0, 10), rate: 0.9 + ((i * 7) % 10) / 100 });
+      points.push({ date: d.toISOString().slice(0, 10), rate: 0.9 + ((i * 7) % 10) / 100, ready: 0.92 + ((i * 3) % 7) / 100 });
     }
-    return HttpResponse.json({ points, from, to });
+    return HttpResponse.json({ points, from, to, requested: { from, to }, fellBack: false });
   }),
   http.get('*/api/dashboard/availability-hours', async ({ request }) => {
     await delay();
     const url = new URL(request.url);
     const day = url.searchParams.get('day');
-    const hours = Array.from({ length: 24 }, (_, hour) => ({
+    // A janela de operação: das 4h à 1h, na ordem em que o dia corre.
+    const hours = [...Array.from({ length: 20 }, (_, i) => i + 4), 0].map((hour) => ({
       hour,
       rate: availabilityCurve(hour),
-      today: day ? (hour <= 17 ? availabilityCurve(hour) - 0.02 : null) : null,
+      today: day ? (hour >= 4 && hour <= 17 ? availabilityCurve(hour) - 0.02 : null) : null,
     }));
     return HttpResponse.json({ hours, day, requestedDay: day, fellBack: false, days: 30 });
+  }),
+  http.get('*/api/dashboard/availability-cars', async ({ request }) => {
+    await delay();
+    const day = new URL(request.url).searchParams.get('day') ?? '2026-11-22';
+    const car = (i: number, state: string, minutes: number, extra: object = {}) => ({
+      vehicleId: `v-${i}`, code: String(10001 + i), plate: `TPP${i}A${10 + i}`, state, lastRun: null, stoppedDays: null, fichaTime: null, minutes, byWorkOrder: false, ...extra,
+    });
+    return HttpResponse.json({
+      day, requestedDay: day, fellBack: false, firstDay: '2026-01-01', lastDay: day, fullOperation: true, estimated: true,
+      fleet: 449, operational: 0.9495, ready: 0.9621, windowMinutes: 1260,
+      cars: [
+        car(1, 'RETAINED', 1260, { lastRun: '2026-11-18', stoppedDays: 3 }),
+        car(2, 'RETAINED', 1260, { lastRun: '2026-11-20', stoppedDays: 1 }),
+        car(3, 'PARTIAL', 310, { fichaTime: '07:42' }),
+        car(4, 'PARTIAL', 60, { fichaTime: '18:05' }),
+        car(5, 'IDLE', 0, { lastRun: '2026-11-19', stoppedDays: 2 }),
+        car(6, 'IMMOBILIZED', 0, { lastRun: '2026-10-02', stoppedDays: 50 }),
+      ],
+    });
   }),
   http.get('*/api/dashboard/widget', async ({ request }) => {
     await delay();

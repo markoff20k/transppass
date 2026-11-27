@@ -10,6 +10,9 @@ import {
   type DowntimeCar,
   AVAILABLE_STATUSES,
   VehicleStatus,
+  type AvailabilityCar,
+  type AvailabilityCars,
+  type AvailabilityCarsQuery,
   type AvailabilityDays,
   type DashboardDowntime,
   type DashboardEventsSeries,
@@ -29,7 +32,6 @@ import {
   type DashboardQuery,
   type DashboardVehicle,
   type DayCount,
-  type HourAvailability,
   type MkbfPoint,
 } from '@app/shared';
 import { IN_SHOP_STATUSES } from '../common/vehicle-status';
@@ -37,6 +39,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MetricsService } from '../metrics/metrics.service';
 import { EventsService } from '../events/events.service';
 import { BoardService } from '../metrics/board.service';
+import { AvailabilityService } from '../metrics/availability.service';
 import { addDays, daysBetween, isoDay } from '../consumption/consumption.calc';
 
 const DAY_MS = 86_400_000;
@@ -58,6 +61,7 @@ export class DashboardService {
     private readonly metrics: MetricsService,
     private readonly events: EventsService,
     private readonly board: BoardService,
+    private readonly fleetAvailability: AvailabilityService,
   ) {}
 
   async build(query: DashboardQuery): Promise<DashboardData> {
@@ -693,126 +697,121 @@ export class DashboardService {
     };
   }
 
+  /**
+   * Disponibilidade dia a dia: a operacional (horas disponíveis ÷ horas da janela de operação) e
+   * a frota apta na saída. Período sem dado recua, com o mesmo tamanho, até o último dia com dado.
+   */
   async availabilityDays(q: AvailabilityDaysQuery, vehicleId?: string): Promise<AvailabilityDays> {
-    const now = new Date();
-    const today = isoDay(now);
+    const today = isoDay(new Date());
     const to = q.to > today ? today : q.to;
     const from = q.from > to ? to : q.from;
-    const windowStart = startOfDay(from);
-    // Um carro só (widget com escopo): a "frota" é ele, e a taxa do dia é a fração das horas em que estava pronto.
-    const byVehicle = vehicleId ? { vehicleId } : {};
-    const [fleetSize, workOrders, returns] = await Promise.all([
-      vehicleId ? Promise.resolve(1) : this.prisma.vehicle.count({ where: { isActive: true } }),
-      this.prisma.workOrder.findMany({
-        where: { openedAt: { lte: now }, OR: [{ releasedAt: null }, { releasedAt: { gte: windowStart } }], status: { not: WorkOrderStatus.CANCELLED }, ...byVehicle },
-        select: { vehicleId: true, openedAt: true, releasedAt: true },
-      }),
-      this.prisma.failureEvent.findMany({
-        where: { isUnscheduledReturn: true, reportedAt: { lte: now }, OR: [{ closedAt: null }, { closedAt: { gte: windowStart } }], status: { not: EventStatus.CANCELLED }, ...byVehicle },
-        select: { vehicleId: true, reportedAt: true, closedAt: true },
-      }),
-    ]);
-    const spans = [
-      ...workOrders.map((wo) => ({ vehicleId: wo.vehicleId, from: wo.openedAt, to: wo.releasedAt })),
-      ...returns.map((ev) => ({ vehicleId: ev.vehicleId, from: ev.reportedAt, to: ev.closedAt })),
-    ];
-    const rateAt = (t: Date): number => {
-      if (fleetSize === 0) return 0;
-      const down = new Set<string>();
-      for (const sp of spans) if (sp.from <= t && (!sp.to || sp.to >= t)) down.add(sp.vehicleId);
-      return (fleetSize - Math.min(down.size, fleetSize)) / fleetSize;
-    };
-    const totalDays = daysBetween(from, to);
-    const hourStep = totalDays > 90 ? 2 : 1;
-    const points: AvailabilityDays['points'] = [];
-    for (let d = from; d <= to; d = addDays(d, 1)) {
-      let sum = 0;
-      let samples = 0;
-      for (let hour = 0; hour < 24; hour += hourStep) {
-        const t = startOfDay(d);
-        t.setHours(hour, 30, 0, 0);
-        if (t > now) continue;
-        sum += rateAt(t);
-        samples += 1;
+    const requested = { from, to };
+    let used = requested;
+    let days = await this.fleetAvailability.days(from, to, vehicleId);
+    if (days.length === 0) {
+      const last = await this.fleetAvailability.lastDay(from, vehicleId);
+      if (last) {
+        used = { from: addDays(last, -(daysBetween(from, to) - 1)), to: last };
+        days = await this.fleetAvailability.days(used.from, used.to, vehicleId);
       }
-      if (samples) points.push({ date: d, rate: sum / samples });
     }
-    return { points, from, to };
+    return {
+      points: days.map((d) => ({
+        date: d.date,
+        rate: d.windowMinutes ? 1 - d.downMinutes / d.windowMinutes : 1,
+        ready: d.fleet ? 1 - d.notReady / d.fleet : 1,
+      })),
+      from: used.from,
+      to: used.to,
+      requested,
+      fellBack: used !== requested,
+    };
   }
 
+  /**
+   * Disponibilidade por hora da janela de operação (4h à 1h): a curva de um dia e a média dos
+   * dias com dado. Dia sem dado recua até o último com dado, e a média acompanha o dia mostrado.
+   */
   async availabilityHours(q: AvailabilityHoursQuery): Promise<AvailabilityHours> {
-    const now = new Date();
-    const today = isoDay(now);
+    const today = isoDay(new Date());
     const to = q.to > today ? today : q.to;
     const from = q.from > to ? to : q.from;
-    let day = q.day ? (q.day > today ? today : q.day) : null;
-    let fellBack = false;
-    // Hoje antes de 00:30 ainda não tem amostra: a curva de hoje seria vazia.
-    if (day === today && now.getHours() === 0 && now.getMinutes() < 30) {
-      day = addDays(today, -1);
-      fellBack = true;
+    const requested = q.day ? (q.day > today ? today : q.day) : null;
+    let day = requested;
+    let curve = day ? await this.fleetAvailability.hours(day) : null;
+    if (day && !curve) {
+      day = await this.fleetAvailability.lastDay(day);
+      curve = day ? await this.fleetAvailability.hours(day) : null;
     }
-    if (q.day && day !== q.day && q.day <= today) fellBack = true;
-
-    const windowStart = startOfDay(day && day < from ? day : from);
-    const [fleetSize, workOrders, returns] = await Promise.all([
-      this.prisma.vehicle.count({ where: { isActive: true } }),
-      this.prisma.workOrder.findMany({
-        where: {
-          openedAt: { lte: now },
-          OR: [{ releasedAt: null }, { releasedAt: { gte: windowStart } }],
-          status: { not: WorkOrderStatus.CANCELLED },
-        },
-        select: { vehicleId: true, openedAt: true, releasedAt: true },
-      }),
-      this.prisma.failureEvent.findMany({
-        where: {
-          isUnscheduledReturn: true,
-          reportedAt: { lte: now },
-          OR: [{ closedAt: null }, { closedAt: { gte: windowStart } }],
-          status: { not: EventStatus.CANCELLED },
-        },
-        select: { vehicleId: true, reportedAt: true, closedAt: true },
-      }),
-    ]);
-    const spans = [
-      ...workOrders.map((wo) => ({
-        vehicleId: wo.vehicleId,
-        from: wo.openedAt,
-        to: wo.releasedAt,
-      })),
-      ...returns.map((ev) => ({ vehicleId: ev.vehicleId, from: ev.reportedAt, to: ev.closedAt })),
-    ];
-    const rateAt = (t: Date): number => {
-      if (fleetSize === 0) return 0;
-      const down = new Set<string>();
-      for (const sp of spans) if (sp.from <= t && (!sp.to || sp.to >= t)) down.add(sp.vehicleId);
-      return (fleetSize - Math.min(down.size, fleetSize)) / fleetSize;
+    const avgTo = day ?? to;
+    const avg = await this.fleetAvailability.hoursAverage(addDays(avgTo, -(daysBetween(from, to) - 1)), avgTo);
+    return {
+      hours: avg.slots.map((s, i) => ({ hour: s.hour, rate: s.rate, today: curve?.[i]?.rate ?? null })),
+      day,
+      requestedDay: q.day ?? null,
+      fellBack: requested !== null && day !== requested,
+      days: avg.days,
     };
+  }
 
-    const totalDays = daysBetween(from, to) + 1;
-    const step = Math.max(1, Math.ceil(totalDays / 60));
-    const hours: HourAvailability[] = [];
-    for (let hour = 0; hour < 24; hour += 1) {
-      let sum = 0;
-      let samples = 0;
-      for (let i = 0; i < totalDays; i += step) {
-        const t = startOfDay(addDays(from, i));
-        t.setHours(hour, 30, 0, 0);
-        if (t > now) continue;
-        sum += rateAt(t);
-        samples += 1;
-      }
-      let todayRate: number | null = null;
-      if (day) {
-        const t = startOfDay(day);
-        t.setHours(hour, 30, 0, 0);
-        const sample = t <= now ? t : day === today && hour === now.getHours() ? now : null;
-        todayRate = sample ? rateAt(sample) : null;
-      }
-      hours.push({ hour, rate: samples ? sum / samples : 0, today: todayRate });
+  /**
+   * Os carros por trás da disponibilidade de um dia, para a oficina conferir: retidos na saída,
+   * quebras do dia, reserva (não derruba o número) e imobilizados (fora da frota em operação).
+   */
+  async availabilityCars(q: AvailabilityCarsQuery): Promise<AvailabilityCars> {
+    const today = isoDay(new Date());
+    const requestedDay = q.day > today ? today : q.day;
+    let list = await this.fleetAvailability.cars(requestedDay);
+    if (!list) {
+      const last = await this.fleetAvailability.lastDay(requestedDay);
+      list = last ? await this.fleetAvailability.cars(last) : null;
     }
-    return { hours, day, requestedDay: q.day ?? null, fellBack, days: Math.ceil(totalDays / step) };
+    const bounds = await this.fleetAvailability.bounds();
+    if (!list) {
+      return {
+        day: null, requestedDay, fellBack: false, firstDay: bounds.first, lastDay: bounds.last,
+        fullOperation: false, estimated: false, fleet: 0, operational: null, ready: null, windowMinutes: 0, cars: [],
+      };
+    }
+    const day = list.date;
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: { id: { in: list.cars.map((c) => c.vehicleId) } },
+      select: { id: true, code: true, plate: true },
+    });
+    const byId = new Map(vehicles.map((v) => [v.id, v]));
+    const order = { RETAINED: 0, PARTIAL: 1, IDLE: 2, IMMOBILIZED: 3 } as const;
+    const cars: AvailabilityCar[] = list.cars
+      .flatMap((c) => {
+        const v = byId.get(c.vehicleId);
+        if (!v) return [];
+        const minute = c.fichaMinute;
+        return [{
+          vehicleId: c.vehicleId,
+          code: v.code,
+          plate: v.plate,
+          state: c.kind,
+          lastRun: c.lastRun,
+          stoppedDays: c.lastRun && c.kind !== 'PARTIAL' ? daysBetween(c.lastRun, day) - 1 : null,
+          fichaTime: minute === null ? null : `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`,
+          minutes: c.minutes,
+          byWorkOrder: c.byWorkOrder,
+        }];
+      })
+      .sort((a, b) => order[a.state] - order[b.state] || b.minutes - a.minutes || a.code.localeCompare(b.code, 'pt-BR', { numeric: true }));
+    return {
+      day,
+      requestedDay,
+      fellBack: day !== requestedDay,
+      firstDay: bounds.first,
+      lastDay: bounds.last,
+      fullOperation: list.full,
+      estimated: list.estimated,
+      fleet: list.fleet,
+      operational: list.operational,
+      ready: list.ready,
+      windowMinutes: list.windowMinutes,
+      cars,
+    };
   }
 
   private async vehicles(now: Date): Promise<DashboardVehicle[]> {

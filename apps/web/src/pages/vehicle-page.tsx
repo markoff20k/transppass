@@ -92,10 +92,16 @@ export function VehiclePage() {
   return (
     <div className="vpage">
       <div className="tp-kpi-row vpage__kpis">
-        <div className={`tp-kpi ${s.availability >= 0.85 ? 'tp-kpi--good' : 'tp-kpi--warn'}`}>
+        <div className={`tp-kpi${s.availability === null ? '' : s.availability >= 0.85 ? ' tp-kpi--good' : ' tp-kpi--warn'}`}>
           <span className="tp-kpi__label">Disponibilidade · 30 dias</span>
-          <strong className="tp-kpi__value">{Math.round(s.availability * 100)}%</strong>
-          <span className="tp-kpi__note">{s.downtimeHours ? `${formatNumber(Math.round(s.downtimeHours))} h parado em OS` : 'nenhuma hora parado em OS'}</span>
+          <strong className="tp-kpi__value">{s.availability === null ? '—' : `${(s.availability * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`}</strong>
+          <span className="tp-kpi__note">
+            {s.availability === null
+              ? 'sem dado de operação no período'
+              : s.downtimeHours
+                ? `${formatNumber(Math.round(s.downtimeHours))} h indisponível na janela de operação (4h à 1h)`
+                : 'nenhuma hora indisponível na janela de operação'}
+          </span>
         </div>
         <div className="tp-kpi tp-kpi--brand">
           <span className="tp-kpi__label">Km rodados · 30 dias</span>

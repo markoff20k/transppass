@@ -1,12 +1,15 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
+  availabilityCarsQuerySchema,
   availabilityDaysQuerySchema,
   topFailuresQuerySchema,
   availabilityHoursQuerySchema,
   dashboardQuerySchema,
   mkbfSeriesQuerySchema,
   widgetQuerySchema,
+  type AvailabilityCars,
+  type AvailabilityCarsQuery,
   type AvailabilityDays,
   type DashboardDowntime,
   type DashboardEventsSeries,
@@ -99,6 +102,14 @@ export class DashboardController {
     @Query(new ZodValidationPipe(availabilityHoursQuerySchema)) query: AvailabilityHoursQuery,
   ): Promise<AvailabilityHours> {
     return this.dashboard.availabilityHours(query);
+  }
+
+  /** Os carros por trás da disponibilidade de um dia: retidos, quebras do dia, reserva e imobilizados. */
+  @Get('availability-cars')
+  availabilityCars(
+    @Query(new ZodValidationPipe(availabilityCarsQuerySchema)) query: AvailabilityCarsQuery,
+  ): Promise<AvailabilityCars> {
+    return this.dashboard.availabilityCars(query);
   }
 
   /** Um widget da seção de indicadores: indicador + período → valor, anterior e detalhe. */

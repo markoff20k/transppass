@@ -4,6 +4,7 @@ import type { DashboardWidget, WidgetBucket, WidgetKind, WidgetQuery, WidgetSeri
 import { PrismaService } from '../prisma/prisma.service';
 import { MetricsService } from '../metrics/metrics.service';
 import { BoardService } from '../metrics/board.service';
+import { type AvailabilityDay, AvailabilityService, summarizeAvailability } from '../metrics/availability.service';
 import { ConsumptionService } from '../consumption/consumption.service';
 import { DashboardService } from './dashboard.service';
 
@@ -18,6 +19,7 @@ const HIGHER_IS_BETTER: Record<WidgetKind, boolean> = {
   breakdowns: false,
   km: true,
   availability: true,
+  fleetReady: true,
   lostTrips: false,
   tripsDone: true,
   downtime: false,
@@ -37,6 +39,7 @@ const UNIT: Record<WidgetKind, DashboardWidget['unit']> = {
   breakdowns: 'count',
   km: 'km',
   availability: 'pct',
+  fleetReady: 'pct',
   lostTrips: 'count',
   tripsDone: 'pct',
   downtime: 'minutes',
@@ -84,6 +87,7 @@ export class WidgetsService {
     private readonly board: BoardService,
     private readonly consumption: ConsumptionService,
     private readonly dashboard: DashboardService,
+    private readonly fleetAvailability: AvailabilityService,
   ) {}
 
   async build(q: WidgetQuery): Promise<DashboardWidget> {
@@ -237,6 +241,9 @@ export class WidgetsService {
         const r = await this.prisma.inspection.findFirst({ where: { inspectedAt: { lt }, ...(v ? { task: { workOrder: { vehicleId: v } } } : {}) }, orderBy: { inspectedAt: 'desc' }, select: { inspectedAt: true } });
         return r ? isoDay(r.inspectedAt) : null;
       }
+      case 'availability':
+      case 'fleetReady':
+        return this.fleetAvailability.lastDay(before, v);
       default:
         return null;
     }
@@ -267,13 +274,24 @@ export class WidgetsService {
         const r = await this.metrics.mkbf(from, to, v);
         return { value: r.kmTraveled, detail: `${fmtInt(r.unscheduledReturns)} quebras` };
       }
-      case 'availability': {
-        const r = await this.metrics.availability(from, to, v);
+      case 'availability':
+      case 'fleetReady': {
+        const s = await this.fleetAvailability.summary(fromIso, toIso, v);
+        if (s.days === 0) return { value: null, detail: null };
+        if (kind === 'availability') {
+          return {
+            value: s.operational === null ? null : s.operational * 100,
+            detail: `${fmtInt(s.downMinutes / 60)} h paradas em ${fmtInt(s.windowMinutes / 60)} h de janela (4h à 1h)`,
+          };
+        }
+        const perDay = (s.notReady / s.days).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
         return {
-          value: r === null ? null : r * 100,
+          value: s.ready === null ? null : s.ready * 100,
           detail: v
-            ? 'horas sem OS aberta ÷ horas do período'
-            : 'carros prontos ÷ frota, amostrado a cada 6 h',
+            ? `retido na saída em ${fmtInt(s.notReady)} de ${fmtInt(s.days)} ${s.days === 1 ? 'dia' : 'dias'}`
+            : s.days === 1
+              ? `${fmtInt(s.notReady)} de ${fmtInt(s.fleet)} carros retidos na saída`
+              : `média de ${perDay} carros retidos na saída · frota de ${fmtInt(s.fleet)}`,
         };
       }
       case 'lostTrips':
@@ -515,24 +533,29 @@ export class WidgetsService {
           }),
         );
       }
-      case 'availability': {
+      case 'availability':
+      case 'fleetReady': {
+        const pct = (rate: number | null) => (rate === null ? null : Math.round(rate * 1000) / 10);
+        const rateOf = (days: AvailabilityDay[]) => {
+          const s = summarizeAvailability(days);
+          return pct(kind === 'availability' ? s.operational : s.ready);
+        };
         if (bucket === 'hour') {
-          if (v) return null;
-          const h = await this.dashboard.availabilityHours({ from: addDaysIso(fromIso, -29), to: toIso, day: toIso });
-          return pack(buckets.map((b, i) => ({ key: b.key, value: h.hours[i]?.today === null || h.hours[i]?.today === undefined ? null : Math.round((h.hours[i]!.today as number) * 1000) / 10 })));
+          // A saída é uma foto das 4h e um carro só não tem curva: vão os 7 dias até o dia pedido.
+          if (v || kind === 'fleetReady') return null;
+          const slots = await this.fleetAvailability.hours(fromIso);
+          if (!slots) return null;
+          // A faixa da 0h à 1h fecha a janela do dia, mas já é o dia seguinte no relógio: fica fora do eixo.
+          const byHour = new Map(slots.filter((s) => s.hour >= 4).map((s) => [String(s.hour).padStart(2, '0'), s.rate]));
+          return { bucket, points: buckets.map((b) => ({ key: b.key, value: pct(byHour.get(b.key) ?? null) })) };
         }
-        if (bucket === 'day') {
-          const d = await this.dashboard.availabilityDays({ from: fromIso, to: toIso }, v);
-          const byDate = new Map(d.points.map((p) => [p.date, p.rate]));
-          return pack(buckets.map((b) => ({ key: b.key, value: byDate.has(b.key) ? Math.round((byDate.get(b.key) as number) * 1000) / 10 : null })));
+        const days = await this.fleetAvailability.days(fromIso, toIso, v);
+        const byKey = new Map<string, AvailabilityDay[]>();
+        for (const d of days) {
+          const k = bucketKeyIso(bucket, d.date);
+          byKey.set(k, [...(byKey.get(k) ?? []), d]);
         }
-        const points = await Promise.all(
-          buckets.map(async (b) => {
-            const r = await this.metrics.availability(b.start, b.end, v);
-            return { key: b.key, value: r === null ? null : Math.round(r * 1000) / 10 };
-          }),
-        );
-        return pack(points);
+        return pack(buckets.map((b) => ({ key: b.key, value: byKey.has(b.key) ? rateOf(byKey.get(b.key)!) : null })));
       }
       case 'lostTrips':
       case 'tripsDone': {

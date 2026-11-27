@@ -219,7 +219,7 @@ export interface VehicleOverview {
   lastDailyCheck: { at: string; result: 'OK' | 'NOK' } | null;
   nextPackage: { name: string; windowKm: number; kmToWindow: number; progress: number; daysToWindow: number | null } | null;
   openWorkOrder: { id: string; code: string; status: string; openedAt: string } | null;
-  last30: { kmTraveled: number; returns: number; workOrders: number; mkbf: number | null; downtimeHours: number; availability: number };
+  last30: { kmTraveled: number; returns: number; workOrders: number; mkbf: number | null; downtimeHours: number; availability: number | null };
   kmByDay: { date: string; km: number }[];
   components: { id: string; kind: string; label: string; lifePct: number; remainingKm: number; status: 'OK' | 'NEAR' | 'OVER' }[];
   recentEvents: { id: string; code: string; reportedAt: string; description: string; failureCode: string | null; status: string; isUnscheduledReturn: boolean }[];

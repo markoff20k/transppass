@@ -22,6 +22,7 @@ import {
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/audit.service';
+import { AvailabilityService } from '../metrics/availability.service';
 
 const DAY_MS = 86_400_000;
 
@@ -31,6 +32,7 @@ export class VehiclesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly fleetAvailability: AvailabilityService,
   ) {}
 
   async create(input: CreateVehicleInput, actorId: string): Promise<Vehicle> {
@@ -224,15 +226,13 @@ export class VehiclesService {
       if (byDay.has(key)) byDay.set(key, (byDay.get(key) ?? 0) + r.deltaKm);
     }
 
-    // Horas parado em OS dentro da janela
-    let downtimeMs = 0;
-    for (const w of workOrders) {
-      if (w.status === WorkOrderStatus.CANCELLED) continue;
-      const start = Math.max(w.openedAt.getTime(), d30.getTime());
-      const end = Math.min((w.releasedAt ?? now).getTime(), now.getTime());
-      if (end > start) downtimeMs += end - start;
+    // Disponibilidade na janela de operação: os dias com dado dos últimos 30; sem nenhum, os 30 até o último dia do carro na frota.
+    const today = localDate(now);
+    let avail = await this.fleetAvailability.summary(localDate(d30), today, id);
+    if (avail.days === 0) {
+      const last = await this.fleetAvailability.lastDay(today, id);
+      if (last) avail = await this.fleetAvailability.summary(localDate(new Date(new Date(`${last}T12:00:00`).getTime() - 29 * DAY_MS)), last, id);
     }
-    const windowMs = 30 * DAY_MS;
 
     const next = openSchedule
       ? { name: openSchedule.package.name, windowKm: openSchedule.targetKm, kmToWindow: openSchedule.targetKm - v.currentKm, progress: clamp01(1 - (openSchedule.targetKm - v.currentKm) / Math.max(1, openSchedule.package.intervalKm)) }
@@ -257,8 +257,8 @@ export class VehiclesService {
         returns: events30,
         workOrders: workOrders.filter((w) => w.openedAt >= d30).length,
         mkbf: events30 > 0 ? Math.round(kmTraveled / events30) : null,
-        downtimeHours: Math.round(downtimeMs / 3_600_000),
-        availability: clamp01(1 - downtimeMs / windowMs),
+        downtimeHours: Math.round(avail.downMinutes / 60),
+        availability: avail.operational,
       },
       kmByDay: [...byDay.entries()].map(([date, km]) => ({ date, km })),
       components: components

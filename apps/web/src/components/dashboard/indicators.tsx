@@ -24,6 +24,7 @@ import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { DowntimeDonut, EventsPerDayChart, WidgetSeriesChart } from '@/components/charts/charts';
 import { AVAILABILITY_TARGET, AvailabilityBody, ChartLoading, MKBF_TARGET, MkbfBody, NoSeries } from './chart-cards';
 import { TopFailuresBody } from './top-failures';
+import { AvailabilityCarsFoot } from './availability-cars';
 import { DowntimeCarsDrawer, formatHours } from './downtime-cars';
 import { WidgetPeriodPicker, WidgetScopePicker, fmtDay, formatValue, resolveWidgetPeriod } from './widgets';
 import { SortableList } from '@/components/ui/sortable-cards';
@@ -444,7 +445,17 @@ function Body({ pref, w, from, to, vehicleId }: { pref: DashboardWidgetPref; w: 
   if (!w.series || w.series.points.every((p) => p.value === null)) return <NoSeries />;
   // Um dia só num indicador sem leitura por hora: a API manda os 7 dias até ele; a legenda avisa.
   const context = from === to && w.series.bucket === 'day' ? t.dash.widgets.seriesContext.replace('{d}', fmtDay(to)) : undefined;
-  return <WidgetSeriesChart series={w.series} unit={w.unit} label={meta.label} format={(v) => formatValue(v, w.unit) ?? ''} note={context} />;
+  const chart = <WidgetSeriesChart series={w.series} unit={w.unit} label={meta.label} format={(v) => formatValue(v, w.unit) ?? ''} note={context} />;
+  // Frota apta na saída: os carros do dia (o último do período) ficam a um clique, para a oficina conferir.
+  if (pref.kind === 'fleetReady' && !vehicleId) {
+    return (
+      <>
+        {chart}
+        <AvailabilityCarsFoot day={to} />
+      </>
+    );
+  }
+  return chart;
 }
 
 /**

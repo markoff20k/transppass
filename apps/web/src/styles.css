@@ -5954,6 +5954,19 @@ input.tp-input[type="datetime-local"] { height: 36px; padding-top: 0; padding-bo
 .dtc__sort { all: unset; cursor: pointer; }
 .dtc__sort.is-active { color: var(--color-brand); }
 @media (max-width: 560px) { .dtc__summary { grid-template-columns: 1fr; } .dtc__bar { display: none; } }
+/* Carros do dia da disponibilidade: o mesmo painel do tempo parado, com o seletor de dia e as regras da conta. */
+.avc__day { display: flex; align-items: center; gap: var(--tp-space-2); flex-wrap: wrap; }
+input.tp-input.avc__date { width: auto; min-width: 150px; }
+.avc__day-note { font-size: var(--tp-text-xs); }
+.avc__detail { display: grid; gap: 1px; align-content: center; min-height: 42px; white-space: nowrap; }
+.avc__detail .tp-muted { font-size: var(--tp-text-xs); }
+.avc__loading { min-height: 240px; }
+.avc__rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tp-space-3); margin: 0; padding: var(--tp-space-3); border-radius: 10px; background: var(--color-surface-sunken); font-size: var(--tp-text-xs); }
+.avc__rules > div { display: grid; gap: 2px; align-content: start; }
+.avc__rules dt { font-weight: var(--tp-weight-semibold); color: var(--color-text); }
+.avc__rules dd { margin: 0; color: var(--color-text-secondary); line-height: 1.45; }
+.ind-card__foot-value { color: var(--color-text); font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) { .avc__rules { grid-template-columns: 1fr; } }
 
 /* Item 9: material por tarefa e kit como soma automática. */
 .field-materials__row--taskmat { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto; gap: var(--tp-space-2); }

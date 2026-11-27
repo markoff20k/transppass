@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { DOWNTIME_CAUSE_LABELS, type AvailabilityDays, type AvailabilityHours, type DashboardDowntime, type MkbfSeries, type WidgetSeries } from '@app/shared';
+import { DOWNTIME_CAUSE_LABELS, type AvailabilityDays, type AvailabilityHours, type DashboardDowntime, type DashboardWidget, type MkbfSeries, type WidgetSeries } from '@app/shared';
 import { api } from '@/lib/api-client';
 import { toast } from '@/lib/toast';
 import { formatNumber } from '@/lib/format';
-import { shiftDays } from '@/lib/period';
+import { shiftDays, todayIso } from '@/lib/period';
 import { useI18n } from '@/i18n/i18n.context';
 import {
   AvailabilityByDayChart,
@@ -17,6 +17,7 @@ import {
 import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { formatValue } from './widgets';
+import { AvailabilityCarsFoot } from './availability-cars';
 
 /** Metas do PCM. A de disponibilidade é ARBITRADA em 85% até o PCM fixar (RF-38); a de MKBF é a do cliente. */
 export const MKBF_TARGET = 4000;
@@ -142,8 +143,15 @@ export function AvailabilityBody({ from, to, vehicleId, series }: { from: string
     placeholderData: keepPreviousData,
     refetchInterval: 60_000,
   });
+  // A frota apta na saída do mesmo período, ao pé do cartão: a mesma consulta do cartão dela.
+  const ready = useQuery({
+    queryKey: ['dashboard', 'widget', 'fleetReady', from, to, null],
+    queryFn: () => api.get<DashboardWidget>(`/dashboard/widget?kind=fleetReady&from=${from}&to=${to}`),
+    enabled: fleet,
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
+  });
   const h = hours.data;
-  useFallbackToast(h?.fellBack && h.day ? `avail:${h.requestedDay}>${h.day}` : null, h?.requestedDay ?? null, h?.day ?? null);
 
   if (!fleet) {
     return series ? (
@@ -152,14 +160,27 @@ export function AvailabilityBody({ from, to, vehicleId, series }: { from: string
       <NoSeries />
     );
   }
-  const dayLabel = h?.day ? (h.day === to && !h.fellBack ? t.dash.chartPeriod.today.toLowerCase() : fmtDay(h.day)) : null;
+  const dayLabel = h?.day ? (h.day === todayIso() ? t.dash.chartPeriod.today.toLowerCase() : fmtDay(h.day)) : null;
   const chart = single
     ? h ? <RefreshVeil active={hours.isPlaceholderData} delay={0}><AvailabilityByHourChart data={h.hours} days={h.days} dayLabel={dayLabel} /></RefreshVeil> : <ChartLoading />
     : days.data ? <RefreshVeil active={days.isPlaceholderData} delay={0}><AvailabilityByDayChart data={days.data.points} /></RefreshVeil> : <ChartLoading />;
   const held = (downtime.data?.downtimeByCause ?? []).filter((c) => c.minutes > 0).slice(0, 3);
+  const r = ready.data;
   return (
     <>
       {chart}
+      <AvailabilityCarsFoot day={h?.day ?? to}>
+        <span className="tp-muted">
+          {r && r.value !== null ? (
+            <>
+              {t.dash.widgets.kinds.fleetReady.label} <b className="ind-card__foot-value">{formatValue(r.value, 'pct')}</b>
+              {r.detail ? ` · ${r.detail.split(' · ')[0]}` : ''}
+            </>
+          ) : (
+            t.dash.widgets.availEstimated
+          )}
+        </span>
+      </AvailabilityCarsFoot>
       {held.length > 0 && (
         <div className="ind-card__foot">
           <span className="ind-card__foot-label">{t.dash.widgets.heldBy}</span>

@@ -43,10 +43,11 @@ export interface MkbfPoint {
 }
 
 export interface HourAvailability {
+  /** Hora em que a faixa começa, na ordem da janela de operação: 4, 5 … 23, 0. */
   hour: number;
-  /** Fração de carros disponíveis naquela faixa, média do período escolhido. */
-  rate: number;
-  /** A mesma fração hoje, nessa faixa; null para as horas que ainda não chegaram. */
+  /** Fração da frota disponível naquela faixa, na média dos dias com dado do período; nulo sem dado. */
+  rate: number | null;
+  /** A mesma fração no dia mostrado; nulo nas horas que ainda não chegaram. */
   today: number | null;
 }
 
@@ -228,6 +229,7 @@ export const WIDGET_KINDS = [
   'breakdowns',
   'km',
   'availability',
+  'fleetReady',
   'lostTrips',
   'tripsDone',
   'downtime',
@@ -392,15 +394,71 @@ export type AvailabilityDaysQuery = z.infer<typeof availabilityDaysQuerySchema>;
 
 export interface AvailabilityDayPoint {
   date: string;
-  /** Fração média de carros disponíveis no dia (24 amostras, uma por hora). */
+  /** Disponibilidade operacional do dia: horas disponíveis ÷ horas da janela (4h à 1h). */
   rate: number;
+  /** Frota apta na saída: carros aptos às 4h ÷ frota em operação. */
+  ready: number;
 }
 
 /** Disponibilidade dia a dia num intervalo: o eixo do gráfico quando o período tem vários dias. */
 export interface AvailabilityDays {
   points: AvailabilityDayPoint[];
+  /** O período mostrado de fato: igual ao pedido, ou recuado até o último dia com dado. */
   from: string;
   to: string;
+  requested: { from: string; to: string };
+  fellBack: boolean;
+}
+
+export const availabilityCarsQuerySchema = z.object({
+  day: z.string().regex(ISO_DAY),
+});
+export type AvailabilityCarsQuery = z.infer<typeof availabilityCarsQuerySchema>;
+
+/**
+ * Como o carro entrou na conta do dia: retido (não saiu, tem ficha ou quebra), parcial (quebrou
+ * e rodou menos), reserva (não saiu e não tem ficha: não derruba o número) ou imobilizado
+ * (mais de 30 dias sem rodar e sem ficha: fora da frota em operação).
+ */
+export const AVAILABILITY_CAR_STATES = ['RETAINED', 'PARTIAL', 'IDLE', 'IMMOBILIZED'] as const;
+export type AvailabilityCarState = (typeof AVAILABILITY_CAR_STATES)[number];
+
+export interface AvailabilityCar {
+  vehicleId: string;
+  code: string;
+  plate: string;
+  state: AvailabilityCarState;
+  /** Último dia em que o carro rodou antes do dia mostrado (ou a última atividade, no imobilizado). */
+  lastRun: string | null;
+  /** Dias seguidos sem rodar até o dia mostrado. */
+  stoppedDays: number | null;
+  /** Hora da ficha de quebra do dia ("14:20"), quando a parada é parcial. */
+  fichaTime: string | null;
+  /** Minutos indisponíveis dentro da janela do dia. */
+  minutes: number;
+  /** A parada veio (também) de OS aberta no sistema. */
+  byWorkOrder: boolean;
+}
+
+/** Os carros por trás da disponibilidade de um dia: a lista para a oficina conferir. */
+export interface AvailabilityCars {
+  /** Dia mostrado, já com o recuo aplicado; nulo quando não há dado nenhum. */
+  day: string | null;
+  requestedDay: string;
+  fellBack: boolean;
+  /** Primeiro e último dia com dado: os limites de quem troca o dia. */
+  firstDay: string | null;
+  lastDay: string | null;
+  /** Dia útil de operação cheia (fim de semana e feriado têm frota reduzida). */
+  fullOperation: boolean;
+  /** O dia é estimado pela operação (verdadeiro) ou medido só pelas OS do sistema. */
+  estimated: boolean;
+  fleet: number;
+  operational: number | null;
+  ready: number | null;
+  /** Minutos de janela do dia por carro: 21 h (4h à 1h), menos no dia em andamento. */
+  windowMinutes: number;
+  cars: AvailabilityCar[];
 }
 
 // --- Cards de baixo do Dashboard, cada um com o próprio período ---------------

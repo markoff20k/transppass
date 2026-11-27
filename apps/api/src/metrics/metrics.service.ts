@@ -24,6 +24,8 @@ import {
   type R1Metrics,
 } from '@app/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { isoDay } from '../consumption/consumption.calc';
+import { AvailabilityService } from './availability.service';
 
 /**
  * Indicadores do R1 (RF-38/RF-39).
@@ -34,7 +36,10 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @Injectable()
 export class MetricsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fleetAvailability: AvailabilityService,
+  ) {}
 
   async r1(query: MetricsQuery): Promise<R1Metrics> {
     const { from, to } = resolvePeriod(query);
@@ -107,7 +112,7 @@ export class MetricsService {
     ] = await Promise.all([
       this.mkbf(d30, now),
       this.mkbf(d60, d30),
-      this.availability(d7, now),
+      this.availabilityLastDays(7),
       this.internalRework(d30, now),
       this.prisma.vehicle.count({ where: { isActive: true } }),
       this.prisma.vehicle.groupBy({
@@ -426,30 +431,21 @@ export class MetricsService {
     };
   }
 
-  /** Disponibilidade média do mês: carros sem OS aberta ÷ frota, amostrada a cada 6 h. */
+  /**
+   * Disponibilidade operacional do período: horas disponíveis ÷ horas da janela de operação
+   * (4h à 1h), na frota em operação. A conta mora no AvailabilityService.
+   */
   async availability(from: Date, to: Date, vehicleId?: string): Promise<number | null> {
-    const fleet = vehicleId ? 1 : await this.prisma.vehicle.count({ where: { isActive: true } });
-    if (fleet === 0) return null;
-    const workOrders = await this.prisma.workOrder.findMany({
-      where: {
-        openedAt: { lte: to },
-        OR: [{ releasedAt: null }, { releasedAt: { gte: from } }],
-        status: { not: WorkOrderStatus.CANCELLED },
-        ...(vehicleId ? { vehicleId } : {}),
-      },
-      select: { openedAt: true, releasedAt: true },
-    });
-    let sum = 0;
-    let samples = 0;
-    for (let t = from.getTime(); t <= to.getTime(); t += 6 * 60 * 60_000) {
-      const at = new Date(t);
-      const down = workOrders.filter(
-        (w) => w.openedAt <= at && (!w.releasedAt || w.releasedAt >= at),
-      ).length;
-      sum += (fleet - down) / fleet;
-      samples += 1;
-    }
-    return samples ? sum / samples : null;
+    return (await this.fleetAvailability.summary(isoDay(from), isoDay(to), vehicleId)).operational;
+  }
+
+  /** A disponibilidade dos últimos `n` dias com dado: a operação chega com alguns dias de atraso. */
+  private async availabilityLastDays(n: number): Promise<number | null> {
+    const last = (await this.fleetAvailability.bounds()).last;
+    if (!last) return null;
+    const from = new Date(`${last}T12:00:00`);
+    from.setDate(from.getDate() - (n - 1));
+    return (await this.fleetAvailability.summary(isoDay(from), last)).operational;
   }
 
   // --- Snapshots mensais (E8) ------------------------------------------------

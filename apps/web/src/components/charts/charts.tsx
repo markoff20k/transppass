@@ -369,18 +369,20 @@ export function MkbfTrendChart({
 
 // --- Disponibilidade dia a dia -----------------------------------------------
 
-/** Vários dias: a disponibilidade média de cada dia, com a meta; zoom por dia. */
+/** Vários dias: a disponibilidade operacional de cada dia, a frota apta na saída e a meta; zoom por dia. */
 export function AvailabilityByDayChart({ data, target = 0.85 }: { data: AvailabilityDayPoint[]; target?: number }) {
   const all = data.map((d) => ({
     key: d.date,
     label: `${d.date.slice(8, 10)}/${d.date.slice(5, 7)}`,
     pct: Math.round(d.rate * 1000) / 10,
+    ready: Math.round(d.ready * 1000) / 10,
   }));
   const zoom = useChartZoom({ prefKey: 'dash.zoom.availabilityDays', rows: all, keyOf: (r) => r.key, min: 3 });
   const rows = zoom.visible;
   const targetPct = Math.round(target * 100);
   const minPct = rows.length ? Math.min(...rows.map((r) => r.pct)) : 0;
-  const lo = Math.max(0, Math.floor(Math.min(minPct - 2, targetPct - 3) / 5) * 5);
+  const minShown = rows.length ? Math.min(minPct, ...rows.map((r) => r.ready)) : 0;
+  const lo = Math.max(0, Math.floor(Math.min(minShown - 2, targetPct - 3) / 5) * 5);
   const ticks: number[] = [];
   for (let v = lo; v <= 100; v += 5) ticks.push(v);
   const belowTarget = minPct < targetPct;
@@ -392,7 +394,8 @@ export function AvailabilityByDayChart({ data, target = 0.85 }: { data: Availabi
     <div className="chart chart--fill chart--zoomable">
       <Legend
         items={[
-          { kind: 'area', color, label: 'disponibilidade do dia' },
+          { kind: 'area', color, label: 'operacional' },
+          { kind: 'line', color: 'var(--chart-2)', label: 'apta na saída' },
           { kind: 'dash', color: 'var(--color-text-muted)', label: `meta ${targetPct}%` },
         ]}
         note={
@@ -424,10 +427,11 @@ export function AvailabilityByDayChart({ data, target = 0.85 }: { data: Availabi
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const p = payload[0]!.payload as (typeof rows)[number];
-              return <Tip title={p.label} rows={[{ label: 'Disponibilidade', value: `${p.pct.toLocaleString('pt-BR')}%`, color }, { label: 'Meta', value: `${targetPct}%` }]} />;
+              return <Tip title={p.label} rows={[{ label: 'Operacional', value: `${p.pct.toLocaleString('pt-BR')}%`, color }, { label: 'Apta na saída', value: `${p.ready.toLocaleString('pt-BR')}%`, color: 'var(--chart-2)' }, { label: 'Meta', value: `${targetPct}%` }]} />;
             }}
           />
           <Area type="monotone" dataKey="pct" stroke={color} strokeWidth={2.4} fill="url(#availDayFill)" dot={rows.length <= 31 ? { r: 3, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 } : false} activeDot={{ r: 5, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 }} isAnimationActive={false} />
+          <Line type="monotone" dataKey="ready" stroke="var(--chart-2)" strokeWidth={1.8} strokeOpacity={0.8} dot={false} activeDot={{ r: 4, fill: 'var(--chart-2)', stroke: 'var(--color-surface)', strokeWidth: 2 }} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -452,7 +456,7 @@ export function AvailabilityByHourChart({
   const all = data.map((d) => ({
     hour: `${String(d.hour).padStart(2, '0')}h`,
     key: String(d.hour),
-    pct: Math.round(d.rate * 1000) / 10,
+    pct: d.rate === null ? null : Math.round(d.rate * 1000) / 10,
     today: d.today === null ? null : Math.round(d.today * 1000) / 10,
   }));
   // Zoom por faixa horária: arrastar sobre o gráfico ou as lupas; mínimo de três faixas.
@@ -464,7 +468,7 @@ export function AvailabilityByHourChart({
   });
   const rows = zoom.visible;
   const todays = rows.filter((r) => r.today !== null);
-  const pcts = [...rows.map((r) => r.pct), ...todays.map((r) => r.today as number)];
+  const pcts = rows.flatMap((r) => [r.pct, r.today]).filter((v): v is number => v !== null);
   const minPct = pcts.length ? Math.min(...pcts) : 0;
   const worst = todays.length
     ? todays.reduce((a, b) => ((b.today as number) < (a.today as number) ? b : a))
@@ -544,13 +548,13 @@ export function AvailabilityByHourChart({
                   title={`faixa ${p.hour}`}
                   rows={[
                     {
-                      label: 'Hoje',
+                      label: dayLabel ? dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1) : 'Dia',
                       value: p.today === null ? '—' : `${p.today.toLocaleString('pt-BR')}%`,
                       color,
                     },
                     {
-                      label: 'Média 7 dias',
-                      value: `${p.pct.toLocaleString('pt-BR')}%`,
+                      label: `Média ${days} dias`,
+                      value: p.pct === null ? '—' : `${p.pct.toLocaleString('pt-BR')}%`,
                       color: 'var(--chart-2)',
                     },
                     { label: 'Meta', value: `${targetPct}%` },
@@ -1130,7 +1134,7 @@ export function WidgetSeriesChart({
   const last = lastIdx >= 0 ? rows[lastIdx] : undefined;
   const total = rows.reduce((s, r) => s + (r.value ?? 0), 0);
   const tick = Math.max(0, Math.ceil(rows.length / 8) - 1);
-  const compact = (v: number) => (unit === 'km' && Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : unit === 'pct' ? `${v}%` : String(v));
+  const compact = (v: number) => (unit === 'km' && Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : unit === 'pct' ? `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%` : String(v));
   const legend: { kind: 'bar' | 'line'; color: string; label: string }[] = [{ kind: isBar ? 'bar' : 'line', color, label }];
   if (target !== null) legend.push({ kind: 'line', color: 'var(--color-text-muted)', label: `meta ${format(target)}` });
   return (
@@ -1156,7 +1160,7 @@ export function WidgetSeriesChart({
         <ComposedChart data={rows} margin={{ top: 14, right: 12, left: 0, bottom: 0 }} barCategoryGap="35%">
           <CartesianGrid vertical={false} />
           <XAxis dataKey="label" axisLine={false} tickLine={false} interval={tick} />
-          <YAxis axisLine={false} tickLine={false} width={unit === 'km' ? 40 : 34} allowDecimals={!isBar} tickFormatter={(v: number) => compact(v)} domain={isBar ? [0, 'auto'] : ['auto', 'auto']} />
+          <YAxis axisLine={false} tickLine={false} width={unit === 'km' ? 40 : unit === 'pct' ? 48 : 34} allowDecimals={!isBar} tickFormatter={(v: number) => compact(v)} domain={isBar ? [0, 'auto'] : ['auto', 'auto']} />
           <Tooltip
             cursor={isBar ? { fill: 'var(--color-surface-hover)' } : { stroke: 'var(--color-border-strong)' }}
             content={({ active, payload }) => {
