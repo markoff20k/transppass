@@ -4,6 +4,12 @@ import type { Response } from 'express';
 import { UserRole } from '@prisma/client';
 import {
   iaConversationCreateSchema,
+  iaIndicatorsInputSchema,
+  iaWidgetReadingInputSchema,
+  type IaIndicatorsInput,
+  type IaIndicatorsReading,
+  type IaWidgetReading,
+  type IaWidgetReadingInput,
   iaMessageInputSchema,
   iaReadingParamsSchema,
   type IaConversation,
@@ -21,6 +27,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { IaService } from './ia.service';
 import { IaReadingsService } from './ia-readings.service';
+import { IaIndicatorsService } from './ia-indicators.service';
 
 /**
  * ia.Transppass pela API: conversas por usuário, resposta em SSE e as
@@ -34,6 +41,7 @@ export class IaController {
   constructor(
     private readonly ia: IaService,
     private readonly readings: IaReadingsService,
+    private readonly indicators: IaIndicatorsService,
   ) {}
 
   @Get('status')
@@ -96,6 +104,22 @@ export class IaController {
       clearInterval(keepAlive);
       res.end();
     }
+  }
+
+  // --- Indicadores do Dashboard: a leitura da seção e a de um cartão -----------------
+
+  @Post('indicators/reading')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'A leitura da ia.Transppass sobre os cartões da seção Indicadores (vale por uma hora)' })
+  indicatorsReading(@Body(new ZodValidationPipe(iaIndicatorsInputSchema)) body: IaIndicatorsInput): Promise<IaIndicatorsReading> {
+    return this.indicators.section(body);
+  }
+
+  @Post('indicators/card')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'A leitura da ia.Transppass sobre um cartão de indicador (vale por uma hora)' })
+  cardReading(@Body(new ZodValidationPipe(iaWidgetReadingInputSchema)) body: IaWidgetReadingInput): Promise<IaWidgetReading> {
+    return this.indicators.card(body);
   }
 
   // --- Fase 2: leituras do mês e a frase do dia ------------------------------------

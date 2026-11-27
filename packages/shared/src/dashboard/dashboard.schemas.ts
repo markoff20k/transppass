@@ -491,3 +491,45 @@ export interface TopFailures {
   used: { from: string; to: string };
   fellBack: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// ia.Transppass na seção Indicadores: a leitura da seção e a de cada cartão.
+// ---------------------------------------------------------------------------
+
+/** Um cartão como está na tela: indicador, período já resolvido em datas e escopo. */
+export const iaWidgetRefSchema = z.object({
+  kind: z.enum(WIDGET_KINDS),
+  from: z.string().regex(ISO_DAY),
+  to: z.string().regex(ISO_DAY),
+  vehicleId: z.string().uuid().optional(),
+});
+export type IaWidgetRef = z.infer<typeof iaWidgetRefSchema>;
+
+export const iaIndicatorsInputSchema = z.object({
+  widgets: z.array(iaWidgetRefSchema).min(1).max(24),
+  /** Redige de novo, mesmo havendo leitura recente para estes cartões. */
+  force: z.boolean().default(false),
+});
+export type IaIndicatorsInput = z.infer<typeof iaIndicatorsInputSchema>;
+
+export const iaWidgetReadingInputSchema = iaWidgetRefSchema.extend({ force: z.boolean().default(false) });
+export type IaWidgetReadingInput = z.infer<typeof iaWidgetReadingInputSchema>;
+
+export type IaTone = 'good' | 'bad' | 'warn' | 'info';
+
+/** A leitura da seção: um parágrafo curto e os pontos que importam, cada um ligado a um cartão. */
+export interface IaIndicatorsReading {
+  summary: string;
+  items: { kind: WidgetKind; tone: IaTone; title: string; text: string }[];
+  generatedAt: string;
+}
+
+/** A leitura de um cartão: duas ou três frases sobre aquele número. */
+export interface IaWidgetReading {
+  text: string;
+  tone: IaTone;
+  generatedAt: string;
+}
+
+/** Quanto tempo uma leitura dos indicadores vale antes de ser redigida de novo. */
+export const IA_INDICATORS_TTL_MINUTES = 60;

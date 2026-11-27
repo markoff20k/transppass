@@ -36,6 +36,23 @@ export class FakeProvider implements IaProvider {
   }
 
   async complete(req: IaCompleteRequest): Promise<IaCompleteResult> {
+    const usage = { input: 1500, output: 200, cacheRead: 0, cacheWrite: 0 };
+    // Indicadores do Dashboard: monta a leitura a partir dos próprios números dos cartões.
+    const ind = req.prompt.match(/<indicadores>([\s\S]*?)<\/indicadores>/);
+    if (ind) {
+      const cards = JSON.parse(ind[1] as string) as FakeCard[];
+      const withData = cards.filter((c) => !c.neverHadData && c.value !== null);
+      const items = withData.slice(0, 5).map((c) => ({ kind: c.kind, tone: fakeTone(c), title: `${c.indicator}: ${fmt(c.value)}`, text: fakeLine(c) }));
+      const never = cards.filter((c) => c.neverHadData);
+      if (never.length) items.push({ kind: never[0]!.kind, tone: 'info', title: `${never.length} indicador(es) ainda sem registro`, text: 'Começam a contar quando o sistema for usado no dia a dia (OS liberada, triagem, inspeção).' });
+      return { text: JSON.stringify({ summary: `Leitura de teste: ${withData.length} cartões com dado; os números abaixo vêm dos próprios cartões.`, items }), usage };
+    }
+    const card = req.prompt.match(/<cartao>([\s\S]*?)<\/cartao>/);
+    if (card) {
+      const c = JSON.parse(card[1] as string) as FakeCard;
+      const text = c.neverHadData ? `Leitura de teste: ${c.indicator} ainda não tem registro no sistema; começa a contar com o uso do fluxo.` : `Leitura de teste: ${fakeLine(c)}`;
+      return { text: JSON.stringify({ text, tone: c.neverHadData ? 'info' : fakeTone(c) }), usage };
+    }
     // A leitura do mês: devolve as leituras de regra embutidas no prompt, reescritas com a marca de simulação.
     const m = req.prompt.match(/<dados>([\s\S]*?)<\/dados>/);
     let insights: unknown[] = [];
@@ -133,4 +150,15 @@ async function stream(text: string, onText: (d: string) => void, signal?: AbortS
     onText(text.slice(i, i + 14));
     await new Promise((r) => setTimeout(r, 12));
   }
+}
+
+interface FakeCard { kind: string; indicator: string; value: number | null; previous: number | null; higherIsBetter: boolean; neverHadData: boolean; fellBack: boolean; used: { from: string; to: string } }
+const fmt = (v: number | null) => (v === null ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }));
+function fakeTone(c: FakeCard): 'good' | 'bad' | 'info' {
+  if (c.value === null || c.previous === null || c.previous === 0) return 'info';
+  return c.value > c.previous === c.higherIsBetter ? 'good' : 'bad';
+}
+function fakeLine(c: FakeCard): string {
+  const vs = c.previous === null || c.previous === 0 || c.value === null ? 'sem período anterior para comparar' : `${(((c.value - c.previous) / Math.abs(c.previous)) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% contra o período anterior (${fmt(c.previous)})`;
+  return `${c.indicator} em ${fmt(c.value)}, ${vs}${c.fellBack ? `; dados até ${c.used.to.slice(8, 10)}/${c.used.to.slice(5, 7)}` : ''}.`;
 }

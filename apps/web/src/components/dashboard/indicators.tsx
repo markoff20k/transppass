@@ -27,6 +27,9 @@ import { TopFailuresBody } from './top-failures';
 import { DowntimeCarsDrawer, formatHours } from './downtime-cars';
 import { WidgetPeriodPicker, WidgetScopePicker, fmtDay, formatValue, resolveWidgetPeriod } from './widgets';
 import { SortableList } from '@/components/ui/sortable-cards';
+import { CardReading, IndicatorsReading } from './indicators-reading';
+import { IaBot } from '@/features/ia/ia-mark';
+import { useIa } from '@/features/ia/ia.context';
 
 /** O painel de quem ainda não montou o seu: os dois grandes e os cinco que o cliente mais olha. */
 const DEFAULT_INDICATORS: DashboardWidgetPref[] = [
@@ -147,6 +150,10 @@ export function IndicatorsSection({ vehicles }: { vehicles: DashboardVehicle[] }
         </div>
       </header>
 
+      <IndicatorsReading
+        widgets={widgets}
+        onPick={(kind) => document.querySelector(`.ind-card[data-kind="${kind}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+      />
       {pickerOpen && <IndicatorPicker current={widgets.map((w) => w.kind)} onClose={() => setPickerOpen(false)} onApply={applyKinds} onReset={resetAll} />}
       {widgets.length === 0 && <p className="dash-widgets__empty">{t.dash.widgets.empty}</p>}
       {large.length > 0 && (
@@ -272,6 +279,8 @@ function IndicatorCard({
 }) {
   const { t } = useI18n();
   const meta = t.dash.widgets.kinds[pref.kind];
+  const iaOn = useIa().status?.enabled ?? false;
+  const [iaOpen, setIaOpen] = useState(false);
   const { from, to } = resolveWidgetPeriod(pref.period);
   const vehicleId = pref.vehicleId ?? null;
   const query = useQuery({
@@ -305,7 +314,7 @@ function IndicatorCard({
   const usedTo = settled && w.fellBack ? w.used.to : to;
 
   return (
-    <article className={`ind-card${large ? ' ind-card--large' : ''} widget--${deltaTone}${query.isFetching ? ' is-refreshing' : ''}${query.isPlaceholderData ? ' is-stale' : ''}`} aria-label={meta.label}>
+    <article data-kind={pref.kind} className={`ind-card${large ? ' ind-card--large' : ''} widget--${deltaTone}${query.isFetching ? ' is-refreshing' : ''}${query.isPlaceholderData ? ' is-stale' : ''}`} aria-label={meta.label}>
       <div className="widget__head">
         <span className="widget__title">
           {grip}
@@ -325,6 +334,11 @@ function IndicatorCard({
       <div className="widget__filters">
         <WidgetScopePicker value={vehicleId} vehicles={vehicles} onChange={onVehicle} />
         <WidgetPeriodPicker value={pref.period} onChange={onPeriod} />
+        {iaOn && (
+          <button type="button" className={`tp-btn tp-btn--ghost tp-btn--sm widget__ia${iaOpen ? ' is-on' : ''}`} onClick={() => setIaOpen((v) => !v)} aria-pressed={iaOpen} aria-label={t.dash.widgets.ia.cardButton} title={t.dash.widgets.ia.cardButton}>
+            <IaBot size={20} />
+          </button>
+        )}
       </div>
 
       <div className="ind-card__headline">
@@ -346,6 +360,7 @@ function IndicatorCard({
       </span>
 
       <div className="ind-card__chart">
+        {iaOn && iaOpen && <CardReading pref={pref} label={meta.label} onClose={() => setIaOpen(false)} />}
         {/* Todo gráfico tem loader: no primeiro carregamento (ChartLoading) e na troca de período ou
             escopo (o véu sobre o dado anterior). Os corpos com consulta própria já põem o seu véu. */}
         <RefreshVeil active={query.isPlaceholderData && !hasOwnVeil(pref.kind, vehicleId)} delay={0}>

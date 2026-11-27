@@ -12,6 +12,7 @@ import { IaController } from './ia.controller';
 import { IaService } from './ia.service';
 import { IaToolsService } from './ia-tools.service';
 import { IaReadingsService } from './ia-readings.service';
+import { IaIndicatorsService } from './ia-indicators.service';
 import { IA_PROVIDER, type IaProvider } from './ia-provider';
 import { AnthropicProvider } from './anthropic.provider';
 import { FakeProvider } from './fake.provider';
@@ -29,6 +30,7 @@ import { FakeProvider } from './fake.provider';
     IaToolsService,
     IaService,
     IaReadingsService,
+    IaIndicatorsService,
     {
       provide: IA_PROVIDER,
       inject: [ConfigService],

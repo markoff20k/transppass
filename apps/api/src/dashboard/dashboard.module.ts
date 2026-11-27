@@ -12,6 +12,6 @@ import { WidgetsService } from './widgets.service';
   controllers: [DashboardController],
   providers: [DashboardService, NoticesService, WidgetsService],
   // A frase do dia da ia.Transppass lê a mesma foto da garagem que o Dashboard mostra.
-  exports: [DashboardService],
+  exports: [DashboardService, WidgetsService],
 })
 export class DashboardModule {}

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { IaStatus } from '@app/shared';
 import { api } from '@/lib/api-client';
@@ -11,6 +11,11 @@ interface IaContextValue {
   toggle: () => void;
   conversationId: string | null;
   setConversationId: (id: string | null) => void;
+  /** Abre o painel numa conversa nova e já envia esta pergunta (o "Perguntar" dos cartões). */
+  ask: (question: string) => void;
+  /** Pergunta esperando o painel enviar; o painel limpa depois de enviar. */
+  pendingQuestion: string | null;
+  clearPendingQuestion: () => void;
 }
 
 const IaContext = createContext<IaContextValue | null>(null);
@@ -31,9 +36,19 @@ export function IaProvider({ children }: { children: ReactNode }) {
   const setOpen = useCallback((v: boolean) => setOpenPref(v), [setOpenPref]);
   const toggle = useCallback(() => setOpenPref((v) => !v), [setOpenPref]);
   const setConversationId = useCallback((id: string | null) => setConversationPref(id), [setConversationPref]);
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  const ask = useCallback(
+    (question: string) => {
+      setConversationPref(null);
+      setPendingQuestion(question);
+      setOpenPref(true);
+    },
+    [setConversationPref, setOpenPref],
+  );
+  const clearPendingQuestion = useCallback(() => setPendingQuestion(null), []);
   const value = useMemo<IaContextValue>(
-    () => ({ status: status.data ?? null, open, setOpen, toggle, conversationId, setConversationId }),
-    [status.data, open, setOpen, toggle, conversationId, setConversationId],
+    () => ({ status: status.data ?? null, open, setOpen, toggle, conversationId, setConversationId, ask, pendingQuestion, clearPendingQuestion }),
+    [status.data, open, setOpen, toggle, conversationId, setConversationId, ask, pendingQuestion, clearPendingQuestion],
   );
   return <IaContext.Provider value={value}>{children}</IaContext.Provider>;
 }

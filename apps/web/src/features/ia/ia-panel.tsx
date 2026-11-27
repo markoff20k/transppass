@@ -19,7 +19,7 @@ import { IaBot, IaName, IaScene } from './ia-mark';
 export function IaPanel() {
   const { t } = useI18n();
   const { user } = useAuth();
-  const { status, open, setOpen, conversationId, setConversationId } = useIa();
+  const { status, open, setOpen, conversationId, setConversationId, pendingQuestion, clearPendingQuestion } = useIa();
   const location = useLocation();
   const screen = useMemo(() => screenOf(location.pathname), [location.pathname]);
   const onCreated = useCallback((id: string) => setConversationId(id || null), [setConversationId]);
@@ -52,6 +52,14 @@ export function IaPanel() {
     setDraft('');
     void chat.send(text, { route: location.pathname, label: screen.label });
   };
+  // "Perguntar" de um cartão: a conversa nova já está aberta; envia a pergunta montada uma vez.
+  useEffect(() => {
+    if (!pendingQuestion || conversationId !== null || chat.sending || !enabled) return;
+    clearPendingQuestion();
+    void chat.send(pendingQuestion, { route: location.pathname, label: screen.label });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingQuestion, conversationId, enabled]);
+
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     submit(draft);
