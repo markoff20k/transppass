@@ -410,7 +410,7 @@ export function WorkOrderPage() {
                 <dd>{data.eventCode ?? '—'}</dd>
               </div>
               <div>
-                <dt>OS no JB</dt>
+                <dt>OS de origem</dt>
                 <dd>{data.jbWorkOrderNumber ?? '—'}</dd>
               </div>
               <div>

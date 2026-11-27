@@ -374,7 +374,7 @@ function buildInsights(
 
   // Dados até quando.
   if (core.lastDataDate && core.lastDataDate < core.to) {
-    out.push({ kind: 'data', tone: 'info', date: core.lastDataDate, title: `Dados até ${fmtDay(core.lastDataDate)}`, text: `As planilhas do ERP-JB cobrem o mês até ${fmtDay(core.lastDataDate)}; os dias seguintes ficam em branco até a próxima remessa.` });
+    out.push({ kind: 'data', tone: 'info', date: core.lastDataDate, title: `Dados até ${fmtDay(core.lastDataDate)}`, text: `As planilhas cobrem o mês até ${fmtDay(core.lastDataDate)}; os dias seguintes ficam em branco até a próxima remessa.` });
   }
 
   // Dias atípicos: planilha incompleta, sem comparável, feriados.
@@ -396,7 +396,7 @@ function buildInsights(
     const worst = rated.reduce((a, b) => ((b.fleet.pct as number) < (a.fleet.pct as number) ? b : a));
     if ((worst.fleet.pct as number) < core.totals.fleet.pct - 3) {
       const lastOfShipment = worst.date === core.lastDataDate && core.lastDataDate < lastDayOf(core.month);
-      out.push({ kind: 'fleet', tone: 'warn', date: worst.date, title: `${fmtDay(worst.date)}: pior dia da frota, ${fmtPct(worst.fleet.pct as number)}`, text: `${fmtInt(worst.fleet.covered)} de ${fmtInt(worst.fleet.programmed ?? 0)} tabelas cobertas, contra ${fmtPct(core.totals.fleet.pct)} no mês.${lastOfShipment ? ' É o último dia da remessa e pode ter vindo incompleto.' : ''} A programação é estimada pelos dias comparáveis até o ERP-JB enviar a escala.` });
+      out.push({ kind: 'fleet', tone: 'warn', date: worst.date, title: `${fmtDay(worst.date)}: pior dia da frota, ${fmtPct(worst.fleet.pct as number)}`, text: `${fmtInt(worst.fleet.covered)} de ${fmtInt(worst.fleet.programmed ?? 0)} tabelas cobertas, contra ${fmtPct(core.totals.fleet.pct)} no mês.${lastOfShipment ? ' É o último dia da remessa e pode ter vindo incompleto.' : ''} A programação é estimada pelos dias comparáveis até a escala chegar.` });
     }
   }
 

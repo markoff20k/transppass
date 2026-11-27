@@ -139,7 +139,7 @@ export function MaintenanceHistorySection() {
         <div>
           <h3>Histórico de manutenção</h3>
           <span className="chart__hint">
-            fichas e OS do ERP-JB importadas da Transppass: o que o motorista alegou, o que a
+            fichas e OS importadas da Transppass: o que o motorista alegou, o que a
             oficina constatou e o que foi feito · A, S e T são as quebras que contam no MKBF
           </span>
         </div>

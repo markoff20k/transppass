@@ -432,7 +432,7 @@ export function MetricsPage() {
     eyebrow: 'Gestão',
     title: 'Indicadores',
     description:
-      'O mês da frota em quatro temas: confiabilidade, operação, consumo e oficina — tudo lido das planilhas do ERP-JB e do processo, ninguém digita.',
+      'O mês da frota em quatro temas: confiabilidade, operação, consumo e oficina — tudo lido das planilhas da Transppass e do processo, ninguém digita.',
     actions: <MonthControl />,
   });
 
@@ -659,7 +659,7 @@ export function MetricsPage() {
               <span className="tp-kpi__note">
                 {formatNumber(board.totals.fleet.covered)} de{' '}
                 {formatNumber(board.totals.fleet.programmed ?? 0)} tabelas · programação estimada
-                pelos dias comparáveis até a escala do ERP-JB chegar
+                pelos dias comparáveis até a escala chegar
               </span>
             </FlipKpi>
             <FlipKpi label="Cumprimento de viagens" back={<TripsBack board={board} prevName={prevName} />}>

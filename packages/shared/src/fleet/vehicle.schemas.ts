@@ -83,7 +83,7 @@ export const VEHICLE_TECHNOLOGY_LABELS: Record<VehicleTechnology, string> = {
 export const KM_SOURCE_LABELS: Record<KmSource, string> = {
   MANUAL: 'Lançamento manual',
   TELEMETRY: 'Telemetria',
-  JB_API: 'API do JB',
+  JB_API: 'API de integração',
 };
 
 export const VEHICLE_STATUS_LABELS: Record<VehicleStatus, string> = {

@@ -114,7 +114,7 @@ export class IaReadingsService {
       // A leitura de regras: a verdade apurada pelo sistema, que o modelo reescreve sem alterar número.
       insights: await this.rulesInsights(b),
     };
-    const system = `Você é a ${IA_NAME}, agente de PCM da Transppass (ônibus urbanos, São Paulo). Você redige a leitura mensal dos indicadores para a equipe de manutenção e a gestão, em português do Brasil, a partir dos números que recebe. Nunca invente número, data, carro ou linha: use só o que está nos dados. Números no padrão brasileiro (1.366.513 km; 3,2%; 1,70 km/l), datas como 18/11. Tom de analista experiente, direto, sem floreio.`;
+    const system = `Você é a ${IA_NAME}, agente de PCM da Transppass (ônibus urbanos, São Paulo). Você redige a leitura mensal dos indicadores para a equipe de manutenção e a gestão, em português do Brasil, a partir dos números que recebe. Nunca invente número, data, carro ou linha: use só o que está nos dados. Números no padrão brasileiro (1.366.513 km; 3,2%; 1,70 km/l), datas como 18/11. Tom de analista experiente, direto, sem floreio. Nunca cite o nome do sistema de origem dos dados (ERP, JB): diga "as planilhas" ou "a remessa de dados".`;
     const prompt = `Escreva a leitura do mês ${b.month} a partir dos dados abaixo (JSON). Responda SOMENTE com um JSON válido, sem comentários nem cercas de código, neste formato:
 {"summary": "parágrafo de abertura, 2 a 3 frases, o mês em uma leitura: o que foi bem, o que preocupa, o que explica", "insights": [{"kind": "day|fleet|failures|mkbf|trips|consumption|data", "tone": "info|good|warn|bad", "date": "AAAA-MM-DD ou null", "title": "até 90 caracteres, com o número principal", "text": "1 a 3 frases com o porquê e a comparação"}]}
 
@@ -173,7 +173,7 @@ Regras:
       dataThrough: d.dataThrough,
       alerts: d.alerts,
     };
-    const system = `Você é a ${IA_NAME}, agente de PCM da Transppass (ônibus urbanos, São Paulo). Você escreve, em português do Brasil, a frase que abre o Dashboard da manutenção: o que a equipe precisa saber ao olhar a tela agora. Nunca invente número, carro ou causa: use só o que está nos dados. Números no padrão brasileiro (1.366.513 km; 92,4%). Tom de analista experiente, direto, sem floreio, sem saudação. Sua identidade é só ${IA_NAME}; nunca cite fornecedor nem modelo.`;
+    const system = `Você é a ${IA_NAME}, agente de PCM da Transppass (ônibus urbanos, São Paulo). Você escreve, em português do Brasil, a frase que abre o Dashboard da manutenção: o que a equipe precisa saber ao olhar a tela agora. Nunca invente número, carro ou causa: use só o que está nos dados. Números no padrão brasileiro (1.366.513 km; 92,4%). Tom de analista experiente, direto, sem floreio, sem saudação. Sua identidade é só ${IA_NAME}; nunca cite fornecedor nem modelo, nem o nome do sistema de origem dos dados (ERP, JB): diga "a remessa de dados".`;
     const prompt = `Escreva a leitura de agora a partir dos dados abaixo (JSON). Responda SOMENTE com um JSON válido, sem comentários nem cercas de código: {"summary": "1 ou 2 frases, até 240 caracteres"}
 
 Regras:

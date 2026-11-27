@@ -50,7 +50,7 @@ export function DailyPage() {
             MKBF · 30 dias
             <InfoTip label="Como o MKBF é calculado" align="start" className="fleet-tip">
               <b>MKBF</b>
-              <span>Km rodados pela frota dividido pelas quebras: recolhida anormal, socorro e troca de carro (fichas A, S e T do ERP, critério da Transppass). Guincho e carro de treinamento não entram. No dia a dia cada evento conta até a triagem dizer que não era retorno.</span>
+              <span>Km rodados pela frota dividido pelas quebras: recolhida anormal, socorro e troca de carro (fichas A, S e T, critério da Transppass). Guincho e carro de treinamento não entram. No dia a dia cada evento conta até a triagem dizer que não era retorno.</span>
             </InfoTip>
           </span>
           <span className="daily-tile__value">{d.mkbf.last30 === null ? '—' : formatNumber(d.mkbf.last30)} <small>km</small></span>
