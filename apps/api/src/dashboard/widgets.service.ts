@@ -88,13 +88,14 @@ export class WidgetsService {
 
   async build(q: WidgetQuery): Promise<DashboardWidget> {
     const v = q.vehicleId;
-    const days =
-      Math.round((startOfDay(q.to).getTime() - startOfDay(q.from).getTime()) / DAY_MS) + 1;
+    const spanDays = (a: string, b: string) => Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / DAY_MS) + 1;
+    const days = spanDays(q.from, q.to);
     const window = (fromIso: string, toIso: string) => {
+      const n = spanDays(fromIso, toIso);
       const from = startOfDay(fromIso);
       const to = endOfDay(toIso);
       const prevTo = new Date(from.getTime() - 1);
-      const prevFrom = new Date(from.getTime() - days * DAY_MS);
+      const prevFrom = new Date(from.getTime() - n * DAY_MS);
       return Promise.all([
         this.compute(q.kind, from, to, fromIso, toIso, v),
         this.compute(q.kind, prevFrom, prevTo, isoDay(prevFrom), isoDay(prevTo), v),
@@ -102,13 +103,25 @@ export class WidgetsService {
     };
     let used = { from: q.from, to: q.to };
     let fellBack = false;
-    let [current, previous] = await window(q.from, q.to);
-    // Sem dado no período (remessa que ainda não chegou, dia sem planilha): recua
-    // para o dia mais recente com dado deste indicador, mantendo o tamanho da janela.
-    if (current.value === null) {
-      const last = await this.lastDataDay(q.kind, q.from, v);
-      if (last) {
-        used = { from: addDaysIso(last, -(days - 1)), to: last };
+    // O período só vale até o último dia com dado deste indicador (a mesma regra para todo
+    // tipo de cartão). Sem dado nenhum no período (remessa que ainda não chegou), a janela
+    // inteira recua para terminar nesse dia, com o mesmo tamanho; com dado só em parte, a
+    // janela termina nele. Dia sem remessa nunca vira zero no número nem no gráfico.
+    const last = await this.lastDataDay(q.kind, addDaysIso(q.to, 1), v);
+    if (last && last < q.from) {
+      used = { from: addDaysIso(last, -(days - 1)), to: last };
+      fellBack = true;
+    } else if (last && last < q.to) {
+      used = { from: q.from, to: last };
+      fellBack = true;
+    }
+    let [current, previous] = await window(used.from, used.to);
+    // Ainda sem valor (ex.: MKBF num dia com km mas sem quebra): recua para o dia mais
+    // recente com dado antes do pedido, mantendo o tamanho da janela.
+    if (current.value === null && !fellBack) {
+      const prior = await this.lastDataDay(q.kind, q.from, v);
+      if (prior) {
+        used = { from: addDaysIso(prior, -(days - 1)), to: prior };
         [current, previous] = await window(used.from, used.to);
         fellBack = true;
       }
@@ -189,6 +202,39 @@ export class WidgetsService {
           select: { date: true },
         });
         return r ? r.date.toISOString().slice(0, 10) : null;
+      }
+      case 'rescues': {
+        const [f, e] = await Promise.all([
+          this.prisma.fieldService.findFirst({ where: { dispatchedAt: { lt }, ...(v ? { event: { vehicleId: v } } : {}) }, orderBy: { dispatchedAt: 'desc' }, select: { dispatchedAt: true } }),
+          this.prisma.failureEvent.findFirst({ where: importedRescueWhere(new Date(0), lt, v), orderBy: { reportedAt: 'desc' }, select: { reportedAt: true } }),
+        ]);
+        const d = [f?.dispatchedAt, e?.reportedAt].filter((x): x is Date => !!x).sort((a, b) => b.getTime() - a.getTime())[0];
+        return d ? isoDay(d) : null;
+      }
+      case 'downtime':
+      case 'woReleased': {
+        const r = await this.prisma.workOrder.findFirst({ where: { status: WorkOrderStatus.RELEASED, releasedAt: { lt }, ...(v ? { vehicleId: v } : {}) }, orderBy: { releasedAt: 'desc' }, select: { releasedAt: true } });
+        return r?.releasedAt ? isoDay(r.releasedAt) : null;
+      }
+      case 'woOpened': {
+        const [w, m] = await Promise.all([
+          this.prisma.workOrder.findFirst({ where: { openedAt: { lt }, status: { not: WorkOrderStatus.CANCELLED }, ...(v ? { vehicleId: v } : {}) }, orderBy: { openedAt: 'desc' }, select: { openedAt: true } }),
+          this.prisma.maintenanceRecord.findFirst({ where: { openedAt: { lt }, ...(v ? { vehicleId: v } : {}) }, orderBy: { openedAt: 'desc' }, select: { openedAt: true } }),
+        ]);
+        const d = [w?.openedAt, m?.openedAt].filter((x): x is Date => !!x).sort((a, b) => b.getTime() - a.getTime())[0];
+        return d ? isoDay(d) : null;
+      }
+      case 'fieldResolution': {
+        const r = await this.prisma.fieldService.findFirst({ where: { dispatchedAt: { lt }, ...(v ? { event: { vehicleId: v } } : {}) }, orderBy: { dispatchedAt: 'desc' }, select: { dispatchedAt: true } });
+        return r ? isoDay(r.dispatchedAt) : null;
+      }
+      case 'triageSla': {
+        const r = await this.prisma.triage.findFirst({ where: { decidedAt: { lt }, ...(v ? { event: { vehicleId: v } } : {}) }, orderBy: { decidedAt: 'desc' }, select: { decidedAt: true } });
+        return r?.decidedAt ? isoDay(r.decidedAt) : null;
+      }
+      case 'rework': {
+        const r = await this.prisma.inspection.findFirst({ where: { inspectedAt: { lt }, ...(v ? { task: { workOrder: { vehicleId: v } } } : {}) }, orderBy: { inspectedAt: 'desc' }, select: { inspectedAt: true } });
+        return r ? isoDay(r.inspectedAt) : null;
       }
       default:
         return null;
@@ -272,14 +318,18 @@ export class WidgetsService {
         };
       }
       case 'woOpened': {
-        const n = await this.prisma.workOrder.count({
-          where: {
-            openedAt: { gte: from, lte: to },
-            status: { not: WorkOrderStatus.CANCELLED },
-            ...byVehicle,
-          },
-        });
-        return { value: n, detail: null };
+        // OS abertas no sistema + fichas/OS do histórico importado (que não passam pelo fluxo do app).
+        const [n, imported] = await Promise.all([
+          this.prisma.workOrder.count({
+            where: {
+              openedAt: { gte: from, lte: to },
+              status: { not: WorkOrderStatus.CANCELLED },
+              ...byVehicle,
+            },
+          }),
+          this.prisma.maintenanceRecord.count({ where: { openedAt: { gte: from, lte: to }, ...byVehicle } }),
+        ]);
+        return { value: n + imported, detail: imported > 0 && n === 0 ? 'fichas e OS do histórico' : null };
       }
       case 'rescues': {
         // Atendimentos despachados pelo sistema + socorros do histórico importado (ficha de
@@ -383,7 +433,14 @@ export class WidgetsService {
    * contagens vêm de uma consulta só e são repartidas aqui; o MKBF por dia vem
    * do quadro mensal; o que não tem como ser quebrado em pontos fica sem série.
    */
+  /** A série do período; um dia só num indicador sem leitura por hora mostra os 7 dias até ele, por dia. */
   private async series(kind: WidgetKind, fromIso: string, toIso: string, v?: string): Promise<WidgetSeries | null> {
+    const s = await this.seriesFor(kind, fromIso, toIso, v);
+    if (!s && fromIso === toIso) return this.seriesFor(kind, addDaysIso(toIso, -6), toIso, v);
+    return s;
+  }
+
+  private async seriesFor(kind: WidgetKind, fromIso: string, toIso: string, v?: string): Promise<WidgetSeries | null> {
     if (kind === 'topFailures') return null;
     const now = new Date();
     const days = Math.round((startOfDay(toIso).getTime() - startOfDay(fromIso).getTime()) / DAY_MS) + 1;
@@ -529,11 +586,14 @@ export class WidgetsService {
         );
       }
       case 'woOpened': {
-        const rows = await this.prisma.workOrder.findMany({
-          where: { openedAt: { gte: from, lte: to }, status: { not: WorkOrderStatus.CANCELLED }, ...byVehicle },
-          select: { openedAt: true },
-        });
-        return pack(countBy(buckets, rows.map((r) => keyOf(r.openedAt))));
+        const [rows, imported] = await Promise.all([
+          this.prisma.workOrder.findMany({
+            where: { openedAt: { gte: from, lte: to }, status: { not: WorkOrderStatus.CANCELLED }, ...byVehicle },
+            select: { openedAt: true },
+          }),
+          this.prisma.maintenanceRecord.findMany({ where: { openedAt: { gte: from, lte: to }, ...byVehicle }, select: { openedAt: true } }),
+        ]);
+        return pack(countBy(buckets, [...rows, ...imported].map((r) => keyOf(r.openedAt))));
       }
       case 'rescues':
       case 'fieldResolution': {

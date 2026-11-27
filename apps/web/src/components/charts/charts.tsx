@@ -631,7 +631,7 @@ export function EventsPerDayChart({
         note={
           last ? (
             <>
-              {bucket === 'hour' ? 'no dia' : bucket === 'week' ? 'semana atual' : 'último dia'}{' '}
+              {bucket === 'hour' ? 'total do dia' : bucket === 'week' ? 'semana atual' : 'último dia'}{' '}
               <b>{bucket === 'hour' ? formatNumber(total) : last.count}</b>
               {bucket === 'hour' ? '' : ` · período ${formatNumber(total)}`}
             </>
@@ -1113,12 +1113,15 @@ export function WidgetSeriesChart({
   format,
   target = null,
   color = 'var(--chart-1)',
+  note,
 }: {
   series: WidgetSeries;
   unit: WidgetUnit;
   label: string;
   format: (v: number) => string;
   target?: number | null;
+  /** Aviso antes do resumo da legenda (ex.: "7 dias até 19/11, por dia" quando o período é um dia só). */
+  note?: ReactNode;
   color?: string;
 }) {
   const rows = series.points.map((p) => ({ key: p.key, label: seriesLabel(series.bucket, p.key), value: p.value, aux: p.aux }));
@@ -1135,10 +1138,16 @@ export function WidgetSeriesChart({
       <Legend
         items={legend}
         note={
-          last ? (
+          last || note ? (
             <>
-              {series.bucket === 'hour' ? 'última hora' : series.bucket === 'month' ? 'último mês' : 'último dia'} <b>{format(last.value as number)}</b>
-              {isBar && rows.length > 1 ? ` · período ${formatNumber(total)}` : ''}
+              {note}
+              {note && last ? ' · ' : ''}
+              {last && (
+                <>
+                  {series.bucket === 'hour' ? 'última hora' : series.bucket === 'month' ? 'último mês' : 'último dia'} <b>{format(last.value as number)}</b>
+                  {isBar && rows.length > 1 ? ` · período ${formatNumber(total)}` : ''}
+                </>
+              )}
             </>
           ) : undefined
         }

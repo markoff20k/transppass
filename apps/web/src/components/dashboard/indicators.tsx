@@ -36,6 +36,7 @@ const DEFAULT_INDICATORS: DashboardWidgetPref[] = [
   { id: 'w-lostTrips', kind: 'lostTrips', period: { preset: 'thisMonth' } },
   { id: 'w-downtime', kind: 'downtime', period: { preset: 'last30' } },
   { id: 'w-rescues', kind: 'rescues', period: { preset: 'thisMonth' } },
+  { id: 'w-woOpened', kind: 'woOpened', period: { preset: 'thisMonth' } },
   { id: 'w-topFailures', kind: 'topFailures', period: { preset: 'last30' } },
 ];
 
@@ -390,7 +391,9 @@ function Body({ pref, w, from, to, vehicleId }: { pref: DashboardWidgetPref; w: 
   }
   if (!w) return <ChartLoading />;
   if (!w.series || w.series.points.every((p) => p.value === null)) return <NoSeries />;
-  return <WidgetSeriesChart series={w.series} unit={w.unit} label={meta.label} format={(v) => formatValue(v, w.unit) ?? ''} />;
+  // Um dia só num indicador sem leitura por hora: a API manda os 7 dias até ele; a legenda avisa.
+  const context = from === to && w.series.bucket === 'day' ? t.dash.widgets.seriesContext.replace('{d}', fmtDay(to)) : undefined;
+  return <WidgetSeriesChart series={w.series} unit={w.unit} label={meta.label} format={(v) => formatValue(v, w.unit) ?? ''} note={context} />;
 }
 
 /**
@@ -409,6 +412,7 @@ function DowntimeBody({ from, to }: { from: string; to: string }) {
   const [drill, setDrill] = useState<{ cause: DowntimeCause | null } | null>(null);
   const perCar = d ? Object.fromEntries(d.perCause.map((p) => [p.cause, { vehicles: p.vehicles, avgMinutes: p.avgMinutesPerVehicle }])) : undefined;
   if (!d) return <ChartLoading />;
+  if (d.totalDowntimeMinutes === 0) return <NoSeries />;
   return (
     <>
       <RefreshVeil active={query.isPlaceholderData} delay={0}>
