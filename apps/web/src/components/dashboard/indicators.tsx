@@ -120,13 +120,47 @@ export function IndicatorsSection({ vehicles }: { vehicles: DashboardVehicle[] }
   });
   const [allPeriod, setAllPeriod] = useState<WidgetPeriod>({ preset: 'last30' });
   const [pickerOpen, setPickerOpen] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const sentinelRef = useRef<HTMLSpanElement>(null);
+  const [stuck, setStuck] = useState(false);
+  // O cabeçalho da seção acompanha a rolagem logo abaixo da barra da página: mede a barra (a altura
+  // muda com a tela) e marca quando está preso, para ganhar a sombra que o separa dos cartões.
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    let top = -1;
+    // A barra da página pode montar depois da seção: procura a cada medição.
+    const measure = () => {
+      const sub = document.querySelector<HTMLElement>('.subheader');
+      const next = sub ? (parseFloat(getComputedStyle(sub).top) || 0) + sub.offsetHeight : 0;
+      if (next !== top) {
+        top = next;
+        section.style.setProperty('--ind-sticky-top', `${top}px`);
+      }
+    };
+    const onScroll = () => {
+      measure();
+      const s = sentinelRef.current;
+      if (!s) return;
+      const r = section.getBoundingClientRect();
+      setStuck(s.getBoundingClientRect().top < top && r.bottom > top + 80);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
   // O seletor global marca o período que todos os cartões compartilham; se divergem, o último aplicado.
   const samePref = (a: WidgetPeriod, b: WidgetPeriod) => a.preset === b.preset && (a.preset !== 'custom' || (a.from === b.from && a.to === b.to));
   const shownAll = widgets.length > 0 && widgets.every((w) => samePref(w.period, widgets[0]!.period)) ? widgets[0]!.period : allPeriod;
 
   return (
-    <section className="dash-section dash-section--indicators" aria-labelledby="dash-indicators">
-      <header className="dash-section__head">
+    <section ref={sectionRef} className="dash-section dash-section--indicators" aria-labelledby="dash-indicators">
+      <span ref={sentinelRef} className="dash-section__sentinel" aria-hidden />
+      <header className={`dash-section__head${stuck ? ' is-stuck' : ''}`}>
         <div>
           <h2 id="dash-indicators">{t.dash.sections.indicators}</h2>
         </div>

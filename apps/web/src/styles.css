@@ -5978,7 +5978,14 @@ input.tp-input[type="datetime-local"] { height: 36px; padding-top: 0; padding-bo
 .dash-section__head h2 { display: inline-flex; align-items: center; gap: 10px; margin: 0; font-family: var(--tp-font-display); font-size: 1.5rem; font-weight: 700; line-height: 1.1; letter-spacing: 0.01em; color: var(--color-text); }
 .dash-section__hint { font-size: var(--tp-text-xs); color: var(--color-text-muted); }
 .dash-section__tools { display: flex; align-items: center; gap: var(--tp-space-2); flex-wrap: wrap; justify-content: flex-end; }
-.dash-section__tools .ind-apply .wperiod__trigger { min-height: 28px; }
+/* Os dois botões da seção são o mesmo botão: 32 px, mesmo preenchimento, ícone de 14 px na cor da marca. */
+.dash-section__tools .wperiod__trigger, .dash-section__tools .dash-widgets__add { height: 32px; min-height: 32px; padding: 0 12px 0 10px; gap: 6px; }
+.dash-section__tools .wperiod__icon, .dash-section__tools .dash-widgets__add svg { width: 14px; height: 14px; }
+/* O cabeçalho de Indicadores acompanha a rolagem logo abaixo da barra da página (altura medida em tempo
+   real) e para no fim da seção; preso, ganha fundo e sombra para separar dos cartões que passam por baixo. */
+.dash-section__sentinel { display: block; height: 0; margin-bottom: calc(var(--tp-space-3) * -1); }
+.dash-section--indicators > .dash-section__head { position: sticky; top: var(--ind-sticky-top, 0px); z-index: calc(var(--tp-z-sticky) + 1); margin: 0 -8px; padding: 8px 12px; border-radius: 0 0 var(--tp-radius-lg) var(--tp-radius-lg); background: var(--color-bg); transition: box-shadow 160ms ease; }
+.dash-section--indicators > .dash-section__head.is-stuck { box-shadow: 0 10px 16px -14px rgb(15 23 42 / 0.35); }
 /* Dia de referência da remessa: discreto quando é hoje, âmbar quando ficou para trás. */
 .dash-through { display: inline-flex; align-items: center; gap: 6px; font-size: var(--tp-text-xs); font-weight: var(--tp-weight-medium); color: var(--color-text-muted); white-space: nowrap; }
 .dash-through.is-behind { color: var(--color-warning-text); }
