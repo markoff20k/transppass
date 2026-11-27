@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AuthResponse, LoginInput, PublicUser } from '@app/shared';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, onPasswordChangeRequired, onSessionExpired } from '@/lib/api-client';
+import { ApiError, SERVER_DOWN, SERVER_UNREACHABLE, api, onPasswordChangeRequired, onSessionExpired } from '@/lib/api-client';
 import { tokenStorage } from '@/lib/token-storage';
 import { AuthContext } from './auth.context';
 
@@ -72,7 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api
       .get<PublicUser>('/auth/me')
       .then(setUser)
-      .catch(() => tokenStorage.clear())
+      // Só o "não" da API derruba a sessão; servidor fora do ar mantém os tokens para a próxima tentativa.
+      .catch((err) => {
+        if (!(err instanceof ApiError && (err.body.code === SERVER_UNREACHABLE || err.body.code === SERVER_DOWN))) tokenStorage.clear();
+      })
       .finally(() => setIsLoading(false));
   }, []);
 

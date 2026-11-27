@@ -23,6 +23,38 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
 
 let refreshInFlight: Promise<boolean> | null = null;
 
+/** Servidor inalcançável (rede caiu, API desligada) ou fora do ar (502/503/504, ou 5xx sem corpo da API). */
+export const SERVER_UNREACHABLE = 'SERVER_UNREACHABLE';
+export const SERVER_DOWN = 'SERVER_DOWN';
+
+function serverError(path: string, statusCode: number): ApiError {
+  return new ApiError({
+    statusCode,
+    code: statusCode === 0 ? SERVER_UNREACHABLE : SERVER_DOWN,
+    message:
+      statusCode === 0
+        ? 'Sem conexão com o servidor. Ele pode estar fora do ar ou a internet caiu; tente de novo em instantes.'
+        : 'O servidor está fora do ar no momento. Tente de novo em instantes.',
+    timestamp: new Date().toISOString(),
+    path,
+  });
+}
+
+/** fetch que transforma a falha de rede (TypeError) em erro legível; o cancelamento segue como está. */
+async function request(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(`${BASE_URL}${path}`, init);
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    throw serverError(path, 0);
+  }
+}
+
+/** Resposta de erro que não veio da API (o proxy ou o balanceador respondeu no lugar dela). */
+function isServerDown(res: Response, payload: unknown): boolean {
+  return [502, 503, 504].includes(res.status) || (res.status >= 500 && !isApiErrorBody(payload));
+}
+
 type SessionListener = () => void;
 const sessionListeners = new Set<SessionListener>();
 
@@ -66,11 +98,13 @@ async function refreshTokens(): Promise<boolean> {
   // Varias requisicoes 401 simultaneas compartilham um unico refresh.
   refreshInFlight ??= (async () => {
     try {
-      const res = await fetch(`${BASE_URL}/auth/refresh`, {
+      const res = await request('/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
       });
+      // Servidor fora do ar não é sessão vencida: mantém os tokens e avisa; só o "não" da API desloga.
+      if (res.status >= 500) throw serverError('/auth/refresh', res.status);
       if (!res.ok) {
         tokenStorage.clear();
         return false;
@@ -90,7 +124,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   const send = async (): Promise<Response> => {
     const accessToken = tokenStorage.get()?.accessToken;
-    return fetch(`${BASE_URL}${path}`, {
+    return request(path, {
       ...init,
       headers: {
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -116,6 +150,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const payload = await res.json().catch(() => null);
 
   if (!res.ok) {
+    if (isServerDown(res, payload)) throw serverError(path, res.status);
     if (isApiErrorBody(payload) && payload.code === PASSWORD_CHANGE_REQUIRED) {
       for (const l of passwordListeners) l();
     }
@@ -158,7 +193,7 @@ export async function apiEventStream<E>(
 ): Promise<void> {
   const send = async (): Promise<Response> => {
     const accessToken = tokenStorage.get()?.accessToken;
-    return fetch(`${BASE_URL}${path}`, {
+    return request(path, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -176,6 +211,7 @@ export async function apiEventStream<E>(
   }
   if (!res.ok || !res.body) {
     const payload = await res.json().catch(() => null);
+    if (isServerDown(res, payload)) throw serverError(path, res.status);
     throw new ApiError(
       isApiErrorBody(payload)
         ? payload
