@@ -436,6 +436,8 @@ export interface AvailabilityCar {
   fichaTime: string | null;
   /** Minutos indisponíveis dentro da janela do dia. */
   minutes: number;
+  /** Os trechos indisponíveis, em minutos desde a 0h do dia (a janela vai de 240 a 1500). */
+  intervals: [number, number][];
   /** A parada veio (também) de OS aberta no sistema. */
   byWorkOrder: boolean;
 }

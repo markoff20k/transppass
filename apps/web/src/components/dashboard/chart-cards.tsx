@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { DOWNTIME_CAUSE_LABELS, type AvailabilityDays, type AvailabilityHours, type DashboardDowntime, type DashboardWidget, type MkbfSeries, type WidgetSeries } from '@app/shared';
@@ -14,10 +14,12 @@ import {
   MkbfTrendChart,
   WidgetSeriesChart,
 } from '@/components/charts/charts';
+import { canHover } from '@/components/charts/use-chart-zoom';
 import { RefreshVeil } from '@/components/ui/refresh-veil';
 import { BrandLoader } from '@/components/brand/brand-loader';
 import { formatValue } from './widgets';
-import { AvailabilityCarsFoot } from './availability-cars';
+import { AvailabilityCarsDrawer, AvailabilityCarsFoot } from './availability-cars';
+import { AvailabilityEvents } from './availability-events';
 
 /** Metas do PCM. A de disponibilidade é ARBITRADA em 85% até o PCM fixar (RF-38); a de MKBF é a do cliente. */
 export const MKBF_TARGET = 4000;
@@ -113,7 +115,9 @@ export function MkbfBody({ from, to, vehicleId, series }: { from: string; to: st
  * Corpo do cartão grande de Disponibilidade: a curva do dia sobre a média dos
  * 30 dias (um dia) ou a média de cada dia (vários), e o que segurou os carros
  * no período (as etapas com mais horas paradas). Um carro só usa a série do
- * widget: a fração das horas em que ele estava pronto.
+ * widget: a fração das horas em que ele estava pronto. O mouse sobre um dia
+ * (ou uma faixa) lista os carros que derrubaram o número; o clique abre os
+ * carros daquele dia.
  */
 export function AvailabilityBody({ from, to, vehicleId, series }: { from: string; to: string; vehicleId: string | null; series: WidgetSeries | null }) {
   const { t } = useI18n();
@@ -121,6 +125,10 @@ export function AvailabilityBody({ from, to, vehicleId, series }: { from: string
   const day = single ? to : null;
   const avgFrom = single ? shiftDays(to, -29) : from;
   const fleet = !vehicleId;
+  // Dia clicado no gráfico: abre os carros dele. Com o painel aberto, o tooltip volta ao curto.
+  const [pickedDay, setPickedDay] = useState<string | null>(null);
+  // No toque não há mouse parado: o dedo abre direto os carros do dia, sem a lista por cima da tela.
+  const listOnHover = !pickedDay && canHover();
   const hours = useQuery({
     queryKey: ['dashboard', 'availability-hours', day, avgFrom, to],
     queryFn: () => api.get<AvailabilityHours>(`/dashboard/availability-hours?from=${avgFrom}&to=${to}${day ? `&day=${day}` : ''}`),
@@ -160,15 +168,31 @@ export function AvailabilityBody({ from, to, vehicleId, series }: { from: string
       <NoSeries />
     );
   }
+  const hDay = h?.day ?? null;
   const dayLabel = h?.day ? (h.day === todayIso() ? t.dash.chartPeriod.today.toLowerCase() : fmtDay(h.day)) : null;
   const chart = single
-    ? h ? <RefreshVeil active={hours.isPlaceholderData} delay={0}><AvailabilityByHourChart data={h.hours} days={h.days} dayLabel={dayLabel} /></RefreshVeil> : <ChartLoading />
-    : days.data ? <RefreshVeil active={days.isPlaceholderData} delay={0}><AvailabilityByDayChart data={days.data.points} /></RefreshVeil> : <ChartLoading />;
+    ? h ? (
+        <RefreshVeil active={hours.isPlaceholderData} delay={0}>
+          <AvailabilityByHourChart
+            data={h.hours}
+            days={h.days}
+            dayLabel={dayLabel}
+            events={hDay && listOnHover ? (hour) => <AvailabilityEvents day={hDay} hour={hour} /> : undefined}
+            onPick={hDay ? () => setPickedDay(hDay) : undefined}
+          />
+        </RefreshVeil>
+      ) : <ChartLoading />
+    : days.data ? (
+        <RefreshVeil active={days.isPlaceholderData} delay={0}>
+          <AvailabilityByDayChart data={days.data.points} events={listOnHover ? (date) => <AvailabilityEvents day={date} /> : undefined} onPickDay={setPickedDay} />
+        </RefreshVeil>
+      ) : <ChartLoading />;
   const held = (downtime.data?.downtimeByCause ?? []).filter((c) => c.minutes > 0).slice(0, 3);
   const r = ready.data;
   return (
     <>
       {chart}
+      {pickedDay && <AvailabilityCarsDrawer day={pickedDay} onClose={() => setPickedDay(null)} />}
       <AvailabilityCarsFoot day={h?.day ?? to}>
         <span className="tp-muted">
           {r && r.value !== null ? (

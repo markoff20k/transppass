@@ -642,7 +642,7 @@ export const dashboardHandlers = [
     await delay();
     const day = new URL(request.url).searchParams.get('day') ?? '2026-11-22';
     const car = (i: number, state: string, minutes: number, extra: object = {}) => ({
-      vehicleId: `v-${i}`, code: String(10001 + i), plate: `TPP${i}A${10 + i}`, state, lastRun: null, stoppedDays: null, fichaTime: null, minutes, byWorkOrder: false, ...extra,
+      vehicleId: `v-${i}`, code: String(10001 + i), plate: `TPP${i}A${10 + i}`, state, lastRun: null, stoppedDays: null, fichaTime: null, minutes, intervals: minutes ? [[1500 - minutes, 1500]] : [], byWorkOrder: false, ...extra,
     });
     return HttpResponse.json({
       day, requestedDay: day, fellBack: false, firstDay: '2026-01-01', lastDay: day, fullOperation: true, estimated: true,

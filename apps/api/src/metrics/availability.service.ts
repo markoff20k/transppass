@@ -71,6 +71,8 @@ export interface AvailabilityCarRow {
   fichaMinute: number | null;
   /** Minutos indisponíveis na janela do dia. */
   minutes: number;
+  /** Os trechos indisponíveis, em minutos desde a 0h do dia (a janela vai de 240 a 1500). */
+  intervals: [number, number][];
   /** A parada veio (também) de OS do sistema. */
   byWorkOrder: boolean;
 }
@@ -182,12 +184,13 @@ export class AvailabilityService {
         lastRun: lastRun === undefined ? null : isoOfDay(lastRun),
         fichaMinute: est?.partial.get(vehicleId)?.fichaMinute ?? null,
         minutes: totalOf(car.intervals),
+        intervals: car.intervals.map(([a, b]) => [Math.round(a), Math.round(b)]),
         byWorkOrder: car.byWorkOrder,
       });
     }
     for (const [vehicleId, lastRun] of est?.idle ?? []) {
       if (calc.cars.has(vehicleId)) continue;
-      cars.push({ vehicleId, kind: 'IDLE', lastRun: isoOfDay(lastRun), fichaMinute: null, minutes: 0, byWorkOrder: false });
+      cars.push({ vehicleId, kind: 'IDLE', lastRun: isoOfDay(lastRun), fichaMinute: null, minutes: 0, intervals: [], byWorkOrder: false });
     }
     for (const [vehicleId, lastActivity] of est?.immobilized ?? []) {
       cars.push({
@@ -196,6 +199,7 @@ export class AvailabilityService {
         lastRun: isoOfDay(lastActivity),
         fichaMinute: null,
         minutes: 0,
+        intervals: [],
         byWorkOrder: false,
       });
     }

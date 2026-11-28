@@ -24,8 +24,12 @@ export interface ChartZoom<T> {
     onMouseMove: (s: MouseHandlerDataParam) => void;
     onMouseUp: () => void;
     onMouseLeave: () => void;
+    throttledEvents?: ReadonlyArray<keyof GlobalEventHandlersEventMap>;
   };
 }
+
+/** Tela com mouse (dá para parar em cima de um ponto). No toque não há: o dedo só clica. */
+export const canHover = () => window.matchMedia('(hover: hover)').matches;
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
@@ -42,18 +46,22 @@ function indexOf(s: MouseHandlerDataParam): number | null {
  * e afastam (o dobro); "Tudo" volta ao intervalo inteiro. O recorte fica em
  * preferences.ui pela chave dos pontos (mês, hora), então sobrevive ao refresh
  * e continua certo quando entram meses novos. Abaixo de `min` pontos não
- * aproxima mais.
+ * aproxima mais. Clicar num ponto sem arrastar chama `onPick` com ele; no
+ * toque o gráfico lê o dedo na hora (sem esperar o quadro), senão o clique
+ * chegaria antes de o gráfico saber em que ponto foi.
  */
 export function useChartZoom<T>({
   prefKey,
   rows,
   keyOf,
   min,
+  onPick,
 }: {
   prefKey: string;
   rows: T[];
   keyOf: (row: T) => string;
   min: number;
+  onPick?: (row: T) => void;
 }): ChartZoom<T> {
   const [saved, setSaved] = useUiState<ZoomRange | null>(prefKey, null);
   const [drag, setDrag] = useState<{ a: number; b: number } | null>(null);
@@ -93,12 +101,13 @@ export function useChartZoom<T>({
     apply(Math.max(0, a), b);
   };
 
-  const finish = () => {
+  const finish = (released: boolean) => {
     if (!drag) return;
     const a = Math.min(drag.a, drag.b);
     const b = Math.max(drag.a, drag.b);
     setDrag(null);
     if (b - a + 1 >= min) apply(start + a, start + b);
+    else if (released && a === b && onPick && rows[start + a]) onPick(rows[start + a] as T);
   };
 
   return {
@@ -119,8 +128,9 @@ export function useChartZoom<T>({
         const i = indexOf(s);
         if (i !== null && i !== drag.b) setDrag({ a: drag.a, b: i });
       },
-      onMouseUp: finish,
-      onMouseLeave: finish,
+      onMouseUp: () => finish(true),
+      onMouseLeave: () => finish(false),
+      ...(onPick && !canHover() ? { throttledEvents: [] } : {}),
     },
   };
 }

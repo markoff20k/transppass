@@ -5311,6 +5311,24 @@ a.bus-card:hover { transform: translateY(-1px); }
 .cons-swarm__dot:focus-visible circle:last-child, .cons-swarm__dot:focus-visible polygon { stroke: var(--color-brand); stroke-width: 3; }
 .cons-swarm__tip { position: absolute; transform: translate(-50%, calc(-100% - 14px)); pointer-events: none; z-index: 2; min-width: 180px; }
 .chart-tip__hint { color: var(--color-text-muted); font-size: var(--tp-text-2xs); margin-top: 2px; }
+
+/* Tooltip que sai do gráfico e flutua sobre a página, ao lado do cursor (a lista de eventos do dia não cabe no cartão). */
+.chart-float { position: fixed; z-index: calc(var(--tp-z-overlay) + 10); pointer-events: none; max-width: calc(100vw - 16px); }
+.chart-float .chart-tip { min-width: 200px; box-shadow: var(--shadow-overlay); }
+
+/* Eventos do dia no tooltip de disponibilidade: um carro por linha, em colunas que descem. */
+.ave { display: grid; gap: 6px; margin-top: 6px; padding-top: 8px; border-top: var(--tp-border-thin) solid var(--color-border); }
+.ave--loading .brand-loader:not(.brand-loader--fullscreen) { display: flex; align-items: center; gap: var(--tp-space-2); width: auto; min-height: 0; padding: 0; }
+.ave--loading .brand-loader__label { color: var(--color-text-muted); white-space: nowrap; }
+.ave__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--tp-space-4); white-space: nowrap; }
+.ave__head b { font-weight: var(--tp-weight-semibold); }
+.ave__legend { display: flex; flex-wrap: wrap; gap: 2px var(--tp-space-3); color: var(--color-text-muted); white-space: nowrap; }
+.ave__list { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: max-content; column-gap: var(--tp-space-5); }
+.ave__list li { line-height: 18px; white-space: nowrap; }
+.ave__list b { font-weight: var(--tp-weight-semibold); font-variant-numeric: tabular-nums; }
+.ave__dot { display: inline-block; width: 7px; height: 7px; border-radius: 999px; margin-right: 6px; vertical-align: 1px; background: var(--color-text-muted); }
+.ave__dot--retained { background: var(--color-danger); }
+.ave__dot--partial { background: var(--color-warning); }
 @media (prefers-reduced-motion: reduce) { .cons-swarm__dot circle, .cons-swarm__dot polygon, .cons { transition: none; } }
 
 /* Tabela de carros */

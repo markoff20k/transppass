@@ -1,4 +1,5 @@
-import { useId, type CSSProperties, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Area,
   AreaChart,
@@ -70,7 +71,7 @@ interface TipRow {
   color?: string;
 }
 
-function Tip({ title, rows }: { title: string; rows: TipRow[] }) {
+function Tip({ title, rows, children }: { title: string; rows: TipRow[]; children?: ReactNode }) {
   return (
     <div className="chart-tip">
       <div className="chart-tip__label">{title}</div>
@@ -83,8 +84,65 @@ function Tip({ title, rows }: { title: string; rows: TipRow[] }) {
           <b>{r.value}</b>
         </div>
       ))}
+      {children}
     </div>
   );
+}
+
+const TIP_GAP = 16;
+const TIP_EDGE = 8;
+
+/**
+ * Tooltip grande (uma lista por ponto): sai do gráfico e flutua sobre a
+ * página, ao lado do cursor, sem passar da borda da tela. O do Recharts fica
+ * preso ao cartão e cortaria a lista. `x` e `y` são a posição que o Recharts
+ * dá, dentro do gráfico; a âncora acha o gráfico na tela.
+ */
+function FloatingTip({ x, y, children }: { x: number; y: number; children: ReactNode }) {
+  const anchor = useRef<HTMLSpanElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    const chart = anchor.current?.closest('.recharts-wrapper');
+    if (!el || !chart) return;
+    const place = () => {
+      const c = chart.getBoundingClientRect();
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+      const cx = c.left + x;
+      let left = cx + TIP_GAP;
+      if (left + w > vw - TIP_EDGE) left = cx - TIP_GAP - w;
+      left = Math.max(TIP_EDGE, Math.min(left, vw - TIP_EDGE - w));
+      const top = Math.max(TIP_EDGE, Math.min(c.top + y - h / 2, vh - TIP_EDGE - h));
+      setPos((p) => (p && p.left === left && p.top === top ? p : { left, top }));
+    };
+    place();
+    // A lista chega depois do tooltip abrir: o tamanho muda e a posição acompanha.
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [x, y]);
+  return (
+    <>
+      <span ref={anchor} hidden />
+      {createPortal(
+        <div ref={box} className="chart-float" style={pos ? { left: pos.left, top: pos.top } : { left: 0, top: 0, visibility: 'hidden' }}>
+          {children}
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+const WEEKDAYS_PT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+/** "qua, 18/11": no dia a dia da garagem o dia da semana explica metade do número. */
+function weekdayLabel(iso: string): string {
+  const wd = new Date(`${iso}T12:00:00Z`).getUTCDay();
+  return `${WEEKDAYS_PT[wd]}, ${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 }
 
 // --- Legenda curta acima do gráfico -----------------------------------------
@@ -369,15 +427,30 @@ export function MkbfTrendChart({
 
 // --- Disponibilidade dia a dia -----------------------------------------------
 
-/** Vários dias: a disponibilidade operacional de cada dia, a frota apta na saída e a meta; zoom por dia. */
-export function AvailabilityByDayChart({ data, target = 0.85 }: { data: AvailabilityDayPoint[]; target?: number }) {
+/**
+ * Vários dias: a disponibilidade operacional de cada dia, a frota apta na saída e a meta; zoom por dia.
+ * Com `events`, o tooltip do dia leva junto o que derrubou o número (os carros
+ * indisponíveis) e flutua sobre a página; clicar no dia chama `onPickDay`.
+ */
+export function AvailabilityByDayChart({
+  data,
+  target = 0.85,
+  events,
+  onPickDay,
+}: {
+  data: AvailabilityDayPoint[];
+  target?: number;
+  /** O que entra no tooltip do dia, abaixo dos números (data ISO). */
+  events?: (date: string) => ReactNode;
+  onPickDay?: (date: string) => void;
+}) {
   const all = data.map((d) => ({
     key: d.date,
     label: `${d.date.slice(8, 10)}/${d.date.slice(5, 7)}`,
     pct: Math.round(d.rate * 1000) / 10,
     ready: Math.round(d.ready * 1000) / 10,
   }));
-  const zoom = useChartZoom({ prefKey: 'dash.zoom.availabilityDays', rows: all, keyOf: (r) => r.key, min: 3 });
+  const zoom = useChartZoom({ prefKey: 'dash.zoom.availabilityDays', rows: all, keyOf: (r) => r.key, min: 3, onPick: onPickDay ? (r) => onPickDay(r.key) : undefined });
   const rows = zoom.visible;
   const targetPct = Math.round(target * 100);
   const minPct = rows.length ? Math.min(...rows.map((r) => r.pct)) : 0;
@@ -424,10 +497,20 @@ export function AvailabilityByDayChart({ data, target = 0.85 }: { data: Availabi
           )}
           <Tooltip
             cursor={{ stroke: 'var(--color-border-strong)' }}
-            content={({ active, payload }) => {
+            content={({ active, payload, coordinate }) => {
               if (!active || !payload?.length) return null;
               const p = payload[0]!.payload as (typeof rows)[number];
-              return <Tip title={p.label} rows={[{ label: 'Operacional', value: `${p.pct.toLocaleString('pt-BR')}%`, color }, { label: 'Apta na saída', value: `${p.ready.toLocaleString('pt-BR')}%`, color: 'var(--chart-2)' }, { label: 'Meta', value: `${targetPct}%` }]} />;
+              const tipRows = [{ label: 'Operacional', value: `${p.pct.toLocaleString('pt-BR')}%`, color }, { label: 'Apta na saída', value: `${p.ready.toLocaleString('pt-BR')}%`, color: 'var(--chart-2)' }, { label: 'Meta', value: `${targetPct}%` }];
+              // Arrastando para aproximar, a lista só atrapalha: fica o tooltip curto.
+              const dragging = zoom.drag !== null && zoom.drag.a !== zoom.drag.b;
+              if (!events || dragging || !coordinate) return <Tip title={p.label} rows={tipRows} />;
+              return (
+                <FloatingTip x={coordinate.x} y={coordinate.y}>
+                  <Tip title={weekdayLabel(p.key)} rows={tipRows}>
+                    {events(p.key)}
+                  </Tip>
+                </FloatingTip>
+              );
             }}
           />
           <Area type="monotone" dataKey="pct" stroke={color} strokeWidth={2.4} fill="url(#availDayFill)" dot={rows.length <= 31 ? { r: 3, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 } : false} activeDot={{ r: 5, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 }} isAnimationActive={false} />
@@ -445,6 +528,8 @@ export function AvailabilityByHourChart({
   target = 0.85,
   days = 7,
   dayLabel = 'hoje',
+  events,
+  onPick,
 }: {
   data: HourAvailability[];
   target?: number;
@@ -452,6 +537,9 @@ export function AvailabilityByHourChart({
   days?: number;
   /** Nome da curva do dia ("hoje", "21/11"); nulo quando só há média. */
   dayLabel?: string | null;
+  /** O que entra no tooltip da faixa, abaixo dos números (hora de 0 a 23). */
+  events?: (hour: number) => ReactNode;
+  onPick?: () => void;
 }) {
   const all = data.map((d) => ({
     hour: `${String(d.hour).padStart(2, '0')}h`,
@@ -465,6 +553,7 @@ export function AvailabilityByHourChart({
     rows: all,
     keyOf: (r) => r.key,
     min: 3,
+    onPick: onPick ? () => onPick() : undefined,
   });
   const rows = zoom.visible;
   const todays = rows.filter((r) => r.today !== null);
@@ -540,26 +629,30 @@ export function AvailabilityByHourChart({
           )}
           <Tooltip
             cursor={{ stroke: 'var(--color-border-strong)' }}
-            content={({ active, payload }) => {
+            content={({ active, payload, coordinate }) => {
               if (!active || !payload?.length) return null;
               const p = payload[0]!.payload as (typeof rows)[number];
+              const tipRows = [
+                {
+                  label: dayLabel ? dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1) : 'Dia',
+                  value: p.today === null ? '—' : `${p.today.toLocaleString('pt-BR')}%`,
+                  color,
+                },
+                {
+                  label: `Média ${days} dias`,
+                  value: p.pct === null ? '—' : `${p.pct.toLocaleString('pt-BR')}%`,
+                  color: 'var(--chart-2)',
+                },
+                { label: 'Meta', value: `${targetPct}%` },
+              ];
+              const dragging = zoom.drag !== null && zoom.drag.a !== zoom.drag.b;
+              if (!events || dragging || !coordinate) return <Tip title={`faixa ${p.hour}`} rows={tipRows} />;
               return (
-                <Tip
-                  title={`faixa ${p.hour}`}
-                  rows={[
-                    {
-                      label: dayLabel ? dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1) : 'Dia',
-                      value: p.today === null ? '—' : `${p.today.toLocaleString('pt-BR')}%`,
-                      color,
-                    },
-                    {
-                      label: `Média ${days} dias`,
-                      value: p.pct === null ? '—' : `${p.pct.toLocaleString('pt-BR')}%`,
-                      color: 'var(--chart-2)',
-                    },
-                    { label: 'Meta', value: `${targetPct}%` },
-                  ]}
-                />
+                <FloatingTip x={coordinate.x} y={coordinate.y}>
+                  <Tip title={`faixa ${p.hour}`} rows={tipRows}>
+                    {events(Number(p.key))}
+                  </Tip>
+                </FloatingTip>
               );
             }}
           />

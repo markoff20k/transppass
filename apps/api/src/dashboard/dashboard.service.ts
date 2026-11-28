@@ -794,6 +794,7 @@ export class DashboardService {
           stoppedDays: c.lastRun && c.kind !== 'PARTIAL' ? daysBetween(c.lastRun, day) - 1 : null,
           fichaTime: minute === null ? null : `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`,
           minutes: c.minutes,
+          intervals: c.intervals,
           byWorkOrder: c.byWorkOrder,
         }];
       })
